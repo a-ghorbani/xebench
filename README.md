@@ -34,7 +34,9 @@ xebenchapp/App.tsx ─ auto-runs every configured engine ─► EngineAdapter
                                           ▼
    scripts/capture_app_run.sh  ─ scrapes logcat, enriches device info ─► results/raw-*.jsonl
                                           ▼
-   scripts/aggregate.mjs  ─ raw JSONL → EngineBenchmarkRow[] ─► pocketpal-website engine-benchmarks.json
+   scripts/aggregate.mjs --update  ─ raw JSONL → upsert into ─► data/benchmarks.json  (canonical, published)
+                                                                       │  loaded dynamically by
+                                                                       ▼  pocketpal.dev/leaderboard/engines
 ```
 
 It's a **React Native app** (not adb-shell binaries) on purpose: on non-rooted Android, adb-shell processes run in the throttled `background` cpuset and report numbers ~5–10× low. A foreground installed app gets the `top-app` cpuset and real clocks. See METHODOLOGY Rule 0.
@@ -57,8 +59,8 @@ adb -s <serial> install -r app/build/outputs/apk/release/app-release.apk
 # run: the app auto-runs all engines on launch and logs XEBENCH_RESULT/XEBENCH_DONE
 ../../scripts/capture_app_run.sh <serial>       # scrapes logcat → results/raw-*.jsonl
 
-# aggregate into leaderboard rows
-node ../../scripts/aggregate.mjs ../../results/raw-*.jsonl --pretty > rows.json
+# aggregate into the canonical published results file, then commit to publish
+node ../../scripts/aggregate.mjs ../../results/raw-*.jsonl --update
 ```
 
 ## Native dependencies (you must obtain these yourself)
@@ -77,9 +79,20 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 - `litertlm-android` needs `useLegacyPackaging` / `extractNativeLibs=true` so QNN libs land in `nativeLibraryDir`.
 - **Build variants don't coexist:** llama.rn's Hexagon lib and GENIE-X's bundled Hexagon runtime collide, and llama.rn hijacks `ADSP_LIBRARY_PATH`. Toggle via `android/app/build.gradle` packaging excludes + `App.tsx` RUNS. (Turning this into a proper Gradle flavor is a good first contribution — see below.)
 
-## Where the numbers live
+## Results are published here — the website loads them dynamically
 
-Aggregated rows land in the PocketPal website's `lib/data/engine-benchmarks.json` and render at **pocketpal.dev/leaderboard/engines**, tagged `measured` (ours) vs `vendor` (engine-maker's official published numbers), with the source linked on every data point.
+**[`data/benchmarks.json`](./data/benchmarks.json) is the canonical, published results file** and the single source of truth. It's a versioned envelope (`schemaVersion`, `generatedAt`, `source`, `rows[]`) validated by **[`data/benchmarks.schema.json`](./data/benchmarks.schema.json)**. Each row carries its `provenance` (`measured` = our lab runs · `vendor` = engine-maker official numbers), `quant`, source link, and methodology caveats (`asStated`).
+
+**Publishing a new measurement is a one-liner — no website change:**
+
+```bash
+node scripts/aggregate.mjs results/raw-*.jsonl --update   # upsert measured rows into data/benchmarks.json
+git commit -am "results: <device> <engine>" && git push   # that's it
+```
+
+`--update` reads `data/benchmarks.json`, upserts the freshly-measured rows (keyed by engine·backend·platform·device·model·quant·provenance, so re-runs overwrite in place), re-stamps `generatedAt`, and writes it back. Existing rows (other devices, vendor citations) are preserved.
+
+**Consumers load this file dynamically** — the pocketpal.dev leaderboard fetches it from the repo (raw URL / CDN) with periodic revalidation and overlays live crowd data, so a commit here surfaces on the board with no redeploy or dashboard-dev work. The stable interface is the schema; bump `schemaVersion` on any breaking change. (`--pretty` without `--update` still just prints `EngineBenchmarkRow[]` to stdout for ad-hoc use.)
 
 ## Contributing
 

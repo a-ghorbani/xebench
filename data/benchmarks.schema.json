@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/a-ghorbani/xebench/blob/main/data/benchmarks.schema.json",
+  "title": "xebench benchmarks",
+  "description": "Canonical cross-engine on-device LLM benchmark results published by xebench. This file is the stable contract for consumers (e.g. the pocketpal.dev leaderboard loads it dynamically). Bump schemaVersion on any breaking field change.",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "source", "rows"],
+  "properties": {
+    "schemaVersion": { "type": "string", "description": "semver of this schema; consumers should check the major" },
+    "generatedAt": { "type": "string", "description": "YYYY-MM-DD the file was last regenerated" },
+    "source": { "type": "string", "format": "uri" },
+    "description": { "type": "string" },
+    "rowCount": { "type": "integer", "minimum": 0 },
+    "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "required": ["engine", "backend", "platform", "device", "model", "provenance", "sourceName", "sourceUrl"],
+      "additionalProperties": false,
+      "properties": {
+        "engine": {
+          "type": "string",
+          "description": "inference engine id",
+          "enum": ["llama.cpp", "executorch", "litert-lm", "genie-x", "mlx", "coreml", "apple-foundation-models", "mnn"]
+        },
+        "backend": { "type": "string", "enum": ["cpu", "gpu", "npu", "ane"] },
+        "platform": { "type": "string", "enum": ["android", "ios", "macos"] },
+        "device": { "type": "string", "description": "marketing device name, e.g. 'POCO F8 Ultra'" },
+        "soc": { "type": "string", "description": "SoC id/name, e.g. 'SM8850'" },
+        "model": { "type": "string", "description": "canonical model label, e.g. 'Llama 3.2 1B'" },
+        "quant": { "type": "string", "description": "quantization scheme, e.g. 'Q4_0', 'W4A16'; ALWAYS surfaced, never hidden" },
+        "ppTps": { "type": ["number", "null"], "description": "prefill tokens/sec (null if the source didn't report it)" },
+        "tgTps": { "type": ["number", "null"], "description": "decode tokens/sec (null if not reported)" },
+        "ttftMs": { "type": ["number", "null"] },
+        "memoryMb": { "type": ["number", "null"] },
+        "provenance": {
+          "type": "string",
+          "enum": ["measured", "vendor", "community"],
+          "description": "measured = xebench lab run; vendor = engine-maker official published number; community = third-party enthusiast benchmark"
+        },
+        "sourceName": { "type": "string" },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "sourceDate": { "type": "string", "description": "YYYY-MM of the source measurement" },
+        "sampleCount": { "type": "integer", "description": "n runs behind the median" },
+        "asStated": { "type": "string", "description": "human-readable methodology caveats for this row (quant, provenance method, protocol)" }
+      }
+    }
+  }
+}

@@ -13,19 +13,23 @@
  * Device marketing names are left as "<manufacturer> <model>"; hand-edit to the
  * website's canonical label if needed (e.g. "POCO F7 Ultra").
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);
 const pretty = args.includes('--pretty');
+const update = args.includes('--update'); // upsert into the canonical data/benchmarks.json
 const files = args.filter((a) => !a.startsWith('--'));
 if (files.length === 0) {
-  console.error('usage: node scripts/aggregate.mjs <raw.jsonl> [...] [--pretty]');
+  console.error(
+    'usage:\n' +
+      '  node scripts/aggregate.mjs <raw.jsonl> [...] --update   # upsert measured rows into data/benchmarks.json (the canonical, published file)\n' +
+      '  node scripts/aggregate.mjs <raw.jsonl> [...] [--pretty]  # print EngineBenchmarkRow[] to stdout',
+  );
   process.exit(2);
 }
 
 const SOURCE_NAME = 'PocketPal R&D lab (xebench)';
-const SOURCE_URL =
-  'https://github.com/a-ghorbani/pocketpal-ai/tree/main/evaluation/xebench#methodology';
+const SOURCE_URL = 'https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md';
 
 const round1 = (n) => (n == null ? null : Math.round(n * 10) / 10);
 
@@ -111,5 +115,50 @@ rows.sort(
     a.engine.localeCompare(b.engine),
 );
 
-process.stdout.write(JSON.stringify(rows, null, pretty ? 2 : 0) + '\n');
-console.error(`aggregated ${rows.length} measured rows from ${files.length} file(s)`);
+if (update) {
+  // Upsert freshly-aggregated MEASURED rows into the canonical published file,
+  // preserving everything already there (vendor citations, other devices' runs).
+  // Flow: capture -> aggregate --update -> commit data/benchmarks.json. The
+  // website loads that file dynamically, so new numbers need no website change.
+  const DATA = new URL('../data/benchmarks.json', import.meta.url);
+  let envelope;
+  try {
+    envelope = JSON.parse(readFileSync(DATA, 'utf8'));
+  } catch {
+    envelope = {
+      schemaVersion: '1.0',
+      generatedAt: '',
+      source: 'https://github.com/a-ghorbani/xebench',
+      description:
+        'Cross-engine on-device LLM benchmark results. provenance: measured = xebench lab runs; vendor = engine-maker official published numbers.',
+      rowCount: 0,
+      rows: [],
+    };
+  }
+  const key = (r) => [r.engine, r.backend, r.platform, r.device, r.model, r.quant, r.provenance].join('|');
+  const byKey = new Map(envelope.rows.map((r) => [key(r), r]));
+  let added = 0;
+  let changed = 0;
+  for (const r of rows) {
+    if (byKey.has(key(r))) changed++;
+    else added++;
+    byKey.set(key(r), r);
+  }
+  const merged = [...byKey.values()].sort(
+    (a, b) =>
+      a.platform.localeCompare(b.platform) ||
+      a.device.localeCompare(b.device) ||
+      a.model.localeCompare(b.model) ||
+      a.engine.localeCompare(b.engine),
+  );
+  envelope.generatedAt = new Date().toISOString().slice(0, 10);
+  envelope.rowCount = merged.length;
+  envelope.rows = merged;
+  writeFileSync(DATA, JSON.stringify(envelope, null, 2) + '\n');
+  console.error(
+    `merged ${rows.length} measured rows into data/benchmarks.json (+${added} new, ${changed} updated; ${merged.length} total). Commit + push to publish.`,
+  );
+} else {
+  process.stdout.write(JSON.stringify(rows, null, pretty ? 2 : 0) + '\n');
+  console.error(`aggregated ${rows.length} measured rows from ${files.length} file(s)`);
+}
