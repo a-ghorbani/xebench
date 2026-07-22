@@ -44,11 +44,15 @@ react {
     // extraPackagerArgs = []
 
     /* Hermes Commands */
-    //   The hermes compiler command to run. By default it is 'hermesc'
-    //   Host is linux-aarch64, which RN's OS detection doesn't map to a hermesc
-    //   folder; the shipped x86-64 hermesc runs fine here via emulation, so point
-    //   at it explicitly. (JS engine choice does not affect native benchmark numbers.)
-    hermesCommand = "$rootDir/../node_modules/react-native/sdks/hermesc/linux64-bin/hermesc"
+    //   The hermes compiler command to run. By default RN auto-detects it per host
+    //   (linux64-bin / osx-bin / win64-bin) — leave that alone on x86-64 Linux, macOS,
+    //   and Windows. ONLY aarch64-Linux hosts need an override: RN's OS detection has
+    //   no aarch64 hermesc folder, but the shipped x86-64 hermesc runs fine via
+    //   emulation. (JS engine choice does not affect native benchmark numbers.)
+    if (System.getProperty("os.name").toLowerCase().contains("linux")
+            && System.getProperty("os.arch") == "aarch64") {
+        hermesCommand = "$rootDir/../node_modules/react-native/sdks/hermesc/linux64-bin/hermesc"
+    }
     //
     //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
     // hermesFlags = ["-O", "-output-source-map"]
