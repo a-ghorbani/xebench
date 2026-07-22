@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/a-ghorbani/xebench/blob/main/data/findings.schema.json",
+  "title": "xebench findings",
+  "description": "Narrative findings published by xebench as data. Consumers (e.g. the pocketpal.dev leaderboard callouts) MUST render 'headline', 'deck', and 'claims' verbatim and MUST NOT re-word them — a claim is a lab statement, not editorial copy. Bump schemaVersion on any breaking field change.",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "source", "findings"],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "generatedAt": { "type": "string", "description": "YYYY-MM-DD" },
+    "source": { "type": "string", "format": "uri" },
+    "description": { "type": "string" },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": ["id", "headline", "claims", "sources", "verifiedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "stable slug, e.g. 'litert-lm-npu-blocked'" },
+        "kind": { "type": "string", "enum": ["gap", "contrast", "result", "caveat"], "description": "gap = a capability that can't be reproduced; contrast = A-vs-B; result = a measured takeaway; caveat = a methodology note" },
+        "headline": { "type": "string", "description": "the money line — render verbatim" },
+        "deck": { "type": "string", "description": "one-line summary under the headline — render verbatim" },
+        "claims": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "ordered claim sentences — render verbatim, never re-worded; each is a lab statement"
+        },
+        "steps": {
+          "type": "array",
+          "description": "an optional pass/fail strip (e.g. the LiteRT stack: loads OK / skel present OK / bridge libs MISSING)",
+          "items": {
+            "type": "object",
+            "required": ["label", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "status": { "type": "string", "enum": ["ok", "missing", "fail", "partial"] },
+              "detail": { "type": "string" }
+            }
+          }
+        },
+        "resolution": { "type": "string", "description": "what would close the gap — render verbatim" },
+        "context": {
+          "type": "object",
+          "description": "structured facts behind the finding (device, soc, versions, lib names) so the UI can surface them as chips without parsing prose",
+          "additionalProperties": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "url"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "url": { "type": "string", "format": "uri" }
+            }
+          }
+        },
+        "verifiedAt": { "type": "string", "description": "YYYY-MM-DD the finding was last verified on device" },
+        "verifiedBy": { "type": "string" }
+      }
+    }
+  }
+}

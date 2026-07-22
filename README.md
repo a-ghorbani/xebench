@@ -94,6 +94,8 @@ git commit -am "results: <device> <engine>" && git push   # that's it
 
 **Consumers load this file dynamically** — the pocketpal.dev leaderboard fetches it from the repo (raw URL / CDN) with periodic revalidation and overlays live crowd data, so a commit here surfaces on the board with no redeploy or dashboard-dev work. The stable interface is the schema; bump `schemaVersion` on any breaking change. (`--pretty` without `--update` still just prints `EngineBenchmarkRow[]` to stdout for ad-hoc use.)
 
+**Narrative findings are data too.** [`data/findings.json`](./data/findings.json) (schema: [`data/findings.schema.json`](./data/findings.schema.json)) publishes the lab’s written findings — headline, claim strings, a pass/fail step strip, sources, `verifiedAt` — so consumers render the lab’s wording **verbatim** and never re-word a claim. Same rule as the numbers: the benchmark owns the claim, the site renders it.
+
 ## Contributing
 
 Good first issues:

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-07-22",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Narrative findings from the xebench cross-engine benchmark, published as data so consumers render the lab's wording verbatim and never re-word a claim. Schema: data/findings.schema.json.",
+  "findings": [
+    {
+      "id": "litert-lm-npu-blocked",
+      "kind": "gap",
+      "headline": "Missing from this board: LiteRT-LM on NPU — and exactly why",
+      "deck": "NPU is LiteRT-LM's flagship capability, yet no third party can currently reproduce it — the runtime ships, the bridge libs don't.",
+      "claims": [
+        "NPU acceleration is LiteRT-LM's flagship capability — Google reports up to ~12× CPU / 10× GPU for LLMs on a Qualcomm/MediaTek NPU.",
+        "It is absent here because no third party can currently reproduce it.",
+        "We built the full stack on a Galaxy S23 (Snapdragon 8 Gen 2): Qualcomm's QAIRT 2.48.40 runtime loads, the Hexagon v73 DSP skel is present, and the model parses through to its decode-signature quantization — then it stops.",
+        "The missing pieces are the LiteRT↔Qualcomm bridge libraries (libLiteRtDispatch_Qualcomm.so, libGemmaModelConstraintProvider.so), which Google builds from internal sources and does not publish as prebuilt binaries.",
+        "The Qualcomm hardware libraries are available; the Google glue that connects them is not."
+      ],
+      "steps": [
+        { "label": "QAIRT 2.48.40 runtime loads", "status": "ok" },
+        { "label": "Hexagon v73 DSP skel present", "status": "ok" },
+        { "label": "Model parses (reaches decode-signature quantization)", "status": "ok" },
+        { "label": "LiteRT↔Qualcomm bridge libs", "status": "missing", "detail": "libLiteRtDispatch_Qualcomm.so, libGemmaModelConstraintProvider.so — Google does not publish prebuilt" }
+      ],
+      "resolution": "Publishing those libs is all it would take for a real LiteRT-NPU row to appear here.",
+      "context": {
+        "device": "Samsung Galaxy S23",
+        "soc": "SM8550",
+        "hexagon": "v73",
+        "qairtVersion": "2.48.40",
+        "missingLibs": ["libLiteRtDispatch_Qualcomm.so", "libGemmaModelConstraintProvider.so"]
+      },
+      "sources": [
+        { "label": "LiteRT #6889", "url": "https://github.com/google-ai-edge/LiteRT/issues/6889" },
+        { "label": "LiteRT-LM #1121", "url": "https://github.com/google-ai-edge/LiteRT-LM/issues/1121" },
+        { "label": "LiteRT-LM #1377", "url": "https://github.com/google-ai-edge/LiteRT-LM/issues/1377" }
+      ],
+      "verifiedAt": "2026-07-21",
+      "verifiedBy": "PocketPal R&D lab (xebench)"
+    }
+  ]
+}
