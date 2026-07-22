@@ -1,0 +1,4 @@
+[
+  {"build_commit":"e3546c794","build_number":6100,"cpu_info":"Snapdragon 8 Elite","model_filename":"Llama-3.2-1B-Instruct-Q4_K_M.gguf","model_type":"llama 1B Q4_K - Medium","model_size":806883712,"model_n_params":1235814432,"n_threads":6,"n_batch":2048,"n_ubatch":512,"n_gpu_layers":0,"n_prompt":512,"n_gen":0,"avg_ts":871.42,"stddev_ts":11.3,"avg_ns":587600,"stddev_ns":7600},
+  {"build_commit":"e3546c794","build_number":6100,"cpu_info":"Snapdragon 8 Elite","model_filename":"Llama-3.2-1B-Instruct-Q4_K_M.gguf","model_type":"llama 1B Q4_K - Medium","model_size":806883712,"model_n_params":1235814432,"n_threads":6,"n_batch":2048,"n_ubatch":512,"n_gpu_layers":0,"n_prompt":0,"n_gen":128,"avg_ts":43.18,"stddev_ts":0.52,"avg_ns":2965000,"stddev_ns":36000}
+]

@@ -1,0 +1,26 @@
+buildscript {
+    ext {
+        buildToolsVersion = "36.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 36
+        targetSdkVersion = 36
+        ndkVersion = "27.1.12297006"
+        // Bumped from RN 0.82's default 2.1.20: LiteRT-LM 0.14.0 AAR ships Kotlin
+        // 2.3.0 metadata, unreadable by the 2.1.x compiler. 2.3.x reads both.
+        kotlinVersion = "2.3.0"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        // Pin the Kotlin compiler to kotlinVersion (2.3.0) so it can READ LiteRT-LM
+        // 0.14.0's 2.3.0 metadata. Without the explicit version the compiler stayed
+        // at RN 0.82's 2.1.x even after bumping the ext.
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"

@@ -1,0 +1,49 @@
+# ── Model weights & benchmark outputs (large / regenerated — see MODELS.md) ──
+models/
+results/
+*.gguf
+*.litertlm
+*.pte
+
+# ── Vendor NPU SDKs / proprietary native libs ────────────────────────────────
+# These are Qualcomm/Google-licensed and must NOT be redistributed here.
+# Obtain them yourself — see README "Native dependencies".
+**/jniLibs/
+libQnn*.so
+libQairt*.so
+libGenie*.so
+libSNPE*.so
+*.so
+
+# ── Build artifacts ──────────────────────────────────────────────────────────
+build/
+**/android/app/build/
+**/android/build/
+**/.gradle/
+**/.kotlin/
+**/.cxx/
+*.apk
+*.aab
+
+# ── Node / React Native ──────────────────────────────────────────────────────
+node_modules/
+.metro-health-check*
+*.log
+yarn-error.log
+npm-debug.log
+
+# ── Android local config ─────────────────────────────────────────────────────
+local.properties
+*.keystore
+!debug.keystore
+.env
+.env.*
+
+# ── IDE / OS / tooling ───────────────────────────────────────────────────────
+.claude/
+.idea/
+.vscode/
+.DS_Store
+*.iml
+__pycache__/
+*.pyc
