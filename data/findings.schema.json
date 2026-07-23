@@ -20,6 +20,20 @@
       "properties": {
         "id": { "type": "string", "description": "stable slug, e.g. 'litert-lm-npu-blocked'" },
         "kind": { "type": "string", "enum": ["gap", "contrast", "result", "caveat"], "description": "gap = a capability that can't be reproduced; contrast = A-vs-B; result = a measured takeaway; caveat = a methodology note" },
+        "blocks": {
+          "type": "array",
+          "description": "for a 'gap' finding: the coverage cell(s) this finding explains, so a devices×engines grid can mark them 'blocked → see finding' without hand-mapping. Match on engine+backend (optionally a specific device).",
+          "items": {
+            "type": "object",
+            "required": ["engine", "backend"],
+            "additionalProperties": false,
+            "properties": {
+              "engine": { "type": "string", "description": "matches an EngineBenchmarkRow engine id, e.g. 'litert-lm'" },
+              "backend": { "type": "string", "enum": ["cpu", "gpu", "npu", "ane"] },
+              "device": { "type": "string", "description": "optional: restrict the block to one device; omit = the whole engine×backend path" }
+            }
+          }
+        },
         "headline": { "type": "string", "description": "the money line — render verbatim" },
         "deck": { "type": "string", "description": "one-line summary under the headline — render verbatim" },
         "claims": {
