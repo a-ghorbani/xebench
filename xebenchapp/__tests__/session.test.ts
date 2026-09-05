@@ -45,7 +45,7 @@ test('retains each repetition and checkpoints before cooldown', async () => {
   expect(sleep.mock.calls).toEqual([[30000], [30000]]);
 });
 
-test.each(['load', 'inference', 'release'] as const)('retains failed %s attempt and releases resources', async phase => {
+test.each(['load', 'inference'] as const)('retains failed %s attempt and releases resources', async phase => {
   const engine = adapter();
   const action = phase === 'inference' ? engine.benchOnce : engine[phase];
   action.mockRejectedValueOnce(new Error('fixture failure'));
@@ -57,6 +57,31 @@ test.each(['load', 'inference', 'release'] as const)('retains failed %s attempt 
   expect(result.coldRuns[0]).toMatchObject({status: 'failed', error: {phase, message: 'fixture failure'}});
   expect(result.summary.decodeTps).toBeNull();
   expect(persist).toHaveBeenCalledTimes(1);
+});
+
+test('release failure is persisted before aborting the caller', async () => {
+  const engine = adapter();
+  engine.release.mockRejectedValueOnce(new Error('fixture cleanup failure'));
+  const persist = jest.fn(async (_record: ReferenceSession) => {});
+  await expect(runSession(engine, config, config.runs[0], identity, persist)).rejects.toThrow('cleanup');
+  expect(persist).toHaveBeenCalledTimes(1);
+  expect(persist.mock.calls[0][0]).toMatchObject({status: 'failed', coldRuns: [{
+    status: 'failed', error: {phase: 'release'},
+    cleanupError: {phase: 'release', message: 'fixture cleanup failure'},
+  }]});
+  expect(engine.load).toHaveBeenCalledTimes(1);
+});
+
+test('zero native decode duration is rejected even with a positive reported throughput', async () => {
+  const engine = adapter();
+  const metrics = await engine.benchOnce();
+  engine.benchOnce.mockResolvedValue({...metrics, engineInternal: {
+    promptMs: 10, promptPerSecond: 200, predictedMs: 0, predictedPerSecond: 30,
+  }});
+  const result = await runSession(engine, config, config.runs[0], identity, async () => {}, async () => {});
+  expect(result.status).toBe('failed');
+  expect(result.summary.decodeTps).toBeNull();
+  expect(engine.release).toHaveBeenCalledTimes(1);
 });
 
 test('a later failure preserves successful repetitions and their actual count', async () => {

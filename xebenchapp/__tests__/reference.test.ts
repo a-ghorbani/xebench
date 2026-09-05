@@ -9,7 +9,9 @@ jest.mock('@dr.pogodin/react-native-fs', () => ({
   ExternalDirectoryPath: '/fixture', exists: jest.fn(), stat: jest.fn(),
   readFile: jest.fn(), writeFile: jest.fn(), hash: jest.fn(), mkdir: jest.fn(),
 }));
-jest.mock('react-native', () => ({Platform: {OS: 'android', constants: {Model: 'Fixture'}, Version: 35}}));
+jest.mock('react-native', () => ({Platform: {
+  OS: 'android', constants: {Model: 'Fixture', Release: '16'}, Version: 36,
+}}));
 jest.mock('llama.rn', () => ({initLlama: jest.fn()}));
 
 let files: Map<string, string>;
@@ -73,4 +75,54 @@ test('file write failure releases the engine and emits no dangling reference', a
   const context = await jest.mocked(initLlama).mock.results[0].value;
   expect(context.release).toHaveBeenCalled();
   expect(output).not.toHaveBeenCalled();
+});
+
+test('records Android release rather than SDK level', async () => {
+  await runReference(() => {});
+  const data = jest.mocked(FS.writeFile).mock.calls[0][1];
+  expect(JSON.parse(data).deviceInfo.androidRelease).toBe('16');
+});
+
+test.each([false, true])('cleanup failure aborts later models after saving evidence (inference failure: %s)', async inferenceFails => {
+  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 0,
+    runs: [bundled.runs[0], {...bundled.runs[0], id: 'second-model'}]}));
+  const context = await jest.mocked(initLlama)({} as never);
+  jest.mocked(initLlama).mockClear();
+  jest.mocked(context.release).mockRejectedValueOnce(new Error('fixture cleanup failure'));
+  if (inferenceFails) {
+    context.completion = jest.fn().mockRejectedValueOnce(new Error('fixture inference failure'));
+  }
+
+  await expect(runReference(() => {})).rejects.toThrow('cleanup');
+  expect(initLlama).toHaveBeenCalledTimes(1);
+  expect(context.release).toHaveBeenCalledTimes(1);
+  expect(FS.writeFile).toHaveBeenCalledTimes(1);
+  const record = JSON.parse(jest.mocked(FS.writeFile).mock.calls[0][1]);
+  expect(record.status).toBe('failed');
+  expect(record.coldRuns[0]).toMatchObject({
+    error: {phase: inferenceFails ? 'inference' : 'release'},
+    cleanupError: {phase: 'release', message: 'fixture cleanup failure'},
+  });
+  expect(record.summary.decodeTps).toBeNull();
+  expect(output.mock.calls.some(([line]) => line.startsWith('XEBENCH_RESULT_FILE '))).toBe(true);
+});
+
+test('one-token native result without timed decode is saved as failed, not zero throughput', async () => {
+  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, maxDecodeTokens: 1}));
+  const release = jest.fn(async () => {});
+  jest.mocked(initLlama).mockResolvedValue({
+    completion: async (_options: unknown, token: () => void) => {
+      token();
+      // Pinned llama.rn clamps the timing count to 1 even with no decode step.
+      return {timings: {prompt_n: 472, predicted_n: 1, prompt_ms: 10, predicted_ms: 0,
+        prompt_per_second: 47200, predicted_per_second: 0}};
+    }, release,
+  } as unknown as LlamaContext);
+  await runReference(() => {});
+  const record = JSON.parse(jest.mocked(FS.writeFile).mock.calls[0][1]);
+  expect(record.status).toBe('failed');
+  expect(record.coldRuns[0]).toMatchObject({status: 'failed', error: {phase: 'inference'}});
+  expect(record.summary.decodeTps).toBeNull();
+  expect(release).toHaveBeenCalledTimes(1);
+  expect(output.mock.calls.some(([line]) => line.startsWith('XEBENCH_ERROR '))).toBe(true);
 });
