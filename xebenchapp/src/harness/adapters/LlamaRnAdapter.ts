@@ -1,8 +1,9 @@
 import { initLlama, LlamaContext } from 'llama.rn';
 import type { BackendId, SingleRunMetrics } from '../types';
 import type { BenchOnceConfig, EngineAdapter } from './EngineAdapter';
+import {monotonicNow} from '../clock';
 
-const LLAMA_RN_VERSION = '0.12.4'; // keep in sync with package.json
+import {version as LLAMA_RN_VERSION} from 'llama.rn/package.json';
 
 export interface LlamaRnAdapterOptions {
   /** Absolute path to the GGUF, e.g. /data/local/tmp/xebench/Llama-3.2-1B-Instruct-Q4_K_M.gguf */
@@ -48,7 +49,7 @@ export class LlamaRnAdapter implements EngineAdapter {
   }
 
   async load(): Promise<number> {
-    const t0 = Date.now();
+    const t0 = monotonicNow();
     this.ctx = await initLlama({
       model: this.opts.modelPath,
       n_ctx: this.opts.nCtx ?? 2048,
@@ -57,13 +58,13 @@ export class LlamaRnAdapter implements EngineAdapter {
       ...(this.opts.devices ? { devices: this.opts.devices } : {}), // ['HTP0'] => Hexagon NPU
       ...(this.opts.nThreads ? { n_threads: this.opts.nThreads } : {}),
     });
-    return Date.now() - t0;
+    return monotonicNow() - t0;
   }
 
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {
     if (!this.ctx) throw new Error('llama.rn: load() first');
-    const t0 = Date.now();
-    let tFirstToken = 0;
+    const t0 = monotonicNow();
+    let tFirstToken: number | null = null;
 
     const result = await this.ctx.completion(
       {
@@ -73,12 +74,15 @@ export class LlamaRnAdapter implements EngineAdapter {
         seed: 42,
       },
       () => {
-        if (tFirstToken === 0) tFirstToken = Date.now();
+        if (tFirstToken === null) tFirstToken = monotonicNow();
       },
     );
 
     const t = result.timings;
-    const ttftMs = (tFirstToken || Date.now()) - t0;
+    if (tFirstToken === null) {
+      throw new Error('llama.rn: no token callback; TTFT is unavailable');
+    }
+    const ttftMs = tFirstToken - t0;
     return {
       loadMs: 0, // filled by protocol runner
       ttftMs,

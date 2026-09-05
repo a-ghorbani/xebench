@@ -63,7 +63,8 @@ function asStated(rec) {
   if (rec.sustained) {
     parts.push(`sustained ${rec.sustained.degradationPct?.toFixed(0)}% decode drop over ${Math.round(rec.sustained.durationSec)}s`);
   }
-  if (!rec.guardsPassed) parts.push(`GUARDS FAILED: ${rec.guardNotes?.join('; ')}`);
+  if (rec.guardsPassed === null) parts.push(`GUARDS UNVERIFIED: ${rec.guardNotes?.join('; ')}`);
+  else if (!rec.guardsPassed) parts.push(`GUARDS FAILED: ${rec.guardNotes?.join('; ')}`);
   return parts.join('; ');
 }
 
@@ -81,6 +82,14 @@ for (const file of files) {
       continue;
     }
     if (rec.schema !== 'xebench-raw') continue;
+    if (rec.schemaVersion != null) {
+      if (rec.schemaVersion !== 1 || rec.status !== 'complete') {
+        throw new Error('Only complete, supported sessions can be aggregated; inspect capture checkpoints separately');
+      }
+      if (update) {
+        throw new Error('Reference sessions are preview-only until protocol validation and consumer migration are implemented');
+      }
+    }
 
     const dev = rec.deviceInfo ?? {};
     rows.push({

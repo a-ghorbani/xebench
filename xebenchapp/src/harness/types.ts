@@ -17,7 +17,8 @@ export type PlatformId = 'android' | 'ios' | 'macos';
 export type MeasureMethod =
   | 'engine-timings' // engine's internal counters (llama.cpp timings block)
   | 'ttft-derived' // promptTokens / (firstToken - start); includes 1 decode step + callback overhead
-  | 'callback-derived'; // (nTokens - 1) / (lastTokenTs - firstTokenTs) from JS-side token callbacks
+  | 'callback-derived' // (nTokens - 1) / (lastTokenTs - firstTokenTs) from JS-side token callbacks
+  | 'total-time-derived'; // generation duration after first callback batch
 
 export interface ThermalSnapshot {
   /** PowerManager.THERMAL_STATUS_* (0=NONE..6=SHUTDOWN), -1 if unavailable */
