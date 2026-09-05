@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location(
     "capture_app_run", Path(__file__).resolve().parents[1] / "scripts/capture_app_run.py")
@@ -37,7 +38,7 @@ def signal_worker(root, ready, stops):
 
     def sleep(_seconds):
         ready.set()
-        time.sleep(20)
+        time.sleep(0.1)
 
     raise SystemExit(capture.capture_device("fixture-device", 30, root, adb=adb, sleep=sleep))
 
@@ -225,11 +226,53 @@ class CaptureTests(unittest.TestCase):
         other = "100.1 I am_proc_start: [0,456,10000,com.xebenchapp:worker,activity,fixture]"
         self.assertIsNone(capture.started_pid(old + "\n" + other, {old}))
 
+    def test_native_startup_crash_without_js_markers_is_preserved(self):
+        with tempfile.TemporaryDirectory() as root:
+            event_reads = 0
+            crash = "100.1 123 123 E AndroidRuntime: FATAL EXCEPTION: main\n" + \
+                    "100.1 123 123 E AndroidRuntime: java.lang.UnsatisfiedLinkError: fixture"
+
+            def adb(*args):
+                nonlocal event_reads
+                if args[:2] == ("shell", "pidof"):
+                    return ""
+                if args[:3] == ("logcat", "-b", "events"):
+                    event_reads += 1
+                    return "" if event_reads == 1 else \
+                        "100.0 I am_proc_start: [0,123,10000,com.xebenchapp,activity,fixture]"
+                if args[0] == "logcat":
+                    self.assertIn("--pid=123", args)
+                    self.assertIn("all", args)
+                    self.assertIn("*:V", args)
+                    return crash
+                return "fixture"
+
+            self.assertEqual(capture.capture_device("fixture-device", 2, root, adb=adb), 2)
+            manifest = json.loads(next(Path(root).glob("*/manifest.json")).read_text())
+            self.assertEqual(manifest["status"], "startup-failed")
+            self.assertFalse(manifest["records"])
+            self.assertEqual(next(Path(root).glob("*/startup-logcat.txt")).read_text(), crash + "\n")
+
     def test_signal_handlers_are_restored(self):
         handlers = {s: signal.getsignal(s) for s in (signal.SIGINT, signal.SIGTERM)}
         with tempfile.TemporaryDirectory() as root:
             self.run_device(root, "", fail=True)
         self.assertEqual(handlers, {s: signal.getsignal(s) for s in handlers})
+
+    def test_signal_during_checksum_keeps_manifest_consistent(self):
+        original_sha256 = hashlib.sha256
+
+        def cancel_during_checksum(data):
+            os.kill(os.getpid(), signal.SIGTERM)
+            return original_sha256(data)
+
+        with tempfile.TemporaryDirectory() as root, patch.object(capture.hashlib, "sha256", cancel_during_checksum):
+            code, manifest = self.run_device(root, result_line())
+            self.assertEqual(code, 143)
+            self.assertEqual(manifest["status"], "interrupted")
+            self.assertEqual(len(manifest["records"]), 1)
+            record = next(Path(root).glob("*/raw-*.jsonl"))
+            self.assertEqual(manifest["records"][0]["sha256"], original_sha256(record.read_bytes()).hexdigest())
 
 
 if __name__ == "__main__":

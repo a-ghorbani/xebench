@@ -80,10 +80,14 @@ raw records and does not yet enforce manifest status; inspect the manifest and
 protocol evidence before explicitly using `--update`. The captured xebench app
 is stopped on completion, timeout or interruption, with up to five additional
 seconds allowed for cleanup. A cleanup failure returns exit code 2.
+Cancellation finishes any record write and waits for the current ADB call
+(bounded to 15 seconds) before cleanup, keeping files and the manifest consistent.
 If the app exits during launch, capture uses a new Android process-start event
 to recover its PID and remaining records/errors; this remains a failed capture
 (exit 2). If process identity cannot be recovered, it fails without reading
-unattributed app logs. Error messages stay in local `error-*.txt` files.
+unattributed app logs. Error messages stay in local `error-*.txt` files; recovered
+startup failures also retain `startup-logcat.txt` for native/Java errors emitted
+before JavaScript starts. These diagnostic files must not be published.
 
 ## Native dependencies (you must obtain these yourself)
 

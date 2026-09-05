@@ -121,17 +121,26 @@ class Capture:
 
 def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monotonic, sleep=time.sleep):
     deadline = monotonic() + timeout
+    cancelled = None
+
+    def check_interrupted():
+        if cancelled is not None:
+            raise CaptureInterrupted(cancelled)
 
     def command(*args):
+        check_interrupted()
         remaining = deadline - monotonic()
         if remaining <= 0:
             raise TimeoutError("Capture deadline reached")
         if adb is not None:
-            return adb(*args)
-        return subprocess.run(
-            ["adb", "-s", serial, *args], check=True, capture_output=True,
-            text=True, timeout=min(remaining, 15),
-        ).stdout.strip()
+            output = adb(*args)
+        else:
+            output = subprocess.run(
+                ["adb", "-s", serial, *args], check=True, capture_output=True,
+                text=True, timeout=min(remaining, 15),
+            ).stdout.strip()
+        check_interrupted()
+        return output
 
     capture = Capture(output_root, {})
     status, code = "setup-failed", 2
@@ -139,7 +148,10 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
     previous_handlers = {}
 
     def interrupt(signum, _frame):
-        raise CaptureInterrupted(signum)
+        # Raise only at safe boundaries, never between writing a record and
+        # registering its checksum. A running ADB call remains bounded to 15s.
+        nonlocal cancelled
+        cancelled = signum
 
     try:
         for signum in (signal.SIGINT, signal.SIGTERM):
@@ -180,11 +192,19 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
                 raise ValueError("App process unavailable")
         status, code = "timeout", 3
         while monotonic() < deadline:
-            capture.ingest(command("logcat", "-d", "-v", "epoch", "-T", since,
-                                   f"--pid={pid}", "ReactNativeJS:I", "*:S"))
             if exited_at_startup:
+                # A native/Java crash may precede JS and emit no XEBENCH marker.
+                # Keep this PID-scoped snapshot local; never export it as evidence.
+                snapshot = command("logcat", "-b", "all", "-d", "-v", "epoch", "-T", since,
+                                   f"--pid={pid}", "*:V")
+                with (capture.directory / "startup-logcat.txt").open("x", encoding="utf-8") as out:
+                    out.write(snapshot + "\n")
+                capture.ingest(snapshot)
                 status, code = "startup-failed", 2
                 break
+            capture.ingest(command("logcat", "-d", "-v", "epoch", "-T", since,
+                                   f"--pid={pid}", "ReactNativeJS:I", "*:S"))
+            check_interrupted()
             if capture.done:
                 status = "complete" if capture.records and not (capture.errors or capture.invalid) else "partial"
                 code = 0 if status == "complete" else 4
@@ -205,6 +225,8 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
         # Repeated cancellation must not interrupt the bounded cleanup/manifest.
         for signum in previous_handlers:
             signal.signal(signum, signal.SIG_IGN)
+        if cancelled is not None:
+            status, code = "interrupted", 128 + cancelled
         try:
             if launched:
                 try:
