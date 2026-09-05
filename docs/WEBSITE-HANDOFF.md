@@ -1,62 +1,38 @@
-# Website handoff: auditable engine comparisons
+# Website handoff
 
-Status: proposed consumer changes; no website changes or deployment performed.
-Coordinate this contract with roadmap item D before publishing new-format data.
+Proposed PocketPal leaderboard changes for
+[publication issue #4](https://github.com/a-ghorbani/xebench/issues/4).
+This is a handoff, not an implementation or deployment report.
 
-## Current integration
+Integration points: `lib/engines/data.ts` (fetch/fallback),
+`lib/engines/types.ts` (row types), and
+`components/leaderboard/EnginesExplorer.tsx` (comparisons/evidence).
 
-- `lib/engines/data.ts` fetches canonical xebench data with hourly revalidation
-  and uses bundled data on failure. It currently selects measured/vendor rows.
-- `lib/engines/types.ts` defines the consumer row shape.
-- `components/leaderboard/EnginesExplorer.tsx` renders comparisons and source links.
-- The engine leaderboard route consumes this data. Current source links for lab
-  rows lead to methodology rather than an individual session's evidence.
+## Contract and display
 
-## Required behavior
+Agree field names and types in the versioned schema before implementation.
 
-1. Validate the supported schema version and payload at the data boundary.
-   An unsupported version or invalid response should use a compatible fallback
-   and expose its date/staleness rather than implying current data.
-2. Keep provenance separate from evidence validation: lab-measured does not
-   automatically mean protocol-verified. Historical rows without new evidence
-   remain identifiable as legacy/unverified, with a concise explanation.
-3. Give each verified result an evidence link and detail view containing protocol,
-   engine/build versions, artifact hashes, actual backend/fallback information,
-   conditions, repetition count, dispersion, and measurement boundary.
-4. Compare only compatible records using structured eligibility fields. Vendor
-   claims remain useful reference material but must not acquire verified status
-   merely by appearing next to lab results.
-5. Display quantization and timing method near the metric. A callback-derived
-   throughput number must not silently share an engine-counter comparison.
-6. Explain missing measurements and insignificant differences. Do not substitute
-   zero for missing values or assign a winner based on unsupported precision.
-7. Add workload selection when E ships, then quality-qualified filtering when F
-   ships. Keep TTFT, throughput, sustained behavior, memory and quality distinct.
-8. Preserve usable links to historical results after the displayed session changes.
+| Data | Website requirement |
+| --- | --- |
+| Schema version and publication date | Validate on fetch; use a compatible fallback on failure and show its age. |
+| Session, protocol, workload and evidence references | Link verified results to immutable, sanitized evidence; preserve historical links. |
+| Engine/build versions, artifact hashes and actual backend/fallback | Expose configuration in result details; unknown execution stays unknown. |
+| Quantization, timing method, repetition count and dispersion | Make metric differences and uncertainty visible; missing values are not zero. |
+| Provenance, validation and comparison eligibility | Distinguish vendor claims, legacy and verified evidence; compare only compatible records. |
+| Later: quality and sustained measurements | Add workload selection with #5 and quality filtering with #6; keep metrics distinct. |
 
-## Proposed contract fields
+Lab provenance alone does not establish verification. Do not choose winners
+from unsupported precision. Do not expose serials, local paths or raw logs in
+the UI, downloads, analytics or error reports.
 
-Finalize names and types in the shared schema before implementation:
-
-- Session ID, protocol version, workload ID and immutable evidence URL/checksum.
-- Harness/build and resolved engine versions; model/tokenizer identities.
-- Requested backend and observed execution/fallback status.
-- Per-metric measurement method, sample count and dispersion.
-- Validation status, eligibility and structured exclusion reasons.
-- Later: quality evaluation ID/status and sustained measurement references.
-
-Do not infer verification from missing fields. Do not expose local paths, device
-serials or raw diagnostic logs in tooltips, downloads, analytics or error reports.
-
-## Migration and acceptance
+## Migration acceptance
 
 - Land consumer support and compatible bundled fixtures before producer rollout.
 - Test legacy, verified, failed-condition, vendor, missing-quality and unsupported
-  schema fixtures; test remote failure and stale fallback behavior.
-- Confirm incompatible records cannot generate a misleading winner.
-- Verify keyboard/mobile access to explanations and evidence links; do not rely
-  solely on hover tooltips or color.
-- Verify that a displayed median can be independently recomputed from linked
-  sanitized evidence, and that historical evidence links remain valid.
-- Update public explanatory copy only when the corresponding producer guarantee
-  is implemented and verified.
+  schema records, plus remote failures and stale fallback.
+- Confirm incompatible records cannot produce a misleading comparison.
+- Recompute a displayed median from linked evidence and check historical links.
+- Make explanations usable on mobile and by keyboard, without hover or color alone.
+- Update public claims only after the corresponding producer behavior is verified.
+
+Deliver website changes through PRs in the website repository.
