@@ -9,12 +9,34 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
+import signal
 import subprocess
 import time
 import uuid
 
 APP = "com.xebenchapp"
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class CaptureInterrupted(BaseException):
+    def __init__(self, signum):
+        self.signum = signum
+
+
+def started_pid(events, previous_events):
+    """Recover only a new main-process PID, never another app or subprocess.
+
+    Android am_proc_start fields: User, PID, UID, Process Name, Type, Component.
+    https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/services/core/java/com/android/server/am/EventLogTags.logtags
+    """
+    for line in reversed(events.splitlines()):
+        if line in previous_events:
+            continue
+        match = re.search(r"am_proc_start:\s*\[\d+,(\d+),\d+," + re.escape(APP) + r",", line)
+        if match:
+            return match.group(1)
+    return None
 
 
 def utc_now():
@@ -53,6 +75,8 @@ class Capture:
                 self.done = True
             elif message.startswith("XEBENCH_ERROR "):
                 self.errors += 1
+                with (self.directory / f"error-{uuid.uuid4()}.txt").open("x", encoding="utf-8") as out:
+                    out.write(message + "\n")
             elif message.startswith("XEBENCH_RESULT "):
                 payload = message[len("XEBENCH_RESULT "):].strip()
                 try:
@@ -112,7 +136,14 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
     capture = Capture(output_root, {})
     status, code = "setup-failed", 2
     launched = False
+    previous_handlers = {}
+
+    def interrupt(signum, _frame):
+        raise CaptureInterrupted(signum)
+
     try:
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            previous_handlers[signum] = signal.signal(signum, interrupt)
         for key, prop in (("soc", "ro.soc.model"), ("manufacturer", "ro.product.manufacturer"),
                           ("device", "ro.product.device"), ("model", "ro.product.model")):
             capture.device_info[key] = command("shell", "getprop", prop)
@@ -122,15 +153,38 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
         command("shell", "input", "keyevent", "KEYCODE_WAKEUP")
         # Device time avoids host/device skew; PID filtering excludes other apps.
         since = command("shell", "date", "+%s.000")
+        event_args = ("logcat", "-b", "events", "-d", "-v", "epoch", "-T", since,
+                      "am_proc_start:I", "*:S")
+        # Exclude earlier launches even when the device timestamp rounds to the
+        # same second. Unavailable event logs must not prevent normal capture.
+        try:
+            previous_events = set(command(*event_args).splitlines())
+        except subprocess.CalledProcessError:
+            previous_events = None
         launched = True
-        command("shell", "am", "start", "-W", "-n", f"{APP}/.MainActivity")
-        pid = command("shell", "pidof", "-s", APP)
+        launch_failed = False
+        try:
+            command("shell", "am", "start", "-W", "-n", f"{APP}/.MainActivity")
+        except subprocess.CalledProcessError:
+            launch_failed = True
+        try:
+            pid = command("shell", "pidof", "-s", APP)
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 1:
+                raise
+            pid = ""
+        exited_at_startup = launch_failed or not pid.isdigit()
         if not pid.isdigit():
-            raise ValueError("App process unavailable")
+            pid = started_pid(command(*event_args), previous_events) if previous_events is not None else None
+            if pid is None:
+                raise ValueError("App process unavailable")
         status, code = "timeout", 3
         while monotonic() < deadline:
             capture.ingest(command("logcat", "-d", "-v", "epoch", "-T", since,
                                    f"--pid={pid}", "ReactNativeJS:I", "*:S"))
+            if exited_at_startup:
+                status, code = "startup-failed", 2
+                break
             if capture.done:
                 status = "complete" if capture.records and not (capture.errors or capture.invalid) else "partial"
                 code = 0 if status == "complete" else 4
@@ -143,19 +197,28 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
         status, code = ("setup-failed" if status == "setup-failed" else "capture-failed"), 2
     except KeyboardInterrupt:
         status, code = "interrupted", 130
+    except CaptureInterrupted as error:
+        status, code = "interrupted", 128 + error.signum
     finally:
         # A capture timeout must also stop its workload. Cleanup has its own
         # bounded allowance, since the capture deadline may already be exhausted.
-        if launched:
-            try:
-                if adb is not None:
-                    adb("shell", "am", "force-stop", APP)
-                else:
-                    subprocess.run(["adb", "-s", serial, "shell", "am", "force-stop", APP],
-                                   check=True, capture_output=True, timeout=5)
-            except (OSError, subprocess.SubprocessError):
-                status, code = "cleanup-failed", 2
-        capture.finish(status)
+        # Repeated cancellation must not interrupt the bounded cleanup/manifest.
+        for signum in previous_handlers:
+            signal.signal(signum, signal.SIG_IGN)
+        try:
+            if launched:
+                try:
+                    if adb is not None:
+                        adb("shell", "am", "force-stop", APP)
+                    else:
+                        subprocess.run(["adb", "-s", serial, "shell", "am", "force-stop", APP],
+                                       check=True, capture_output=True, timeout=5)
+                except (OSError, subprocess.SubprocessError):
+                    status, code = "cleanup-failed", 2
+            capture.finish(status)
+        finally:
+            for signum, handler in previous_handlers.items():
+                signal.signal(signum, handler)
     print(f"Capture {capture.capture_id}: {status}; {len(capture.records)} record(s), "
           f"{capture.errors} engine error(s), {capture.invalid} invalid record(s).")
     print(f"Local evidence: {capture.directory}")

@@ -68,7 +68,7 @@ with one immutable `raw-<record-id>.jsonl` file per result and a `manifest.json`
 containing checksums and terminal status. Repeated runs and different
 quantizations cannot overwrite earlier captures. Exit codes are 0 for a complete
 capture, 2 for setup/ADB failure, 3 for timeout, 4 for partial completion (engine
-errors, malformed records or no results), and 130 for interruption. Partial
+errors, malformed records or no results), 130 for SIGINT and 143 for SIGTERM. Partial
 records remain available for diagnosis. The deadline includes device setup.
 
 These files are **local diagnostics**, not sanitized public evidence. UUID
@@ -80,6 +80,10 @@ raw records and does not yet enforce manifest status; inspect the manifest and
 protocol evidence before explicitly using `--update`. The captured xebench app
 is stopped on completion, timeout or interruption, with up to five additional
 seconds allowed for cleanup. A cleanup failure returns exit code 2.
+If the app exits during launch, capture uses a new Android process-start event
+to recover its PID and remaining records/errors; this remains a failed capture
+(exit 2). If process identity cannot be recovered, it fails without reading
+unattributed app logs. Error messages stay in local `error-*.txt` files.
 
 ## Native dependencies (you must obtain these yourself)
 
