@@ -57,11 +57,29 @@ cd android && ./gradlew assembleRelease
 adb -s <serial> install -r app/build/outputs/apk/release/app-release.apk
 
 # run: the app auto-runs all engines on launch and logs XEBENCH_RESULT/XEBENCH_DONE
-../../scripts/capture_app_run.sh <serial>       # scrapes logcat → results/raw-*.jsonl
+../../scripts/capture_app_run.sh <serial>       # writes a unique results/<capture-id>/ directory
 
-# aggregate into the canonical published results file, then commit to publish
-node ../../scripts/aggregate.mjs ../../results/raw-*.jsonl --update
+# Preview a selected capture; review evidence before publishing through a PR.
+node ../../scripts/aggregate.mjs ../../results/<capture-id>/raw-*.jsonl --pretty
 ```
+
+Capture creates a unique `results/<capture-id>/` directory for each invocation,
+with one immutable `raw-<record-id>.jsonl` file per result and a `manifest.json`
+containing checksums and terminal status. Repeated runs and different
+quantizations cannot overwrite earlier captures. Exit codes are 0 for a complete
+capture, 2 for setup/ADB failure, 3 for timeout, 4 for partial completion (engine
+errors, malformed records or no results), and 130 for interruption. Partial
+records remain available for diagnosis. The deadline includes device setup.
+
+These files are **local diagnostics**, not sanitized public evidence. UUID
+filenames omit the ADB serial, but arbitrary payload fields may still contain
+private information. Keep `results/` ignored and review before sharing.
+`publicationReady: false` in the capture manifest is intentional: successful
+transport does not establish benchmark validity. Aggregation still accepts legacy
+raw records and does not yet enforce manifest status; inspect the manifest and
+protocol evidence before explicitly using `--update`. The captured xebench app
+is stopped on completion, timeout or interruption, with up to five additional
+seconds allowed for cleanup. A cleanup failure returns exit code 2.
 
 ## Native dependencies (you must obtain these yourself)
 
@@ -83,11 +101,15 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 
 **[`data/benchmarks.json`](./data/benchmarks.json) is the canonical, published results file** and the single source of truth. It's a versioned envelope (`schemaVersion`, `generatedAt`, `source`, `rows[]`) validated by **[`data/benchmarks.schema.json`](./data/benchmarks.schema.json)**. Each row carries its `provenance` (`measured` = our lab runs · `vendor` = engine-maker official numbers), `quant`, source link, and methodology caveats (`asStated`).
 
-**Publishing a new measurement is a one-liner — no website change:**
+**Publish reviewed measurements through a PR — no website change:**
 
 ```bash
-node scripts/aggregate.mjs results/raw-*.jsonl --update   # upsert measured rows into data/benchmarks.json
-git commit -am "results: <device> <engine>" && git push   # that's it
+git switch -c results/reviewed-measurements
+node scripts/aggregate.mjs results/<reviewed-capture-id>/raw-*.jsonl --update
+git add data/benchmarks.json
+git commit -m "results: add reviewed measurements"
+git push -u origin results/reviewed-measurements
+# Open a PR targeting main. Publication happens after review and merge.
 ```
 
 `--update` reads `data/benchmarks.json`, upserts the freshly-measured rows (keyed by engine·backend·platform·device·model·quant·provenance, so re-runs overwrite in place), re-stamps `generatedAt`, and writes it back. Existing rows (other devices, vendor citations) are preserved.
