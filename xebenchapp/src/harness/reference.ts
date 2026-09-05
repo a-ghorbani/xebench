@@ -41,7 +41,7 @@ export async function runReference(log: (message: string) => void) {
     };
     const result = await runSession(adapter, config, run, {
       runId, timestampIso: new Date().toISOString(), artifact,
-      deviceInfo: {model: Platform.constants.Model, androidRelease: String(Platform.Version)},
+      deviceInfo: {model: Platform.constants.Model, androidRelease: Platform.constants.Release},
     }, persist);
     if (result.status === 'failed') {
       console.log(`XEBENCH_ERROR ${run.id}: see session evidence`);

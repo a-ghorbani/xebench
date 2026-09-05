@@ -33,12 +33,16 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
 ## Evidence
 
 - Each session records the complete configuration, prompt, model SHA-256/size,
-  binding version, actual token counts and every attempted repetition.
+  binding version, native token counters and every attempted repetition.
 - Successful repetitions retain load time, TTFT, throughput and timing methods.
   Summaries include median, IQR, min/max and actual sample count. Quartiles use
   linear interpolation at index `(n - 1) * p`.
 - A checkpoint is saved after each repetition and before cooldown. Failures
   retain completed repetitions and release the engine before stopping the session.
+  Cleanup failure aborts the whole configuration after saving both errors, if any.
+- Runs without positive timed decode work are failed, not reported as zero speed.
+  A one-token limit can hit this case because the first token comes from prefill.
+  Decode counters describe timed evaluations, not the total generated output.
 - Files live under `xebench-results/` in the app's external directory. Logcat
   carries short filename/checksum references; host capture verifies and retrieves
   them without changing their bytes. Local manifests distinguish checkpoints from

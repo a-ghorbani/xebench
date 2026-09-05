@@ -4,8 +4,10 @@ import type {ReferenceConfig, ReferenceRun} from './config';
 import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
 
 type Phase = 'load' | 'inference' | 'release';
+type CleanupError = {phase: 'release'; message: string};
 type Attempt = ({status: 'complete'} & SingleRunMetrics | {
   status: 'failed'; error: {phase: Phase; message: string}; metrics: SingleRunMetrics | null;
+  cleanupError?: CleanupError;
 }) & {runIndex: number};
 
 export interface SessionIdentity {
@@ -65,6 +67,12 @@ function validateMetrics(metrics: SingleRunMetrics) {
   }
   if (metrics.engineInternal) {
     aggregate(Object.values(metrics.engineInternal));
+    if (metrics.engineInternal.predictedMs <= 0) {
+      throw new Error('Decode measurement requires positive native decode duration');
+    }
+  }
+  if (metrics.decodeTps <= 0) {
+    throw new Error('Decode measurement requires positive throughput');
   }
   if (!Number.isInteger(metrics.promptTokens) || metrics.promptTokens < 1 ||
       !Number.isInteger(metrics.decodeTokens) || metrics.decodeTokens < 1) {
@@ -100,6 +108,7 @@ export async function runSession(
     let phase: Phase = 'load';
     let metrics: SingleRunMetrics | null = null;
     let error: {phase: Phase; message: string} | null = null;
+    let cleanupError: CleanupError | null = null;
     try {
       const loadMs = await adapter.load();
       phase = 'inference';
@@ -113,10 +122,12 @@ export async function runSession(
       try {
         await adapter.release();
       } catch (failure) {
-        error = error ?? {phase: 'release', message: failure instanceof Error ? failure.message : String(failure)};
+        cleanupError = {phase: 'release', message: failure instanceof Error ? failure.message : String(failure)};
+        error = error ?? cleanupError;
       }
     }
-    record.coldRuns.push(error ? {runIndex, status: 'failed', error, metrics} :
+    record.coldRuns.push(error ? {runIndex, status: 'failed', error, metrics,
+      ...(cleanupError ? {cleanupError} : {})} :
       {runIndex, status: 'complete', ...metrics!});
     const complete = record.coldRuns.filter((item): item is Attempt & SingleRunMetrics => item.status === 'complete');
     for (const metric of ['loadMs', 'ttftMs', 'prefillTps', 'decodeTps'] as const) {
@@ -125,6 +136,11 @@ export async function runSession(
     record.status = error ? 'failed' : runIndex === config.nColdRuns - 1 ? 'complete' : 'running';
     // Each checkpoint is persisted before cooldown or the next native call.
     await persist(record);
+    if (cleanupError) {
+      // A resident context can contaminate every later model in the configuration.
+      // Keep both errors in evidence before propagating this fatal cleanup failure.
+      throw new Error(`Engine cleanup failed: ${cleanupError.message}`);
+    }
     if (error) {
       break;
     }
