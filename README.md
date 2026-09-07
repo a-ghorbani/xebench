@@ -4,7 +4,7 @@
 
 It powers the cross-engine leaderboard at **[pocketpal.dev/leaderboard/engines](https://pocketpal.dev/leaderboard/engines)**.
 
-> **Read [METHODOLOGY.md](./METHODOLOGY.md) first** — it's the fairness contract (Rule 0: measure in a foreground app, never a throttled adb-shell binary), and every rule is enforced in code.
+> **Read [METHODOLOGY.md](./METHODOLOGY.md) first** — it describes the fairness contract and the current implementation status.
 > **Read [ENGINES.md](./ENGINES.md)** — why each engine exists, where it shines, and whether we actually measure it there.
 
 ## Engines & coverage
@@ -45,6 +45,10 @@ Every published number traces back to a raw JSONL line carrying device, SoC, the
 
 ## Quickstart
 
+The default app now runs the configurable llama.cpp CPU reference path. See
+[reference runs](docs/REFERENCE-RUNS.md) for configuration, per-repetition evidence
+and current limitations. Other engine adapters are retained for subsequent work.
+
 ```bash
 cd xebenchapp
 npm install                       # Node 20+ (Metro needs toReversed)
@@ -56,7 +60,7 @@ adb -s <serial> push <model files> /storage/emulated/0/Android/data/com.xebencha
 cd android && ./gradlew assembleRelease
 adb -s <serial> install -r app/build/outputs/apk/release/app-release.apk
 
-# run: the app auto-runs all engines on launch and logs XEBENCH_RESULT/XEBENCH_DONE
+# run: the app auto-runs its configuration and emits evidence references
 ../../scripts/capture_app_run.sh <serial>       # writes a unique results/<capture-id>/ directory
 
 # Preview a selected capture; review evidence before publishing through a PR.

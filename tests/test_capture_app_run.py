@@ -44,6 +44,54 @@ def signal_worker(root, ready, stops):
 
 
 class CaptureTests(unittest.TestCase):
+    def test_file_references_preserve_large_records_and_checkpoints(self):
+        with tempfile.TemporaryDirectory() as root:
+            session = capture.Capture(root, {})
+            record = json.loads(result_line().split('XEBENCH_RESULT ', 1)[1])
+            record.update(schemaVersion=1, status='running', prompt='fixture ' * 2000)
+            files = {}
+            lines = []
+            for index, status in enumerate(('running', 'complete')):
+                record['status'] = status
+                name = f'fixture-{index}.json'
+                files[name] = json.dumps(record)
+                reference = {'name': name, 'sha256': hashlib.sha256(files[name].encode()).hexdigest()}
+                lines.append(f'{index} I ReactNativeJS: XEBENCH_RESULT_FILE {json.dumps(reference)}')
+            snapshot = '\n'.join(lines)
+            session.ingest(snapshot, files.__getitem__)
+            session.ingest(snapshot, files.__getitem__)
+            manifest = session.finish('complete')
+            self.assertEqual(len(manifest['checkpoints']), 1)
+            self.assertEqual(len(manifest['records']), 1)
+            saved = json.loads((session.directory / manifest['records'][0]['file']).read_text())
+            self.assertEqual(saved['prompt'], record['prompt'])
+
+    def test_file_reference_rejects_traversal_mismatch_and_size(self):
+        cases = [
+            ({'name': '../private.json', 'sha256': 'a' * 64}, '{}', False),
+            ({'name': 'fixture.json', 'sha256': 'a' * 64}, '{}', True),
+            ({'name': 'fixture.json', 'sha256': 'a' * 64}, 'x' * (capture.MAX_RECORD_BYTES + 1), True),
+        ]
+        for reference, payload, should_read in cases:
+            with self.subTest(reference=reference), tempfile.TemporaryDirectory() as root:
+                session = capture.Capture(root, {})
+                reads = []
+                def read_file(name):
+                    reads.append(name)
+                    return payload
+                session.ingest('100 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference), read_file)
+                self.assertEqual(bool(reads), should_read)
+                self.assertEqual(session.invalid, 1)
+                self.assertFalse(session.records)
+
+    def test_failed_session_cannot_be_successful_without_error_marker(self):
+        with tempfile.TemporaryDirectory() as root:
+            line = result_line().replace('"schema": "xebench-raw"',
+                                        '"schema": "xebench-raw", "schemaVersion": 1, "status": "failed"')
+            code, manifest = self.run_device(root, line + '\n101 I ReactNativeJS: XEBENCH_DONE')
+            self.assertEqual(code, 4)
+            self.assertEqual(manifest['failedRecords'], 1)
+
     def test_repetitions_quants_and_invocations_are_preserved(self):
         with tempfile.TemporaryDirectory() as root:
             one = capture.Capture(root, {"model": "Fixture Phone"})
@@ -79,7 +127,7 @@ class CaptureTests(unittest.TestCase):
             self.assertFalse(session.done)
             self.assertEqual(len(session.records), 1)
 
-    def run_device(self, root, log, fail=False):
+    def run_device(self, root, log, fail=False, files=None):
         calls, now = [], [0]
 
         def adb(*args):
@@ -90,6 +138,10 @@ class CaptureTests(unittest.TestCase):
                 return "123"
             if args[:3] == ("logcat", "-b", "events"):
                 return ""
+            if args[0] == 'exec-out':
+                self.assertEqual(args[:4], ('exec-out', 'head', '-c', str(capture.MAX_RECORD_BYTES + 1)))
+                self.assertTrue(args[4].startswith('/sdcard/Android/data/com.xebenchapp/files/xebench-results/'))
+                return files[Path(args[4]).name]
             if args[0] == "logcat":
                 return log
             return "100.000" if args[:2] == ("shell", "date") else "fixture"
@@ -101,7 +153,7 @@ class CaptureTests(unittest.TestCase):
                                       monotonic=lambda: now[0], sleep=sleep)
         path = next(Path(root).glob("*/manifest.json"))
         self.assertNotIn("private-serial", str(path) + path.read_text())
-        self.assertFalse(any("-c" in c for c in calls))
+        self.assertFalse(any("-c" in c for c in calls if c[0] == 'logcat'))
         self.assertTrue(all("--pid=123" in c for c in calls if c[0] == "logcat" and "events" not in c))
         if not fail:
             self.assertEqual(calls[-1], ("shell", "am", "force-stop", capture.APP))
@@ -113,6 +165,19 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(manifest["status"], "complete")
             self.assertFalse(manifest["publicationReady"])
+
+    def test_capture_retrieves_referenced_file_without_trimming_bytes(self):
+        payload = result_line().split('XEBENCH_RESULT ', 1)[1] + '\n'
+        reference = {'name': 'fixture.json', 'sha256': hashlib.sha256(payload.encode()).hexdigest()}
+        log = '100 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference) + \
+              '\n101 I ReactNativeJS: XEBENCH_DONE'
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest = self.run_device(root, log, files={'fixture.json': payload})
+            self.assertEqual(code, 0)
+            self.assertEqual(len(manifest['records']), 1)
+            path = next(Path(root).glob('*/raw-*.jsonl'))
+            self.assertEqual(path.read_bytes(), payload.encode())
+            self.assertEqual(manifest['records'][0]['sha256'], reference['sha256'])
 
     def test_timeout_preserves_partial_records(self):
         with tempfile.TemporaryDirectory() as root:

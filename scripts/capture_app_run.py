@@ -17,6 +17,7 @@ import uuid
 
 APP = "com.xebenchapp"
 ROOT = Path(__file__).resolve().parents[1]
+MAX_RECORD_BYTES = 1024 * 1024
 
 
 class CaptureInterrupted(BaseException):
@@ -60,11 +61,13 @@ class Capture:
         self.started_at = utc_now()
         self.seen = set()
         self.records = []
+        self.checkpoints = []
+        self.failed_records = 0
         self.errors = 0
         self.invalid = 0
         self.done = False
 
-    def ingest(self, snapshot):
+    def ingest(self, snapshot, read_file=None):
         for line in snapshot.splitlines():
             if "XEBENCH_" not in line or line in self.seen:
                 continue
@@ -77,9 +80,24 @@ class Capture:
                 self.errors += 1
                 with (self.directory / f"error-{uuid.uuid4()}.txt").open("x", encoding="utf-8") as out:
                     out.write(message + "\n")
-            elif message.startswith("XEBENCH_RESULT "):
-                payload = message[len("XEBENCH_RESULT "):].strip()
+            elif message.startswith(("XEBENCH_RESULT ", "XEBENCH_RESULT_FILE ")):
+                payload = message.split(" ", 1)[1].strip()
+                source_file = None
                 try:
+                    if message.startswith("XEBENCH_RESULT_FILE "):
+                        reference = strict_json(payload)
+                        if not isinstance(reference, dict) or set(reference) != {"name", "sha256"}:
+                            raise ValueError("Invalid file reference")
+                        name, digest = reference["name"], reference["sha256"]
+                        if not isinstance(name, str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,120}\.json", name):
+                            raise ValueError("Unsafe file reference")
+                        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or read_file is None:
+                            raise ValueError("Missing file checksum or reader")
+                        payload = read_file(name)
+                        raw = payload.encode("utf-8")
+                        if len(raw) > MAX_RECORD_BYTES or hashlib.sha256(raw).hexdigest() != digest:
+                            raise ValueError("Record exceeds limit or checksum mismatch")
+                        source_file = name
                     record = strict_json(payload)
                     # JSON exponents can overflow even without literal NaN/Infinity.
                     json.dumps(record, allow_nan=False)
@@ -90,20 +108,35 @@ class Capture:
                             raise ValueError(f"Missing {field}")
                     if not isinstance(record.get("deviceInfo", {}), dict):
                         raise ValueError("Invalid deviceInfo")
+                    if "schemaVersion" in record and (record["schemaVersion"] != 1 or
+                            record.get("status") not in ("running", "complete", "failed")):
+                        raise ValueError("Unsupported version or session status")
                 except (ValueError, TypeError):
                     self.invalid += 1
                     with (self.directory / f"invalid-{uuid.uuid4()}.txt").open("x", encoding="utf-8") as out:
                         out.write(payload + "\n")
                     continue
-                device = record.setdefault("deviceInfo", {})
-                for key, value in self.device_info.items():
-                    if not device.get(key):
-                        device[key] = value
-                name = f"raw-{uuid.uuid4()}.jsonl"
-                data = (json.dumps(record, allow_nan=False) + "\n").encode("utf-8")
+                if source_file is None:
+                    device = record.setdefault("deviceInfo", {})
+                    for key, value in self.device_info.items():
+                        if not device.get(key):
+                            device[key] = value
+                is_checkpoint = record.get("status") == "running"
+                prefix = "checkpoint" if is_checkpoint else "raw"
+                name = f"{prefix}-{uuid.uuid4()}.jsonl"
+                # File references preserve the exact on-device bytes/checksum.
+                # Host device facts live in the manifest; legacy inline records
+                # retain their existing enrichment behavior.
+                data = (payload if source_file else json.dumps(record, allow_nan=False) + "\n").encode("utf-8")
                 with (self.directory / name).open("xb") as out:
                     out.write(data)
-                self.records.append({"file": name, "sha256": hashlib.sha256(data).hexdigest()})
+                entries = self.checkpoints if is_checkpoint else self.records
+                entry = {"file": name, "sha256": hashlib.sha256(data).hexdigest()}
+                if source_file is not None:
+                    entry["sourceFile"] = source_file
+                entries.append(entry)
+                if record.get("status") == "failed":
+                    self.failed_records += 1
 
     def finish(self, status):
         manifest = {
@@ -111,7 +144,9 @@ class Capture:
             "captureId": self.capture_id, "startedAt": self.started_at,
             "finishedAt": utc_now(), "status": status, "doneObserved": self.done,
             "engineErrors": self.errors, "invalidRecords": self.invalid,
-            "records": self.records, "publicationReady": False,
+            "records": self.records, "checkpoints": self.checkpoints,
+            "failedRecords": self.failed_records, "deviceInfo": self.device_info,
+            "publicationReady": False,
         }
         with (self.directory / "manifest.json").open("x", encoding="utf-8") as out:
             json.dump(manifest, out, indent=2, allow_nan=False)
@@ -138,9 +173,15 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
             output = subprocess.run(
                 ["adb", "-s", serial, *args], check=True, capture_output=True,
                 text=True, timeout=min(remaining, 15),
-            ).stdout.strip()
+            ).stdout
+            if args[0] != "exec-out":
+                output = output.strip()
         check_interrupted()
         return output
+
+    def read_record_file(name):
+        return command("exec-out", "head", "-c", str(MAX_RECORD_BYTES + 1),
+                       f"/sdcard/Android/data/{APP}/files/xebench-results/{name}")
 
     capture = Capture(output_root, {})
     status, code = "setup-failed", 2
@@ -199,14 +240,14 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
                                    f"--pid={pid}", "*:V")
                 with (capture.directory / "startup-logcat.txt").open("x", encoding="utf-8") as out:
                     out.write(snapshot + "\n")
-                capture.ingest(snapshot)
+                capture.ingest(snapshot, read_record_file)
                 status, code = "startup-failed", 2
                 break
             capture.ingest(command("logcat", "-d", "-v", "epoch", "-T", since,
-                                   f"--pid={pid}", "ReactNativeJS:I", "*:S"))
+                                   f"--pid={pid}", "ReactNativeJS:I", "*:S"), read_record_file)
             check_interrupted()
             if capture.done:
-                status = "complete" if capture.records and not (capture.errors or capture.invalid) else "partial"
+                status = "complete" if capture.records and not (capture.errors or capture.invalid or capture.failed_records) else "partial"
                 code = 0 if status == "complete" else 4
                 break
             sleep(min(1, max(0, deadline - monotonic())))

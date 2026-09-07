@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "cpu-reference-v1",
+  "nColdRuns": 3,
+  "cooldownSec": 30,
+  "maxDecodeTokens": 128,
+  "runs": [
+    {
+      "id": "llama32-q4km-cpu",
+      "engine": "llama.cpp",
+      "model": "Llama 3.2 1B",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "nThreads": 4,
+      "nCtx": 2048
+    }
+  ]
+}

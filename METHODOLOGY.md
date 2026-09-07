@@ -1,9 +1,14 @@
 # xebench Methodology (v1)
 
+Implementation status: the current [CPU reference runner](docs/REFERENCE-RUNS.md)
+retains repetitions and implements cooldown, but does not yet enforce the full
+fairness contract below. Its condition guards are explicitly unverified and its
+records cannot update published data. The remaining rules are tracked in #1–#6.
+
 The fairness rules for cross-engine on-device LLM benchmarks. This is the
 document a partner (Hugging Face, an engine team, a reviewer) should read first.
-Every rule here is enforced by the harness code, not just asserted — file
-references are given so claims are checkable.
+The implementation status above distinguishes current behavior from the intended
+contract below; file references identify the corresponding components.
 
 **Read alongside [ENGINES.md](./ENGINES.md)** — why each engine exists, where it
 shines most, and (critically) whether we currently measure it there. A fairness
