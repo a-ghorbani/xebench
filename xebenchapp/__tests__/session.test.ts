@@ -2,6 +2,9 @@ import {aggregate, ReferenceSession, runSession} from '../src/harness/session';
 import {parseConfig} from '../src/harness/config';
 import configData from '../configs/cpu-reference-v1.json';
 import type {SingleRunMetrics} from '../src/harness/types';
+import * as conditions from '../src/harness/conditions';
+
+afterEach(() => jest.restoreAllMocks());
 
 const config = parseConfig(configData);
 const identity = {runId: 'fixture-run', timestampIso: '2026-01-01T00:00:00Z',
@@ -116,4 +119,91 @@ test('configuration and effective adapter settings must agree before loading', a
   engine.settings = () => ({nThreads: 8, nCtx: 2048});
   await expect(runSession(engine, config, config.runs[0], identity, async () => {})).rejects.toThrow('does not match');
   expect(engine.load).not.toHaveBeenCalled();
+});
+
+const healthyConditions = {timestampMs: 100, batteryPct: 80, batteryTempC: 30, charging: true,
+  powerSaveMode: false, thermalStatus: 0, screenOn: true, foreground: true,
+  keyguardLocked: false, pssMb: 100};
+
+test('condition snapshots surround measurement and precede release and persistence', async () => {
+  const events: string[] = [];
+  jest.spyOn(conditions, 'readConditions').mockImplementation(async () => {
+    events.push('probe');
+    return conditions.normalizeConditions(healthyConditions);
+  });
+  const engine = adapter();
+  const metrics = await engine.benchOnce();
+  engine.load.mockImplementation(async () => {events.push('load'); return 17;});
+  engine.benchOnce.mockImplementation(async () => {events.push('inference'); return metrics;});
+  engine.release.mockImplementation(async () => {events.push('release');});
+  const result = await runSession(engine, {...config, nColdRuns: 1}, config.runs[0], identity,
+    async () => {events.push('persist');});
+  expect(events).toEqual(['probe', 'load', 'inference', 'probe', 'release', 'persist']);
+  expect(result.coldRuns[0].conditions.beforeAssessment.status).toBe('pass');
+  expect(result.guardsPassed).toBeNull(); // Endpoint observations are not full protocol validation.
+});
+
+test.each(['before', 'after'])('flags failed %s conditions without hiding the measurements', async failedEndpoint => {
+  const good = conditions.normalizeConditions(healthyConditions);
+  const bad = conditions.normalizeConditions({...healthyConditions, powerSaveMode: true});
+  jest.spyOn(conditions, 'readConditions')
+    .mockResolvedValueOnce(failedEndpoint === 'before' ? bad : good)
+    .mockResolvedValueOnce(failedEndpoint === 'after' ? bad : good);
+  const result = await runSession(adapter(), {...config, nColdRuns: 1}, config.runs[0], identity, async () => {});
+  expect(result.status).toBe('complete');
+  expect(result.guardsPassed).toBe(false);
+  expect(result.guardNotes).toContain('power-saving');
+  expect(result.summary.decodeTps?.n).toBe(1);
+});
+
+test('probe unavailability still saves evidence and releases a failed engine', async () => {
+  jest.spyOn(conditions, 'readConditions').mockResolvedValue(conditions.normalizeConditions(null));
+  const engine = adapter();
+  engine.benchOnce.mockRejectedValueOnce(new Error('inference failure'));
+  const result = await runSession(engine, config, config.runs[0], identity, async () => {});
+  expect(result.status).toBe('failed');
+  expect(result.coldRuns[0].conditions.afterAssessment.status).toBe('unverified');
+  expect(result.guardsPassed).toBeNull();
+  expect(engine.release).toHaveBeenCalledTimes(1);
+});
+
+test.each(['before', 'after'])('a late %s probe aborts measurement and still persists and releases', async endpoint => {
+  jest.useFakeTimers();
+  try {
+    const realRead = conditions.readConditions;
+    let pending = true;
+    const delayed = () => realRead(() => new Promise(resolve => setTimeout(() => {
+      pending = false;
+      resolve(healthyConditions);
+    }, 2200)));
+    const probe = jest.spyOn(conditions, 'readConditions');
+    if (endpoint === 'after') probe.mockResolvedValueOnce(conditions.normalizeConditions(healthyConditions));
+    probe.mockImplementation(delayed);
+    const engine = adapter();
+    const persist = jest.fn(async (_record: ReferenceSession) => {});
+    const outcome = runSession(engine, config, config.runs[0], identity, persist, async () => {})
+      .then(() => 'completed', error => error.message);
+    await jest.advanceTimersByTimeAsync(2000);
+    expect(pending).toBe(true);
+    expect(engine.load).toHaveBeenCalledTimes(endpoint === 'before' ? 0 : 1);
+    expect(engine.release).toHaveBeenCalledTimes(1);
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(persist.mock.calls[0][0].status).toBe('failed');
+    expect(await outcome).toMatch(/probe.*abort/i);
+    await jest.advanceTimersByTimeAsync(200);
+    expect(pending).toBe(false);
+    expect(engine.load).toHaveBeenCalledTimes(endpoint === 'before' ? 0 : 1);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('a still-busy native sampler blocks a later invocation from loading a model', async () => {
+  jest.spyOn(conditions, 'readConditions').mockResolvedValue(conditions.normalizeConditions({probeStatus: 'busy'}));
+  const engine = adapter();
+  const persist = jest.fn(async (_record: ReferenceSession) => {});
+  await expect(runSession(engine, config, config.runs[0], identity, persist)).rejects.toThrow('probe');
+  expect(engine.load).not.toHaveBeenCalled();
+  expect(persist).toHaveBeenCalledTimes(1);
+  expect(engine.release).toHaveBeenCalledTimes(1);
 });

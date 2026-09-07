@@ -2,8 +2,9 @@
 
 Implementation status: the current [CPU reference runner](docs/REFERENCE-RUNS.md)
 retains repetitions and implements cooldown, but does not yet enforce the full
-fairness contract below. Its condition guards are explicitly unverified and its
-records cannot update published data. The remaining rules are tracked in #1–#6.
+fairness contract below. [Endpoint condition checks](docs/RUN-CONDITIONS.md) flag
+observed failures; otherwise overall guards stay unverified. Records cannot update
+published data. The remaining rules are tracked in #1–#6.
 
 The fairness rules for cross-engine on-device LLM benchmarks. This is the
 document a partner (Hugging Face, an engine team, a reviewer) should read first.
@@ -109,13 +110,14 @@ apples-to-apples even where tok/s provenance differs.
 → `src/harness/protocol.ts`.
 
 ### 5. Run conditions are gated and recorded — no laundered numbers
-Before a session the harness records SoC, RAM, OS, engine version, thermal
-status/headroom, battery %, power-save, charging state. A run that starts
-below 50% battery or in power-save mode is **flagged** (`guardsPassed=false`,
-surfaced in `asStated`), not silently published. Screen is kept on to avoid
-doze. Every published row is traceable to a raw JSONL record that carries these
-conditions.
-→ `src/harness/types.ts` `ThermalSnapshot`/guards; `src/native/BenchProbeModule.kt`.
+The current runner records [native condition endpoints](docs/RUN-CONDITIONS.md)
+around each repetition. Low battery, power saving, severe thermal state, screen,
+foreground and lock failures are flagged (`guardsPassed=false`). Missing evidence
+cannot pass; healthy endpoints do not establish full protocol compliance. The
+activity keeps the screen on while visible. Headroom, continuous monitoring and
+bounded thermal-readiness enforcement remain planned; historical records are not
+retroactively certified.
+→ `xebenchapp/src/harness/conditions.ts`; `BenchConditionsModule.kt`.
 
 ## Cold-start is not the whole story (why the sustained phase exists)
 A single cold `pp512/tg128` number materially misrepresents sustained use:

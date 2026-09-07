@@ -16,6 +16,7 @@ class MainApplication : Application(), ReactApplication {
         PackageList(this).packages.apply {
           // LiteRT-LM has no autolinked RN binding — register manually.
           add(LiteRtBenchPackage())
+          add(BenchConditionsPackage())
           // GENIE-X disabled in the main (llama.cpp-HTP) variant — see build.gradle.
           // add(GenieXBenchPackage())
         },
