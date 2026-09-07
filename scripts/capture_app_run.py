@@ -50,6 +50,43 @@ def strict_json(text):
     return json.loads(text, parse_constant=reject_constant)
 
 
+def installed_apks(command):
+    """Fingerprint the selected app's base/split APKs; never retain install paths.
+
+    Unknown probe results do not certify binary identity. Deadlines/cancellation
+    still propagate through the capture lifecycle. Paths passed to Android's
+    shell are restricted to a literal, option-free alphabet before hashing.
+    """
+    try:
+        lines = command('shell', 'pm', 'path', APP).splitlines()
+        if not 1 <= len(lines) <= 32:
+            raise ValueError('Unexpected APK count')
+        paths = []
+        for line in lines:
+            match = re.fullmatch(r'package:(/data/app/[a-zA-Z0-9/_.=+~-]+\.apk)', line)
+            if not match or any(part in ('', '.', '..') for part in match[1].split('/')[1:]):
+                raise ValueError('Unsupported APK path')
+            paths.append(match[1])
+        names = [Path(path).name for path in paths]
+        if 'base.apk' not in names or len(set(names)) != len(names):
+            raise ValueError('Missing base or duplicate APK')
+        digests = {}
+        for line in command('shell', 'sha256sum', *sorted(paths)).splitlines():
+            match = re.fullmatch(r'([0-9a-f]{64})\s+(/\S+)', line)
+            if not match or match[2] not in paths or match[2] in digests:
+                raise ValueError('Unexpected checksum output')
+            digests[match[2]] = match[1]
+        if set(digests) != set(paths):
+            raise ValueError('Missing checksum')
+        return {'status': 'recorded', 'apks': sorted(
+            [{'name': Path(path).name, 'sha256': digest} for path, digest in digests.items()],
+            key=lambda item: item['name'])}
+    except TimeoutError:
+        raise
+    except (OSError, subprocess.CalledProcessError, ValueError):
+        return {'status': 'unavailable'}
+
+
 class Capture:
     """Immutable files and a terminal manifest for one invocation."""
 
@@ -66,6 +103,7 @@ class Capture:
         self.errors = 0
         self.invalid = 0
         self.done = False
+        self.app_identity = {'packageName': APP, 'before': None, 'after': None, 'consistency': 'unverified'}
 
     def ingest(self, snapshot, read_file=None):
         for line in snapshot.splitlines():
@@ -146,6 +184,7 @@ class Capture:
             "engineErrors": self.errors, "invalidRecords": self.invalid,
             "records": self.records, "checkpoints": self.checkpoints,
             "failedRecords": self.failed_records, "deviceInfo": self.device_info,
+            "appIdentity": self.app_identity,
             "publicationReady": False,
         }
         with (self.directory / "manifest.json").open("x", encoding="utf-8") as out:
@@ -203,6 +242,7 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
         if not capture.device_info["soc"]:
             capture.device_info["soc"] = command("shell", "getprop", "ro.board.platform")
         command("shell", "am", "force-stop", APP)
+        capture.app_identity['before'] = installed_apks(command)
         command("shell", "input", "keyevent", "KEYCODE_WAKEUP")
         # Device time avoids host/device skew; PID filtering excludes other apps.
         since = command("shell", "date", "+%s.000")
@@ -249,6 +289,14 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
             if capture.done:
                 status = "complete" if capture.records and not (capture.errors or capture.invalid or capture.failed_records) else "partial"
                 code = 0 if status == "complete" else 4
+                after = installed_apks(command)
+                capture.app_identity['after'] = after
+                before = capture.app_identity['before']
+                if before['status'] == after['status'] == 'recorded':
+                    matched = before['apks'] == after['apks']
+                    capture.app_identity['consistency'] = 'matched' if matched else 'changed'
+                    if not matched:
+                        status, code = 'app-changed', 4
                 break
             sleep(min(1, max(0, deadline - monotonic())))
     except (TimeoutError, subprocess.TimeoutExpired):

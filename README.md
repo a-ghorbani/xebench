@@ -73,7 +73,9 @@ containing checksums and terminal status. Repeated runs and different
 quantizations cannot overwrite earlier captures. Exit codes are 0 for a complete
 capture, 2 for setup/ADB failure, 3 for timeout, 4 for partial completion (engine
 errors, malformed records or no results), 130 for SIGINT and 143 for SIGTERM. Partial
-records remain available for diagnosis. The deadline includes device setup.
+records remain available for diagnosis. The deadline includes device setup and
+APK fingerprint probes. A detected APK change produces `app-changed` (exit 4);
+the manifest retains both fingerprints. Missing identity stays unverified.
 
 These files are **local diagnostics**, not sanitized public evidence. UUID
 filenames omit the ADB serial, but arbitrary payload fields may still contain
