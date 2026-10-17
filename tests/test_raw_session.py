@@ -41,7 +41,7 @@ class AppEmittedRecordTests(unittest.TestCase):
             "readinessTimeout", "orderedLaterRun", "configurationAborted", "setupFailed", "chargingDuringRun",
             "chargingTimeout", "chargingUnknown", "inferenceFailedThenProbePending", "monitorStartTimeout",
             "cleanupFailedProbePending", "laterReadinessTimeout", "headroomUnavailable", "monitorStopError",
-            "decimatedSamples", "onBattery", "riseOverride", "noExpectedHash", "modelHashMismatch",
+            "decimatedSamples", "onBattery", "riseOverride", "chargingRecordOnly", "noExpectedHash", "modelHashMismatch",
             "stagedConfiguration", "buildUnavailable", "executionUnreported"})
         self.assertEqual(set(V2_FROZEN), set(APP) - {"noExpectedHash", "modelHashMismatch", "stagedConfiguration",
                                                      "buildUnavailable", "executionUnreported"})
@@ -370,6 +370,24 @@ class ConditionsV2Tests(unittest.TestCase):
             before = record["coldRuns"][0]["conditions"]["before"]
             before["batteryStatus"] = 2
         self.assertIn("readiness.recomputed", codes(v2("complete", charging_before)))
+
+    def test_experiment_record_only_charging_readiness(self):
+        """EXPERIMENT ONLY: record-only readiness must be declared by both config and policy."""
+        record = APP["chargingRecordOnly"]
+        self.assertEqual(record["configuration"]["experimentChargingReadiness"], "record-only")
+        self.assertEqual(record["chargingPolicy"], raw_session.EXPERIMENT_CHARGING_POLICY_V3)
+        self.assertEqual(record["coldRuns"][0]["readiness"]["status"], "ready")
+        self.assertEqual(record["conditionVerdict"]["charging"], "violated")
+        # A standard policy cannot hide that readiness ignored charging, and vice versa.
+        self.assertCodes(v2("chargingRecordOnly", lambda r: r["chargingPolicy"].update(readiness="wait-while-charging")),
+                         {"conditions.policy", "readiness.recomputed"})
+        self.assertCodes(v2("chargingRecordOnly", lambda r: r["configuration"].pop("experimentChargingReadiness")),
+                         {"conditions.policy"})
+        self.assertCodes(v2("complete", lambda r: r["chargingPolicy"].update(readiness="record-only-experiment")),
+                         {"conditions.policy"})
+        self.assertCodes(v2("chargingRecordOnly", lambda r: r["configuration"].update(
+            experimentChargingReadiness="skip")), {"protocol.configuration-mismatch"})
+        self.assertCodes(v2("complete", lambda r: r["chargingPolicy"].update(readiness="skip")), {"schema.enum"})
 
     def test_snapshots_are_typed_and_samples_support_the_summary(self):
         # Type confusion in required or optional signals is rejected by the v2 snapshot schema.

@@ -728,6 +728,17 @@ class ConditionsV2ExportTests(unittest.TestCase):
         self.assertEqual(out["coldRuns"][0]["conditions"]["charging"], "violated")
         self.assertEqual({item["kind"] for item in ctx.dropped}, {"excluded"})
 
+    def test_experiment_marker_reaches_the_bundle_and_verifies(self):
+        """EXPERIMENT ONLY (docs/experiments/charging-ab.md): the record-only marker is never hidden."""
+        record = dict(copy.deepcopy(APP_V2["chargingRecordOnly"]), runId="1767225600000-0-experiment")
+        with tempfile.TemporaryDirectory() as root:
+            report = evidence.export([make_capture(Path(root), [record])], Path(root) / "out")
+            exported = json.loads((Path(report["bundle"]) / "sessions/1767225600000-0-experiment.json").read_text())
+            self.assertEqual(exported["record"]["configuration"]["experimentChargingReadiness"], "record-only")
+            self.assertEqual(exported["record"]["chargingPolicy"]["readiness"], "record-only-experiment")
+            self.assertNotIn("unrecognized-value", {item["kind"] for item in report["dropped"]})
+            self.assertTrue(evidence.verify(report["bundle"])["valid"])
+
 
 class IdentityV3ExportTests(unittest.TestCase):
     """Build, configuration and execution identity: strict shapes and closed vocabularies only."""

@@ -193,6 +193,10 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
   const onBattery = {...healthy, batteryStatus: 3, charging: false, plugged: 0};
   native(onBattery, monitor([onBattery, {...onBattery, elapsedMs: 6000}]));
   records.onBattery = await single(adapter());
+  // EXPERIMENT ONLY (docs/experiments/charging-ab.md): charging is recorded, not waited for.
+  const charging = {...healthy, batteryStatus: 2};
+  native(charging, monitor([charging, {...charging, elapsedMs: 6000}]));
+  records.chargingRecordOnly = await single(adapter(), {...one, experimentChargingReadiness: 'record-only'});
   native({...healthy, batteryTempC: 31.5});
   records.riseOverride = await single(adapter(), {...one, readinessTimeoutSec: 10, maxBatteryTempRiseC: 0.5},
     {baseline: {batteryTempC: 30.5}});
@@ -288,12 +292,15 @@ test('runSession records match the committed fixture validated by the host schem
     monitorStopError: 'failed/condition-probe-pending/fail', decimatedSamples: 'complete/null/pass',
     noExpectedHash: 'complete/null/pass', modelHashMismatch: 'failed/model-hash-mismatch/unverified',
     stagedConfiguration: 'complete/null/pass', buildUnavailable: 'complete/null/pass',
-    executionUnreported: 'complete/null/pass'});
+    executionUnreported: 'complete/null/pass', chargingRecordOnly: 'complete/null/pass'});
   expect(records.modelHashMismatch.artifact).toEqual({...MODEL, expectedSha256: 'c'.repeat(64)});
   expect(records.complete.artifact).toEqual({...MODEL, expectedSha256: MODEL.sha256});
   expect(records.noExpectedHash.artifact).toEqual({...MODEL, expectedSha256: null});
   expect(records.executionUnreported.executionReports).toEqual([
     {runIndex: 0, gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null}]);
+  expect(records.chargingRecordOnly.conditionVerdict.charging).toBe('violated');
+  expect(records.chargingRecordOnly.chargingPolicy.readiness).toBe('record-only-experiment');
+  expect(records.complete.chargingPolicy.readiness).toBe('wait-while-charging');
   expect(['complete', 'chargingDuringRun', 'chargingTimeout', 'chargingUnknown'].map(key =>
     records[key].conditionVerdict.charging)).toEqual(['satisfied', 'violated', 'violated', 'unknown']);
   expect(records.onBattery.conditionVerdict.charging).toBe('on-battery');
