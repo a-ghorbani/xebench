@@ -2,11 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/a-ghorbani/xebench/blob/main/data/benchmarks.schema.json",
   "title": "xebench benchmarks",
-  "description": "Canonical cross-engine on-device LLM benchmark results published by xebench. This file is the stable contract for consumers (e.g. the pocketpal.dev leaderboard loads it dynamically). Contract 1.1 is additive over 1.0: every 1.0 file still validates. Bump the schemaVersion major on any breaking field change; consumers must reject a major they do not support. Invariants this schema cannot express (dispersion min <= max, unique evidence.sessionIds, a real calendar generatedAt) are enforced by scripts/lib/publication.mjs.",
+  "description": "Canonical cross-engine on-device LLM benchmark results published by xebench. This file is the stable contract for consumers (e.g. the pocketpal.dev leaderboard loads it dynamically). Contract 1.1 is additive over 1.0: every 1.0 file still validates. Additive changes bump the minor and breaking changes bump the major; consumers must reject a major they do not support. Rows are closed (additionalProperties false), so a consumer validating with this schema must be updated before a producer publishes a new minor's fields. Invariants this schema cannot express (dispersion min <= max, a real calendar generatedAt) are enforced by scripts/lib/publication.mjs.",
   "type": "object",
   "required": ["schemaVersion", "generatedAt", "source", "rows"],
   "properties": {
-    "schemaVersion": { "type": "string", "description": "MAJOR.MINOR of this contract (\"1.0\" or \"1.1\"); consumers check the major" },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^1\\.(0|[1-9][0-9]*)$",
+      "description": "MAJOR.MINOR of this contract (\"1.0\" or \"1.1\"); a different major is unsupported and must be rejected as a whole"
+    },
     "generatedAt": {
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$",
@@ -75,9 +79,14 @@
           "required": ["sessionIds", "bundleSha256", "url"],
           "description": "1.1, measured rows only; required when verified, absent on legacy rows. Immutable sanitized evidence behind the row",
           "properties": {
-            "sessionIds": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "sessionIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
             "bundleSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "lowercase hex SHA-256 of the evidence bundle" },
-            "url": { "type": "string", "format": "uri", "pattern": "^https://", "description": "https URL of the immutable evidence bundle" }
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https://[A-Za-z0-9.-]+(:[0-9]+)?([/?#][!-\\[\\]-~]*)?$",
+              "description": "https URL of the immutable evidence bundle: a host (no credentials), printable ASCII only"
+            }
           }
         },
         "build": {
@@ -114,8 +123,8 @@
           "then": { "required": ["validation"], "properties": { "validation": { "const": "failed" } } }
         },
         {
-          "$comment": "legacy rows carry no dispersion or evidence",
-          "if": { "required": ["validation"], "properties": { "validation": { "const": "legacy" } } },
+          "$comment": "legacy rows carry no dispersion or evidence; a measured row without validation (1.0) is legacy",
+          "if": { "properties": { "validation": { "const": "legacy" } } },
           "then": { "properties": { "dispersion": false, "evidence": false } }
         }
       ]

@@ -25,7 +25,7 @@ Envelope:
 
 | Field | Type | Meaning | Invariants |
 | --- | --- | --- | --- |
-| `schemaVersion` | string | Contract version, `"1.1"` | Reject the whole file unless the major is `1`; keep the compatible fallback. |
+| `schemaVersion` | string | Contract version, `"1.1"` | `MAJOR.MINOR`. Reject the whole file unless the major is `1`; keep the compatible fallback. A `"1.0"` file carries no 1.1 row fields. |
 | `generatedAt` | string | UTC time the file was last regenerated | `YYYY-MM-DDTHH:MM:SSZ` from 1.1; the 1.0 date-only `YYYY-MM-DD` stays valid. A real calendar date/time. |
 
 New optional row fields. They are valid on `provenance: "measured"` rows only;
@@ -33,21 +33,23 @@ vendor and community rows never carry them.
 
 | Field | Type | Meaning | Invariants |
 | --- | --- | --- | --- |
-| `validation` | `"legacy"` \| `"unverified"` \| `"failed"` \| `"verified"` | Validation status, separate from provenance | `verified` requires `guardsPassed: true` and `evidence`. Absent on a measured row means legacy (1.0 files). |
+| `validation` | `"legacy"` \| `"unverified"` \| `"failed"` \| `"verified"` | Validation status, separate from provenance | `verified` requires `guardsPassed: true` and `evidence`. Absent on a measured row means legacy (1.0 files), with the same legacy rules. |
 | `guardsPassed` | boolean \| null | Run-condition guard outcome: true passed, false failed, null not verified | `false` requires `validation: "failed"`. Null is not a pass. |
 | `conditionPolicy` | string | Run-condition policy id, e.g. `observed-conditions-v1` | none |
 | `protocolVersion` | string | Measurement protocol id, e.g. `cpu-reference-v1` | none |
 | `timingMethod` | string | How `ppTps`/`tgTps` were timed, e.g. `engine-timings` | none |
 | `dispersion` | `{ ppTps?: {iqr, min, max}, tgTps?: {iqr, min, max} }` | Spread of the repetitions behind each median, tokens/s | Finite, non-negative numbers; `min <= max`; all three keys in each present metric. Absent on legacy rows. |
-| `evidence` | `{ sessionIds, bundleSha256, url }` | Immutable sanitized evidence behind the row | `sessionIds`: non-empty array of unique non-empty strings; `bundleSha256`: 64-character lowercase hex; `url`: `https://` URL. Required when verified; absent on legacy rows. |
+| `evidence` | `{ sessionIds, bundleSha256, url }` | Immutable sanitized evidence behind the row | `sessionIds`: non-empty array of unique non-empty strings; `bundleSha256`: 64-character lowercase hex; `url`: `https://` URL with a host, no credentials, printable ASCII only. Required when verified; absent on legacy rows. |
 | `build` | `{ engineVersion?, bindingVersion?, apkSha256?, harnessCommit? }` | Identity of the producing software | All values strings; no other keys. |
 
 There is no `eligibility` field in 1.1; it is deferred to 1.2 and rejected
-until then. Unknown row fields are rejected (`additionalProperties: false`).
+until then. Unknown row fields are rejected (`additionalProperties: false`), so
+a consumer that validates with this schema must also be updated before the
+producer publishes a later minor's fields.
 
-The schema expresses every invariant above except `min <= max`, unique
-`sessionIds` and calendar validity of `generatedAt`. `scripts/lib/publication.mjs`
-enforces all of them; `node scripts/validate_data.mjs <file>` checks any
+The schema expresses every invariant above except `min <= max`, calendar
+validity of `generatedAt` and the 1.0-files rule; it was cross-checked with Ajv
+(2020-12, strict, ajv-formats). `scripts/lib/publication.mjs` enforces all of them; `node scripts/validate_data.mjs <file>` checks any
 envelope. The producer (`scripts/aggregate.mjs`) labels rows from legacy records
 `validation: "legacy"` and refuses to emit `verified` until an evidence
 pipeline exists, so 1.1 data currently contains legacy and vendor rows only.

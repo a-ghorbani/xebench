@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto';
 const ANNOTATIONS = new Set(['$schema', '$id', '$comment', '$defs', 'title', 'description', 'default', 'examples']);
 const ASSERTIONS = new Set([
   'type', 'enum', 'const', 'required', 'properties', 'additionalProperties', 'items', '$ref', 'minimum', 'format',
-  'pattern', 'minLength', 'minItems', 'allOf', 'if', 'then', 'else',
+  'pattern', 'minLength', 'minItems', 'uniqueItems', 'allOf', 'if', 'then', 'else',
 ]);
 
 export class PublicationError extends Error {}
@@ -56,9 +56,11 @@ const compilePattern = (pattern, path) => {
   }
 };
 
+// Strict absolute URI: printable ASCII only (no whitespace, controls, backslash or
+// raw non-ASCII, which WHATWG URL silently repairs but RFC 3986 validators reject).
 const isUri = (value) => {
   try {
-    return /^[a-z][a-z0-9+.-]*:/i.test(value) && Boolean(new URL(value));
+    return /^[a-z][a-z0-9+.-]*:[!-[\]-~]*$/i.test(value) && Boolean(new URL(value));
   } catch {
     return false;
   }
@@ -110,6 +112,9 @@ export function checkSchema(schema, path = '#') {
     }
   }
   if (schema.pattern !== undefined) compilePattern(schema.pattern, path);
+  if (schema.uniqueItems !== undefined && typeof schema.uniqueItems !== 'boolean') {
+    throw new PublicationError(`uniqueItems at ${path} must be a boolean`);
+  }
   if ((schema.then !== undefined || schema.else !== undefined) && schema.if === undefined) {
     throw new PublicationError(`then/else without if at ${path}`);
   }
@@ -178,6 +183,10 @@ function validate(value, schema, root, path, errors) {
   }
   if (Array.isArray(value) && schema.minItems !== undefined && value.length < schema.minItems) {
     errors.push(`${path}: fewer than ${schema.minItems} items`);
+  }
+  if (Array.isArray(value) && schema.uniqueItems === true &&
+      value.some((item, index) => value.slice(0, index).some((earlier) => jsonEqual(earlier, item)))) {
+    errors.push(`${path}: items are not unique`);
   }
   if (schema.minimum !== undefined && typeof value === 'number' && value < schema.minimum) {
     errors.push(`${path}: ${value} < minimum ${schema.minimum}`);
@@ -304,7 +313,8 @@ export function rowInvariantErrors(row, path = '$') {
   if (row.guardsPassed === false && row.validation !== 'failed') {
     errors.push(`${path}: guardsPassed=false requires validation=failed`);
   }
-  if (row.validation === 'legacy') {
+  // A measured row without validation (a 1.0 row) is legacy, so the same rule applies.
+  if (row.validation === 'legacy' || (row.provenance === 'measured' && !Object.hasOwn(row, 'validation'))) {
     for (const field of ['dispersion', 'evidence']) {
       if (Object.hasOwn(row, field)) errors.push(`${path}: legacy rows carry no ${field}`);
     }
@@ -314,27 +324,31 @@ export function rowInvariantErrors(row, path = '$') {
       errors.push(`${path}.dispersion.${metric}: min ${spread.min} > max ${spread.max}`);
     }
   }
-  const sessions = row.evidence?.sessionIds;
-  if (Array.isArray(sessions) && new Set(sessions).size !== sessions.length) {
-    errors.push(`${path}.evidence.sessionIds: duplicate session id`);
-  }
   return errors;
 }
 
 /** Schema plus envelope and row invariants the schema cannot express. */
 export function assertBenchmarks(envelope, schema, label) {
   assertFinite(envelope, label);
+  // An unsupported major is rejected on its own, before any field is interpreted.
+  if (isObject(envelope) && String(envelope.schemaVersion).split('.')[0] !== '1') {
+    throw new PublicationError(`${label}: unsupported schemaVersion ${envelope.schemaVersion}`);
+  }
   // Contract invariants are reported with the schema errors: the schema rejects
   // most of them too, but these messages say which invariant was broken.
   const invariants = Array.isArray(envelope?.rows)
     ? envelope.rows.flatMap((row, index) => (isObject(row) ? rowInvariantErrors(row, `$.rows[${index}]`) : []))
     : [];
+  if (envelope?.schemaVersion === '1.0' && Array.isArray(envelope.rows)) {
+    envelope.rows.forEach((row, index) => {
+      for (const field of MEASURED_ONLY_FIELDS) {
+        if (isObject(row) && Object.hasOwn(row, field)) invariants.push(`$.rows[${index}]: ${field} needs schemaVersion 1.1`);
+      }
+    });
+  }
   assertSchema(envelope, schema, label, schema, invariants);
   if (envelope.rowCount !== undefined && envelope.rowCount !== envelope.rows.length) {
     throw new PublicationError(`${label}: rowCount ${envelope.rowCount} != ${envelope.rows.length} rows`);
-  }
-  if (String(envelope.schemaVersion).split('.')[0] !== '1') {
-    throw new PublicationError(`${label}: unsupported schemaVersion ${envelope.schemaVersion}`);
   }
   if (!isCalendarTimestamp(envelope.generatedAt)) {
     throw new PublicationError(`${label}: generatedAt ${JSON.stringify(envelope.generatedAt)} is not a real UTC date/time`);

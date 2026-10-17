@@ -95,7 +95,8 @@ class Workspace(unittest.TestCase):
         self.assertIn(reason, result.stderr)
 
     def schema_errors(self, row):
-        """Errors from the JSON Schema alone (what a consumer's stock validator would see)."""
+        """Errors from data/benchmarks.schema.json alone, without the code-only invariants of
+        assertBenchmarks: the subset a consumer validating with the schema would also enforce."""
         script = ("import {validateSchema} from './scripts/lib/publication.mjs';"
                   "import {readFileSync} from 'node:fs';"
                   "const s = JSON.parse(readFileSync('./data/benchmarks.schema.json', 'utf8'));"
@@ -242,6 +243,10 @@ class InvariantTests(Workspace):
             'legacy-with-dispersion': ({**legacy, 'dispersion': row['dispersion']}, 'legacy rows carry no dispersion',
                                        True),
             'legacy-with-evidence': ({**legacy, 'evidence': row['evidence']}, 'legacy rows carry no evidence', True),
+            # a measured row without validation is a 1.0 (legacy) row
+            'unlabelled-with-evidence': (without(row, 'validation'), 'legacy rows carry no evidence', True),
+            'unlabelled-with-dispersion': ({**without(legacy, 'validation'), 'dispersion': row['dispersion']},
+                                           'legacy rows carry no dispersion', True),
             # dispersion: finite non-negative, min <= max (min <= max is beyond the schema)
             'dispersion-min-above-max': ({**row, 'dispersion': {'tgTps': {'iqr': 1, 'min': 30, 'max': 20}}},
                                          'min 30 > max 20', False),
@@ -258,7 +263,7 @@ class InvariantTests(Workspace):
             'evidence-empty-session': ({**row, 'evidence': {**row['evidence'], 'sessionIds': ['']}},
                                        'shorter than 1', True),
             'evidence-duplicate-session': ({**row, 'evidence': {**row['evidence'], 'sessionIds': ['a', 'a']}},
-                                           'duplicate session id', False),
+                                           'items are not unique', True),
             'evidence-uppercase-sha': ({**row, 'evidence': {**row['evidence'],
                                                            'bundleSha256': row['evidence']['bundleSha256'].upper()}},
                                        'does not match', True),
@@ -324,11 +329,29 @@ class InvariantTests(Workspace):
                 self.assert_valid(envelope_with({**row, 'evidence': {**row['evidence'], 'url': url}}))
         for url in ('http://example.com/e.tar.gz', 'ftp://example.com/e', 'HTTPS://example.com/e', 'https://',
                     'https:example.com', '//example.com/e', 'example.com/e', 'javascript:alert(1)',
-                    'file:///tmp/e', ''):
+                    'file:///tmp/e', '', 'https:///x', 'https://a.com/ b', 'https://a.com/\u00e9',
+                    'https://a.com\\@evil.com', 'https://a.com/\nx', 'https://user:pw@a.com/e', ' https://a.com/e'):
             with self.subTest(url=url, expect='invalid'):
                 result = self.validate(envelope_with({**row, 'evidence': {**row['evidence'], 'url': url}}))
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn('evidence.url', result.stderr)
+
+    def test_schema_version_forms(self):
+        vendor = load(FIXTURES / 'vendor.json')['rows'][0]
+        for value in ('1.0', '1.1', '1.12'):
+            with self.subTest(schemaVersion=value, expect='valid'):
+                self.assert_valid(envelope_with(vendor, schemaVersion=value))
+        for value in ('1', '1.x', '1.0.0', '1.01', '1.1 '):
+            with self.subTest(schemaVersion=value, expect='invalid'):
+                self.assert_invalid(envelope_with(vendor, schemaVersion=value), 'schemaVersion')
+        for value in ('2.0', '0.9', '11.0', ' 1.1'):
+            with self.subTest(schemaVersion=value, expect='unsupported'):
+                self.assert_invalid(envelope_with(vendor, schemaVersion=value), 'unsupported schemaVersion')
+
+    def test_1_0_files_carry_no_1_1_fields(self):
+        legacy = load(FIXTURES / 'legacy.json')['rows'][0]
+        self.assert_invalid(envelope_with(legacy, schemaVersion='1.0'), 'validation needs schemaVersion 1.1')
+        self.assert_valid(envelope_with({k: v for k, v in legacy.items() if k != 'validation'}, schemaVersion='1.0'))
 
     def test_generated_at_forms(self):
         vendor = load(FIXTURES / 'vendor.json')['rows'][0]
@@ -455,6 +478,11 @@ class ValidatorKeywordTests(unittest.TestCase):
                          [0, 1, 1, 1])
         self.assertEqual(self.run_cases("{minLength: 2}", ['ab', 'a', '\U0001f600', 3]), [0, 1, 1, 0])
         self.assertEqual(self.run_cases("{minItems: 1}", [[1], [], 'x']), [0, 1, 0])
+        self.assertEqual(self.run_cases("{uniqueItems: true}", [[1, 2], [1, 1], [{'a': 1}, {'a': 1}], [1, '1'], 'x']),
+                         [0, 1, 1, 0, 0])
+        self.assertEqual(self.run_cases("{format: 'uri'}", ['https://a.test/x', 'https://a.test/ x',
+                                                             'https://a.test\\x', 'https://a.test/\u00e9']),
+                         [0, 1, 1, 1])
         self.assertEqual(self.run_cases("{allOf: [{type: 'integer'}, {minimum: 2}]}", [2, 1, 2.5]), [0, 1, 1])
         self.assertEqual(self.run_cases(
             "{if: {required: ['a']}, then: {required: ['b']}, else: {required: ['c']}}",
@@ -468,6 +496,7 @@ class ValidatorKeywordTests(unittest.TestCase):
             ("{pattern: 1}", 'pattern at # must be a string'),
             ("{minItems: -1}", 'minItems at # must be a non-negative integer'),
             ("{allOf: []}", 'allOf at # must be a non-empty array'),
+            ("{uniqueItems: 1}", 'uniqueItems at # must be a boolean'),
             ("{if: {oneOf: []}}", 'unsupported schema keyword oneOf at #/if'),
         ]:
             with self.subTest(schema=schema):
