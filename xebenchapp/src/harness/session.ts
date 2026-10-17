@@ -76,8 +76,6 @@ export interface ConditionVerdict {
 export interface SessionContext {
   runOrder?: RunOrder | null;
   baseline?: ReadinessBaseline;
-  /** Apply the configured cooldown before the first repetition (a later run in a configuration). */
-  initialCooldown?: boolean;
   now?: () => number;
 }
 
@@ -264,7 +262,8 @@ export async function runSession(
   const record = createSession(adapter, config, run, identity, context.runOrder ?? null);
   const baseline = context.baseline ?? {batteryTempC: null};
   for (let runIndex = 0; runIndex < config.nColdRuns; runIndex++) {
-    const cooldownMs = runIndex > 0 || context.initialCooldown ? config.cooldownSec * 1000 : 0;
+    // The protocol cooldown precedes every repetition, the first included (after hashing).
+    const cooldownMs = config.cooldownSec * 1000;
     if (cooldownMs) await sleep(cooldownMs);
     const {result: readiness, snapshot: before} = await awaitReadiness(config.readinessTimeoutSec, baseline, sleep, context.now,
       config.maxBatteryTempRiseC);

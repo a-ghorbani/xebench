@@ -170,6 +170,9 @@ dependencies {
     // GenieXBenchModule.kt. Bundles its own llama.cpp+Hexagon runtime, which conflicts
     // with llama.rn's HTP path, hence its own flavor.
     geniexImplementation("com.qualcomm.qti:geniex-android:0.3.1")
+
+    // JVM unit tests for pure-Kotlin helpers (e.g. MonitorSchedule); no device needed.
+    testImplementation("junit:junit:4.13.2")
 }
 
 // Per-flavor native packaging. Autolinking is not flavor-aware, so llama.rn (one AAR

@@ -718,7 +718,7 @@ def _semantic_v2(record):
     charging_policy = CHARGING_POLICIES.get(record["chargingPolicy"]["version"], CHARGING_POLICY_V3)
     if not _deep_equal(record["chargingPolicy"], charging_policy):
         errors.append(reason("conditions.policy", "/chargingPolicy",
-                             "chargingPolicy must equal the published charging-policy-v2 values"))
+                             f"chargingPolicy must equal the published {record['chargingPolicy']['version']} values"))
     if not _deep_equal(record["conditionPolicy"], CONDITION_POLICY_V2):
         errors.append(reason("conditions.policy", "/conditionPolicy",
                              "conditionPolicy must equal the published run-conditions-v2 values"))
@@ -759,9 +759,9 @@ def _semantic_v2(record):
     for index, attempt in enumerate(attempts):
         where, readiness, conditions = f"/coldRuns/{index}", attempt["readiness"], attempt["conditions"]
         cooldown = protocol["cooldownSec"] * 1000
-        if attempt["cooldownMs"] not in ((cooldown,) if index else (0, cooldown)):
+        if attempt["cooldownMs"] != cooldown:
             errors.append(reason("attempts.cooldown", f"{where}/cooldownMs",
-                                 "Repetitions after the first must follow the configured cooldown"))
+                                 "Every repetition, the first included, follows the configured cooldown"))
         if readiness["timeoutSec"] != protocol["readinessTimeoutSec"]:
             errors.append(reason("readiness.inconsistent", f"{where}/readiness/timeoutSec",
                                  "Readiness timeout disagrees with the protocol"))

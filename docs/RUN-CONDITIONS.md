@@ -14,9 +14,11 @@ backend execution, quality or cross-device comparability.
    ready snapshot is the `before` endpoint. On timeout the repetition is recorded
    as `skipped` (reason `readiness-timeout`, or `charging` when the battery was still
    charging), nothing is loaded, and the session stops.
-3. **Sampling:** a native background thread samples immediately and then once per
-   second from just before `load()` until `benchOnce()` returns. No JS-bridge
-   sampling call happens between the start of load and the end of inference.
+3. **Sampling:** a native background thread samples immediately and then at fixed
+   rate, at start + k × 1 s, from just before `load()` until `benchOnce()` returns.
+   Sampling cost therefore does not accumulate into drift, and a late wake-up skips
+   missed slots instead of bursting. No JS-bridge sampling call happens between the
+   start of load and the end of inference.
 4. **After endpoint:** sampling stops, then the `after` snapshot (with PSS) is taken
    before the engine is released, and the checkpoint is saved.
 
@@ -166,8 +168,8 @@ Repetitions of one run stay contiguous.
 | --- | --- | --- |
 | Unknown required evidence never passes | [`conditions.ts`](../xebenchapp/src/harness/conditions.ts) `assessConditions`, `assessReadiness`, `assessDuring` | [`conditions.test.ts`](../xebenchapp/__tests__/conditions.test.ts) invalid/missing readings, missing module; [`session.test.ts`](../xebenchapp/__tests__/session.test.ts) unavailable probes, missing monitor |
 | Bounded readiness wait; timeout skips | [`readiness.ts`](../xebenchapp/src/harness/readiness.ts), [`session.ts`](../xebenchapp/src/harness/session.ts) | `conditions.test.ts` bounded readiness wait; `session.test.ts` readiness timeout, shared baseline |
-| Cooldown before later repetitions/runs | `session.ts` `runSession`, [`reference.ts`](../xebenchapp/src/harness/reference.ts) | `session.test.ts` checkpoints before cooldown, initial cooldown; [`reference.test.ts`](../xebenchapp/__tests__/reference.test.ts) later-run cooldown |
-| Sampling outside JS during timed work; bounded and expiring | [`BenchConditionsModule.kt`](../xebenchapp/android/app/src/main/java/com/xebenchapp/BenchConditionsModule.kt) `startMonitor`/`stopMonitor`; `conditions.ts` `normalizeMonitor` | `session.test.ts` event order, incomplete coverage; `conditions.test.ts` bounded samples, coverage; device runs |
+| Cooldown before every repetition, the first included | `session.ts` `runSession`; `raw_session.py` `attempts.cooldown` | `session.test.ts` checkpoints before cooldown; [`reference.test.ts`](../xebenchapp/__tests__/reference.test.ts) cooldown after hashing; `test_raw_session.py` first-repetition cooldown |
+| Sampling outside JS during timed work; fixed rate, bounded and expiring | [`BenchConditionsModule.kt`](../xebenchapp/android/app/src/main/java/com/xebenchapp/BenchConditionsModule.kt) `startMonitor`/`stopMonitor`; [`MonitorSchedule.kt`](../xebenchapp/android/app/src/main/java/com/xebenchapp/MonitorSchedule.kt); `conditions.ts` `normalizeMonitor` | `session.test.ts` event order, incomplete coverage; `conditions.test.ts` bounded samples, coverage, long fixed-rate runs; [`MonitorScheduleTest.kt`](../xebenchapp/android/app/src/test/java/com/xebenchapp/MonitorScheduleTest.kt); device runs |
 | Interruption detection | [`MainActivity.kt`](../xebenchapp/android/app/src/main/java/com/xebenchapp/MainActivity.kt) focus counter; `assessDuring` | `conditions.test.ts` focus losses; `session.test.ts` interruption then readiness wait; device runs |
 | Unresponsive probes/monitors abort after save and release | `conditions.ts` `bounded`; `session.ts` | `conditions.test.ts` unresponsive calls; `session.test.ts` late probes, busy sampler, monitor start/stop failures |
 | Cleanup on failure; unmeasured runs recorded | `session.ts`, `reference.ts` | `session.test.ts` failed load/inference/release, monitor stop on failure; `reference.test.ts` cleanup abort, unreadable model |
@@ -176,13 +178,14 @@ Repetitions of one run stay contiguous.
 | Records cannot claim what their evidence does not support | [`raw_session.py`](../scripts/raw_session.py) `_semantic_v2` recomputes assessments, readiness, verdict and order | [`test_raw_session.py`](../tests/test_raw_session.py) `ConditionsV2Tests`; [`rawSessionSchema.test.ts`](../xebenchapp/__tests__/rawSessionSchema.test.ts) drift fixture |
 | v2 evidence survives sanitized export | [`export_evidence.py`](../scripts/export_evidence.py) allowlist (snapshot, monitor, readiness, charging, verdict, order) | [`test_export_evidence.py`](../tests/test_export_evidence.py) `ConditionsV2ExportTests` (capture → validation → export → verify) |
 
-Native rules (monitor timing and expiry, single-flight, focus counter) have no
-JVM unit tests. Their device validation is listed in the pull request that
-introduced this policy (#2 work): Pixel 9 and Galaxy S23 runs covering readiness
-waits and timeouts, sampling, interruption detection and recomputed record
-validation.
+The monitor's fixed-rate schedule has a JVM unit test (`MonitorScheduleTest`,
+run with `./gradlew :app:testReferenceReleaseUnitTest`). It covers runs up to
+15 min at a realistic 14 ms per sample, and shows that the earlier fixed-delay
+loop fell out of coverage. CI has no Android SDK, so the test runs locally. The
+other native rules (expiry, single-flight, focus counter) have no JVM tests. They
+are validated by the device runs listed in the #2 pull requests.
 
-## Device observations (two devices, not general limits)
+## Device observations (named devices, not general limits)
 
 On a Pixel 9 (AC power) and a Galaxy S23 (USB power), idle thermal status was 0
 and headroom about 0.44–0.63. One sample cost about 2–5 ms; the first sample was
@@ -210,7 +213,19 @@ repetition was skipped after a readiness timeout. This is real throttling. The
 device stays in the lab as an example of an old device that throttles, not as a
 reference device. It reported `currentNowUa` 0 at `FULL`.
 
+With fixed-rate sampling, a long OnePlus 6 run (one thread, 512 decode tokens)
+kept full coverage over 139.7 s: 140 ticks, at most 1001 ms between samples, and
+about 5 ms per sample on average (at most about 9 ms). With the fixed-delay loop
+it replaced, an earlier 43 s capture on this device (about 14 ms per sample) had
+no tick-count margin left.
+
 ## Limits
+
+The battery-rise baseline is checked per record. The validator recomputes readiness
+against each record's `baselineBatteryTempC`, but cannot tell whether that value is
+the first ready reading of the configuration invocation. The baseline is shared
+across the sessions of one invocation, so a falsified high baseline in one record
+still validates. A cross-record check over a capture is future work.
 
 Thresholds are protocol choices, not device-calibrated limits. Battery temperature
 is a proxy for device temperature. Headroom support and scale vary by device. A
