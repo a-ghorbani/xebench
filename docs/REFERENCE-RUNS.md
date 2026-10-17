@@ -101,7 +101,11 @@ readiness, sampling, instance, order and verdict evidence. For these, the valida
 - checks `status` against `stopReason`: a skipped repetition ends a
   `readiness-timeout` session, and unmeasured runs have no attempts and
   `artifact: null`;
-- requires the published `run-conditions-v2` thresholds;
+- requires the published `run-conditions-v2` and `charging-policy-v2` values;
+- types and ranges every snapshot and sample field as the app does;
+- recomputes the monitor summary from persisted samples, or bounds it when the
+  samples were decimated;
+- requires exactly the guard notes implied by the verdict;
 - recomputes every endpoint, readiness and sampling assessment, the condition
   verdict and its charging status from the recorded snapshots and monitor summaries,
   so unknown evidence cannot be recorded as ready or passing;

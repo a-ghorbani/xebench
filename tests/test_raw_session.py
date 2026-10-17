@@ -37,7 +37,9 @@ class AppEmittedRecordTests(unittest.TestCase):
         self.assertEqual(set(APP), set(LEGACY) | {
             "interrupted", "monitorIncomplete", "monitorUnavailable", "monitorStuck", "monitorBusy",
             "readinessTimeout", "orderedLaterRun", "configurationAborted", "setupFailed", "chargingDuringRun",
-            "chargingTimeout", "chargingUnknown"})
+            "chargingTimeout", "chargingUnknown", "inferenceFailedThenProbePending", "monitorStartTimeout",
+            "cleanupFailedProbePending", "laterReadinessTimeout", "headroomUnavailable", "monitorStopError",
+            "decimatedSamples"})
         for records in (APP, LEGACY):
             self.assertGreater(len(records["inferenceFailed"]["coldRuns"][0]["error"]["message"]), 4096)
             self.assertIsNone(records["nonFiniteMetrics"]["coldRuns"][0]["metrics"])
@@ -202,9 +204,18 @@ class ConditionsV2Tests(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertCodes(v2("complete", lambda r: r.pop(field)), {"schema.required"})
         self.assertCodes(v2("complete", lambda r: r["coldRuns"][0].pop("readiness")), {"schema.required"})
-        # Claiming the legacy harness selects the legacy branch, which rejects the v2 evidence.
-        self.assertIn("schema.additional-property",
-                      codes(v2("complete", lambda r: r.update(harnessVersion="xebench-0.5-reference"))))
+        # A wrong harness version is reported where it is, on the branch the rest of the record selects.
+        reasons = raw_session.validate(v2("complete", lambda r: r.update(harnessVersion="xebench-0.5-reference")))
+        self.assertEqual([(r["code"], r["path"]) for r in reasons], [("schema.const", "/harnessVersion")])
+        # Legacy records keep precise messages through the top-level oneOf.
+        for change, expected in ((lambda r: r.pop("harnessVersion"), ("schema.required", "/harnessVersion")),
+                                 (lambda r: r.update(harnessVersion="x"), ("schema.const", "/harnessVersion")),
+                                 (lambda r: r["coldRuns"][0].update(loadMs=-1), ("schema.minimum", "/coldRuns/0/loadMs"))):
+            self.assertEqual([(r["code"], r["path"]) for r in raw_session.validate(mutate("complete", change))],
+                             [expected])
+        # A v2 failed attempt with a null instance is still reported as a failed attempt.
+        reasons = raw_session.validate(v2("beforeProbeBusy", lambda r: r["coldRuns"][0].update(cooldownMs=-5)))
+        self.assertEqual([(r["code"], r["path"]) for r in reasons], [("schema.minimum", "/coldRuns/0/cooldownMs")])
         self.assertCodes(v2("complete", lambda r: r["protocol"].update(version="cpu-reference-v1")), {"schema.const"})
         self.assertCodes(v2("complete", lambda r: r.update(guardsPassed=True)), {"schema.enum"})
 
@@ -235,7 +246,7 @@ class ConditionsV2Tests(unittest.TestCase):
         self.assertCodes(v2("complete", lambda r: r.update(artifact=None)), {"status.artifact"})
         self.assertCodes(v2("setupFailed", lambda r: r.update(artifact=APP["complete"]["artifact"])), {"status.artifact"})
         self.assertCodes(v2("complete", lambda r: r.update(coldRuns=[])), {"status.attempts", "summary.mismatch",
-                                                                         "guards.recomputed"})
+                                                                         "guards.recomputed", "guards.inconsistent"})
 
     def test_unknown_evidence_cannot_be_recorded_as_ready_or_passing(self):
         def unknown_thermal(record):
@@ -251,7 +262,8 @@ class ConditionsV2Tests(unittest.TestCase):
         self.assertCodes(v2("monitorIncomplete", lambda r: r.update(
             conditionVerdict=dict(r["conditionVerdict"], status="pass"))), {"guards.recomputed"})
         self.assertCodes(v2("monitorIncomplete", lambda r: r["coldRuns"][0]["conditions"].update(
-            duringAssessment={"status": "pass", "reasons": []})), {"conditions.recomputed", "guards.recomputed"})
+            duringAssessment={"status": "pass", "reasons": []})),
+            {"conditions.recomputed", "guards.recomputed", "guards.inconsistent"})
         self.assertCodes(v2("probeUnavailable", lambda r: r["coldRuns"][0]["readiness"].update(status="ready")),
                          {"readiness.inconsistent", "readiness.recomputed"})
         def no_samples(record):
@@ -259,8 +271,9 @@ class ConditionsV2Tests(unittest.TestCase):
             during.update(samples=[], ticks=0)
             during["summary"].update(samples=0, maxGapMs=1500,
                                      externalPower={"connected": 0, "disconnected": 0, "unknown": 0},
-                                     chargingStates={"notCharging": 0, "noNetCurrent": 0, "charging": 0, "unknown": 0})
-        self.assertCodes(v2("complete", no_samples), {"conditions.recomputed"})
+                                     chargingStates={"notCharging": 0, "charging": 0, "unknown": 0})
+        # maxGapMs left at 1500 no longer matches the (empty) samples: both checks fire.
+        self.assertCodes(v2("complete", no_samples), {"conditions.recomputed", "conditions.monitor"})
 
     def test_failures_cannot_be_hidden(self):
         flagged = APP["flagged"]
@@ -285,9 +298,11 @@ class ConditionsV2Tests(unittest.TestCase):
                          ["satisfied", "violated", "violated", "unknown"])
         self.assertEqual(APP["chargingTimeout"]["coldRuns"][0]["reason"], "charging")
         self.assertEqual(raw_session.charging_state({"batteryStatus": 2, "currentNowUa": 10}), "charging")
-        self.assertEqual(raw_session.charging_state({"batteryStatus": None, "currentNowUa": -5000}), "noNetCurrent")
-        self.assertEqual(raw_session.charging_state({"batteryStatus": None, "currentNowUa": 0}), "unknown")
-        self.assertEqual(raw_session.charging_state({"batteryStatus": 1, "currentNowUa": 900000}), "unknown")
+        # current_now is diagnostic only; discharging is not one of the eligible statuses.
+        for current in (-5000, 0, 900000, None):
+            self.assertEqual(raw_session.charging_state({"batteryStatus": None, "currentNowUa": current}), "unknown")
+        self.assertEqual(raw_session.charging_state({"batteryStatus": 3}), "unknown")
+        self.assertEqual(raw_session.charging_state({"batteryStatus": 4}), "notCharging")
         def hide_charging(record):
             summary = record["coldRuns"][0]["conditions"]["during"]["summary"]
             summary["chargingStates"].update(charging=0, notCharging=summary["samples"])
@@ -302,14 +317,64 @@ class ConditionsV2Tests(unittest.TestCase):
                          {"readiness.inconsistent"})
         self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1].update(reason="charging")),
                          {"readiness.inconsistent"})
-        self.assertCodes(v2("complete", lambda r: r["chargingPolicy"].update(notChargingStatuses=[2, 4, 5])),
+        self.assertCodes(v2("complete", lambda r: r["chargingPolicy"].update(notChargingStatuses=[2, 4])),
                          {"schema.enum"})
-        self.assertCodes(v2("complete", lambda r: r["chargingPolicy"].update(notChargingStatuses=[5, 4, 3])),
+        self.assertCodes(v2("complete", lambda r: r["chargingPolicy"].update(notChargingStatuses=[5, 4])),
                          {"conditions.policy"})
         def charging_before(record):
             before = record["coldRuns"][0]["conditions"]["before"]
             before["batteryStatus"] = 2
         self.assertIn("readiness.recomputed", codes(v2("complete", charging_before)))
+
+    def test_snapshots_are_typed_and_samples_support_the_summary(self):
+        # Type confusion in required or optional signals is rejected by the v2 snapshot schema.
+        for change in ({"focusLossCount": "unknown"}, {"focusLossCount": True}, {"thermalHeadroom": False},
+                       {"batteryTempC": -1000}, {"thermalHeadroom": -50}, {"batteryStatus": 2.5}):
+            with self.subTest(change=change):
+                record = v2("complete", lambda r: [attempt["conditions"]["before"].update(change)
+                                                   for attempt in r["coldRuns"]])
+                self.assertIn(codes(record) & {"schema.type", "schema.minimum"}, ({"schema.type"}, {"schema.minimum"}))
+        def unavailable_samples(record):
+            for sample in record["coldRuns"][0]["conditions"]["during"]["samples"]:
+                sample.update(probeStatus="unavailable", thermalStatus=None)
+        self.assertIn("conditions.monitor", codes(v2("complete", unavailable_samples)))
+        self.assertIn("conditions.monitor", codes(v2("complete", lambda r: r["coldRuns"][0]["conditions"]["during"]
+                                                     .update(samples=[]))))
+        def charging_samples(record):
+            for sample in record["coldRuns"][0]["conditions"]["during"]["samples"]:
+                sample.update(batteryStatus=2)
+        self.assertIn("conditions.monitor", codes(v2("complete", charging_samples)))
+        def reversed_samples(record):
+            record["coldRuns"][0]["conditions"]["during"]["samples"].reverse()
+        self.assertIn("conditions.monitor", codes(v2("complete", reversed_samples)))
+        decimated = APP["decimatedSamples"]["coldRuns"][0]["conditions"]["during"]
+        self.assertEqual((len(decimated["samples"]), decimated["summary"]["samples"]), (30, 45))
+        self.assertIn("conditions.monitor", codes(v2("decimatedSamples", lambda r: r["coldRuns"][0]["conditions"]
+                                                     ["during"]["summary"]["chargingStates"].update(notCharging=10))))
+        # A sparse interval cannot claim coverage.
+        self.assertIn("conditions.recomputed", codes(v2("complete", lambda r: r["coldRuns"][0]["conditions"]["during"]
+                                                        .update(intervalMs=1e9))))
+
+    def test_contradictions_and_crashes_are_reasons_not_exceptions(self):
+        self.assertCodes(v2("orderedLaterRun", lambda r: r["runOrder"].update(seed=1.2345e4)),
+                         {"record.unprocessable"})
+        self.assertCodes(v2("orderedLaterRun", lambda r: r["runOrder"].update(position=1.0)), {"record.unprocessable"})
+        self.assertCodes(v2("inferenceFailedThenProbePending", lambda r: r.update(stopReason="repetition-failed")),
+                         {"status.attempts"})
+        self.assertCodes(v2("beforeProbeBusy", lambda r: r["coldRuns"][0]["conditions"]["before"].update(
+            probeStatus="complete")), {"readiness.inconsistent"})
+        self.assertIn("readiness.inconsistent", codes(v2("readinessTimeout", lambda r: r["coldRuns"][-1]["readiness"]
+                                                         .update(reasons=[]))))
+        self.assertIn("instance.inconsistent", codes(v2("failed", lambda r: r["coldRuns"][-1].update(instance=None))))
+        self.assertCodes(v2("monitorIncomplete", lambda r: r.update(guardNotes=r["guardNotes"][:1])),
+                         {"guards.inconsistent"})
+        self.assertCodes(v2("complete", lambda r: r["guardNotes"].append("Run conditions not fully verified")),
+                         {"guards.inconsistent"})
+        # Booleans never equal numbers in the published-policy comparison.
+        self.assertCodes(v2("complete", lambda r: r["conditionPolicy"]["run"].update(maxThermalStatus=False)),
+                         {"conditions.policy"})
+        self.assertCodes(v2("setupFailed", lambda r: r["guardNotes"].__setitem__(-1, "Not run: /home/user/x")),
+                         {"guards.inconsistent"})
 
     def test_run_order_cooldown_and_instances_are_consistent(self):
         order = APP["orderedLaterRun"]["runOrder"]

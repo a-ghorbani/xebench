@@ -2,7 +2,7 @@ import * as FS from '@dr.pogodin/react-native-fs';
 import {Platform} from 'react-native';
 import bundledConfig from '../../configs/cpu-reference-v1.json';
 import {parseConfig} from './config';
-import {runSession, ReferenceSession, unmeasuredSession} from './session';
+import {runSession, ReferenceSession, UNMEASURED_NOTES, unmeasuredSession} from './session';
 import {LlamaRnAdapter} from './adapters/LlamaRnAdapter';
 import {generateSeed, ORDER_METHOD, seededOrder} from './order';
 import type {ReadinessBaseline} from './readiness';
@@ -55,13 +55,14 @@ export async function runReference(log: (message: string) => void) {
     const identity = {runId, timestampIso: new Date().toISOString(), artifact: null,
       deviceInfo: {model: Platform.constants.Model, androidRelease: Platform.constants.Release}};
     // Runs that never reach measurement are still recorded, never silently dropped.
-    const recordUnmeasured = async (stopReason: 'configuration-aborted' | 'setup-failed', note: string) => {
-      await persist(unmeasuredSession(adapter, config, run, identity, runOrder, stopReason, note));
+    const recordUnmeasured = async (stopReason: keyof typeof UNMEASURED_NOTES) => {
+      await persist(unmeasuredSession(adapter, config, run, identity, runOrder, stopReason));
       console.log(`XEBENCH_ERROR ${run.id}: ${stopReason}`);
     };
     if (fatal) {
       try {
-        await recordUnmeasured('configuration-aborted', `Not run: ${fatal.message}`);
+        // A constant note: engine error text stays in the earlier session's error field.
+        await recordUnmeasured('configuration-aborted');
       } catch {
         break; // Persistence itself is failing; keep the original fatal error.
       }
@@ -73,7 +74,7 @@ export async function runReference(log: (message: string) => void) {
       artifact = {sha256: await FS.hash(modelPath, 'sha256'), sizeBytes: (await FS.stat(modelPath)).size};
     } catch {
       try {
-        await recordUnmeasured('setup-failed', 'Model artifact could not be read');
+        await recordUnmeasured('setup-failed');
       } catch (failure) {
         fatal = failure instanceof Error ? failure : new Error(String(failure));
       }

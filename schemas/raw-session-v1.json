@@ -474,15 +474,14 @@
         "chargingPolicy": {
           "type": "object",
           "additionalProperties": false,
-          "description": "charging-policy-v2 (tethered-not-charging): external power allowed, active charging never eligible.",
+          "description": "charging-policy-v2 (tethered-not-charging): external power allowed; eligible only when batteryStatus is FULL or NOT_CHARGING at every snapshot and sample; current_now is diagnostic only.",
           "required": [
             "version",
             "name",
             "externalPower",
             "notChargingStatuses",
             "chargingStatus",
-            "noNetCurrentMaxAbsUa",
-            "currentZero",
+            "currentNow",
             "readiness",
             "unknown",
             "effect"
@@ -491,13 +490,12 @@
             "version": {"const": "charging-policy-v2"},
             "name": {"const": "tethered-not-charging"},
             "externalPower": {"const": "allowed"},
-            "notChargingStatuses": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"enum": [3, 4, 5]}},
+            "notChargingStatuses": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": [4, 5]}},
             "chargingStatus": {"const": 2},
-            "noNetCurrentMaxAbsUa": {"const": 20000},
-            "currentZero": {"const": "unknown"},
             "readiness": {"const": "wait-while-charging"},
             "unknown": {"const": "never-eligible"},
-            "effect": {"const": "publication-eligibility-only"}
+            "effect": {"const": "publication-eligibility-only"},
+            "currentNow": {"const": "diagnostic-only"}
           }
         },
         "conditionVerdict": {
@@ -647,11 +645,11 @@
       "required": ["before", "beforeAssessment", "during", "duringAssessment", "after", "afterAssessment", "charging"],
       "additionalProperties": true,
       "properties": {
-        "before": {"$ref": "#/$defs/conditionSnapshot"},
+        "before": {"$ref": "#/$defs/conditionSnapshotV2"},
         "beforeAssessment": {"$ref": "#/$defs/conditionAssessment"},
         "during": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/monitor"}]},
         "duringAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]},
-        "after": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionSnapshot"}]},
+        "after": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionSnapshotV2"}]},
         "afterAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]},
         "charging": {"enum": ["satisfied", "violated", "unknown"]}
       }
@@ -703,19 +701,91 @@
             },
             "chargingStates": {
               "type": "object",
-              "required": ["notCharging", "noNetCurrent", "charging", "unknown"],
+              "required": ["notCharging", "charging", "unknown"],
               "additionalProperties": false,
               "properties": {
                 "notCharging": {"type": "integer", "minimum": 0},
-                "noNetCurrent": {"type": "integer", "minimum": 0},
                 "charging": {"type": "integer", "minimum": 0},
                 "unknown": {"type": "integer", "minimum": 0}
               }
             }
           }
         },
-        "samples": {"type": "array", "maxItems": 30, "items": {"$ref": "#/$defs/conditionSnapshot"}}
+        "samples": {"type": "array", "maxItems": 30, "items": {"$ref": "#/$defs/conditionSnapshotV2"}}
       }
+    },
+    "conditionSnapshotV2": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "probeStatus",
+        "unavailable",
+        "timestampMs",
+        "elapsedMs",
+        "batteryPct",
+        "batteryTempC",
+        "batteryStatus",
+        "plugged",
+        "currentNowUa",
+        "thermalStatus",
+        "thermalHeadroom",
+        "focusLossCount",
+        "processUptimeMs",
+        "rssMb",
+        "charging",
+        "powerSaveMode",
+        "screenOn",
+        "foreground",
+        "keyguardLocked"
+      ],
+      "properties": {
+        "probeStatus": {"enum": ["complete", "unavailable", "timeout", "busy"]},
+        "timestampMs": {"type": ["number", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "elapsedMs": {"type": ["number", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "batteryPct": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "batteryTempC": {"type": ["number", "null"], "minimum": -50, "maximum": 150},
+        "batteryStatus": {"type": ["integer", "null"], "minimum": 1, "maximum": 5},
+        "plugged": {"type": ["integer", "null"], "minimum": 0, "maximum": 255},
+        "currentNowUa": {"type": ["integer", "null"], "minimum": -1000000000.0, "maximum": 1000000000.0},
+        "thermalStatus": {"type": ["integer", "null"], "minimum": 0, "maximum": 6},
+        "thermalHeadroom": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "focusLossCount": {"type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "processUptimeMs": {"type": ["number", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "rssMb": {"type": ["number", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "pssMb": {"type": ["number", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "charging": {"type": ["boolean", "null"]},
+        "powerSaveMode": {"type": ["boolean", "null"]},
+        "screenOn": {"type": ["boolean", "null"]},
+        "foreground": {"type": ["boolean", "null"]},
+        "keyguardLocked": {"type": ["boolean", "null"]},
+        "unavailable": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "enum": [
+              "timestampMs",
+              "elapsedMs",
+              "batteryPct",
+              "batteryTempC",
+              "batteryStatus",
+              "plugged",
+              "currentNowUa",
+              "thermalStatus",
+              "thermalHeadroom",
+              "focusLossCount",
+              "processUptimeMs",
+              "rssMb",
+              "pssMb",
+              "charging",
+              "powerSaveMode",
+              "screenOn",
+              "foreground",
+              "keyguardLocked"
+            ]
+          }
+        }
+      },
+      "description": "A v2 endpoint snapshot or monitor sample: typed and ranged like conditions.ts normalizeConditions, where invalid readings become null. pssMb exists only on endpoint snapshots."
     }
   }
 }

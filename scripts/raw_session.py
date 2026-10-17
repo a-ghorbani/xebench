@@ -252,30 +252,55 @@ class _Validator:
         if matches > 1:
             return [reason("schema.one-of", path, "Matches more than one alternative")]
         # Report the alternative selected by its const discriminators (attempt
-        # status, session harness version) or type when one exists, so reasons
-        # name the real defect instead of every branch.
-        best, best_score, tied = None, 0, False
+        # status, harness and protocol version) or by type, so reasons name the
+        # real defect instead of every branch. Options are ranked by fewest
+        # contradicted consts, then most matched ones; a tie stays generic.
+        ranked = []
         for option, result in zip(options, results):
             target = self.resolve(option["$ref"]) if "$ref" in option else option
-            consts = {key: child["const"] for key, child in target.get("properties", {}).items()
-                      if isinstance(child, dict) and "const" in child}
+            consts = self._discriminators(target)
             if consts and isinstance(value, dict):
-                score = sum(1 for key, const in consts.items() if key in value and _equal(value[key], const))
-                if score > best_score:
-                    best, best_score, tied = result, score, False
-                elif score and score == best_score:
-                    tied = True
-        if best is not None and not tied:
-            return best
+                matched = contradicted = 0
+                for keys, const in consts.items():
+                    node = value
+                    for key in keys:
+                        node = node.get(key, _ABSENT) if isinstance(node, dict) else _ABSENT
+                    if node is _ABSENT:
+                        continue
+                    if _equal(node, const):
+                        matched += 1
+                    else:
+                        contradicted += 1
+                ranked.append(((contradicted, -matched), result))
+        if ranked:
+            ranked.sort(key=lambda item: item[0])
+            if len(ranked) == 1 or ranked[0][0] != ranked[1][0]:
+                return ranked[0][1]
         for option, result in zip(options, results):
             target = self.resolve(option["$ref"]) if "$ref" in option else option
-            if any(isinstance(child, dict) and "const" in child for child in target.get("properties", {}).values()):
+            if self._discriminators(target):
                 continue
             if isinstance(target.get("type"), str) and target["type"] != "null" and _is_type(value, target["type"]):
                 return result
         return [reason("schema.one-of", path, "Matches no allowed alternative")]
 
+    def _discriminators(self, target):
+        """Const properties of an object schema, plus one nested level (e.g. protocol.version)."""
+        found = {}
+        for key, child in target.get("properties", {}).items():
+            if isinstance(child, dict) and "$ref" in child:
+                child = self.resolve(child["$ref"])
+            if not isinstance(child, dict):
+                continue
+            if "const" in child:
+                found[(key,)] = child["const"]
+            for sub, grand in child.get("properties", {}).items():
+                if isinstance(grand, dict) and "const" in grand:
+                    found[(key, sub)] = grand["const"]
+        return found
 
+
+_ABSENT = object()
 _SCHEMA = None
 
 
@@ -419,10 +444,14 @@ CONDITION_POLICY_V2 = {
 }
 CHARGING_POLICY_V2 = {
     "version": "charging-policy-v2", "name": "tethered-not-charging", "externalPower": "allowed",
-    "notChargingStatuses": [3, 4, 5], "chargingStatus": 2, "noNetCurrentMaxAbsUa": 20000, "currentZero": "unknown",
+    "notChargingStatuses": [4, 5], "chargingStatus": 2, "currentNow": "diagnostic-only",
     "readiness": "wait-while-charging", "unknown": "never-eligible", "effect": "publication-eligibility-only",
 }
 STOP_REASONS_UNMEASURED = ("configuration-aborted", "setup-failed")
+BACKEND_NOTE = "Actual backend execution has not been verified"
+UNVERIFIED_NOTE = "Run conditions not fully verified"
+UNMEASURED_NOTES = {"configuration-aborted": "Not run: an earlier run aborted the configuration",
+                    "setup-failed": "Not run: the model artifact could not be read"}
 _M32 = 0xFFFFFFFF
 
 
@@ -469,20 +498,87 @@ def assess_readiness(snapshot, baseline):
     return list(dict.fromkeys(reasons))
 
 
+def _deep_equal(a, b):
+    """JSON equality that, unlike Python's ==, never equates booleans and numbers."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_deep_equal(a[key], b[key]) for key in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b))
+    return _equal(a, b) and isinstance(a, (dict, list)) == isinstance(b, (dict, list))
+
+
+def summarize_samples(samples, started, stopped):
+    """Mirror of conditions.ts summarizeSamples over persisted samples."""
+    def extreme(key, pick):
+        known = [sample[key] for sample in samples if sample.get(key) is not None]
+        return pick(known) if known else None
+
+    times = [started, *(sample.get("elapsedMs") for sample in samples), stopped]
+    gap = None
+    if None not in times:
+        steps = [later - earlier for earlier, later in zip(times, times[1:])]
+        gap = None if any(step < 0 for step in steps) else max([0, *steps])
+    states = {"notCharging": 0, "charging": 0, "unknown": 0}
+    for sample in samples:
+        states[charging_state(sample)] += 1
+    return {
+        "samples": len(samples),
+        "incompleteSamples": sum(1 for sample in samples
+                                 if sample.get("probeStatus") != "complete" or _missing_required(sample)),
+        "failures": list(dict.fromkeys(item for sample in samples for item in condition_failures(sample))),
+        "maxThermalStatus": extreme("thermalStatus", max), "maxThermalHeadroom": extreme("thermalHeadroom", max),
+        "maxBatteryTempC": extreme("batteryTempC", max), "minBatteryPct": extreme("batteryPct", min),
+        "maxRssMb": extreme("rssMb", max), "maxGapMs": gap,
+        "externalPower": {"connected": sum(1 for sample in samples if sample.get("charging") is True),
+                          "disconnected": sum(1 for sample in samples if sample.get("charging") is False),
+                          "unknown": sum(1 for sample in samples if sample.get("charging") is None)},
+        "chargingStates": states,
+    }
+
+
+def _check_monitor(monitor, where):
+    """Persisted samples must support the summary: all of it when every sample is kept."""
+    errors, summary, samples = [], monitor["summary"], monitor["samples"]
+    limit = CONDITION_POLICY_V2["run"]["sampling"]["persistedSamples"]
+    started, stopped = monitor["startedElapsedMs"], monitor["stoppedElapsedMs"]
+    times = [sample.get("elapsedMs") for sample in samples]
+    if None not in times and None not in (started, stopped) and (
+            times != sorted(times) or (times and (times[0] < started or times[-1] > stopped))):
+        errors.append(reason("conditions.monitor", f"{where}/samples",
+                             "Sample times must increase within the monitor's start and stop"))
+    if summary["samples"] <= limit:
+        if len(samples) != summary["samples"]:
+            errors.append(reason("conditions.monitor", f"{where}/samples",
+                                 "Every sample is persisted when there are at most the policy's limit"))
+        elif not _deep_equal(summarize_samples(samples, started, stopped), summary):
+            errors.append(reason("conditions.monitor", f"{where}/summary",
+                                 "Summary differs from the one recomputed from the persisted samples"))
+    elif len(samples) != limit:
+        errors.append(reason("conditions.monitor", f"{where}/samples",
+                             "A decimated monitor persists exactly the policy's sample limit"))
+    else:
+        partial = summarize_samples(samples, started, stopped)
+        bounds = [partial["incompleteSamples"] <= summary["incompleteSamples"],
+                  all(partial["chargingStates"][key] <= summary["chargingStates"][key] for key in partial["chargingStates"]),
+                  all(partial["externalPower"][key] <= summary["externalPower"][key] for key in partial["externalPower"])]
+        if summary["maxGapMs"] is not None and None not in times and None not in (started, stopped) and times:
+            bounds.append(summary["maxGapMs"] >= max(times[0] - started, stopped - times[-1]))
+        if not all(bounds):
+            errors.append(reason("conditions.monitor", f"{where}/summary",
+                                 "Summary is smaller than the persisted samples show"))
+    return errors
+
+
 def charging_state(snapshot):
-    """charging-policy-v2: a charging status always wins; current applies only without a status."""
-    status, current = snapshot.get("batteryStatus"), snapshot.get("currentNowUa")
+    """charging-policy-v2: decided by batteryStatus alone; current_now is diagnostic only."""
+    status = snapshot.get("batteryStatus")
     if status in CHARGING_POLICY_V2["notChargingStatuses"]:
         return "notCharging"
-    if status == CHARGING_POLICY_V2["chargingStatus"]:
-        return "charging"
-    if current is not None and current != 0 and abs(current) <= CHARGING_POLICY_V2["noNetCurrentMaxAbsUa"]:
-        return "noNetCurrent"
-    return "unknown"
+    return "charging" if status == CHARGING_POLICY_V2["chargingStatus"] else "unknown"
 
 
 def charging_counts(conditions, measured):
-    counts = {"notCharging": 0, "noNetCurrent": 0, "charging": 0, "unknown": 0}
+    counts = {"notCharging": 0, "charging": 0, "unknown": 0}
     for snapshot in (conditions["before"], conditions["after"]):
         if snapshot is not None:
             counts[charging_state(snapshot)] += 1
@@ -497,7 +593,7 @@ def charging_counts(conditions, measured):
 def assess_charging(counts):
     if counts["charging"]:
         return "violated"
-    return "unknown" if counts["unknown"] or not counts["notCharging"] + counts["noNetCurrent"] else "satisfied"
+    return "unknown" if counts["unknown"] or not counts["notCharging"] else "satisfied"
 
 
 def _pending_probe(snapshot):
@@ -511,10 +607,11 @@ def _pending_monitor(monitor):
 def _sampled_throughout(monitor):
     interval, start, stop = monitor["intervalMs"], monitor["startedElapsedMs"], monitor["stoppedElapsedMs"]
     ticks, summary = monitor["ticks"], monitor["summary"]
+    sampling = CONDITION_POLICY_V2["run"]["sampling"]
     if None in (interval, start, stop, ticks, summary["maxGapMs"]) or summary["samples"] < 1 or stop < start \
-            or not interval:
+            or interval != sampling["intervalMs"] or stop - start > sampling["maxDurationMs"]:
         return False
-    factor = CONDITION_POLICY_V2["run"]["sampling"]["maxGapFactor"]
+    factor = sampling["maxGapFactor"]
     return summary["maxGapMs"] <= factor * interval and ticks >= math.floor((stop - start) / interval)
 
 
@@ -532,7 +629,7 @@ def assess_during(monitor, before, after):
 
 
 def condition_verdict(record):
-    reasons, power = {}, {"notCharging": 0, "noNetCurrent": 0, "charging": 0, "unknown": 0}
+    reasons, power = {}, {"notCharging": 0, "charging": 0, "unknown": 0}
     attempts = record["coldRuns"]
     unverified = len(attempts) < record["repetitionsPlanned"]
     for attempt in attempts:
@@ -589,10 +686,10 @@ def _semantic_v2(record):
     if protocol["readinessTimeoutSec"] != config.get("readinessTimeoutSec"):
         errors.append(reason("protocol.configuration-mismatch", "/protocol/readinessTimeoutSec",
                              "Protocol readinessTimeoutSec disagrees with the configuration"))
-    if record["chargingPolicy"] != CHARGING_POLICY_V2:
+    if not _deep_equal(record["chargingPolicy"], CHARGING_POLICY_V2):
         errors.append(reason("conditions.policy", "/chargingPolicy",
                              "chargingPolicy must equal the published charging-policy-v2 values"))
-    if record["conditionPolicy"] != CONDITION_POLICY_V2:
+    if not _deep_equal(record["conditionPolicy"], CONDITION_POLICY_V2):
         errors.append(reason("conditions.policy", "/conditionPolicy",
                              "conditionPolicy must equal the published run-conditions-v2 values"))
 
@@ -615,7 +712,8 @@ def _semantic_v2(record):
             or _pending_monitor(last["conditions"]["during"]))
     elif stop == "repetition-failed":
         ok = bool(attempts) and earlier_ok and last["status"] == "failed" and "cleanupError" not in last \
-            and last["error"]["phase"] in ("load", "inference")
+            and last["error"]["phase"] in ("load", "inference") and last["readiness"]["status"] == "ready" \
+            and not _pending_probe(last["conditions"]["after"]) and not _pending_monitor(last["conditions"]["during"])
     else:
         ok = False
     if not ok or (status == "failed") != (stop is not None):
@@ -647,6 +745,16 @@ def _semantic_v2(record):
             errors.append(reason("readiness.inconsistent", f"{where}/readiness/baselineBatteryTempC",
                                  "The readiness baseline changed within the session"))
         before = conditions["before"]
+        if readiness["status"] == "probe-pending" and (not _pending_probe(before) or attempt["instance"] is not None):
+            errors.append(reason("readiness.inconsistent", f"{where}/readiness/status",
+                                 "A pending readiness probe needs a timed-out or busy snapshot and no model load"))
+        if readiness["status"] == "timeout" and not readiness["reasons"]:
+            errors.append(reason("readiness.inconsistent", f"{where}/readiness/reasons",
+                                 "A readiness timeout must name why the device was not ready"))
+        if attempt["status"] == "failed" and attempt["error"]["phase"] in ("load", "inference") and \
+                attempt["instance"] is None:
+            errors.append(reason("instance.inconsistent", f"{where}/instance",
+                                 "A load or inference failure follows a model load and records its instance"))
         if readiness["status"] != "probe-pending":
             recomputed = assess_readiness(before, readiness["baselineBatteryTempC"])
             if readiness["status"] == "ready" and recomputed:
@@ -671,6 +779,7 @@ def _semantic_v2(record):
                                      f"Recorded {conditions[key]} but the evidence gives {value}"))
         monitor = conditions["during"]
         if monitor is not None:
+            errors += _check_monitor(monitor, f"{where}/conditions/during")
             summary = monitor["summary"]
             if len(monitor["samples"]) > summary["samples"] or summary["incompleteSamples"] > summary["samples"] or \
                     sum(summary["externalPower"].values()) != summary["samples"] or \
@@ -713,10 +822,13 @@ def _semantic_v2(record):
     if record["guardsPassed"] is not (False if verdict["status"] == "fail" else None):
         errors.append(reason("guards.inconsistent", "/guardsPassed",
                              "guardsPassed must be false exactly when the condition verdict fails"))
-    missing = sorted(set(verdict["reasons"]) - set(record["guardNotes"]))
-    if missing:
+    expected_notes = [BACKEND_NOTE, *(verdict["reasons"] if verdict["status"] == "fail" else
+                                     [UNVERIFIED_NOTE] if verdict["status"] == "unverified" else [])]
+    if stop in STOP_REASONS_UNMEASURED:
+        expected_notes.append(UNMEASURED_NOTES[stop])
+    if record["guardNotes"] != expected_notes:
         errors.append(reason("guards.inconsistent", "/guardNotes",
-                             f"Failed condition reasons missing from guardNotes: {missing}"))
+                             f"guardNotes must be exactly {expected_notes}"))
 
     order = record["runOrder"]
     if order is not None:
@@ -752,7 +864,12 @@ def validate(record):
                        f"Unsupported schemaVersion {json.dumps(version)}; supported: {list(SUPPORTED_VERSIONS)}")]
     errors = _Validator(schema()).validate(record, schema(), "")
     if not errors:
-        errors = _semantic(record)
+        try:
+            errors = _semantic(record)
+        except (TypeError, ValueError, KeyError, IndexError, AttributeError, OverflowError):
+            # Schema-valid but semantically unusable input (e.g. a float where an index is
+            # needed) is rejected with a reason, never raised to the caller.
+            errors = [reason("record.unprocessable", "", "Record could not be checked against cross-field rules")]
     if len(errors) > MAX_REASONS:
         errors = errors[:MAX_REASONS] + [reason("reasons.truncated", "", f"{len(errors) - MAX_REASONS} more")]
     return errors

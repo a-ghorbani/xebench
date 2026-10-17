@@ -86,15 +86,18 @@ Each snapshot and 1 Hz sample records three raw values:
 - `plugged` (`EXTRA_PLUGGED`);
 - `currentNowUa` (`BATTERY_PROPERTY_CURRENT_NOW`).
 
-Each observation is classified as follows:
+Each observation is classified by the battery status alone:
 
-- **not charging**: status `FULL` (5), `NOT_CHARGING` (4) or `DISCHARGING` (3),
-  for example when a charge limit is reached;
-- **charging**: status `CHARGING` (2), whatever the current says;
-- **no net current**: no usable status, and a non-zero current within ±20 mA.
-  Units and sign conventions vary by vendor, so the raw value is kept. A zero
-  reading, which older APIs return when the property is unsupported, is unknown;
-- **unknown**: anything else.
+- **not charging**: status `FULL` (5) or `NOT_CHARGING` (4), for example when a
+  charge limit is reached;
+- **charging**: status `CHARGING` (2);
+- **unknown**: anything else, including `DISCHARGING` (3), an unknown status or an
+  unreadable one.
+
+`currentNowUa` is recorded raw as a diagnostic and never decides eligibility.
+Its units and sign are vendor-defined: the S23's values look like mA, not the
+documented µA. `FULL` means no charging heat, not zero current. Under load, the S23
+discharged at roughly 1–2 A while it reported `FULL` on USB.
 
 A repetition's `conditions.charging` and the session's `conditionVerdict.charging`
 take one of three values:
@@ -158,6 +161,7 @@ Repetitions of one run stay contiguous.
 | Charging policy: tethered allowed, charging never eligible, unknown never eligible, wait while charging | `conditions.ts` `chargingState`, `assessCharging`, `assessReadiness`; `session.ts` `chargingCounts`, `conditionVerdict`; `BenchConditionsModule.kt` raw status/plugged/current | `conditions.test.ts` charging-policy-v2; `session.test.ts` charging-policy-v2 in sessions; `test_raw_session.py` charging recompute |
 | Instance/process identity, seeded run order | `session.ts`; [`order.ts`](../xebenchapp/src/harness/order.ts) | `session.test.ts` identity; [`order.test.ts`](../xebenchapp/__tests__/order.test.ts); `reference.test.ts` run order |
 | Records cannot claim what their evidence does not support | [`raw_session.py`](../scripts/raw_session.py) `_semantic_v2` recomputes assessments, readiness, verdict and order | [`test_raw_session.py`](../tests/test_raw_session.py) `ConditionsV2Tests`; [`rawSessionSchema.test.ts`](../xebenchapp/__tests__/rawSessionSchema.test.ts) drift fixture |
+| v2 evidence survives sanitized export | [`export_evidence.py`](../scripts/export_evidence.py) allowlist (snapshot, monitor, readiness, charging, verdict, order) | [`test_export_evidence.py`](../tests/test_export_evidence.py) `ConditionsV2ExportTests` (capture → validation → export → verify) |
 
 Native rules (monitor timing and expiry, single-flight, focus counter) have no
 JVM unit tests. Their device validation is listed in the pull request that
@@ -176,6 +180,17 @@ second run of a two-run, three-repetition configuration on both devices
 (`battery-not-cooled`). This is the intended
 behavior, but it limits configuration length on tethered devices. Whether to keep
 the rule, widen it or allow a longer bound is an owner decision.
+
+With charging-policy-v2, the S23 reported `FULL` on USB throughout a measured
+three-repetition run (`satisfied`). Its `current_now` values (about −900 to −2000
+during inference, near 0 at rest) look like mA rather than the documented µA. They
+show the battery discharging at roughly 1–2 A under load while it reported `FULL`.
+Because units and sign are vendor-defined, current never decides eligibility.
+
+A OnePlus 6 (Android 11) reported thermal status `SEVERE` at idle. Its thermal
+service had cached a 95 °C CPU reading, while the HAL's current readings were
+around 32 °C. Readiness correctly refused to measure (`readiness-timeout`,
+`severe-thermal-state`). That device reported `currentNowUa` 0 at `FULL`.
 
 ## Limits
 

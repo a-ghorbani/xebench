@@ -13,7 +13,7 @@ export interface ConditionSnapshot {
   batteryStatus: number | null;
   /** Raw BatteryManager EXTRA_PLUGGED bitmask (0 none, 1 AC, 2 USB, 4 wireless, 8 dock). */
   plugged: number | null;
-  /** Raw BATTERY_PROPERTY_CURRENT_NOW; documented as µA, but sign and unit vary by vendor. */
+  /** Raw BATTERY_PROPERTY_CURRENT_NOW, diagnostic only: documented as µA, but sign and unit vary by vendor. */
   currentNowUa: number | null;
   powerSaveMode: boolean | null;
   thermalStatus: number | null;
@@ -66,10 +66,10 @@ export const CONDITION_POLICY = {
  */
 export const CHARGING_POLICY = {
   version: 'charging-policy-v2', name: 'tethered-not-charging', externalPower: 'allowed',
-  // BatteryManager status codes that cannot be active charging: discharging, not charging, full.
-  notChargingStatuses: [3, 4, 5], chargingStatus: 2,
-  // Used only when the status is unknown or unreadable; a status of charging always wins.
-  noNetCurrentMaxAbsUa: 20000, currentZero: 'unknown',
+  // Eligible BatteryManager statuses: not charging (e.g. at a charge limit) and full.
+  notChargingStatuses: [4, 5], chargingStatus: 2,
+  // current_now units and sign are vendor-defined (the S23 looks like mA): recorded, never decisive.
+  currentNow: 'diagnostic-only',
   readiness: 'wait-while-charging', unknown: 'never-eligible', effect: 'publication-eligibility-only',
 } as const;
 
@@ -242,8 +242,10 @@ export function normalizeMonitor(raw: unknown, fallback: MonitorResult['status']
  */
 function sampledThroughout(monitor: MonitorResult): boolean {
   const {intervalMs, startedElapsedMs, stoppedElapsedMs, ticks, summary} = monitor;
-  if (intervalMs === null || startedElapsedMs === null || stoppedElapsedMs === null || ticks === null ||
-      summary.maxGapMs === null || summary.samples < 1 || stoppedElapsedMs < startedElapsedMs) return false;
+  // The interval and duration must be the policy's, or a sparse monitor could claim coverage.
+  if (intervalMs !== SAMPLING.intervalMs || startedElapsedMs === null || stoppedElapsedMs === null || ticks === null ||
+      summary.maxGapMs === null || summary.samples < 1 || stoppedElapsedMs < startedElapsedMs ||
+      stoppedElapsedMs - startedElapsedMs > SAMPLING.maxDurationMs) return false;
   return summary.maxGapMs <= SAMPLING.maxGapFactor * intervalMs &&
     ticks >= Math.floor((stoppedElapsedMs - startedElapsedMs) / intervalMs);
 }
@@ -268,29 +270,22 @@ export function assessDuring(monitor: MonitorResult, before: ConditionSnapshot, 
 }
 
 export type ChargingStatus = 'satisfied' | 'violated' | 'unknown';
-export type ChargingState = 'notCharging' | 'noNetCurrent' | 'charging' | 'unknown';
+export type ChargingState = 'notCharging' | 'charging' | 'unknown';
 export type ChargingCounts = Record<ChargingState, number>;
 
-/**
- * One observation under charging-policy-v2. A charging status always counts as charging. The
- * current criterion applies only when the status is unknown or unreadable. A zero reading
- * there is unknown, since older APIs return 0 when the property is unsupported.
- */
+/** One observation under charging-policy-v2: decided by the battery status alone. */
 export function chargingState(snapshot: ConditionSnapshot): ChargingState {
   const status = snapshot.batteryStatus;
   if (status !== null && (CHARGING_POLICY.notChargingStatuses as readonly number[]).includes(status)) return 'notCharging';
-  if (status === CHARGING_POLICY.chargingStatus) return 'charging';
-  const current = snapshot.currentNowUa;
-  return current !== null && current !== 0 && Math.abs(current) <= CHARGING_POLICY.noNetCurrentMaxAbsUa ?
-    'noNetCurrent' : 'unknown';
+  return status === CHARGING_POLICY.chargingStatus ? 'charging' : 'unknown';
 }
 
-export const emptyChargingCounts = (): ChargingCounts => ({notCharging: 0, noNetCurrent: 0, charging: 0, unknown: 0});
+export const emptyChargingCounts = (): ChargingCounts => ({notCharging: 0, charging: 0, unknown: 0});
 
 /** Any active charging violates the policy; every observation must be measured to satisfy it. */
 export function assessCharging(counts: ChargingCounts): ChargingStatus {
   if (counts.charging) return 'violated';
-  return counts.unknown || !(counts.notCharging + counts.noNetCurrent) ? 'unknown' : 'satisfied';
+  return counts.unknown || !counts.notCharging ? 'unknown' : 'satisfied';
 }
 
 type Native = {sample(): Promise<unknown>; startMonitor(intervalMs: number, maxDurationMs: number): Promise<unknown>;

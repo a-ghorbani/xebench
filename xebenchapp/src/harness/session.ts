@@ -228,15 +228,20 @@ export function createSession(
   return record;
 }
 
+export const UNMEASURED_NOTES = {
+  'configuration-aborted': 'Not run: an earlier run aborted the configuration',
+  'setup-failed': 'Not run: the model artifact could not be read',
+} as const;
+
 /** A run that never reached measurement (aborted configuration or unreadable model). */
 export function unmeasuredSession(
   adapter: EngineAdapter, config: ReferenceConfig, run: ReferenceRun, identity: SessionIdentity,
-  runOrder: RunOrder | null, stopReason: 'configuration-aborted' | 'setup-failed', note: string,
+  runOrder: RunOrder | null, stopReason: keyof typeof UNMEASURED_NOTES,
 ): ReferenceSession {
   const record = createSession(adapter, config, run, {...identity, artifact: null}, runOrder);
   record.status = 'failed';
   record.stopReason = stopReason;
-  record.guardNotes = [...record.guardNotes, note];
+  record.guardNotes = [...record.guardNotes, UNMEASURED_NOTES[stopReason]];
   return record;
 }
 

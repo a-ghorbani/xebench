@@ -285,7 +285,7 @@ test.each(['stuck', 'timeout', 'error'] as const)('a %s monitor stop aborts afte
 
 test('records fresh-instance identity, process loads, run order and the charging policy', async () => {
   jest.mocked(conditions.readConditions).mockImplementation(async () =>
-    conditions.normalizeConditions({...healthyConditions, batteryStatus: 3, charging: false}));
+    conditions.normalizeConditions({...healthyConditions, batteryStatus: 4}));
   const runOrder = {method: 'mulberry32-fisher-yates-v1' as const, seed: 7, seedSource: 'configured' as const,
     order: ['b', config.runs[0].id], position: 1};
   const sleep = jest.fn(noSleep);
@@ -404,12 +404,13 @@ describe('charging-policy-v2 in sessions', () => {
     expect(result.conditionVerdict.charging).toBe('unknown');
   });
 
-  test('a current-based reading makes a status-less device eligible', async () => {
+  test('a small current never substitutes for a status: diagnostic only', async () => {
     const quiet = {...healthyConditions, batteryStatus: null, currentNowUa: -8000};
     jest.mocked(conditions.readConditions).mockImplementation(async () => conditions.normalizeConditions(quiet));
     jest.mocked(conditions.stopMonitor).mockResolvedValue(stoppedMonitor([quiet]));
     const result = await runSession(adapter(), one, config.runs[0], identity, async () => {});
-    expect(result.conditionVerdict.charging).toBe('satisfied');
+    expect(result.coldRuns[0].conditions.before.currentNowUa).toBe(-8000);
+    expect(result.conditionVerdict.charging).toBe('unknown');
   });
 
   test('readiness waits while the battery is charging, then measures', async () => {

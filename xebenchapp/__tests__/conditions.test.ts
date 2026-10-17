@@ -101,7 +101,7 @@ const before = normalizeConditions(healthy);
 test('during-run samples pass only with complete coverage', () => {
   const monitor = normalizeMonitor(monitorRaw([healthy, {...healthy, thermalStatus: 2}]));
   expect(monitor.summary).toMatchObject({samples: 2, maxThermalStatus: 2, incompleteSamples: 0,
-    externalPower: {connected: 2, disconnected: 0, unknown: 0}, chargingStates: {notCharging: 2, noNetCurrent: 0, charging: 0, unknown: 0}});
+    externalPower: {connected: 2, disconnected: 0, unknown: 0}, chargingStates: {notCharging: 2, charging: 0, unknown: 0}});
   expect(assessDuring(monitor, before, before)).toEqual({status: 'pass', reasons: []});
   // Zero samples, a sampling gap, too few ticks for the duration, expiry or drops are incomplete.
   expect(assessDuring(normalizeMonitor(monitorRaw([])), before, before).status).toBe('unverified');
@@ -138,10 +138,11 @@ test('persisted samples are bounded while the summary covers every sample', () =
 describe('charging-policy-v2 (tethered, not charging)', () => {
   const state = (change: object) => chargingState(normalizeConditions({...healthy, ...change}));
 
-  test('full, not-charging or discharging statuses are eligible with external power connected', () => {
+  test('full or not-charging statuses are eligible with external power connected', () => {
     expect(state({batteryStatus: 5, charging: true})).toBe('notCharging');
     expect(state({batteryStatus: 4, charging: true, currentNowUa: 900000})).toBe('notCharging');
-    expect(state({batteryStatus: 3, charging: false})).toBe('notCharging');
+    // Only the owner's FULL / NOT_CHARGING statuses count; discharging is not eligible evidence.
+    expect(state({batteryStatus: 3, charging: false})).toBe('unknown');
   });
 
   test('an active charging status is charging whatever the current says', () => {
@@ -149,22 +150,19 @@ describe('charging-policy-v2 (tethered, not charging)', () => {
     expect(state({batteryStatus: 2, currentNowUa: 100})).toBe('charging');
   });
 
-  test('without a status, only a small non-zero current shows no net charging', () => {
-    expect(state({batteryStatus: null, currentNowUa: -15000})).toBe('noNetCurrent');
-    expect(state({batteryStatus: 1, currentNowUa: 20000})).toBe('noNetCurrent');
-    // Sign conventions vary by vendor, so a large current of either sign is unknown.
-    expect(state({batteryStatus: null, currentNowUa: 500000})).toBe('unknown');
-    expect(state({batteryStatus: null, currentNowUa: -500000})).toBe('unknown');
-    // Zero is what older APIs return for an unsupported property.
-    expect(state({batteryStatus: null, currentNowUa: 0})).toBe('unknown');
-    expect(state({batteryStatus: null, currentNowUa: null})).toBe('unknown');
+  test('current_now is diagnostic only: without a status the state is unknown', () => {
+    // Units and sign are vendor-defined (the Galaxy S23 reports what looks like mA).
+    for (const currentNowUa of [-15000, -1500, 0, 20000, 500000, null]) {
+      expect(state({batteryStatus: null, currentNowUa})).toBe('unknown');
+      expect(state({batteryStatus: 1, currentNowUa})).toBe('unknown');
+    }
   });
 
   test('any charging violates, unknown is never eligible, and measured not-charging satisfies', () => {
-    expect(assessCharging({notCharging: 3, noNetCurrent: 1, charging: 0, unknown: 0})).toBe('satisfied');
-    expect(assessCharging({notCharging: 3, noNetCurrent: 0, charging: 1, unknown: 0})).toBe('violated');
-    expect(assessCharging({notCharging: 3, noNetCurrent: 0, charging: 0, unknown: 1})).toBe('unknown');
-    expect(assessCharging({notCharging: 0, noNetCurrent: 0, charging: 0, unknown: 0})).toBe('unknown');
+    expect(assessCharging({notCharging: 3, charging: 0, unknown: 0})).toBe('satisfied');
+    expect(assessCharging({notCharging: 3, charging: 1, unknown: 0})).toBe('violated');
+    expect(assessCharging({notCharging: 3, charging: 0, unknown: 1})).toBe('unknown');
+    expect(assessCharging({notCharging: 0, charging: 0, unknown: 0})).toBe('unknown');
   });
 
   test('readiness waits while charging but never for an unknown charging state', () => {
@@ -176,7 +174,7 @@ describe('charging-policy-v2 (tethered, not charging)', () => {
   test('monitor summaries count the charging state of every sample', () => {
     const summary = normalizeMonitor(monitorRaw([healthy, {...healthy, batteryStatus: 2},
       {...healthy, batteryStatus: null, currentNowUa: null}])).summary;
-    expect(summary.chargingStates).toEqual({notCharging: 1, noNetCurrent: 0, charging: 1, unknown: 1});
+    expect(summary.chargingStates).toEqual({notCharging: 1, charging: 1, unknown: 1});
   });
 });
 

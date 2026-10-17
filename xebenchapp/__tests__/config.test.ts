@@ -25,7 +25,8 @@ test('rejects duplicate run IDs', () => {
 });
 
 test('readiness timeout defaults to the protocol bound and a configured order seed is kept', () => {
-  const {readinessTimeoutSec: _omitted, ...legacy} = bundled;
+  const legacy: Record<string, unknown> = {...bundled};
+  delete legacy.readinessTimeoutSec;
   expect(parseConfig(legacy).readinessTimeoutSec).toBe(180);
   expect(parseConfig(legacy)).not.toHaveProperty('orderSeed');
   expect(parseConfig({...bundled, orderSeed: 0}).orderSeed).toBe(0);

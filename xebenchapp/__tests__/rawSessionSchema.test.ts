@@ -87,8 +87,8 @@ function native(read: object = healthy, stop: object = monitor(), start: Awaited
 async function emitted(): Promise<Record<string, ReferenceSession>> {
   const records: Record<string, ReferenceSession> = {};
   const one = {...config, nColdRuns: 1};
-  const single = async (engine: ReturnType<typeof adapter>, cfg = one, extra: SessionContext = {}) =>
-    (await capture(persist => runSession(engine, cfg, config.runs[0], identity, persist, noSleep, context(extra)))).pop()!;
+  const single = async (engine: ReturnType<typeof adapter>, cfg = one, extra: SessionContext = {}, run = config.runs[0]) =>
+    (await capture(persist => runSession(engine, cfg, run, identity, persist, noSleep, context(extra)))).pop()!;
 
   native();
   const four = {...config, nColdRuns: 4};
@@ -180,14 +180,44 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
   const runs = [config.runs[0], {...config.runs[0], id: 'second-run'}];
   const twoRuns = {...config, nColdRuns: 2, orderSeed: 12345, runs};
   const ids = seededOrder(runs.map(run => run.id), 12345);
-  const position = ids.indexOf(config.runs[0].id);
-  const runOrder = {method: ORDER_METHOD, seed: 12345, seedSource: 'configured' as const, order: ids, position};
+  // The session at position 1, i.e. the run executed second.
+  const later = runs.find(run => run.id === ids[1])!;
+  const runOrder = {method: ORDER_METHOD, seed: 12345, seedSource: 'configured' as const, order: ids, position: 1};
   records.orderedLaterRun = await single(adapter(), twoRuns,
-    {runOrder, baseline: {batteryTempC: 30}, initialCooldown: true});
-  records.configurationAborted = unmeasuredSession(adapter(), twoRuns, config.runs[0], {...identity, artifact: null},
-    runOrder, 'configuration-aborted', 'Not run: Engine cleanup failed: fixture cleanup failure');
-  records.setupFailed = unmeasuredSession(adapter(), one, config.runs[0], identity, null, 'setup-failed',
-    'Model artifact could not be read');
+    {runOrder, baseline: {batteryTempC: 30}, initialCooldown: true}, later);
+  records.configurationAborted = unmeasuredSession(adapter(), twoRuns, later, {...identity, artifact: null},
+    runOrder, 'configuration-aborted');
+
+  // Further app paths: failure then a pending after-probe, a late monitor start,
+  // cleanup failure with a pending probe, a cooled-baseline timeout after a success,
+  // the null-headroom confirmation, a failed stop after success and decimated samples.
+  native().mockResolvedValueOnce(conditions.normalizeConditions(healthy))
+    .mockResolvedValue(conditions.normalizeConditions({probeStatus: 'timeout'}));
+  const failsThenPending = adapter();
+  failsThenPending.benchOnce.mockRejectedValueOnce(new Error('fixture inference failure'));
+  records.inferenceFailedThenProbePending = await single(failsThenPending);
+  native(healthy, monitor(), 'timeout');
+  records.monitorStartTimeout = await single(adapter());
+  native().mockResolvedValueOnce(conditions.normalizeConditions(healthy))
+    .mockResolvedValue(conditions.normalizeConditions({probeStatus: 'busy'}));
+  const leakingPending = adapter();
+  leakingPending.release.mockRejectedValueOnce(new Error('fixture cleanup failure'));
+  records.cleanupFailedProbePending = await single(leakingPending);
+  native().mockResolvedValueOnce(conditions.normalizeConditions(healthy))
+    .mockResolvedValueOnce(conditions.normalizeConditions(healthy))
+    .mockResolvedValue(conditions.normalizeConditions({...healthy, batteryTempC: 33}));
+  records.laterReadinessTimeout = await single(adapter(), {...config, readinessTimeoutSec: 10});
+  native().mockResolvedValueOnce(conditions.normalizeConditions({...healthy, thermalHeadroom: null}))
+    .mockResolvedValue(conditions.normalizeConditions({...healthy, thermalHeadroom: null}));
+  records.headroomUnavailable = await single(adapter());
+  native(healthy, {status: 'stopped'});
+  jest.mocked(conditions.stopMonitor).mockResolvedValueOnce(conditions.normalizeMonitor(null, 'error'));
+  records.monitorStopError = await single(adapter());
+  const many = Array.from({length: 45}, (_, index) => ({...healthy, elapsedMs: 5000 + index * 1000,
+    batteryTempC: index === 17 ? 31.5 : 30.5}));
+  native(healthy, monitor(many, {stoppedElapsedMs: 49500}));
+  records.decimatedSamples = await single(adapter());
+  records.setupFailed = unmeasuredSession(adapter(), one, config.runs[0], identity, null, 'setup-failed');
   // The per-process ID is random by design; pin it so the fixture is reproducible.
   for (const record of Object.values(records)) {
     for (const attempt of record.coldRuns) {
@@ -212,7 +242,10 @@ test('runSession records match the committed fixture validated by the host schem
     afterProbeTimeout: 'failed/condition-probe-pending/fail', orderedLaterRun: 'complete/null/pass',
     configurationAborted: 'failed/configuration-aborted/unverified', setupFailed: 'failed/setup-failed/unverified',
     chargingDuringRun: 'complete/null/pass', chargingTimeout: 'failed/readiness-timeout/unverified',
-    chargingUnknown: 'complete/null/pass'});
+    chargingUnknown: 'complete/null/pass', inferenceFailedThenProbePending: 'failed/condition-probe-pending/fail',
+    monitorStartTimeout: 'failed/condition-probe-pending/fail', cleanupFailedProbePending: 'failed/cleanup-failed/fail',
+    laterReadinessTimeout: 'failed/readiness-timeout/fail', headroomUnavailable: 'complete/null/pass',
+    monitorStopError: 'failed/condition-probe-pending/fail', decimatedSamples: 'complete/null/pass'});
   expect(['complete', 'chargingDuringRun', 'chargingTimeout', 'chargingUnknown'].map(key =>
     records[key].conditionVerdict.charging)).toEqual(['satisfied', 'violated', 'violated', 'unknown']);
   for (const record of Object.values(records)) {
