@@ -425,7 +425,8 @@
             "readinessTimeoutSec": {"type": "integer", "minimum": 10, "maximum": 900},
             "measurementKind": {"const": "fresh-instance-first-request"},
             "warmRequests": {"const": "not-measured"},
-            "processRestartBetweenRepetitions": {"const": false}
+            "processRestartBetweenRepetitions": {"const": false},
+            "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10}
           }
         },
         "status": {"enum": ["running", "complete", "failed"]},
@@ -471,33 +472,7 @@
           ]
         },
         "runOrder": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/runOrder"}]},
-        "chargingPolicy": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "charging-policy-v2 (tethered-not-charging): external power allowed; eligible only when batteryStatus is FULL or NOT_CHARGING at every snapshot and sample; current_now is diagnostic only.",
-          "required": [
-            "version",
-            "name",
-            "externalPower",
-            "notChargingStatuses",
-            "chargingStatus",
-            "currentNow",
-            "readiness",
-            "unknown",
-            "effect"
-          ],
-          "properties": {
-            "version": {"const": "charging-policy-v2"},
-            "name": {"const": "tethered-not-charging"},
-            "externalPower": {"const": "allowed"},
-            "notChargingStatuses": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": [4, 5]}},
-            "chargingStatus": {"const": 2},
-            "readiness": {"const": "wait-while-charging"},
-            "unknown": {"const": "never-eligible"},
-            "effect": {"const": "publication-eligibility-only"},
-            "currentNow": {"const": "diagnostic-only"}
-          }
-        },
+        "chargingPolicy": {"oneOf": [{"$ref": "#/$defs/chargingPolicyV2"}, {"$ref": "#/$defs/chargingPolicyV3"}]},
         "conditionVerdict": {
           "type": "object",
           "required": ["status", "reasons", "charging"],
@@ -505,7 +480,7 @@
           "properties": {
             "status": {"enum": ["pass", "fail", "unverified"]},
             "reasons": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
-            "charging": {"enum": ["satisfied", "violated", "unknown"]}
+            "charging": {"enum": ["satisfied", "violated", "on-battery", "unknown"]}
           }
         }
       },
@@ -651,7 +626,7 @@
         "duringAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]},
         "after": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionSnapshotV2"}]},
         "afterAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]},
-        "charging": {"enum": ["satisfied", "violated", "unknown"]}
+        "charging": {"enum": ["satisfied", "violated", "on-battery", "unknown"]}
       }
     },
     "monitor": {
@@ -706,8 +681,10 @@
               "properties": {
                 "notCharging": {"type": "integer", "minimum": 0},
                 "charging": {"type": "integer", "minimum": 0},
-                "unknown": {"type": "integer", "minimum": 0}
-              }
+                "unknown": {"type": "integer", "minimum": 0},
+                "onBattery": {"type": "integer", "minimum": 0}
+              },
+              "description": "onBattery is present exactly under charging-policy-v3 (checked by the validator)."
             }
           }
         },
@@ -786,6 +763,64 @@
         }
       },
       "description": "A v2 endpoint snapshot or monitor sample: typed and ranged like conditions.ts normalizeConditions, where invalid readings become null. pssMb exists only on endpoint snapshots."
+    },
+    "chargingPolicyV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "charging-policy-v2: as v3, but DISCHARGING counts as unknown (earlier builds).",
+      "required": [
+        "version",
+        "name",
+        "externalPower",
+        "notChargingStatuses",
+        "chargingStatus",
+        "currentNow",
+        "readiness",
+        "unknown",
+        "effect"
+      ],
+      "properties": {
+        "version": {"const": "charging-policy-v2"},
+        "name": {"const": "tethered-not-charging"},
+        "externalPower": {"const": "allowed"},
+        "notChargingStatuses": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": [4, 5]}},
+        "chargingStatus": {"const": 2},
+        "readiness": {"const": "wait-while-charging"},
+        "unknown": {"const": "never-eligible"},
+        "effect": {"const": "publication-eligibility-only"},
+        "currentNow": {"const": "diagnostic-only"}
+      }
+    },
+    "chargingPolicyV3": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "charging-policy-v3 (tethered-not-charging): external power allowed; eligible only when batteryStatus is FULL or NOT_CHARGING at every snapshot and sample; DISCHARGING is the known, ineligible on-battery state; current_now is diagnostic only.",
+      "required": [
+        "version",
+        "name",
+        "externalPower",
+        "notChargingStatuses",
+        "chargingStatus",
+        "currentNow",
+        "readiness",
+        "unknown",
+        "effect",
+        "dischargingStatus",
+        "onBattery"
+      ],
+      "properties": {
+        "version": {"const": "charging-policy-v3"},
+        "name": {"const": "tethered-not-charging"},
+        "externalPower": {"const": "allowed"},
+        "notChargingStatuses": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": [4, 5]}},
+        "chargingStatus": {"const": 2},
+        "readiness": {"const": "wait-while-charging"},
+        "unknown": {"const": "never-eligible"},
+        "effect": {"const": "publication-eligibility-only"},
+        "currentNow": {"const": "diagnostic-only"},
+        "dischargingStatus": {"const": 3},
+        "onBattery": {"const": "not-eligible"}
+      }
     }
   }
 }

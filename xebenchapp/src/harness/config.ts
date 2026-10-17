@@ -15,6 +15,8 @@ export interface ReferenceConfig {
   cooldownSec: number;
   /** Bound on waiting for readiness before each repetition; a timeout skips it. */
   readinessTimeoutSec: number;
+  /** Readiness bound on battery-temperature rise over the first ready reading (default 2 °C). */
+  maxBatteryTempRiseC: number;
   maxDecodeTokens: number;
   /** Optional fixed run-order seed; otherwise a seed is generated and recorded. */
   orderSeed?: number;
@@ -41,6 +43,13 @@ function integer(value: unknown, low: number, high: number): number {
   return value;
 }
 
+function decimal(value: unknown, low: number, high: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < low || value > high) {
+    throw new Error(`Expected number between ${low} and ${high}`);
+  }
+  return value;
+}
+
 function label(value: unknown): string {
   if (typeof value !== 'string' || !value.trim() || value.length > 128 || /[\x00-\x1f]/.test(value)) {
     throw new Error('Invalid configuration label');
@@ -50,7 +59,7 @@ function label(value: unknown): string {
 
 export function parseConfig(input: unknown): ReferenceConfig {
   const value = object(input);
-  fields(value, ['schemaVersion', 'id', 'nColdRuns', 'cooldownSec', 'readinessTimeoutSec',
+  fields(value, ['schemaVersion', 'id', 'nColdRuns', 'cooldownSec', 'readinessTimeoutSec', 'maxBatteryTempRiseC',
     'maxDecodeTokens', 'orderSeed', 'runs']);
   if (value.schemaVersion !== 1) {
     throw new Error('Unsupported configuration version');
@@ -81,6 +90,7 @@ export function parseConfig(input: unknown): ReferenceConfig {
     schemaVersion: 1, id: label(value.id), nColdRuns: integer(value.nColdRuns, 1, 20),
     cooldownSec: integer(value.cooldownSec, 0, 300),
     readinessTimeoutSec: value.readinessTimeoutSec === undefined ? 180 : integer(value.readinessTimeoutSec, 10, 900),
+    maxBatteryTempRiseC: value.maxBatteryTempRiseC === undefined ? 2 : decimal(value.maxBatteryTempRiseC, 0.5, 10),
     maxDecodeTokens: integer(value.maxDecodeTokens, 1, 512),
     ...(value.orderSeed === undefined ? {} : {orderSeed: integer(value.orderSeed, 0, 0xffffffff)}), runs,
   };

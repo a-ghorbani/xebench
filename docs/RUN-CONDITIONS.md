@@ -1,6 +1,6 @@
 # Run conditions
 
-Policy `run-conditions-v2` (issue #2) and `charging-policy-v2`. Both policies are
+Policy `run-conditions-v2` (issue #2) and `charging-policy-v3`. Both policies are
 copied into every session record. They define when a repetition may start, what is
 observed while it runs, and when a condition verdict may pass. They do not verify
 backend execution, quality or cross-device comparability.
@@ -26,8 +26,12 @@ Ready requires a complete probe, every required signal measured, no run-time fai
 (below), and:
 
 - Android thermal status `NONE` (0);
-- battery temperature at most 40 °C, and at most 2 °C above the first ready reading
-  of the configuration invocation (the baseline is shared across its runs);
+- battery temperature at most 40 °C, and at most `maxBatteryTempRiseC` (default
+  2 °C; configurable from 0.5 to 10) above the first ready reading of the
+  configuration invocation. The baseline is shared across that invocation's runs.
+  The effective bound is recorded in `configuration` and `protocol`, like
+  `readinessTimeoutSec`. Follow-up: the charging A/B experiment will measure
+  battery-temperature behaviour, and the final default will be set from that data;
 - thermal headroom at most 0.8 when the API returns a value. Headroom is null when
   unsupported (API < 30), rate-limited or NaN (the first call can be NaN). An
   otherwise-ready poll with null headroom is repeated once after 1.5 s; if headroom
@@ -75,7 +79,7 @@ condition pass is necessary but not sufficient.
 
 ## Charging policy (owner decision)
 
-`charging-policy-v2` ("tethered, not charging") follows the owner's decision. Lab
+`charging-policy-v3` ("tethered, not charging") follows the owner's decision. Lab
 phones stay USB-tethered, so **external power is allowed** but **active charging
 is not**. The policy only affects publication eligibility. It never removes
 measurements or changes run validity.
@@ -91,8 +95,10 @@ Each observation is classified by the battery status alone:
 - **not charging**: status `FULL` (5) or `NOT_CHARGING` (4), for example when a
   charge limit is reached;
 - **charging**: status `CHARGING` (2);
-- **unknown**: anything else, including `DISCHARGING` (3), an unknown status or an
-  unreadable one.
+- **on battery**: status `DISCHARGING` (3). This is a known state, but the tethered
+  lab policy does not admit it. A future policy version may admit on-battery runs
+  for external operators (#7), with power source as a comparison dimension;
+- **unknown**: an unknown or unreadable status.
 
 `currentNowUa` is recorded raw as a diagnostic and never decides eligibility.
 Its units and sign are vendor-defined: the S23's values look like mA, not the
@@ -100,12 +106,17 @@ documented µA. `FULL` means no charging heat, not zero current. Under load, the
 discharged at roughly 1–2 A while it reported `FULL` on USB.
 
 A repetition's `conditions.charging` and the session's `conditionVerdict.charging`
-take one of three values:
+take one of four values:
 
 - `violated` if any endpoint or sample was charging;
-- `satisfied` only when every observation was measured and none was charging, and
-  every measured repetition was sampled;
+- `on-battery` otherwise, if any was on battery (not eligible under this policy);
+- `satisfied` only when every observation was measured as not charging, and every
+  measured repetition was sampled;
 - `unknown` otherwise. Unknown is never eligible.
+
+`charging-policy-v2`, written by earlier builds of this work, applies the same
+rules but counts `DISCHARGING` as unknown. The validator still accepts it, with
+those semantics.
 
 Readiness also waits, within `readinessTimeoutSec`, while the battery is charging.
 On timeout the repetition is skipped with reason `charging`. Because charging is
@@ -158,7 +169,7 @@ Repetitions of one run stay contiguous.
 | Interruption detection | [`MainActivity.kt`](../xebenchapp/android/app/src/main/java/com/xebenchapp/MainActivity.kt) focus counter; `assessDuring` | `conditions.test.ts` focus losses; `session.test.ts` interruption then readiness wait; device runs |
 | Unresponsive probes/monitors abort after save and release | `conditions.ts` `bounded`; `session.ts` | `conditions.test.ts` unresponsive calls; `session.test.ts` late probes, busy sampler, monitor start/stop failures |
 | Cleanup on failure; unmeasured runs recorded | `session.ts`, `reference.ts` | `session.test.ts` failed load/inference/release, monitor stop on failure; `reference.test.ts` cleanup abort, unreadable model |
-| Charging policy: tethered allowed, charging never eligible, unknown never eligible, wait while charging | `conditions.ts` `chargingState`, `assessCharging`, `assessReadiness`; `session.ts` `chargingCounts`, `conditionVerdict`; `BenchConditionsModule.kt` raw status/plugged/current | `conditions.test.ts` charging-policy-v2; `session.test.ts` charging-policy-v2 in sessions; `test_raw_session.py` charging recompute |
+| Charging policy: tethered allowed, charging never eligible, unknown never eligible, wait while charging | `conditions.ts` `chargingState`, `assessCharging`, `assessReadiness`; `session.ts` `chargingCounts`, `conditionVerdict`; `BenchConditionsModule.kt` raw status/plugged/current | `conditions.test.ts` charging-policy-v3; `session.test.ts` charging-policy-v3 in sessions; `test_raw_session.py` charging recompute |
 | Instance/process identity, seeded run order | `session.ts`; [`order.ts`](../xebenchapp/src/harness/order.ts) | `session.test.ts` identity; [`order.test.ts`](../xebenchapp/__tests__/order.test.ts); `reference.test.ts` run order |
 | Records cannot claim what their evidence does not support | [`raw_session.py`](../scripts/raw_session.py) `_semantic_v2` recomputes assessments, readiness, verdict and order | [`test_raw_session.py`](../tests/test_raw_session.py) `ConditionsV2Tests`; [`rawSessionSchema.test.ts`](../xebenchapp/__tests__/rawSessionSchema.test.ts) drift fixture |
 | v2 evidence survives sanitized export | [`export_evidence.py`](../scripts/export_evidence.py) allowlist (snapshot, monitor, readiness, charging, verdict, order) | [`test_export_evidence.py`](../tests/test_export_evidence.py) `ConditionsV2ExportTests` (capture → validation → export → verify) |
@@ -178,19 +189,24 @@ repetitions and did not fall back within the 180 s readiness bound. The 2 °C
 rise rule therefore delayed (up to 101 s) and then skipped a repetition of the
 second run of a two-run, three-repetition configuration on both devices
 (`battery-not-cooled`). This is the intended
-behavior, but it limits configuration length on tethered devices. Whether to keep
-the rule, widen it or allow a longer bound is an owner decision.
+behavior, but it limits configuration length on tethered devices. The owner kept the
+2 °C default. The bound is now configurable per configuration, and the charging
+A/B experiment will set the final value.
 
-With charging-policy-v2, the S23 reported `FULL` on USB throughout a measured
+With the status-only charging policy, the S23 reported `FULL` on USB throughout a measured
 three-repetition run (`satisfied`). Its `current_now` values (about −900 to −2000
 during inference, near 0 at rest) look like mA rather than the documented µA. They
 show the battery discharging at roughly 1–2 A under load while it reported `FULL`.
 Because units and sign are vendor-defined, current never decides eligibility.
 
-A OnePlus 6 (Android 11) reported thermal status `SEVERE` at idle. Its thermal
-service had cached a 95 °C CPU reading, while the HAL's current readings were
-around 32 °C. Readiness correctly refused to measure (`readiness-timeout`,
-`severe-thermal-state`). That device reported `currentNowUa` 0 at `FULL`.
+A OnePlus 6 (Android 11) throttles under load. In one capture, it still reported
+`SEVERE` shortly after earlier use, and readiness refused to start. In the
+final-code capture, it was at thermal status 0 at idle. Readiness waited 25 s for
+headroom, and the device then reached `SEVERE` during the first repetition (tg
+9.1 tok/s, TTFT 26.5 s, flagged `severe-thermal-state`, metrics kept). The second
+repetition was skipped after a readiness timeout. This is real throttling. The
+device stays in the lab as an example of an old device that throttles, not as a
+reference device. It reported `currentNowUa` 0 at `FULL`.
 
 ## Limits
 

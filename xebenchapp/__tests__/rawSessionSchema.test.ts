@@ -30,7 +30,7 @@ afterEach(() => jest.restoreAllMocks());
 const config = parseConfig(configData);
 const identity = {runId: '1767225600000-0-fixture', timestampIso: '2026-01-01T00:00:00.000Z',
   deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: {sha256: 'a'.repeat(64), sizeBytes: 770000000}};
-// USB-tethered at a charge limit (charging-policy-v2 eligible).
+// USB-tethered at a charge limit (charging-policy-v3 eligible).
 const healthy = {timestampMs: 1767225600000, elapsedMs: 5000, batteryPct: 80, batteryTempC: 30.5, charging: true,
   batteryStatus: 4, plugged: 2, currentNowUa: -1500,
   powerSaveMode: false, thermalStatus: 0, thermalHeadroom: 0.4, screenOn: true, foreground: true,
@@ -166,7 +166,7 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
     .mockResolvedValue(conditions.normalizeConditions({probeStatus: 'timeout'}));
   records.afterProbeTimeout = await single(adapter());
 
-  // charging-policy-v2: active charging during a run, until a readiness timeout, and unreadable.
+  // charging-policy-v3: active charging during a run, until a readiness timeout, and unreadable.
   native(healthy, monitor([healthy, {...healthy, elapsedMs: 6000, batteryStatus: 2}]));
   records.chargingDuringRun = await single(adapter());
   native({...healthy, batteryStatus: 2});
@@ -174,6 +174,12 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
   const unreadable = {...healthy, batteryStatus: null, currentNowUa: null};
   native(unreadable, monitor([unreadable, {...unreadable, elapsedMs: 6000}]));
   records.chargingUnknown = await single(adapter());
+  const onBattery = {...healthy, batteryStatus: 3, charging: false, plugged: 0};
+  native(onBattery, monitor([onBattery, {...onBattery, elapsedMs: 6000}]));
+  records.onBattery = await single(adapter());
+  native({...healthy, batteryTempC: 31.5});
+  records.riseOverride = await single(adapter(), {...one, readinessTimeoutSec: 10, maxBatteryTempRiseC: 0.5},
+    {baseline: {batteryTempC: 30.5}});
 
   // A later run in a seeded two-run configuration, with a shared readiness baseline.
   native();
@@ -242,12 +248,13 @@ test('runSession records match the committed fixture validated by the host schem
     afterProbeTimeout: 'failed/condition-probe-pending/fail', orderedLaterRun: 'complete/null/pass',
     configurationAborted: 'failed/configuration-aborted/unverified', setupFailed: 'failed/setup-failed/unverified',
     chargingDuringRun: 'complete/null/pass', chargingTimeout: 'failed/readiness-timeout/unverified',
-    chargingUnknown: 'complete/null/pass', inferenceFailedThenProbePending: 'failed/condition-probe-pending/fail',
+    chargingUnknown: 'complete/null/pass', onBattery: 'complete/null/pass', riseOverride: 'failed/readiness-timeout/fail', inferenceFailedThenProbePending: 'failed/condition-probe-pending/fail',
     monitorStartTimeout: 'failed/condition-probe-pending/fail', cleanupFailedProbePending: 'failed/cleanup-failed/fail',
     laterReadinessTimeout: 'failed/readiness-timeout/fail', headroomUnavailable: 'complete/null/pass',
     monitorStopError: 'failed/condition-probe-pending/fail', decimatedSamples: 'complete/null/pass'});
   expect(['complete', 'chargingDuringRun', 'chargingTimeout', 'chargingUnknown'].map(key =>
     records[key].conditionVerdict.charging)).toEqual(['satisfied', 'violated', 'violated', 'unknown']);
+  expect(records.onBattery.conditionVerdict.charging).toBe('on-battery');
   for (const record of Object.values(records)) {
     const keys = Object.keys(record);
     expect(keys.filter(key => !(key in SESSION.properties))).toEqual([]);

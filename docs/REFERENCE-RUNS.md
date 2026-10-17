@@ -26,9 +26,9 @@ is not flavor-aware. The application ID stays `com.xebenchapp`.
 
 Stage the GGUF named by the configuration in the app's external files directory
 (see [MODELS.md](../MODELS.md)). To customize a run, copy the bundled JSON, edit its
-model basename, quant label, threads/context, repetition, cooldown or readiness
-timeout (`readinessTimeoutSec`) settings, or add `orderSeed` to reproduce a recorded
-run order, then stage it:
+model basename, quant label, threads/context, repetition, cooldown, readiness
+timeout (`readinessTimeoutSec`) or battery-rise bound (`maxBatteryTempRiseC`)
+settings, or add `orderSeed` to reproduce a recorded run order, then stage it:
 
 ```sh
 adb -s <serial> push my-config.json /sdcard/Android/data/com.xebenchapp/files/xebench-config.json
@@ -101,7 +101,9 @@ readiness, sampling, instance, order and verdict evidence. For these, the valida
 - checks `status` against `stopReason`: a skipped repetition ends a
   `readiness-timeout` session, and unmeasured runs have no attempts and
   `artifact: null`;
-- requires the published `run-conditions-v2` and `charging-policy-v2` values;
+- requires the published `run-conditions-v2` values and `charging-policy-v3` (or the
+  earlier status-only `charging-policy-v2`), and uses the configured
+  `maxBatteryTempRiseC`;
 - types and ranges every snapshot and sample field as the app does;
 - recomputes the monitor summary from persisted samples, or bounds it when the
   samples were decimated;

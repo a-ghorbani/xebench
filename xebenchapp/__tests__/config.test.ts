@@ -8,7 +8,8 @@ test('bundled CPU reference configuration is valid', () => {
 test.each([
   {schemaVersion: 2}, {nColdRuns: 0}, {nColdRuns: 2.5}, {cooldownSec: -1},
   {maxDecodeTokens: 0}, {runs: []}, {nGpuLayers: 99}, {readinessTimeoutSec: 5},
-  {readinessTimeoutSec: 901}, {orderSeed: -1}, {orderSeed: 2 ** 32}, {orderSeed: 1.5},
+  {readinessTimeoutSec: 901}, {maxBatteryTempRiseC: 0.1}, {maxBatteryTempRiseC: 11}, {maxBatteryTempRiseC: '2'},
+  {orderSeed: -1}, {orderSeed: 2 ** 32}, {orderSeed: 1.5},
 ])('rejects invalid configuration %j', change => {
   expect(() => parseConfig({...bundled, ...change})).toThrow();
 });
@@ -27,7 +28,10 @@ test('rejects duplicate run IDs', () => {
 test('readiness timeout defaults to the protocol bound and a configured order seed is kept', () => {
   const legacy: Record<string, unknown> = {...bundled};
   delete legacy.readinessTimeoutSec;
+  delete legacy.maxBatteryTempRiseC;
   expect(parseConfig(legacy).readinessTimeoutSec).toBe(180);
+  expect(parseConfig(legacy).maxBatteryTempRiseC).toBe(2);
+  expect(parseConfig({...bundled, maxBatteryTempRiseC: 3.5}).maxBatteryTempRiseC).toBe(3.5);
   expect(parseConfig(legacy)).not.toHaveProperty('orderSeed');
   expect(parseConfig({...bundled, orderSeed: 0}).orderSeed).toBe(0);
 });

@@ -4,6 +4,7 @@
   "nColdRuns": 3,
   "cooldownSec": 30,
   "readinessTimeoutSec": 180,
+  "maxBatteryTempRiseC": 2,
   "maxDecodeTokens": 128,
   "runs": [
     {

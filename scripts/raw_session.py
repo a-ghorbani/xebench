@@ -442,11 +442,18 @@ CONDITION_POLICY_V2 = {
             "interruptions": "focus-loss-count"},
     "memory": "endpoint-pss-and-sampled-rss-not-peak",
 }
-CHARGING_POLICY_V2 = {
-    "version": "charging-policy-v2", "name": "tethered-not-charging", "externalPower": "allowed",
-    "notChargingStatuses": [4, 5], "chargingStatus": 2, "currentNow": "diagnostic-only",
+CHARGING_POLICY_V3 = {
+    "version": "charging-policy-v3", "name": "tethered-not-charging", "externalPower": "allowed",
+    "notChargingStatuses": [4, 5], "chargingStatus": 2, "dischargingStatus": 3, "onBattery": "not-eligible",
+    "currentNow": "diagnostic-only",
     "readiness": "wait-while-charging", "unknown": "never-eligible", "effect": "publication-eligibility-only",
 }
+# Earlier status-only policy (same rules, but DISCHARGING counted as unknown); kept so records
+# from builds that wrote it keep validating with their own semantics.
+CHARGING_POLICY_V2 = {key: value for key, value in CHARGING_POLICY_V3.items()
+                      if key not in ("dischargingStatus", "onBattery")}
+CHARGING_POLICY_V2["version"] = "charging-policy-v2"
+CHARGING_POLICIES = {policy["version"]: policy for policy in (CHARGING_POLICY_V2, CHARGING_POLICY_V3)}
 STOP_REASONS_UNMEASURED = ("configuration-aborted", "setup-failed")
 BACKEND_NOTE = "Actual backend execution has not been verified"
 UNVERIFIED_NOTE = "Run conditions not fully verified"
@@ -480,7 +487,7 @@ def assess_conditions(snapshot):
     return {"status": status, "reasons": reasons}
 
 
-def assess_readiness(snapshot, baseline):
+def assess_readiness(snapshot, baseline, max_rise=None):
     policy = CONDITION_POLICY_V2["readiness"]
     reasons = [] if snapshot.get("probeStatus") == "complete" else ["probe-incomplete"]
     reasons += [f"unknown-{key}" for key in _missing_required(snapshot)] + condition_failures(snapshot)
@@ -489,7 +496,8 @@ def assess_readiness(snapshot, baseline):
         reasons.append("thermal-not-ready")
     if temp is not None and temp > policy["maxBatteryTempC"]:
         reasons.append("battery-too-hot")
-    if temp is not None and baseline is not None and temp > baseline + policy["maxBatteryTempRiseC"]:
+    rise = policy["maxBatteryTempRiseC"] if max_rise is None else max_rise
+    if temp is not None and baseline is not None and temp > baseline + rise:
         reasons.append("battery-not-cooled")
     if headroom is not None and headroom > policy["maxThermalHeadroom"]:
         reasons.append("thermal-headroom-low")
@@ -507,7 +515,7 @@ def _deep_equal(a, b):
     return _equal(a, b) and isinstance(a, (dict, list)) == isinstance(b, (dict, list))
 
 
-def summarize_samples(samples, started, stopped):
+def summarize_samples(samples, started, stopped, policy=CHARGING_POLICY_V3):
     """Mirror of conditions.ts summarizeSamples over persisted samples."""
     def extreme(key, pick):
         known = [sample[key] for sample in samples if sample.get(key) is not None]
@@ -518,9 +526,9 @@ def summarize_samples(samples, started, stopped):
     if None not in times:
         steps = [later - earlier for earlier, later in zip(times, times[1:])]
         gap = None if any(step < 0 for step in steps) else max([0, *steps])
-    states = {"notCharging": 0, "charging": 0, "unknown": 0}
+    states = _empty_states(policy)
     for sample in samples:
-        states[charging_state(sample)] += 1
+        states[charging_state(sample, policy)] += 1
     return {
         "samples": len(samples),
         "incompleteSamples": sum(1 for sample in samples
@@ -536,7 +544,7 @@ def summarize_samples(samples, started, stopped):
     }
 
 
-def _check_monitor(monitor, where):
+def _check_monitor(monitor, where, policy=CHARGING_POLICY_V3):
     """Persisted samples must support the summary: all of it when every sample is kept."""
     errors, summary, samples = [], monitor["summary"], monitor["samples"]
     limit = CONDITION_POLICY_V2["run"]["sampling"]["persistedSamples"]
@@ -550,14 +558,14 @@ def _check_monitor(monitor, where):
         if len(samples) != summary["samples"]:
             errors.append(reason("conditions.monitor", f"{where}/samples",
                                  "Every sample is persisted when there are at most the policy's limit"))
-        elif not _deep_equal(summarize_samples(samples, started, stopped), summary):
+        elif not _deep_equal(summarize_samples(samples, started, stopped, policy), summary):
             errors.append(reason("conditions.monitor", f"{where}/summary",
                                  "Summary differs from the one recomputed from the persisted samples"))
     elif len(samples) != limit:
         errors.append(reason("conditions.monitor", f"{where}/samples",
                              "A decimated monitor persists exactly the policy's sample limit"))
     else:
-        partial = summarize_samples(samples, started, stopped)
+        partial = summarize_samples(samples, started, stopped, policy)
         bounds = [partial["incompleteSamples"] <= summary["incompleteSamples"],
                   all(partial["chargingStates"][key] <= summary["chargingStates"][key] for key in partial["chargingStates"]),
                   all(partial["externalPower"][key] <= summary["externalPower"][key] for key in partial["externalPower"])]
@@ -569,22 +577,29 @@ def _check_monitor(monitor, where):
     return errors
 
 
-def charging_state(snapshot):
+def _empty_states(policy):
+    return {"notCharging": 0, "charging": 0, **({"onBattery": 0} if "dischargingStatus" in policy else {}),
+            "unknown": 0}
+
+
+def charging_state(snapshot, policy=CHARGING_POLICY_V3):
     """charging-policy-v2: decided by batteryStatus alone; current_now is diagnostic only."""
     status = snapshot.get("batteryStatus")
-    if status in CHARGING_POLICY_V2["notChargingStatuses"]:
+    if status in policy["notChargingStatuses"]:
         return "notCharging"
-    return "charging" if status == CHARGING_POLICY_V2["chargingStatus"] else "unknown"
+    if status == policy["chargingStatus"]:
+        return "charging"
+    return "onBattery" if status == policy.get("dischargingStatus") else "unknown"
 
 
-def charging_counts(conditions, measured):
-    counts = {"notCharging": 0, "charging": 0, "unknown": 0}
+def charging_counts(conditions, measured, policy=CHARGING_POLICY_V3):
+    counts = _empty_states(policy)
     for snapshot in (conditions["before"], conditions["after"]):
         if snapshot is not None:
-            counts[charging_state(snapshot)] += 1
+            counts[charging_state(snapshot, policy)] += 1
     if conditions["during"] is not None:
         for key in counts:
-            counts[key] += conditions["during"]["summary"]["chargingStates"][key]
+            counts[key] += conditions["during"]["summary"]["chargingStates"].get(key, 0)
     if measured and (conditions["during"] or {}).get("status") != "complete":
         counts["unknown"] += 1
     return counts
@@ -593,6 +608,8 @@ def charging_counts(conditions, measured):
 def assess_charging(counts):
     if counts["charging"]:
         return "violated"
+    if counts.get("onBattery"):
+        return "on-battery"
     return "unknown" if counts["unknown"] or not counts["notCharging"] else "satisfied"
 
 
@@ -629,7 +646,8 @@ def assess_during(monitor, before, after):
 
 
 def condition_verdict(record):
-    reasons, power = {}, {"notCharging": 0, "charging": 0, "unknown": 0}
+    policy = CHARGING_POLICIES.get(record.get("chargingPolicy", {}).get("version"), CHARGING_POLICY_V3)
+    reasons, power = {}, _empty_states(policy)
     attempts = record["coldRuns"]
     unverified = len(attempts) < record["repetitionsPlanned"]
     for attempt in attempts:
@@ -648,7 +666,7 @@ def condition_verdict(record):
                 unverified = True
             elif assessment["status"] == "fail":
                 reasons.update(dict.fromkeys(assessment["reasons"]))
-        for key, value in charging_counts(conditions, attempt["status"] != "skipped").items():
+        for key, value in charging_counts(conditions, attempt["status"] != "skipped", policy).items():
             power[key] += value
     status = "fail" if reasons else "unverified" if unverified or not attempts else "pass"
     return {"status": status, "reasons": list(reasons), "charging": assess_charging(power)}
@@ -683,10 +701,14 @@ def _semantic_v2(record):
     if planned != protocol["nColdRuns"]:
         errors.append(reason("protocol.configuration-mismatch", "/repetitionsPlanned",
                              "repetitionsPlanned must equal protocol.nColdRuns"))
+    if protocol.get("maxBatteryTempRiseC") != config.get("maxBatteryTempRiseC"):
+        errors.append(reason("protocol.configuration-mismatch", "/protocol/maxBatteryTempRiseC",
+                             "Protocol maxBatteryTempRiseC disagrees with the configuration"))
     if protocol["readinessTimeoutSec"] != config.get("readinessTimeoutSec"):
         errors.append(reason("protocol.configuration-mismatch", "/protocol/readinessTimeoutSec",
                              "Protocol readinessTimeoutSec disagrees with the configuration"))
-    if not _deep_equal(record["chargingPolicy"], CHARGING_POLICY_V2):
+    charging_policy = CHARGING_POLICIES.get(record["chargingPolicy"]["version"], CHARGING_POLICY_V3)
+    if not _deep_equal(record["chargingPolicy"], charging_policy):
         errors.append(reason("conditions.policy", "/chargingPolicy",
                              "chargingPolicy must equal the published charging-policy-v2 values"))
     if not _deep_equal(record["conditionPolicy"], CONDITION_POLICY_V2):
@@ -756,7 +778,9 @@ def _semantic_v2(record):
             errors.append(reason("instance.inconsistent", f"{where}/instance",
                                  "A load or inference failure follows a model load and records its instance"))
         if readiness["status"] != "probe-pending":
-            recomputed = assess_readiness(before, readiness["baselineBatteryTempC"])
+            # The configuration may override the rise bound; records before the override use the default.
+            recomputed = assess_readiness(before, readiness["baselineBatteryTempC"],
+                                          protocol.get("maxBatteryTempRiseC"))
             if readiness["status"] == "ready" and recomputed:
                 errors.append(reason("readiness.recomputed", f"{where}/readiness/status",
                                      f"Recorded ready, but the before snapshot is not ready: {recomputed}"))
@@ -779,22 +803,25 @@ def _semantic_v2(record):
                                      f"Recorded {conditions[key]} but the evidence gives {value}"))
         monitor = conditions["during"]
         if monitor is not None:
-            errors += _check_monitor(monitor, f"{where}/conditions/during")
+            errors += _check_monitor(monitor, f"{where}/conditions/during", charging_policy)
+            if set(monitor["summary"]["chargingStates"]) != set(_empty_states(charging_policy)):
+                errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary/chargingStates",
+                                     "Charging state counts do not match the record's charging policy"))
             summary = monitor["summary"]
             if len(monitor["samples"]) > summary["samples"] or summary["incompleteSamples"] > summary["samples"] or \
                     sum(summary["externalPower"].values()) != summary["samples"] or \
                     sum(summary["chargingStates"].values()) != summary["samples"]:
                 errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary",
                                      "Monitor summary disagrees with its sample counts"))
-            persisted = [charging_state(sample) for sample in monitor["samples"]]
-            if any(persisted.count(state) > count for state, count in summary["chargingStates"].items()):
+            persisted = [charging_state(sample, charging_policy) for sample in monitor["samples"]]
+            if any(persisted.count(state) > summary["chargingStates"].get(state, 0) for state in set(persisted)):
                 errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary/chargingStates",
                                      "Persisted samples show charging states missing from the summary"))
             missed = {item for sample in monitor["samples"] for item in condition_failures(sample)} - set(summary["failures"])
             if missed:
                 errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary/failures",
                                      f"Persisted samples show failures missing from the summary: {sorted(missed)}"))
-        charging = assess_charging(charging_counts(conditions, attempt["status"] != "skipped"))
+        charging = assess_charging(charging_counts(conditions, attempt["status"] != "skipped", charging_policy))
         if conditions["charging"] != charging:
             errors.append(reason("conditions.recomputed", f"{where}/conditions/charging",
                                  f"Recorded charging {conditions['charging']!r} but the evidence gives {charging!r}"))

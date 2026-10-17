@@ -98,6 +98,8 @@ export interface ReferenceSession extends SessionIdentity {
   runOrder: RunOrder | null;
   protocol: {
     version: 'cpu-reference-v2'; nColdRuns: number; cooldownSec: number; readinessTimeoutSec: number;
+    /** Effective readiness rise bound (configuration override of the policy default). */
+    maxBatteryTempRiseC: number;
     promptLabel: string; prompt: string; maxDecodeTokens: number;
     nThreads: number; nCtx: number; coldDefinition: string;
     measurementKind: 'fresh-instance-first-request'; warmRequests: 'not-measured';
@@ -211,7 +213,7 @@ export function createSession(
     configuration: config, configurationRunId: run.id, runOrder,
     protocol: {
       version: 'cpu-reference-v2', nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec,
-      readinessTimeoutSec: config.readinessTimeoutSec,
+      readinessTimeoutSec: config.readinessTimeoutSec, maxBatteryTempRiseC: config.maxBatteryTempRiseC,
       promptLabel: STANDARD_PROMPT_LABEL, prompt: STANDARD_PROMPT, maxDecodeTokens: config.maxDecodeTokens,
       nThreads: run.nThreads, nCtx: run.nCtx,
       coldDefinition: 'fresh engine instance in warm app process; artifact hashing warms OS file cache',
@@ -263,7 +265,8 @@ export async function runSession(
   for (let runIndex = 0; runIndex < config.nColdRuns; runIndex++) {
     const cooldownMs = runIndex > 0 || context.initialCooldown ? config.cooldownSec * 1000 : 0;
     if (cooldownMs) await sleep(cooldownMs);
-    const {result: readiness, snapshot: before} = await awaitReadiness(config.readinessTimeoutSec, baseline, sleep, context.now);
+    const {result: readiness, snapshot: before} = await awaitReadiness(config.readinessTimeoutSec, baseline, sleep, context.now,
+      config.maxBatteryTempRiseC);
     const beforeAssessment = assessConditions(before);
     const base = {runIndex, cooldownMs, readiness, instance: null as InstanceIdentity | null};
     if (readiness.status === 'timeout') {

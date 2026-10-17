@@ -39,7 +39,7 @@ class AppEmittedRecordTests(unittest.TestCase):
             "readinessTimeout", "orderedLaterRun", "configurationAborted", "setupFailed", "chargingDuringRun",
             "chargingTimeout", "chargingUnknown", "inferenceFailedThenProbePending", "monitorStartTimeout",
             "cleanupFailedProbePending", "laterReadinessTimeout", "headroomUnavailable", "monitorStopError",
-            "decimatedSamples"})
+            "decimatedSamples", "onBattery", "riseOverride"})
         for records in (APP, LEGACY):
             self.assertGreater(len(records["inferenceFailed"]["coldRuns"][0]["error"]["message"]), 4096)
             self.assertIsNone(records["nonFiniteMetrics"]["coldRuns"][0]["metrics"])
@@ -271,7 +271,7 @@ class ConditionsV2Tests(unittest.TestCase):
             during.update(samples=[], ticks=0)
             during["summary"].update(samples=0, maxGapMs=1500,
                                      externalPower={"connected": 0, "disconnected": 0, "unknown": 0},
-                                     chargingStates={"notCharging": 0, "charging": 0, "unknown": 0})
+                                     chargingStates={"notCharging": 0, "charging": 0, "onBattery": 0, "unknown": 0})
         # maxGapMs left at 1500 no longer matches the (empty) samples: both checks fire.
         self.assertCodes(v2("complete", no_samples), {"conditions.recomputed", "conditions.monitor"})
 
@@ -301,7 +301,30 @@ class ConditionsV2Tests(unittest.TestCase):
         # current_now is diagnostic only; discharging is not one of the eligible statuses.
         for current in (-5000, 0, 900000, None):
             self.assertEqual(raw_session.charging_state({"batteryStatus": None, "currentNowUa": current}), "unknown")
-        self.assertEqual(raw_session.charging_state({"batteryStatus": 3}), "unknown")
+        # DISCHARGING is the known on-battery state (v3); the earlier v2 policy counted it as unknown.
+        self.assertEqual(raw_session.charging_state({"batteryStatus": 3}), "onBattery")
+        self.assertEqual(raw_session.charging_state({"batteryStatus": 3}, raw_session.CHARGING_POLICY_V2), "unknown")
+        self.assertEqual(APP["onBattery"]["conditionVerdict"]["charging"], "on-battery")
+        self.assertCodes(v2("onBattery", lambda r: r["coldRuns"][0]["conditions"].update(charging="satisfied")),
+                         {"conditions.recomputed"})
+        self.assertCodes(v2("onBattery", lambda r: r["coldRuns"][0]["conditions"]["during"]["summary"]["chargingStates"]
+                            .pop("onBattery")), {"conditions.monitor"})
+        # Records written under the earlier status-only charging-policy-v2 keep validating with its rules.
+        def earlier_policy(record):
+            record["chargingPolicy"] = dict(raw_session.CHARGING_POLICY_V2)
+            for attempt in record["coldRuns"]:
+                attempt["conditions"]["during"]["summary"]["chargingStates"].pop("onBattery")
+        self.assertCodes(v2("complete", earlier_policy), set())
+        self.assertCodes(v2("onBattery", earlier_policy), {"conditions.monitor", "conditions.recomputed", "guards.recomputed"})
+        # A configured rise bound is recorded and used when recomputing readiness.
+        override = APP["riseOverride"]
+        self.assertEqual(override["protocol"]["maxBatteryTempRiseC"], 0.5)
+        self.assertEqual(override["coldRuns"][0]["readiness"]["reasons"], ["battery-not-cooled"])
+        self.assertCodes(v2("riseOverride", lambda r: (r["protocol"].update(maxBatteryTempRiseC=2),
+                                                       r["configuration"].update(maxBatteryTempRiseC=2))),
+                         {"readiness.recomputed"})
+        self.assertCodes(v2("riseOverride", lambda r: r["protocol"].update(maxBatteryTempRiseC=3)),
+                         {"protocol.configuration-mismatch", "readiness.recomputed"})
         self.assertEqual(raw_session.charging_state({"batteryStatus": 4}), "notCharging")
         def hide_charging(record):
             summary = record["coldRuns"][0]["conditions"]["during"]["summary"]

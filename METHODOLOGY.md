@@ -136,12 +136,13 @@ or sampled failures and focus interruptions are flagged (`guardsPassed=false`);
 flagged repetitions stay in the summary rather than being gated out.
 Unknown evidence cannot pass; a condition pass does not establish backend execution,
 so guards stay unverified. Charging is a separate publication-eligibility policy,
-`charging-policy-v2`: USB tethering is allowed, but a repetition is eligible only if
+`charging-policy-v3`: USB tethering is allowed, but a repetition is eligible only if
 the battery status was `FULL` or `NOT_CHARGING` (e.g. at a charge limit) at every
-snapshot and sample. `current_now` is recorded only as a diagnostic. Charging is `violated` and unknown
-is never eligible. Readiness waits, within the bound, for charging to stop. The
-activity keeps the
-screen on while visible. Historical records are not retroactively certified.
+snapshot and sample. `current_now` is recorded only as a diagnostic. Charging is
+`violated`, running on battery (`DISCHARGING`) is a known but ineligible
+`on-battery` state in the tethered lab, and unknown is never eligible. Readiness
+waits, within the bound, for charging to stop. The activity keeps the screen on
+while visible. Historical records are not retroactively certified.
 → `xebenchapp/src/harness/conditions.ts`, `readiness.ts`, `session.ts`;
 `BenchConditionsModule.kt`; tests listed in
 [rule traceability](docs/RUN-CONDITIONS.md#rule-traceability).

@@ -301,7 +301,7 @@ test('records fresh-instance identity, process loads, run order and the charging
   expect(result.protocol).toMatchObject({measurementKind: 'fresh-instance-first-request',
     warmRequests: 'not-measured', processRestartBetweenRepetitions: false, readinessTimeoutSec: 180});
   expect(result.conditionVerdict).toEqual({status: 'pass', reasons: [], charging: 'satisfied'});
-  expect(result.chargingPolicy).toMatchObject({version: 'charging-policy-v2', externalPower: 'allowed'});
+  expect(result.chargingPolicy).toMatchObject({version: 'charging-policy-v3', externalPower: 'allowed'});
 });
 
 test('the readiness temperature baseline is shared across runs of a configuration', async () => {
@@ -382,7 +382,15 @@ test('charging cannot be satisfied when the run itself was not sampled', async (
   expect(result.conditionVerdict.charging).toBe('unknown');
 });
 
-describe('charging-policy-v2 in sessions', () => {
+test('a configured rise bound overrides the default and is recorded in the protocol', async () => {
+  const result = await runSession(adapter(), {...one, readinessTimeoutSec: 10, maxBatteryTempRiseC: 0.5}, config.runs[0],
+    identity, async () => {}, noSleep, {baseline: {batteryTempC: 29}});
+  expect(result.protocol).toMatchObject({maxBatteryTempRiseC: 0.5, readinessTimeoutSec: 10});
+  expect(result.configuration).toMatchObject({maxBatteryTempRiseC: 0.5, readinessTimeoutSec: 10});
+  expect(result.coldRuns[0]).toMatchObject({status: 'skipped', readiness: {reasons: ['battery-not-cooled']}});
+});
+
+describe('charging-policy-v3 in sessions', () => {
   const charging = {...healthyConditions, batteryStatus: 2};
 
   test('charging during the run violates eligibility but keeps the measurement', async () => {
@@ -423,6 +431,17 @@ describe('charging-policy-v2 in sessions', () => {
     expect(result.coldRuns[0]).toMatchObject({status: 'complete', readiness: {status: 'ready', polls: 3,
       notReady: {charging: 2}}});
     expect(result.conditionVerdict).toEqual({status: 'pass', reasons: [], charging: 'satisfied'});
+  });
+
+  test('running on battery is a known state that is not eligible in the tethered lab', async () => {
+    const onBattery = {...healthyConditions, batteryStatus: 3, charging: false, plugged: 0};
+    jest.mocked(conditions.readConditions).mockImplementation(async () => conditions.normalizeConditions(onBattery));
+    jest.mocked(conditions.stopMonitor).mockResolvedValue(stoppedMonitor([onBattery]));
+    const result = await runSession(adapter(), one, config.runs[0], identity, async () => {});
+    expect(result.status).toBe('complete');
+    expect(result.coldRuns[0].conditions.during?.summary.chargingStates).toMatchObject({onBattery: 1, unknown: 0});
+    expect(result.coldRuns[0].conditions.charging).toBe('on-battery');
+    expect(result.conditionVerdict).toEqual({status: 'pass', reasons: [], charging: 'on-battery'});
   });
 
   test('charging until the readiness timeout skips the repetition with reason charging', async () => {

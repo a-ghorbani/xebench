@@ -264,7 +264,7 @@ SIGNAL, REASON, NOTE = Vocab(SIGNALS), Vocab(REASONS), Vocab(GUARD_NOTES)
 ENUM_WORDS = (
     "after", "allowed", "android", "ane", "applied-when-measured", "battery-not-cooled", "battery-too-hot",
     "before", "busy", "callback-derived", "changed", "charging", "cheap-native-reads-no-pss", "cleanup-failed",
-    "community", "complete", "diagnostic-only", "condition-probe-pending", "conditions", "configuration-aborted", "configured", "cpu",
+    "community", "complete", "diagnostic-only", "not-eligible", "on-battery", "condition-probe-pending", "conditions", "configuration-aborted", "configured", "cpu",
     "device-locked", "during", "endpoint-pss-and-sampled-rss-not-peak", "endpoints-not-continuous", "engine",
     "engine-timings", "error", "external-power-disconnected", "executorch", "fail", "failed", "first-request-on-instance", "focus-loss-count",
     "foreground", "fresh-instance", "fresh-instance-first-request", "generated", "genie-x", "gpu", "inference",
@@ -316,7 +316,7 @@ MONITOR = Obj({
         "maxThermalHeadroom": N_NUM, "maxBatteryTempC": N_NUM, "minBatteryPct": N_NUM, "maxRssMb": N_NUM,
         "maxGapMs": N_NONNEG,
         "externalPower": Obj({"connected": COUNT, "disconnected": COUNT, "unknown": COUNT}),
-        "chargingStates": Obj({"notCharging": COUNT, "charging": COUNT, "unknown": COUNT}),
+        "chargingStates": Obj({"notCharging": COUNT, "charging": COUNT, "onBattery": COUNT, "unknown": COUNT}),
     }),
     "samples": Arr(SNAPSHOT, max_items=1000),
 })
@@ -365,7 +365,8 @@ CHARGING_POLICY = Obj({
     "version": VERSION, "publicationRequires": ENUM, "effect": ENUM,
     # charging-policy-v2 (tethered, not charging).
     "name": ENUM, "externalPower": ENUM, "notChargingStatuses": Arr(_number(1, 5, integer=True), max_items=8),
-    "chargingStatus": _number(1, 5, integer=True), "currentNow": ENUM, "readiness": ENUM, "unknown": ENUM,
+    "chargingStatus": _number(1, 5, integer=True), "dischargingStatus": _number(1, 5, integer=True),
+    "onBattery": ENUM, "currentNow": ENUM, "readiness": ENUM, "unknown": ENUM,
 })
 CONDITION_VERDICT = Obj({"status": ENUM, "reasons": REASON_LIST, "charging": ENUM})
 RUN_ORDER = Obj({"method": VERSION, "seed": _number(0, 2 ** 32 - 1, integer=True), "seedSource": ENUM,
@@ -381,14 +382,15 @@ def _prompt_digest(protocol):
 
 PROTOCOL = Obj({
     "version": VERSION, "nColdRuns": COUNT, "cooldownSec": NONNEG, "readinessTimeoutSec": NONNEG,
-    "promptLabel": LABEL, "promptSha256": HEX64, "maxDecodeTokens": COUNT, "nThreads": COUNT, "nCtx": COUNT,
+    "maxBatteryTempRiseC": NONNEG, "promptLabel": LABEL, "promptSha256": HEX64, "maxDecodeTokens": COUNT, "nThreads": COUNT, "nCtx": COUNT,
     "coldDefinition": COLD_DEFINITION, "measurementKind": ENUM, "warmRequests": ENUM,
     "processRestartBetweenRepetitions": BOOL,
 }, required=("version", "nColdRuns", "promptLabel", "promptSha256", "maxDecodeTokens", "nThreads", "nCtx"),
     excluded=("prompt",), derive=_prompt_digest)
 CONFIGURATION = Obj({
     "schemaVersion": INT, "id": LABEL, "nColdRuns": COUNT, "cooldownSec": NONNEG,
-    "readinessTimeoutSec": NONNEG, "maxDecodeTokens": COUNT, "orderSeed": _number(0, 2 ** 32 - 1, integer=True),
+    "readinessTimeoutSec": NONNEG, "maxBatteryTempRiseC": NONNEG, "maxDecodeTokens": COUNT,
+    "orderSeed": _number(0, 2 ** 32 - 1, integer=True),
     "runs": Arr(Obj({"id": LABEL, "engine": LABEL, "model": LABEL, "modelFile": MODEL_FILE, "quant": LABEL,
                      "nThreads": COUNT, "nCtx": COUNT}, required=("id",)), max_items=64),
 }, required=("id", "runs"))

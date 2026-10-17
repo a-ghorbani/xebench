@@ -65,9 +65,11 @@ export const CONDITION_POLICY = {
  * allowed, but active charging is not. Eligibility only; it never removes a measurement.
  */
 export const CHARGING_POLICY = {
-  version: 'charging-policy-v2', name: 'tethered-not-charging', externalPower: 'allowed',
+  version: 'charging-policy-v3', name: 'tethered-not-charging', externalPower: 'allowed',
   // Eligible BatteryManager statuses: not charging (e.g. at a charge limit) and full.
   notChargingStatuses: [4, 5], chargingStatus: 2,
+  // DISCHARGING: known, but not eligible in the tethered lab (a later policy may admit it, #7).
+  dischargingStatus: 3, onBattery: 'not-eligible',
   // current_now units and sign are vendor-defined (the S23 looks like mA): recorded, never decisive.
   currentNow: 'diagnostic-only',
   readiness: 'wait-while-charging', unknown: 'never-eligible', effect: 'publication-eligibility-only',
@@ -128,14 +130,15 @@ export function assessConditions(snapshot: ConditionSnapshot): ConditionAssessme
 }
 
 /** Readiness before loading: stricter thermal limits; unknown required evidence is never ready. */
-export function assessReadiness(snapshot: ConditionSnapshot, baselineTempC: number | null) {
+export function assessReadiness(snapshot: ConditionSnapshot, baselineTempC: number | null,
+  maxRiseC: number = CONDITION_POLICY.readiness.maxBatteryTempRiseC) {
   const {readiness} = CONDITION_POLICY;
   const reasons = snapshot.probeStatus === 'complete' ? [] : ['probe-incomplete'];
   reasons.push(...missingRequired(snapshot).map(key => `unknown-${key}`), ...conditionFailures(snapshot));
   if (snapshot.thermalStatus !== null && snapshot.thermalStatus > readiness.maxThermalStatus) reasons.push('thermal-not-ready');
   if (snapshot.batteryTempC !== null && snapshot.batteryTempC > readiness.maxBatteryTempC) reasons.push('battery-too-hot');
   if (snapshot.batteryTempC !== null && baselineTempC !== null &&
-      snapshot.batteryTempC > baselineTempC + readiness.maxBatteryTempRiseC) reasons.push('battery-not-cooled');
+      snapshot.batteryTempC > baselineTempC + maxRiseC) reasons.push('battery-not-cooled');
   if (snapshot.thermalHeadroom !== null && snapshot.thermalHeadroom > readiness.maxThermalHeadroom) reasons.push('thermal-headroom-low');
   // Eligibility, not validity: wait for active charging to stop, but never for an unknown state.
   if (chargingState(snapshot) === 'charging') reasons.push('charging');
@@ -269,22 +272,27 @@ export function assessDuring(monitor: MonitorResult, before: ConditionSnapshot, 
   return {status: reasons.length ? 'fail' : complete ? 'pass' : 'unverified', reasons: [...new Set(reasons)]};
 }
 
-export type ChargingStatus = 'satisfied' | 'violated' | 'unknown';
-export type ChargingState = 'notCharging' | 'charging' | 'unknown';
+export type ChargingStatus = 'satisfied' | 'violated' | 'on-battery' | 'unknown';
+export type ChargingState = 'notCharging' | 'charging' | 'onBattery' | 'unknown';
 export type ChargingCounts = Record<ChargingState, number>;
 
-/** One observation under charging-policy-v2: decided by the battery status alone. */
+/** One observation under charging-policy-v3: decided by the battery status alone. */
 export function chargingState(snapshot: ConditionSnapshot): ChargingState {
   const status = snapshot.batteryStatus;
   if (status !== null && (CHARGING_POLICY.notChargingStatuses as readonly number[]).includes(status)) return 'notCharging';
-  return status === CHARGING_POLICY.chargingStatus ? 'charging' : 'unknown';
+  if (status === CHARGING_POLICY.chargingStatus) return 'charging';
+  return status === CHARGING_POLICY.dischargingStatus ? 'onBattery' : 'unknown';
 }
 
-export const emptyChargingCounts = (): ChargingCounts => ({notCharging: 0, charging: 0, unknown: 0});
+export const emptyChargingCounts = (): ChargingCounts => ({notCharging: 0, charging: 0, onBattery: 0, unknown: 0});
 
-/** Any active charging violates the policy; every observation must be measured to satisfy it. */
+/**
+ * Any active charging violates the policy. Running on battery is a known state, but this lab
+ * policy (tethered) does not admit it. Every observation must be measured to satisfy it.
+ */
 export function assessCharging(counts: ChargingCounts): ChargingStatus {
   if (counts.charging) return 'violated';
+  if (counts.onBattery) return 'on-battery';
   return counts.unknown || !counts.notCharging ? 'unknown' : 'satisfied';
 }
 
