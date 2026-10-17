@@ -343,7 +343,8 @@ class FailClosedTests(unittest.TestCase):
         literals = {word for word in re.findall(r"['`]([a-z][a-z-]{0,63})['`]", source) if not word.endswith("-")}
         # Field names and typeof checks are not enumerated values.
         literals -= {"id", "model", "quant", "runs", "status", "order", "string", "number", "boolean", "object",
-                     "react-native", "react-native-executorch", "xebench-raw", "artifact", "init"}
+                     "react-native", "react-native-executorch", "xebench-raw", "artifact", "init",
+                     "gpu", "devices"}  # LlamaContext field names in the Pick<> guard
         self.assertGreater(len(literals), 30)
         self.assertEqual(literals - evidence.ENUM.values - evidence.REASON.values, set())
         self.assertIn("fresh engine instance in warm app process; artifact hashing warms OS file cache",
