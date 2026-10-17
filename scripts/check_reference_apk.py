@@ -45,7 +45,7 @@ EXECUTORCH = ['lib/*/libexecutorch.so', 'lib/*/libreact-native-executorch.so',
               'lib/*/libcpuinfo.so', 'lib/*/libpthreadpool.so']
 
 # Dex type descriptors of engine bridges and SDKs that a flavor must not contain.
-DEX_LITERT = [b'Lcom/google/ai/edge/litertlm/', b'Lcom/xebenchapp/LiteRtBench']
+DEX_LITERT = [b'Lcom/google/ai/edge/litertlm/', b'Lcom/google/ai/edge/litert/', b'Lcom/xebenchapp/LiteRtBench']
 DEX_GENIEX = [b'Lcom/geniex/sdk/', b'Lcom/xebenchapp/GenieXBench']
 
 FLAVORS = {
@@ -53,7 +53,8 @@ FLAVORS = {
         'required': COMMON_REQUIRED,
         'forbidden': (LLAMA_ACCELERATORS + GGML_ACCELERATORS + VENDOR_QNN + LITERT
                       + GENIEX + EXECUTORCH),
-        'forbidden_dex': DEX_LITERT + DEX_GENIEX,
+        # Qualcomm Java SDKs (QNN/QAIRT/GENIE-X packaging) have no place in reference.
+        'forbidden_dex': DEX_LITERT + DEX_GENIEX + [b'Lcom/qualcomm/'],
         'allowed_libs': REFERENCE_LIBS,
     },
     'experimental': {
@@ -80,6 +81,13 @@ def check_apk(path, flavor='reference'):
     with ZipFile(path) as apk:
         entries = apk.infolist()
         present = {entry.filename for entry in entries if entry.file_size > 0}
+        # Native code is recognised by content, not name: an ELF staged under assets/
+        # or renamed (e.g. a DSP skel) must still meet the allowlist.
+        elf = set()
+        for entry in entries:
+            with apk.open(entry) as handle:
+                if handle.read(4) == b'\x7fELF':
+                    elf.add(entry.filename)
         dex = b''.join(apk.read(entry.filename) for entry in entries
                        if fnmatchcase(entry.filename, 'classes*.dex'))
     problems = []
@@ -93,7 +101,7 @@ def check_apk(path, flavor='reference'):
     if 'allowed_libs' in spec:
         unexpected += sorted(
             name for name in names - set(unexpected)
-            if name.startswith('lib/') and name.endswith('.so')
+            if (name in elf or name.endswith('.so'))
             and not any(fnmatchcase(name, pattern) for pattern in spec['allowed_libs']))
     if unexpected:
         problems.append('unexpected ' + ', '.join(unexpected))

@@ -125,6 +125,27 @@ class ReferenceApkTests(unittest.TestCase):
             with self.subTest(flavor=flavor):
                 self.check(flavor, extra=[core, unknown])
 
+    def test_reference_rejects_native_code_outside_the_allowlist_by_content(self):
+        with tempfile.TemporaryDirectory() as root:
+            for name in ('assets/libggml-cpu.so', 'assets/models/htp-skel', 'lib/arm64-v8a/libomp.so'):
+                with self.subTest(name=name):
+                    path = Path(root) / 'fixture.apk'
+                    write_apk(path, 'reference')
+                    with ZipFile(path, 'a') as apk:
+                        apk.writestr(name, b'\x7fELF' + b'\0' * 60)
+                    with self.assertRaisesRegex(ValueError, 'unexpected ' + name):
+                        apk_check.check_apk(path, 'reference')
+            # A non-ELF asset that is not named .so is fine.
+            path = Path(root) / 'fixture.apk'
+            write_apk(path, 'reference', extra=['assets/configs/cpu-reference-v1.json'])
+            apk_check.check_apk(path, 'reference')
+
+    def test_reference_rejects_qualcomm_and_litert_core_classes(self):
+        for descriptor in (b'Lcom/qualcomm/qti/QnnDelegate;', b'Lcom/google/ai/edge/litert/CompiledModel;'):
+            with self.subTest(descriptor=descriptor):
+                with self.assertRaisesRegex(ValueError, 'unexpected classes'):
+                    self.check('reference', dex=descriptor)
+
 
 if __name__ == '__main__':
     unittest.main()
