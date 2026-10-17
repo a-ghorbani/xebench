@@ -47,6 +47,11 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
   carries short filename/checksum references; host capture verifies and retrieves
   them without changing their bytes. Local manifests distinguish checkpoints from
   terminal records and carry host-collected device facts separately.
+- Capture fingerprints installed base/split APKs before launch and after completion.
+  The manifest's `appIdentity` reports matched, changed or unverified snapshots;
+  paths are omitted. A changed APK returns exit 4 while preserving evidence.
+  Missing probes and interrupted runs cannot establish a match. Matching snapshots
+  identify installed bytes, not source provenance or continuous runtime attestation.
 
 “Cold” means a fresh engine instance in a warm process. Hashing the model before
 measurement warms the OS file cache. Actual backend execution, thermal conditions,
