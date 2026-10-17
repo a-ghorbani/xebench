@@ -80,9 +80,11 @@ condition evidence and keep `guardsPassed=null`; a mix is rejected.
 
 A rejected payload stays in `invalid-<id>.txt` beside `invalid-<id>.reason.json`
 (reason codes, JSON Pointer paths, messages); the manifest lists `rejections`.
-A retrieved device file keeps its exact bytes, and its reason file keeps the
-`sourceFile` and `claimedSha256` from the logcat reference, so the device checksum
-can be re-checked from saved evidence.
+A retrieved device file is stored as retrieved, with no added newline. Its reason
+file keeps the `sourceFile` and `claimedSha256` from the logcat reference, so the
+device checksum can be re-checked from saved evidence. This holds for UTF-8 records
+without carriage returns, because adb output is read as text. An oversized file
+keeps only its bounded prefix.
 A rejection prevents a `complete` capture: after `XEBENCH_DONE` it is `partial`.
 Exit codes: 0 complete, 2 setup, startup, capture or cleanup failure, 3 timeout,
 4 partial or app-changed, 130/143 interrupted. Manifest entries carry `validation`:
@@ -110,11 +112,13 @@ listed record and checkpoint against its capture checksum and re-validates it wi
 counts, duplicate sessions and captures without a terminal record. It also refuses
 an approved field whose value does not have the expected form. A final screen
 refuses an export if any output string looks like an email, local path, token,
-ANDROID_ID-like hex or network serial. Refusal messages give JSON locations, never values.
+ANDROID_ID-like hex or network serial. Refusal messages name inputs by position
+and JSON location, never by value. A complete capture must have no errors,
+rejections or failures.
 
 Only allowlisted fields are copied. Unknown fields are dropped and listed in the
-report on stdout, which stays local. Reason codes, signal names and guard notes
-come from a closed vocabulary. Other values become `unrecognized`.
+report on stdout, which stays local. Reason codes, rejection codes, signal names
+and guard notes come from a closed vocabulary. Other values become `unrecognized`.
 
 - **Exported:** session and configuration identity, protocol with `promptSha256`
   in place of the prompt text, engine and version, model SHA-256, every repetition
@@ -136,9 +140,19 @@ lists every other file with its SHA-256 and size. The export prints
 for a verified row's `evidence`. To check a bundle, hash the bytes as served;
 never re-serialize them.
 
-`verify` checks the hash, every checksum and size, unlisted files, canonical form,
-allowlist conformance and the privacy screen. It then recomputes every summary
-from the repetitions, using the interpolation above.
+`verify` checks the following:
+
+- the hash, every checksum and size, and any unlisted or symlinked files;
+- canonical form, and allowlist conformance of the manifest and every file;
+- the privacy screen;
+- that each file name is bound to its ID;
+- repetition numbering and count against `nColdRuns`, and status against the repetitions;
+- that capture counts agree with the sessions;
+- every summary, recomputed from the repetitions with the interpolation above.
+
+With `--session ID`, it also checks that a row's sessions are in the bundle. A
+malformed bundle produces errors and exit 1, never a crash. `verify` does not
+re-run the full raw-schema validation, because the raw record is not exported.
 
 Approved labels (model, quant, configuration and run IDs) and device properties
 are copied verbatim once they pass the form checks and the screen. A serial typed

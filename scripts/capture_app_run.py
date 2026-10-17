@@ -158,8 +158,10 @@ class Capture:
     def reject(self, marker, payload, source_file, reasons, claimed_sha256=None, retrieved=False):
         """Keep the rejected payload and, beside it, why it was rejected.
 
-        Retrieved device files keep their exact bytes, so claimedSha256 can be
-        re-checked from saved evidence; inline logcat payloads end with a newline.
+        Retrieved device files are stored as retrieved, without an added newline,
+        so claimedSha256 can be re-checked from saved evidence (adb output is read
+        as text, so this holds for UTF-8 records without CR; oversized files keep
+        only the bounded prefix). Inline logcat payloads end with a newline.
         """
         stem = f"invalid-{uuid.uuid4()}"
         with (self.directory / f"{stem}.txt").open("xb") as out:

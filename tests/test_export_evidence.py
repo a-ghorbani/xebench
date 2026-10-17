@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -90,10 +91,11 @@ def make_capture(root, records, device_info=None, inline=(), checkpoints=(), ext
         files[name] = json.dumps(record)
         reference = {"name": name, "sha256": sha(files[name])}
         lines.append(f"{100 + index}.000 123 123 I ReactNativeJS: XEBENCH_RESULT_FILE {json.dumps(reference)}")
-    lines.extend(f"200.000 123 123 I ReactNativeJS: {line}" for line in inline)
+    lines.extend(f"200.000 123 123 I ReactNativeJS: {line}" for line in [*inline, "XEBENCH_DONE"])
     session.ingest("\n".join(lines), files.__getitem__)
     session.app_identity.update(before=APKS, after=APKS, consistency="matched")
-    session.finish("partial" if inline else "complete")
+    # Mirrors capture_device: complete only without errors, rejections or failed records.
+    session.finish("partial" if session.errors or session.invalid or session.failed_records else "complete")
     return session.directory
 
 
@@ -187,15 +189,20 @@ class PrivacyTests(unittest.TestCase):
     def test_private_values_in_approved_fields_refuse_the_export(self):
         def model_token(record):
             record["model"] = record["configuration"]["runs"][0]["model"] = f"Llama {TOKEN}"
+        # name: (change, host device facts, planted value, the check expected to refuse)
         cases = {
-            "email in engine version": (lambda r: r.update(engineVersion=f"llama.rn {EMAIL}"), None, EMAIL),
-            "token in model label": (model_token, None, TOKEN),
-            "android id in run id": (lambda r: r.update(runId=f"1767225600000-0-{ANDROID_ID}"), None, ANDROID_ID),
-            "path as manufacturer": (lambda r: None, {**HOST_DEVICE, "manufacturer": HOST_PATH}, HOST_PATH),
+            "email in engine version": (
+                lambda r: r.update(engineVersion=f"llama.rn {EMAIL}"), None, EMAIL, "not a label"),
+            "token in model label": (model_token, None, TOKEN, "looks like token"),
+            "android id in run id": (
+                lambda r: r.update(runId=f"1767225600000-0-{ANDROID_ID}"), None, ANDROID_ID, "looks like android-id"),
+            "path as manufacturer": (
+                lambda r: None, {**HOST_DEVICE, "manufacturer": HOST_PATH}, HOST_PATH, "not a device property"),
             "serial-like digits in a status": (
-                lambda r: r["coldRuns"][0]["conditions"]["before"].update(probeStatus=SERIAL), None, SERIAL),
+                lambda r: r["coldRuns"][0]["conditions"]["before"].update(probeStatus=SERIAL), None, SERIAL,
+                "not a lowercase enumerated value"),
         }
-        for name, (change, device, needle) in cases.items():
+        for name, (change, device, needle, check) in cases.items():
             with self.subTest(name), tempfile.TemporaryDirectory() as root:
                 record = fixture("complete", "1767225600000-0-fixture")
                 change(record)
@@ -205,6 +212,7 @@ class PrivacyTests(unittest.TestCase):
                 with self.assertRaises(evidence.Refused) as caught:
                     evidence.export([directory], out)
                 self.assertNotIn(needle, str(caught.exception))
+                self.assertIn(check, str(caught.exception))
                 self.assertFalse(out.exists() and any(out.iterdir()))
 
     def test_privacy_screen_names_patterns_not_values(self):
@@ -264,6 +272,51 @@ class FailClosedTests(unittest.TestCase):
             self.export_fails([empty.directory], "no terminal session record")
             (empty.directory / "manifest.json").unlink()
             self.export_fails([empty.directory], "Missing or non-regular file")
+
+    def test_symlinked_record_and_complete_status_with_failures_are_refused(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory = make_capture(Path(root) / "a", [fixture("complete", "1767225600000-0-fixture")])
+            path = self.raw_file(directory)
+            outside = Path(root) / "outside.jsonl"
+            shutil.move(path, outside)
+            path.symlink_to(outside)
+            self.export_fails([directory], "Missing or non-regular file")
+            directory = make_capture(Path(root) / "b", [fixture("failed", "1767225600000-0-fixture")])
+            manifest_path = directory / "manifest.json"
+            manifest_path.write_text(json.dumps({**json.loads(manifest_path.read_text()), "status": "complete"}))
+            self.export_fails([directory], "A complete capture must be finished")
+
+    def test_rejection_codes_are_a_closed_vocabulary(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory = make_capture(Path(root), [fixture("complete", "1767225600000-0-fixture")],
+                                     inline=["XEBENCH_RESULT {broken"])
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["rejections"][0]["codes"] = ["json.parse", "alice.corp.internal", USERNAME, 1]
+            manifest_path.write_text(json.dumps(manifest))
+            report = evidence.export([directory], Path(root) / "out")
+            data = b"".join(bundle_bytes(report["bundle"]).values())
+            self.assertNotIn(b"alice", data)
+            captured = json.loads(next((Path(report["bundle"]) / "captures").iterdir()).read_text())
+            self.assertEqual(captured["rejections"], {"count": 1, "codes": {"json.parse": 1, "unrecognized": 1}})
+            self.assertEqual(sum(item["kind"] == "unrecognized-value" for item in report["dropped"]), 3)
+
+    def test_vocabulary_covers_every_host_reason_code(self):
+        source = (ROOT / "scripts/raw_session.py").read_text() + (ROOT / "scripts/capture_app_run.py").read_text()
+        literals = set(re.findall(r'(?:reason|fail)\("([a-z-]+\.[a-z-]+)"', source))
+        self.assertGreater(len(literals), 30)
+        self.assertEqual(literals - evidence.REJECTION_CODES.values, set())
+
+    def test_refusal_messages_do_not_echo_directory_names_or_run_ids(self):
+        with tempfile.TemporaryDirectory() as root:
+            run_id = f"1767225600000-0-{ANDROID_ID}"
+            one = make_capture(Path(root) / EMAIL, [fixture("complete", run_id)])
+            two = make_capture(Path(root) / "two", [fixture("complete", run_id)])
+            for directories in ([one, two], [Path(root) / EMAIL / "missing"]):
+                with self.assertRaises(evidence.Refused) as caught:
+                    evidence.export(directories, Path(root) / "out")
+                self.assertNotIn(ANDROID_ID, str(caught.exception))
+                self.assertNotIn(EMAIL, str(caught.exception))
 
     def test_inconsistent_manifest_counts_are_refused(self):
         with tempfile.TemporaryDirectory() as root:
@@ -390,10 +443,108 @@ class VerifyTests(unittest.TestCase):
         self.assertIn("manifest.json: not in canonical form", errors)
         self.assertIn("manifest.json: SHA-256 differs from the bundle's content address", errors)
 
+    def remanifest(self, bundle, change):
+        manifest = json.loads((bundle / "manifest.json").read_text())
+        change(manifest)
+        (bundle / "manifest.json").write_bytes(evidence.canonical(manifest))
+        renamed = bundle.parent / hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+        bundle.rename(renamed)
+        return renamed
+
+    def session_doc(self, run="0"):
+        return json.loads((self.bundle / f"sessions/1767225600000-{run}-fixture.json").read_text())
+
+    def capture_path(self):
+        return str(next((self.bundle / "captures").iterdir()).relative_to(self.bundle))
+
+    def test_malformed_types_are_errors_not_crashes(self):
+        path = "sessions/1767225600000-0-fixture.json"
+        mutations = [
+            lambda doc: doc.update(sessionId=["x"]),
+            lambda doc: doc["record"]["coldRuns"][0].update(status=[]),
+            lambda doc: doc["record"].update(coldRuns="x"),
+            lambda doc: doc.update(record=None),
+        ]
+        for index, mutate in enumerate(mutations):
+            with self.subTest(index=index):
+                document = self.session_doc()
+                mutate(document)
+                result = evidence.verify(self.rehash(self.copy(), path, document))
+                self.assertFalse(result["valid"])
+                self.assertFalse(any("malformed or unreadable" in error for error in result["errors"]),
+                                 result["errors"])
+        capture_path = self.capture_path()
+        document = json.loads((self.bundle / capture_path).read_text())
+        document["sessionIds"].append(["x"])
+        self.assertFalse(evidence.verify(self.rehash(self.copy(), capture_path, document))["valid"])
+
+    def test_forged_manifest_fields_fail(self):
+        for change in (lambda m: m.update(publicationReady=True), lambda m: m.update(schemaVersion=True),
+                       lambda m: m.update(hashRule="anything"), lambda m: m.pop("statistics"),
+                       lambda m: m["files"][0].update(extra=1)):
+            with self.subTest(change=change):
+                result = evidence.verify(self.remanifest(self.copy(), change))
+                self.assertFalse(result["valid"])
+                self.assertTrue(all(error.startswith("manifest.json") for error in result["errors"]),
+                                result["errors"])
+
+    def test_capture_files_are_bound_to_their_id_and_counts(self):
+        capture_path = self.capture_path()
+        document = json.loads((self.bundle / capture_path).read_text())
+        # A second capture document with the same ID under another name.
+        bundle = self.copy()
+        forged = {**document, "status": "complete", "engineErrors": 99}
+        data = evidence.canonical(forged)
+        (bundle / "captures/forged-name.json").write_bytes(data)
+        bundle = self.remanifest(bundle, lambda m: (m["files"].insert(0, {
+            "path": "captures/forged-name.json", "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}),
+            m["files"].sort(key=lambda item: item["path"])))
+        self.assertIn("captures/forged-name.json: file name does not match its capture ID",
+                      evidence.verify(bundle)["errors"])
+        for change, message in ((lambda d: d.update(failedRecords=5), "counts disagree"),
+                                (lambda d: d["rejections"].update(count=9), "counts disagree"),
+                                (lambda d: d["device"].update(soc="Other SoC"), "disagrees with its capture"),
+                                (lambda d: d.update(sessionIds=d["sessionIds"][:1]), "does not match the sessions")):
+            with self.subTest(message=message):
+                changed = copy.deepcopy(document)
+                change(changed)
+                errors = evidence.verify(self.rehash(self.copy(), capture_path, changed))["errors"]
+                self.assertTrue(any(message in error for error in errors), errors)
+
+    def test_session_semantics_are_rechecked(self):
+        path = "sessions/1767225600000-0-fixture.json"
+        for change in (lambda r: r["coldRuns"][2].update(runIndex=5),
+                       lambda r: r["protocol"].update(nColdRuns=3),
+                       lambda r: r.update(status="failed")):
+            with self.subTest(change=change):
+                document = self.session_doc()
+                change(document["record"])
+                self.assertFalse(evidence.verify(self.rehash(self.copy(), path, document))["valid"])
+
+    def test_empty_bundle_and_expected_sessions(self):
+        bundle = self.copy()
+        for path in list((bundle / "sessions").iterdir()) + list((bundle / "captures").iterdir()):
+            path.unlink()
+        bundle = self.remanifest(bundle, lambda m: m.update(files=[], sessionIds=[], captureIds=[]))
+        self.assertEqual(evidence.verify(bundle)["errors"], ["bundle: holds no session"])
+        self.assertTrue(evidence.verify(self.bundle, expected_sessions=["1767225600000-0-fixture"])["valid"])
+        self.assertIn("bundle: expected session [0] is missing",
+                      evidence.verify(self.bundle, expected_sessions=["1767225600000-9-other"])["errors"])
+
+    def test_symlinked_bundle_content_fails(self):
+        bundle = self.copy()
+        target = bundle / "sessions/1767225600000-1-fixture.json"
+        outside = self.root / "outside.json"
+        shutil.move(target, outside)
+        target.symlink_to(outside)
+        self.assertIn("sessions/1767225600000-1-fixture.json: listed file is missing or not a regular file",
+                      evidence.verify(bundle)["errors"])
+
     def test_missing_listed_file_fails(self):
         bundle = self.copy()
         (bundle / "sessions/1767225600000-1-fixture.json").unlink()
-        self.assertIn("sessions/1767225600000-1-fixture.json: listed file is missing", evidence.verify(bundle)["errors"])
+        self.assertIn("sessions/1767225600000-1-fixture.json: listed file is missing or not a regular file",
+                      evidence.verify(bundle)["errors"])
 
 
 class BranchRecordTests(unittest.TestCase):
