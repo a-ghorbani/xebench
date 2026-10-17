@@ -1,5 +1,7 @@
 # ── Model weights & benchmark outputs (large / regenerated — see MODELS.md) ──
 models/
+# …but the committed model manifests (expected digests, no weights) are tracked.
+!/configs/models/
 results/
 *.gguf
 *.litertlm

@@ -6,7 +6,7 @@ import {monotonicNow} from '../clock';
 import {version as LLAMA_RN_VERSION} from 'llama.rn/package.json';
 
 export interface LlamaRnAdapterOptions {
-  /** Absolute path to the GGUF, e.g. /data/local/tmp/xebench/Llama-3.2-1B-Instruct-Q4_K_M.gguf */
+  /** Absolute path to the GGUF, e.g. /sdcard/Android/data/com.xebenchapp/files/Llama-3.2-1B-Instruct-Q4_K_M.gguf */
   modelPath: string;
   quantLabel: string; // e.g. 'Q4_K_M'
   modelLabel: string; // e.g. 'Llama 3.2 1B'

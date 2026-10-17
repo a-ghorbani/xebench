@@ -55,13 +55,14 @@ and current limitations. Other engine adapters are retained for subsequent work.
 cd xebenchapp
 npm ci                            # Node 20+; keep install scripts (see Build flavors)
 
-# stage models on the device's app dir (see MODELS.md for the exact files)
-adb -s <serial> push <model files> /storage/emulated/0/Android/data/com.xebenchapp/files/
-
 # build, check + install the CPU reference RELEASE build (debug is unfair — see METHODOLOGY)
 cd android && ./gradlew assembleReferenceRelease
 python3 ../../scripts/check_reference_apk.py app/build/outputs/apk/reference/release/app-reference-release.apk
 adb -s <serial> install -r app/build/outputs/apk/reference/release/app-reference-release.apk
+
+# stage the pinned reference GGUF in the app's files dir; the script checks the SHA-256 on the host and on the device
+# (download it first after accepting the Llama 3.2 license; see MODELS.md)
+python3 ../../scripts/stage_model.py --serial <serial>
 
 # run: the app auto-runs its configuration and emits evidence references
 ../../scripts/capture_app_run.sh <serial>       # writes a unique results/<capture-id>/ directory
