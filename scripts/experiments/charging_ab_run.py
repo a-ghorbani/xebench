@@ -27,7 +27,6 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
-import shlex
 import subprocess
 import sys
 import time
@@ -64,7 +63,8 @@ class Device:
     def shell(self, command):
         if FORBIDDEN.search(command):
             raise SystemExit(f"Refusing forbidden device command: {command}")
-        return self.adb("shell", *shlex.split(command))
+        # One argument: the device shell parses it, so a UI sequence ("a; sleep 2; b") works.
+        return self.adb("shell", command)
 
     def battery(self):
         """Read-only `dumpsys battery` snapshot (status, level, temperature, plug, current)."""
