@@ -11,7 +11,8 @@ jest.mock('@dr.pogodin/react-native-fs', () => ({
   readFile: jest.fn(), writeFile: jest.fn(), hash: jest.fn(), mkdir: jest.fn(),
 }));
 jest.mock('react-native', () => {
-  const sample = {batteryPct: 80, batteryTempC: 30, charging: true, powerSaveMode: false, thermalStatus: 0,
+  const sample = {batteryPct: 80, batteryTempC: 30, charging: true, batteryStatus: 5, plugged: 1, currentNowUa: 0,
+    powerSaveMode: false, thermalStatus: 0,
     thermalHeadroom: 0.3, screenOn: true, foreground: true, keyguardLocked: false, focusLossCount: 0,
     processUptimeMs: 1000, rssMb: 100, pssMb: 50, timestampMs: 1, elapsedMs: 1000};
   return {
@@ -154,7 +155,7 @@ test('run order is shuffled by a recorded seed and reproducible from a configure
   expect(records.map(record => record.runOrder.position)).toEqual([0, 1, 2, 3]);
   expect(records[0].runOrder).toMatchObject({method: 'mulberry32-fisher-yates-v1', seed: 12345,
     seedSource: 'configured', order});
-  expect(records.every(record => record.conditionVerdict.charging === 'violated')).toBe(true);
+  expect(records.every(record => record.conditionVerdict.charging === 'satisfied')).toBe(true);
 });
 
 test('a generated order seed is recorded', async () => {

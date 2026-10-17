@@ -417,6 +417,11 @@ CONDITION_POLICY_V2 = {
             "interruptions": "focus-loss-count"},
     "memory": "endpoint-pss-and-sampled-rss-not-peak",
 }
+CHARGING_POLICY_V2 = {
+    "version": "charging-policy-v2", "name": "tethered-not-charging", "externalPower": "allowed",
+    "notChargingStatuses": [3, 4, 5], "chargingStatus": 2, "noNetCurrentMaxAbsUa": 20000, "currentZero": "unknown",
+    "readiness": "wait-while-charging", "unknown": "never-eligible", "effect": "publication-eligibility-only",
+}
 STOP_REASONS_UNMEASURED = ("configuration-aborted", "setup-failed")
 _M32 = 0xFFFFFFFF
 
@@ -459,7 +464,40 @@ def assess_readiness(snapshot, baseline):
         reasons.append("battery-not-cooled")
     if headroom is not None and headroom > policy["maxThermalHeadroom"]:
         reasons.append("thermal-headroom-low")
+    if charging_state(snapshot) == "charging":
+        reasons.append("charging")
     return list(dict.fromkeys(reasons))
+
+
+def charging_state(snapshot):
+    """charging-policy-v2: a charging status always wins; current applies only without a status."""
+    status, current = snapshot.get("batteryStatus"), snapshot.get("currentNowUa")
+    if status in CHARGING_POLICY_V2["notChargingStatuses"]:
+        return "notCharging"
+    if status == CHARGING_POLICY_V2["chargingStatus"]:
+        return "charging"
+    if current is not None and current != 0 and abs(current) <= CHARGING_POLICY_V2["noNetCurrentMaxAbsUa"]:
+        return "noNetCurrent"
+    return "unknown"
+
+
+def charging_counts(conditions, measured):
+    counts = {"notCharging": 0, "noNetCurrent": 0, "charging": 0, "unknown": 0}
+    for snapshot in (conditions["before"], conditions["after"]):
+        if snapshot is not None:
+            counts[charging_state(snapshot)] += 1
+    if conditions["during"] is not None:
+        for key in counts:
+            counts[key] += conditions["during"]["summary"]["chargingStates"][key]
+    if measured and (conditions["during"] or {}).get("status") != "complete":
+        counts["unknown"] += 1
+    return counts
+
+
+def assess_charging(counts):
+    if counts["charging"]:
+        return "violated"
+    return "unknown" if counts["unknown"] or not counts["notCharging"] + counts["noNetCurrent"] else "satisfied"
 
 
 def _pending_probe(snapshot):
@@ -494,16 +532,13 @@ def assess_during(monitor, before, after):
 
 
 def condition_verdict(record):
-    reasons, power = {}, {"connected": 0, "disconnected": 0, "unknown": 0}
+    reasons, power = {}, {"notCharging": 0, "noNetCurrent": 0, "charging": 0, "unknown": 0}
     attempts = record["coldRuns"]
     unverified = len(attempts) < record["repetitionsPlanned"]
-
-    def tally(charging):
-        power["connected" if charging is True else "disconnected" if charging is False else "unknown"] += 1
-
     for attempt in attempts:
         readiness, conditions = attempt["readiness"], attempt["conditions"]
-        unknown_only = all(item == "probe-incomplete" or item.startswith("unknown-") for item in readiness["reasons"])
+        unknown_only = all(item in ("probe-incomplete", "charging") or item.startswith("unknown-")
+                           for item in readiness["reasons"])
         if readiness["status"] == "timeout" and not unknown_only:
             reasons["readiness-timeout"] = None
         if readiness["status"] == "probe-pending" or _pending_probe(conditions["after"]) \
@@ -516,18 +551,10 @@ def condition_verdict(record):
                 unverified = True
             elif assessment["status"] == "fail":
                 reasons.update(dict.fromkeys(assessment["reasons"]))
-        tally(conditions["before"].get("charging"))
-        if conditions["after"] is not None:
-            tally(conditions["after"].get("charging"))
-        if conditions["during"] is not None:
-            for key in power:
-                power[key] += conditions["during"]["summary"]["externalPower"][key]
-        if attempt["status"] != "skipped" and (conditions["during"] or {}).get("status") != "complete":
-            power["unknown"] += 1
+        for key, value in charging_counts(conditions, attempt["status"] != "skipped").items():
+            power[key] += value
     status = "fail" if reasons else "unverified" if unverified or not attempts else "pass"
-    charging = "violated" if power["connected"] else (
-        "unknown" if power["unknown"] or not power["disconnected"] else "satisfied")
-    return {"status": status, "reasons": list(reasons), "charging": charging}
+    return {"status": status, "reasons": list(reasons), "charging": assess_charging(power)}
 
 
 def seeded_order(items, seed):
@@ -562,6 +589,9 @@ def _semantic_v2(record):
     if protocol["readinessTimeoutSec"] != config.get("readinessTimeoutSec"):
         errors.append(reason("protocol.configuration-mismatch", "/protocol/readinessTimeoutSec",
                              "Protocol readinessTimeoutSec disagrees with the configuration"))
+    if record["chargingPolicy"] != CHARGING_POLICY_V2:
+        errors.append(reason("conditions.policy", "/chargingPolicy",
+                             "chargingPolicy must equal the published charging-policy-v2 values"))
     if record["conditionPolicy"] != CONDITION_POLICY_V2:
         errors.append(reason("conditions.policy", "/conditionPolicy",
                              "conditionPolicy must equal the published run-conditions-v2 values"))
@@ -643,13 +673,26 @@ def _semantic_v2(record):
         if monitor is not None:
             summary = monitor["summary"]
             if len(monitor["samples"]) > summary["samples"] or summary["incompleteSamples"] > summary["samples"] or \
-                    sum(summary["externalPower"].values()) != summary["samples"]:
+                    sum(summary["externalPower"].values()) != summary["samples"] or \
+                    sum(summary["chargingStates"].values()) != summary["samples"]:
                 errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary",
                                      "Monitor summary disagrees with its sample counts"))
+            persisted = [charging_state(sample) for sample in monitor["samples"]]
+            if any(persisted.count(state) > count for state, count in summary["chargingStates"].items()):
+                errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary/chargingStates",
+                                     "Persisted samples show charging states missing from the summary"))
             missed = {item for sample in monitor["samples"] for item in condition_failures(sample)} - set(summary["failures"])
             if missed:
                 errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary/failures",
                                      f"Persisted samples show failures missing from the summary: {sorted(missed)}"))
+        charging = assess_charging(charging_counts(conditions, attempt["status"] != "skipped"))
+        if conditions["charging"] != charging:
+            errors.append(reason("conditions.recomputed", f"{where}/conditions/charging",
+                                 f"Recorded charging {conditions['charging']!r} but the evidence gives {charging!r}"))
+        if attempt["status"] == "skipped" and attempt["reason"] != (
+                "charging" if "charging" in readiness["reasons"] else "readiness-timeout"):
+            errors.append(reason("readiness.inconsistent", f"{where}/reason",
+                                 "A skip is 'charging' exactly when charging was a final not-ready reason"))
         if attempt["status"] == "skipped" and (monitor is not None or conditions["after"] is not None):
             errors.append(reason("conditions.inconsistent", f"{where}/conditions",
                                  "A skipped repetition has no run-time or after evidence"))

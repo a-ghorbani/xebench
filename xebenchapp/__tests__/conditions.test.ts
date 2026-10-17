@@ -1,5 +1,5 @@
 import {
-  assessCharging, assessConditions, assessDuring, assessReadiness, CONDITION_POLICY, monitorPending,
+  assessCharging, assessConditions, chargingState, assessDuring, assessReadiness, CONDITION_POLICY, monitorPending,
   normalizeConditions, normalizeMonitor, readConditions, startMonitor, stopMonitor,
 } from '../src/harness/conditions';
 import {awaitReadiness} from '../src/harness/readiness';
@@ -9,7 +9,9 @@ jest.mock('react-native', () => ({NativeModules: {}}));
 
 afterEach(() => jest.restoreAllMocks());
 
-const healthy = {timestampMs: 100, elapsedMs: 100, batteryPct: 80, batteryTempC: 30, charging: false,
+// Tethered at a charge limit: external power connected, battery not charging.
+const healthy = {timestampMs: 100, elapsedMs: 100, batteryPct: 80, batteryTempC: 30, charging: true,
+  batteryStatus: 4, plugged: 2, currentNowUa: -3000,
   powerSaveMode: false, thermalStatus: 0, thermalHeadroom: 0.3, screenOn: true, foreground: true,
   keyguardLocked: false, focusLossCount: 0, processUptimeMs: 5000, rssMb: 200, pssMb: 100};
 
@@ -36,7 +38,8 @@ test.each([{batteryPct: -1}, {thermalStatus: -1}, {thermalStatus: 1.5}, {foregro
   expect(assessReadiness(snapshot, null)).toMatchObject({ready: false});
 });
 
-test.each([{thermalHeadroom: NaN}, {pssMb: Infinity}, {rssMb: -1}, {charging: null}, {timestampMs: NaN}])(
+test.each([{thermalHeadroom: NaN}, {pssMb: Infinity}, {rssMb: -1}, {charging: null}, {batteryStatus: 7},
+  {currentNowUa: 1.5}, {timestampMs: NaN}])(
   'optional observations are recorded as unknown without inventing a failure: %j', change => {
     const snapshot = normalizeConditions({...healthy, ...change});
     expect(snapshot).toHaveProperty(Object.keys(change)[0], null);
@@ -98,7 +101,7 @@ const before = normalizeConditions(healthy);
 test('during-run samples pass only with complete coverage', () => {
   const monitor = normalizeMonitor(monitorRaw([healthy, {...healthy, thermalStatus: 2}]));
   expect(monitor.summary).toMatchObject({samples: 2, maxThermalStatus: 2, incompleteSamples: 0,
-    externalPower: {connected: 0, disconnected: 2, unknown: 0}});
+    externalPower: {connected: 2, disconnected: 0, unknown: 0}, chargingStates: {notCharging: 2, noNetCurrent: 0, charging: 0, unknown: 0}});
   expect(assessDuring(monitor, before, before)).toEqual({status: 'pass', reasons: []});
   // Zero samples, a sampling gap, too few ticks for the duration, expiry or drops are incomplete.
   expect(assessDuring(normalizeMonitor(monitorRaw([])), before, before).status).toBe('unverified');
@@ -132,11 +135,49 @@ test('persisted samples are bounded while the summary covers every sample', () =
   expect(monitor.summary).toMatchObject({samples: 200, maxBatteryTempC: 39});
 });
 
-test('charging policy is satisfied only by measured disconnected power', () => {
-  expect(assessCharging({connected: 0, disconnected: 3, unknown: 0})).toBe('satisfied');
-  expect(assessCharging({connected: 1, disconnected: 3, unknown: 0})).toBe('violated');
-  expect(assessCharging({connected: 0, disconnected: 3, unknown: 1})).toBe('unknown');
-  expect(assessCharging({connected: 0, disconnected: 0, unknown: 0})).toBe('unknown');
+describe('charging-policy-v2 (tethered, not charging)', () => {
+  const state = (change: object) => chargingState(normalizeConditions({...healthy, ...change}));
+
+  test('full, not-charging or discharging statuses are eligible with external power connected', () => {
+    expect(state({batteryStatus: 5, charging: true})).toBe('notCharging');
+    expect(state({batteryStatus: 4, charging: true, currentNowUa: 900000})).toBe('notCharging');
+    expect(state({batteryStatus: 3, charging: false})).toBe('notCharging');
+  });
+
+  test('an active charging status is charging whatever the current says', () => {
+    expect(state({batteryStatus: 2})).toBe('charging');
+    expect(state({batteryStatus: 2, currentNowUa: 100})).toBe('charging');
+  });
+
+  test('without a status, only a small non-zero current shows no net charging', () => {
+    expect(state({batteryStatus: null, currentNowUa: -15000})).toBe('noNetCurrent');
+    expect(state({batteryStatus: 1, currentNowUa: 20000})).toBe('noNetCurrent');
+    // Sign conventions vary by vendor, so a large current of either sign is unknown.
+    expect(state({batteryStatus: null, currentNowUa: 500000})).toBe('unknown');
+    expect(state({batteryStatus: null, currentNowUa: -500000})).toBe('unknown');
+    // Zero is what older APIs return for an unsupported property.
+    expect(state({batteryStatus: null, currentNowUa: 0})).toBe('unknown');
+    expect(state({batteryStatus: null, currentNowUa: null})).toBe('unknown');
+  });
+
+  test('any charging violates, unknown is never eligible, and measured not-charging satisfies', () => {
+    expect(assessCharging({notCharging: 3, noNetCurrent: 1, charging: 0, unknown: 0})).toBe('satisfied');
+    expect(assessCharging({notCharging: 3, noNetCurrent: 0, charging: 1, unknown: 0})).toBe('violated');
+    expect(assessCharging({notCharging: 3, noNetCurrent: 0, charging: 0, unknown: 1})).toBe('unknown');
+    expect(assessCharging({notCharging: 0, noNetCurrent: 0, charging: 0, unknown: 0})).toBe('unknown');
+  });
+
+  test('readiness waits while charging but never for an unknown charging state', () => {
+    expect(assessReadiness(normalizeConditions({...healthy, batteryStatus: 2}), null).reasons).toEqual(['charging']);
+    expect(assessReadiness(normalizeConditions({...healthy, batteryStatus: null, currentNowUa: null}), null).ready)
+      .toBe(true);
+  });
+
+  test('monitor summaries count the charging state of every sample', () => {
+    const summary = normalizeMonitor(monitorRaw([healthy, {...healthy, batteryStatus: 2},
+      {...healthy, batteryStatus: null, currentNowUa: null}])).summary;
+    expect(summary.chargingStates).toEqual({notCharging: 1, noNetCurrent: 0, charging: 1, unknown: 1});
+  });
 });
 
 describe('bounded readiness wait', () => {

@@ -1,6 +1,6 @@
 # Run conditions
 
-Policy `run-conditions-v2` (issue #2) and `charging-policy-v1`. Both policies are
+Policy `run-conditions-v2` (issue #2) and `charging-policy-v2`. Both policies are
 copied into every session record. They define when a repetition may start, what is
 observed while it runs, and when a condition verdict may pass. They do not verify
 backend execution, quality or cross-device comparability.
@@ -12,7 +12,8 @@ backend execution, quality or cross-device comparability.
 2. **Readiness:** native snapshots are polled every 5 s until ready, for at most
    `readinessTimeoutSec` (default 180 s, configurable from 10 to 900 s). The final
    ready snapshot is the `before` endpoint. On timeout the repetition is recorded
-   as `skipped` (`readiness-timeout`), nothing is loaded, and the session stops.
+   as `skipped` (reason `readiness-timeout`, or `charging` when the battery was still
+   charging), nothing is loaded, and the session stops.
 3. **Sampling:** a native background thread samples immediately and then once per
    second from just before `load()` until `benchOnce()` returns. No JS-bridge
    sampling call happens between the start of load and the end of inference.
@@ -30,7 +31,9 @@ Ready requires a complete probe, every required signal measured, no run-time fai
 - thermal headroom at most 0.8 when the API returns a value. Headroom is null when
   unsupported (API < 30), rate-limited or NaN (the first call can be NaN). An
   otherwise-ready poll with null headroom is repeated once after 1.5 s; if headroom
-  is still null it is not used, and `readiness.headroomApplied` records `false`.
+  is still null it is not used, and `readiness.headroomApplied` records `false`;
+- the battery not actively charging (see the charging policy). An unknown charging
+  state does not block readiness, but it is never eligible.
 
 Required signals: battery %, battery temperature, power saving, thermal status,
 screen interactive, foreground window focus, keyguard lock and the focus-loss count.
@@ -72,15 +75,47 @@ condition pass is necessary but not sufficient.
 
 ## Charging policy (owner decision)
 
-`charging-policy-v1` requires external power to be **disconnected** for publication
-eligibility. This is a conservative default chosen pending the owner's decision. It
-avoids charging heat and charger/OEM power-path differences. The `charging`
-field means external power is connected, including a full battery on USB.
-`conditionVerdict.charging` is `satisfied` only when every endpoint and sample
-measured disconnected power and every measured repetition was sampled; any
-connection is `violated`; otherwise `unknown`. It
-does not affect run validity. USB-tethered captures are therefore `violated`;
-eligible runs need, for example, wireless debugging.
+`charging-policy-v2` ("tethered, not charging") follows the owner's decision. Lab
+phones stay USB-tethered, so **external power is allowed** but **active charging
+is not**. The policy only affects publication eligibility. It never removes
+measurements or changes run validity.
+
+Each snapshot and 1 Hz sample records three raw values:
+
+- `batteryStatus` (`BatteryManager` `EXTRA_STATUS`);
+- `plugged` (`EXTRA_PLUGGED`);
+- `currentNowUa` (`BATTERY_PROPERTY_CURRENT_NOW`).
+
+Each observation is classified as follows:
+
+- **not charging**: status `FULL` (5), `NOT_CHARGING` (4) or `DISCHARGING` (3),
+  for example when a charge limit is reached;
+- **charging**: status `CHARGING` (2), whatever the current says;
+- **no net current**: no usable status, and a non-zero current within ±20 mA.
+  Units and sign conventions vary by vendor, so the raw value is kept. A zero
+  reading, which older APIs return when the property is unsupported, is unknown;
+- **unknown**: anything else.
+
+A repetition's `conditions.charging` and the session's `conditionVerdict.charging`
+take one of three values:
+
+- `violated` if any endpoint or sample was charging;
+- `satisfied` only when every observation was measured and none was charging, and
+  every measured repetition was sampled;
+- `unknown` otherwise. Unknown is never eligible.
+
+Readiness also waits, within `readinessTimeoutSec`, while the battery is charging.
+On timeout the repetition is skipped with reason `charging`. Because charging is
+not a validity condition, that session's verdict is `unverified`, not `fail`. The
+harness never fakes an unplug (for example with `dumpsys battery unplug`), since
+that changes the reported state, not the physics.
+
+Lab setup: enable the device's charge limit where available. Examples are Pixel
+"Charging optimization" (limit to 80%) and Samsung "Battery protection". A
+device without a charge limit can only produce `violated` (charging) or `unknown`
+runs while tethered. Those runs are labelled as such, which is acceptable. During
+the validation runs, the Galaxy S23 reported `FULL` with battery protection
+active. The Pixel 9 was on AC power below 80%.
 
 ## Failures, skipped runs and cleanup
 
@@ -120,7 +155,7 @@ Repetitions of one run stay contiguous.
 | Interruption detection | [`MainActivity.kt`](../xebenchapp/android/app/src/main/java/com/xebenchapp/MainActivity.kt) focus counter; `assessDuring` | `conditions.test.ts` focus losses; `session.test.ts` interruption then readiness wait; device runs |
 | Unresponsive probes/monitors abort after save and release | `conditions.ts` `bounded`; `session.ts` | `conditions.test.ts` unresponsive calls; `session.test.ts` late probes, busy sampler, monitor start/stop failures |
 | Cleanup on failure; unmeasured runs recorded | `session.ts`, `reference.ts` | `session.test.ts` failed load/inference/release, monitor stop on failure; `reference.test.ts` cleanup abort, unreadable model |
-| Charging policy affects eligibility only | `conditions.ts` `assessCharging`; `session.ts` `conditionVerdict` | `conditions.test.ts` charging policy; `session.test.ts` identity/charging |
+| Charging policy: tethered allowed, charging never eligible, unknown never eligible, wait while charging | `conditions.ts` `chargingState`, `assessCharging`, `assessReadiness`; `session.ts` `chargingCounts`, `conditionVerdict`; `BenchConditionsModule.kt` raw status/plugged/current | `conditions.test.ts` charging-policy-v2; `session.test.ts` charging-policy-v2 in sessions; `test_raw_session.py` charging recompute |
 | Instance/process identity, seeded run order | `session.ts`; [`order.ts`](../xebenchapp/src/harness/order.ts) | `session.test.ts` identity; [`order.test.ts`](../xebenchapp/__tests__/order.test.ts); `reference.test.ts` run order |
 | Records cannot claim what their evidence does not support | [`raw_session.py`](../scripts/raw_session.py) `_semantic_v2` recomputes assessments, readiness, verdict and order | [`test_raw_session.py`](../tests/test_raw_session.py) `ConditionsV2Tests`; [`rawSessionSchema.test.ts`](../xebenchapp/__tests__/rawSessionSchema.test.ts) drift fixture |
 

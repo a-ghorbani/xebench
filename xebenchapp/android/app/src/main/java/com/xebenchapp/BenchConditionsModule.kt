@@ -85,6 +85,18 @@ class BenchConditionsModule(private val context: ReactApplicationContext) :
         val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) ?: -1
         if (plugged >= 0) plugged != 0 else null
       }
+      // Raw values for charging-policy-v2; interpretation (and vendor sign/unit caveats) is in JS.
+      number("batteryStatus") {
+        battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1)?.takeIf { it > 0 }?.toDouble()
+      }
+      number("plugged") {
+        battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)?.takeIf { it >= 0 }?.toDouble()
+      }
+      number("currentNowUa") {
+        val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+          ?.takeIf { it != Int.MIN_VALUE }?.toDouble()
+      }
       boolean("powerSaveMode") { power?.isPowerSaveMode }
       boolean("screenOn") { power?.isInteractive }
       boolean("keyguardLocked") { keyguard?.isKeyguardLocked }

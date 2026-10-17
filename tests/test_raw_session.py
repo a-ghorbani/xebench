@@ -36,7 +36,8 @@ class AppEmittedRecordTests(unittest.TestCase):
                                        "noEngineInternal", "beforeProbeBusy", "afterProbeTimeout"})
         self.assertEqual(set(APP), set(LEGACY) | {
             "interrupted", "monitorIncomplete", "monitorUnavailable", "monitorStuck", "monitorBusy",
-            "readinessTimeout", "orderedLaterRun", "configurationAborted", "setupFailed"})
+            "readinessTimeout", "orderedLaterRun", "configurationAborted", "setupFailed", "chargingDuringRun",
+            "chargingTimeout", "chargingUnknown"})
         for records in (APP, LEGACY):
             self.assertGreater(len(records["inferenceFailed"]["coldRuns"][0]["error"]["message"]), 4096)
             self.assertIsNone(records["nonFiniteMetrics"]["coldRuns"][0]["metrics"])
@@ -226,7 +227,7 @@ class ConditionsV2Tests(unittest.TestCase):
         self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1]["conditions"].update(
             after=r["coldRuns"][-1]["conditions"]["before"], afterAssessment={"status": "pass", "reasons": []})),
             {"conditions.inconsistent"})
-        self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1].update(reason="other")), {"schema.const"})
+        self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1].update(reason="other")), {"schema.enum"})
 
     def test_unmeasured_runs_have_no_attempts_or_artifact(self):
         self.assertEqual(APP["configurationAborted"]["coldRuns"], [])
@@ -257,7 +258,8 @@ class ConditionsV2Tests(unittest.TestCase):
             during = record["coldRuns"][0]["conditions"]["during"]
             during.update(samples=[], ticks=0)
             during["summary"].update(samples=0, maxGapMs=1500,
-                                     externalPower={"connected": 0, "disconnected": 0, "unknown": 0})
+                                     externalPower={"connected": 0, "disconnected": 0, "unknown": 0},
+                                     chargingStates={"notCharging": 0, "noNetCurrent": 0, "charging": 0, "unknown": 0})
         self.assertCodes(v2("complete", no_samples), {"conditions.recomputed"})
 
     def test_failures_cannot_be_hidden(self):
@@ -276,6 +278,38 @@ class ConditionsV2Tests(unittest.TestCase):
         self.assertCodes(v2("complete", lambda r: r.update(conditionVerdict=dict(r["conditionVerdict"],
                                                                                  charging="unknown"))),
                          {"guards.recomputed"})
+
+    def test_charging_policy_is_recomputed_and_unknown_is_never_eligible(self):
+        self.assertEqual([APP[name]["conditionVerdict"]["charging"] for name in
+                          ("complete", "chargingDuringRun", "chargingTimeout", "chargingUnknown")],
+                         ["satisfied", "violated", "violated", "unknown"])
+        self.assertEqual(APP["chargingTimeout"]["coldRuns"][0]["reason"], "charging")
+        self.assertEqual(raw_session.charging_state({"batteryStatus": 2, "currentNowUa": 10}), "charging")
+        self.assertEqual(raw_session.charging_state({"batteryStatus": None, "currentNowUa": -5000}), "noNetCurrent")
+        self.assertEqual(raw_session.charging_state({"batteryStatus": None, "currentNowUa": 0}), "unknown")
+        self.assertEqual(raw_session.charging_state({"batteryStatus": 1, "currentNowUa": 900000}), "unknown")
+        def hide_charging(record):
+            summary = record["coldRuns"][0]["conditions"]["during"]["summary"]
+            summary["chargingStates"].update(charging=0, notCharging=summary["samples"])
+        self.assertCodes(v2("chargingDuringRun", hide_charging), {"conditions.monitor", "conditions.recomputed",
+                                                                  "guards.recomputed"})
+        self.assertCodes(v2("chargingUnknown", lambda r: r["coldRuns"][0]["conditions"].update(charging="satisfied")),
+                         {"conditions.recomputed"})
+        self.assertCodes(v2("chargingUnknown", lambda r: r.update(conditionVerdict=dict(r["conditionVerdict"],
+                                                                                       charging="satisfied"))),
+                         {"guards.recomputed"})
+        self.assertCodes(v2("chargingTimeout", lambda r: r["coldRuns"][0].update(reason="readiness-timeout")),
+                         {"readiness.inconsistent"})
+        self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1].update(reason="charging")),
+                         {"readiness.inconsistent"})
+        self.assertCodes(v2("complete", lambda r: r["chargingPolicy"].update(notChargingStatuses=[2, 4, 5])),
+                         {"schema.enum"})
+        self.assertCodes(v2("complete", lambda r: r["chargingPolicy"].update(notChargingStatuses=[5, 4, 3])),
+                         {"conditions.policy"})
+        def charging_before(record):
+            before = record["coldRuns"][0]["conditions"]["before"]
+            before["batteryStatus"] = 2
+        self.assertIn("readiness.recomputed", codes(v2("complete", charging_before)))
 
     def test_run_order_cooldown_and_instances_are_consistent(self):
         order = APP["orderedLaterRun"]["runOrder"]

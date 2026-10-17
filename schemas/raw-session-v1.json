@@ -169,7 +169,10 @@
         "foreground": {"type": ["boolean", "null"]},
         "keyguardLocked": {"type": ["boolean", "null"]},
         "pssMb": {"type": ["number", "null"], "minimum": 0},
-        "unavailable": {"type": "array", "items": {"type": "string"}}
+        "unavailable": {"type": "array", "items": {"type": "string"}},
+        "batteryStatus": {"type": ["integer", "null"], "minimum": 1, "maximum": 5},
+        "plugged": {"type": ["integer", "null"], "minimum": 0, "maximum": 255},
+        "currentNowUa": {"type": ["integer", "null"]}
       }
     },
     "conditionAssessment": {
@@ -470,11 +473,30 @@
         "runOrder": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/runOrder"}]},
         "chargingPolicy": {
           "type": "object",
-          "required": ["version", "publicationRequires", "effect"],
           "additionalProperties": false,
+          "description": "charging-policy-v2 (tethered-not-charging): external power allowed, active charging never eligible.",
+          "required": [
+            "version",
+            "name",
+            "externalPower",
+            "notChargingStatuses",
+            "chargingStatus",
+            "noNetCurrentMaxAbsUa",
+            "currentZero",
+            "readiness",
+            "unknown",
+            "effect"
+          ],
           "properties": {
-            "version": {"const": "charging-policy-v1"},
-            "publicationRequires": {"const": "external-power-disconnected"},
+            "version": {"const": "charging-policy-v2"},
+            "name": {"const": "tethered-not-charging"},
+            "externalPower": {"const": "allowed"},
+            "notChargingStatuses": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"enum": [3, 4, 5]}},
+            "chargingStatus": {"const": 2},
+            "noNetCurrentMaxAbsUa": {"const": 20000},
+            "currentZero": {"const": "unknown"},
+            "readiness": {"const": "wait-while-charging"},
+            "unknown": {"const": "never-eligible"},
             "effect": {"const": "publication-eligibility-only"}
           }
         },
@@ -489,7 +511,7 @@
           }
         }
       },
-      "description": "Protocol cpu-reference-v2 (harness xebench-0.6-reference): readiness-gated, sampled repetitions under run-conditions-v2 and charging-policy-v1 (docs/RUN-CONDITIONS.md)."
+      "description": "Protocol cpu-reference-v2 (harness xebench-0.6-reference): readiness-gated, sampled repetitions under run-conditions-v2 and charging-policy-v2 (docs/RUN-CONDITIONS.md)."
     },
     "completeAttemptV2": {
       "type": "object",
@@ -558,7 +580,7 @@
       "properties": {
         "runIndex": {"type": "integer", "minimum": 0},
         "status": {"const": "skipped"},
-        "reason": {"const": "readiness-timeout"},
+        "reason": {"enum": ["readiness-timeout", "charging"]},
         "cooldownMs": {"type": "integer", "minimum": 0},
         "readiness": {"$ref": "#/$defs/readiness"},
         "instance": {"const": null},
@@ -622,7 +644,7 @@
     "attemptConditionsV2": {
       "type": "object",
       "description": "Readiness endpoint, sampled run and after endpoint. Open to additive fields.",
-      "required": ["before", "beforeAssessment", "during", "duringAssessment", "after", "afterAssessment"],
+      "required": ["before", "beforeAssessment", "during", "duringAssessment", "after", "afterAssessment", "charging"],
       "additionalProperties": true,
       "properties": {
         "before": {"$ref": "#/$defs/conditionSnapshot"},
@@ -630,7 +652,8 @@
         "during": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/monitor"}]},
         "duringAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]},
         "after": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionSnapshot"}]},
-        "afterAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]}
+        "afterAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]},
+        "charging": {"enum": ["satisfied", "violated", "unknown"]}
       }
     },
     "monitor": {
@@ -662,7 +685,7 @@
         "summary": {
           "type": "object",
           "additionalProperties": true,
-          "required": ["samples", "incompleteSamples", "failures", "maxGapMs", "externalPower"],
+          "required": ["samples", "incompleteSamples", "failures", "maxGapMs", "externalPower", "chargingStates"],
           "properties": {
             "samples": {"type": "integer", "minimum": 0},
             "incompleteSamples": {"type": "integer", "minimum": 0},
@@ -675,6 +698,17 @@
               "properties": {
                 "connected": {"type": "integer", "minimum": 0},
                 "disconnected": {"type": "integer", "minimum": 0},
+                "unknown": {"type": "integer", "minimum": 0}
+              }
+            },
+            "chargingStates": {
+              "type": "object",
+              "required": ["notCharging", "noNetCurrent", "charging", "unknown"],
+              "additionalProperties": false,
+              "properties": {
+                "notCharging": {"type": "integer", "minimum": 0},
+                "noNetCurrent": {"type": "integer", "minimum": 0},
+                "charging": {"type": "integer", "minimum": 0},
                 "unknown": {"type": "integer", "minimum": 0}
               }
             }

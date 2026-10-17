@@ -7,7 +7,14 @@ export interface ConditionSnapshot {
   elapsedMs: number | null;
   batteryPct: number | null;
   batteryTempC: number | null;
+  /** External power connected (any plug type, including a full battery on USB). */
   charging: boolean | null;
+  /** Raw BatteryManager EXTRA_STATUS: 1 unknown, 2 charging, 3 discharging, 4 not charging, 5 full. */
+  batteryStatus: number | null;
+  /** Raw BatteryManager EXTRA_PLUGGED bitmask (0 none, 1 AC, 2 USB, 4 wireless, 8 dock). */
+  plugged: number | null;
+  /** Raw BATTERY_PROPERTY_CURRENT_NOW; documented as µA, but sign and unit vary by vendor. */
+  currentNowUa: number | null;
   powerSaveMode: boolean | null;
   thermalStatus: number | null;
   /** PowerManager.getThermalHeadroom(0); null when unsupported or rate-limited. */
@@ -54,16 +61,21 @@ export const CONDITION_POLICY = {
 } as const;
 
 /**
- * Publication-eligibility only; it never changes a measurement or its run validity.
- * The value is an owner decision (see docs/RUN-CONDITIONS.md); this is the conservative default.
+ * Owner decision (docs/RUN-CONDITIONS.md): lab phones stay USB-tethered, so external power is
+ * allowed, but active charging is not. Eligibility only; it never removes a measurement.
  */
 export const CHARGING_POLICY = {
-  version: 'charging-policy-v1', publicationRequires: 'external-power-disconnected',
-  effect: 'publication-eligibility-only',
+  version: 'charging-policy-v2', name: 'tethered-not-charging', externalPower: 'allowed',
+  // BatteryManager status codes that cannot be active charging: discharging, not charging, full.
+  notChargingStatuses: [3, 4, 5], chargingStatus: 2,
+  // Used only when the status is unknown or unreadable; a status of charging always wins.
+  noNetCurrentMaxAbsUa: 20000, currentZero: 'unknown',
+  readiness: 'wait-while-charging', unknown: 'never-eligible', effect: 'publication-eligibility-only',
 } as const;
 
 const NUMBERS: Record<string, [number, number, boolean?]> = {
   timestampMs: [0, Number.MAX_SAFE_INTEGER], elapsedMs: [0, Number.MAX_SAFE_INTEGER], batteryPct: [0, 100], batteryTempC: [-50, 150],
+  batteryStatus: [1, 5, true], plugged: [0, 255, true], currentNowUa: [-1e9, 1e9, true],
   thermalStatus: [0, 6, true], thermalHeadroom: [0, 100], focusLossCount: [0, Number.MAX_SAFE_INTEGER, true],
   processUptimeMs: [0, Number.MAX_SAFE_INTEGER], rssMb: [0, Number.MAX_SAFE_INTEGER],
   pssMb: [0, Number.MAX_SAFE_INTEGER],
@@ -125,6 +137,8 @@ export function assessReadiness(snapshot: ConditionSnapshot, baselineTempC: numb
   if (snapshot.batteryTempC !== null && baselineTempC !== null &&
       snapshot.batteryTempC > baselineTempC + readiness.maxBatteryTempRiseC) reasons.push('battery-not-cooled');
   if (snapshot.thermalHeadroom !== null && snapshot.thermalHeadroom > readiness.maxThermalHeadroom) reasons.push('thermal-headroom-low');
+  // Eligibility, not validity: wait for active charging to stop, but never for an unknown state.
+  if (chargingState(snapshot) === 'charging') reasons.push('charging');
   return {ready: reasons.length === 0, reasons: [...new Set(reasons)]};
 }
 
@@ -140,6 +154,7 @@ export interface MonitorSummary {
   /** Largest gap between monitor start, consecutive samples and stop; null if any time is unknown. */
   maxGapMs: number | null;
   externalPower: {connected: number; disconnected: number; unknown: number};
+  chargingStates: ChargingCounts;
 }
 
 export interface MonitorResult {
@@ -187,6 +202,10 @@ export function summarizeSamples(samples: ConditionSnapshot[], startedMs: number
     maxRssMb: extreme(samples.map(sample => sample.rssMb), Math.max),
     maxGapMs: maxGap([startedMs, ...samples.map(sample => sample.elapsedMs), stoppedMs]),
     externalPower: {connected: count(true), disconnected: count(false), unknown: count(null)},
+    chargingStates: samples.reduce((counts, sample) => {
+      counts[chargingState(sample)]++;
+      return counts;
+    }, emptyChargingCounts()),
   };
 }
 
@@ -249,11 +268,29 @@ export function assessDuring(monitor: MonitorResult, before: ConditionSnapshot, 
 }
 
 export type ChargingStatus = 'satisfied' | 'violated' | 'unknown';
+export type ChargingState = 'notCharging' | 'noNetCurrent' | 'charging' | 'unknown';
+export type ChargingCounts = Record<ChargingState, number>;
 
-/** Any observed external power violates the policy; all observations must be measured to satisfy it. */
-export function assessCharging(observations: {connected: number; disconnected: number; unknown: number}): ChargingStatus {
-  if (observations.connected) return 'violated';
-  return observations.unknown || !observations.disconnected ? 'unknown' : 'satisfied';
+/**
+ * One observation under charging-policy-v2. A charging status always counts as charging. The
+ * current criterion applies only when the status is unknown or unreadable. A zero reading
+ * there is unknown, since older APIs return 0 when the property is unsupported.
+ */
+export function chargingState(snapshot: ConditionSnapshot): ChargingState {
+  const status = snapshot.batteryStatus;
+  if (status !== null && (CHARGING_POLICY.notChargingStatuses as readonly number[]).includes(status)) return 'notCharging';
+  if (status === CHARGING_POLICY.chargingStatus) return 'charging';
+  const current = snapshot.currentNowUa;
+  return current !== null && current !== 0 && Math.abs(current) <= CHARGING_POLICY.noNetCurrentMaxAbsUa ?
+    'noNetCurrent' : 'unknown';
+}
+
+export const emptyChargingCounts = (): ChargingCounts => ({notCharging: 0, noNetCurrent: 0, charging: 0, unknown: 0});
+
+/** Any active charging violates the policy; every observation must be measured to satisfy it. */
+export function assessCharging(counts: ChargingCounts): ChargingStatus {
+  if (counts.charging) return 'violated';
+  return counts.unknown || !(counts.notCharging + counts.noNetCurrent) ? 'unknown' : 'satisfied';
 }
 
 type Native = {sample(): Promise<unknown>; startMonitor(intervalMs: number, maxDurationMs: number): Promise<unknown>;

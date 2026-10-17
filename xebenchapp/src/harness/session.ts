@@ -3,10 +3,11 @@ import type {Aggregate, SingleRunMetrics} from './types';
 import type {ReferenceConfig, ReferenceRun} from './config';
 import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
 import {
-  assessCharging, assessConditions, assessDuring, CHARGING_POLICY, CONDITION_POLICY, monitorPending,
+  assessCharging, assessConditions, assessDuring, CHARGING_POLICY, chargingState, CONDITION_POLICY,
+  emptyChargingCounts, monitorPending,
   normalizeMonitor, probePending, readConditions, startMonitor, stopMonitor,
 } from './conditions';
-import type {ChargingStatus, ConditionAssessment, ConditionSnapshot, MonitorResult} from './conditions';
+import type {ChargingCounts, ChargingStatus, ConditionAssessment, ConditionSnapshot, MonitorResult} from './conditions';
 import {awaitReadiness} from './readiness';
 import type {ReadinessBaseline, ReadinessResult} from './readiness';
 import type {RunOrder} from './order';
@@ -35,6 +36,8 @@ export interface AttemptConditions {
   duringAssessment: ConditionAssessment | null;
   after: ConditionSnapshot | null;
   afterAssessment: ConditionAssessment | null;
+  /** This repetition's eligibility under CHARGING_POLICY (endpoints and every sample). */
+  charging: ChargingStatus;
 }
 
 type AttemptBase = {
@@ -49,7 +52,7 @@ type AttemptBase = {
 export type Attempt = AttemptBase & ({status: 'complete'} & SingleRunMetrics | {
   status: 'failed'; error: {phase: Phase; message: string}; metrics: SingleRunMetrics | null;
   cleanupError?: CleanupError;
-} | {status: 'skipped'; reason: 'readiness-timeout'});
+} | {status: 'skipped'; reason: 'readiness-timeout' | 'charging'});
 
 export type StopReason = 'repetition-failed' | 'readiness-timeout' | 'condition-probe-pending' |
   'cleanup-failed' | 'configuration-aborted' | 'setup-failed';
@@ -155,14 +158,12 @@ function validateMetrics(metrics: SingleRunMetrics) {
 export function conditionVerdict(record: Pick<ReferenceSession, 'coldRuns' | 'repetitionsPlanned'>): ConditionVerdict {
   const reasons = new Set<string>();
   let unverified = record.coldRuns.length < record.repetitionsPlanned;
-  const power = {connected: 0, disconnected: 0, unknown: 0};
-  const tally = (charging: boolean | null) => {
-    power[charging === true ? 'connected' : charging === false ? 'disconnected' : 'unknown']++;
-  };
+  const power = emptyChargingCounts();
   for (const attempt of record.coldRuns) {
     const {readiness, conditions} = attempt;
-    // A timeout caused only by unknown evidence is unverified, not an observed failure.
-    const unknownOnly = readiness.reasons.every(reason => reason === 'probe-incomplete' || reason.startsWith('unknown-'));
+    // A timeout caused only by unknown evidence or charging (eligibility, not validity) is unverified.
+    const unknownOnly = readiness.reasons.every(reason =>
+      reason === 'probe-incomplete' || reason === 'charging' || reason.startsWith('unknown-'));
     if (readiness.status === 'timeout' && !unknownOnly) reasons.add('readiness-timeout');
     if (readiness.status === 'probe-pending' || (conditions.after && probePending(conditions.after)) ||
         (conditions.during && monitorPending(conditions.during))) reasons.add('condition-probe-pending');
@@ -171,16 +172,24 @@ export function conditionVerdict(record: Pick<ReferenceSession, 'coldRuns' | 're
       if (!assessment || assessment.status === 'unverified') unverified = true;
       else if (assessment.status === 'fail') assessment.reasons.forEach(reason => reasons.add(reason));
     }
-    tally(conditions.before.charging);
-    if (conditions.after) tally(conditions.after.charging);
-    if (conditions.during) {
-      for (const key of ['connected', 'disconnected', 'unknown'] as const) power[key] += conditions.during.summary.externalPower[key];
-    }
-    // Charging can only be satisfied when the run itself was sampled.
-    if (attempt.status !== 'skipped' && conditions.during?.status !== 'complete') power.unknown++;
+    const counts = chargingCounts(conditions, attempt.status !== 'skipped');
+    for (const key of Object.keys(power) as (keyof ChargingCounts)[]) power[key] += counts[key];
   }
   return {status: reasons.size ? 'fail' : unverified || !record.coldRuns.length ? 'unverified' : 'pass',
     reasons: [...reasons], charging: assessCharging(power)};
+}
+
+/** Charging observations of one repetition; a measured one must have been sampled throughout. */
+export function chargingCounts(conditions: Pick<AttemptConditions, 'before' | 'during' | 'after'>, measured: boolean) {
+  const counts = emptyChargingCounts();
+  for (const snapshot of [conditions.before, conditions.after]) {
+    if (snapshot) counts[chargingState(snapshot)]++;
+  }
+  if (conditions.during) {
+    for (const key of Object.keys(counts) as (keyof ChargingCounts)[]) counts[key] += conditions.during.summary.chargingStates[key];
+  }
+  if (measured && conditions.during?.status !== 'complete') counts.unknown++;
+  return counts;
 }
 
 function updateVerdict(record: ReferenceSession) {
@@ -254,8 +263,10 @@ export async function runSession(
     const base = {runIndex, cooldownMs, readiness, instance: null as InstanceIdentity | null};
     if (readiness.status === 'timeout') {
       // Never measure without measured readiness; keep the evidence for why it was skipped.
-      record.coldRuns.push({...base, status: 'skipped', reason: 'readiness-timeout', conditions: {
-        before, beforeAssessment, during: null, duringAssessment: null, after: null, afterAssessment: null}});
+      record.coldRuns.push({...base, status: 'skipped',
+        reason: readiness.reasons.includes('charging') ? 'charging' : 'readiness-timeout', conditions: {
+          before, beforeAssessment, during: null, duringAssessment: null, after: null, afterAssessment: null,
+          charging: assessCharging(chargingCounts({before, during: null, after: null}, false))}});
       record.status = 'failed';
       record.stopReason = 'readiness-timeout';
       updateVerdict(record);
@@ -304,7 +315,8 @@ export async function runSession(
     }
     const conditions: AttemptConditions = {before, beforeAssessment, during,
       duringAssessment: during && after ? assessDuring(during, before, after) : null,
-      after, afterAssessment: after ? assessConditions(after) : null};
+      after, afterAssessment: after ? assessConditions(after) : null,
+      charging: assessCharging(chargingCounts({before, during, after}, true))};
     record.coldRuns.push(error ? {...base, conditions, status: 'failed', error, metrics,
       ...(cleanupError ? {cleanupError} : {})} :
       {...base, conditions, status: 'complete', ...metrics!});

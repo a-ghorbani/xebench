@@ -135,8 +135,12 @@ then native samples are taken once per second during load and inference. Endpoin
 or sampled failures and focus interruptions are flagged (`guardsPassed=false`);
 flagged repetitions stay in the summary rather than being gated out.
 Unknown evidence cannot pass; a condition pass does not establish backend execution,
-so guards stay unverified. Charging is a separate publication-eligibility policy
-(external power disconnected by default; an owner decision). The activity keeps the
+so guards stay unverified. Charging is a separate publication-eligibility policy,
+`charging-policy-v2`: USB tethering is allowed, but a repetition is eligible only if
+the battery was measured as not charging (full, not charging or discharging, e.g.
+at a charge limit) at every snapshot and sample. Charging is `violated` and unknown
+is never eligible. Readiness waits, within the bound, for charging to stop. The
+activity keeps the
 screen on while visible. Historical records are not retroactively certified.
 → `xebenchapp/src/harness/conditions.ts`, `readiness.ts`, `session.ts`;
 `BenchConditionsModule.kt`; tests listed in

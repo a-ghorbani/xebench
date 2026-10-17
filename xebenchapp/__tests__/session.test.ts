@@ -4,7 +4,8 @@ import configData from '../configs/cpu-reference-v1.json';
 import type {SingleRunMetrics} from '../src/harness/types';
 import * as conditions from '../src/harness/conditions';
 
-const healthyConditions = {timestampMs: 100, elapsedMs: 1000, batteryPct: 80, batteryTempC: 30, charging: false,
+const healthyConditions = {timestampMs: 100, elapsedMs: 1000, batteryPct: 80, batteryTempC: 30, charging: true,
+  batteryStatus: 5, plugged: 2, currentNowUa: 0,
   powerSaveMode: false, thermalStatus: 0, thermalHeadroom: 0.3, screenOn: true, foreground: true,
   keyguardLocked: false, focusLossCount: 0, processUptimeMs: 5000, rssMb: 200, pssMb: 100};
 const stoppedMonitor = (samples: object[] = [healthyConditions], extra: object = {}) => conditions.normalizeMonitor({
@@ -284,7 +285,7 @@ test.each(['stuck', 'timeout', 'error'] as const)('a %s monitor stop aborts afte
 
 test('records fresh-instance identity, process loads, run order and the charging policy', async () => {
   jest.mocked(conditions.readConditions).mockImplementation(async () =>
-    conditions.normalizeConditions({...healthyConditions, charging: true}));
+    conditions.normalizeConditions({...healthyConditions, batteryStatus: 3, charging: false}));
   const runOrder = {method: 'mulberry32-fisher-yates-v1' as const, seed: 7, seedSource: 'configured' as const,
     order: ['b', config.runs[0].id], position: 1};
   const sleep = jest.fn(noSleep);
@@ -299,9 +300,8 @@ test('records fresh-instance identity, process loads, run order and the charging
   expect(result.runOrder).toEqual(runOrder);
   expect(result.protocol).toMatchObject({measurementKind: 'fresh-instance-first-request',
     warmRequests: 'not-measured', processRestartBetweenRepetitions: false, readinessTimeoutSec: 180});
-  // External power is a publication-eligibility matter, not a run-validity failure.
-  expect(result.conditionVerdict).toEqual({status: 'pass', reasons: [], charging: 'violated'});
-  expect(result.chargingPolicy.publicationRequires).toBe('external-power-disconnected');
+  expect(result.conditionVerdict).toEqual({status: 'pass', reasons: [], charging: 'satisfied'});
+  expect(result.chargingPolicy).toMatchObject({version: 'charging-policy-v2', externalPower: 'allowed'});
 });
 
 test('the readiness temperature baseline is shared across runs of a configuration', async () => {
@@ -380,4 +380,60 @@ test('charging cannot be satisfied when the run itself was not sampled', async (
   jest.mocked(conditions.startMonitor).mockResolvedValue('unavailable');
   const result = await runSession(adapter(), one, config.runs[0], identity, async () => {});
   expect(result.conditionVerdict.charging).toBe('unknown');
+});
+
+describe('charging-policy-v2 in sessions', () => {
+  const charging = {...healthyConditions, batteryStatus: 2};
+
+  test('charging during the run violates eligibility but keeps the measurement', async () => {
+    jest.mocked(conditions.stopMonitor).mockResolvedValue(stoppedMonitor([charging]));
+    const result = await runSession(adapter(), one, config.runs[0], identity, async () => {});
+    expect(result.status).toBe('complete');
+    expect(result.summary.decodeTps?.n).toBe(1);
+    expect(result.coldRuns[0].conditions.charging).toBe('violated');
+    expect(result.conditionVerdict).toEqual({status: 'pass', reasons: [], charging: 'violated'});
+    expect(result.guardsPassed).toBeNull();
+  });
+
+  test('unreadable charging state is recorded and never eligible', async () => {
+    jest.mocked(conditions.readConditions).mockImplementation(async () =>
+      conditions.normalizeConditions({...healthyConditions, batteryStatus: null, currentNowUa: null}));
+    const result = await runSession(adapter(), one, config.runs[0], identity, async () => {});
+    expect(result.coldRuns[0].conditions.before.unavailable).toEqual(expect.arrayContaining(['batteryStatus', 'currentNowUa']));
+    expect(result.coldRuns[0].conditions.charging).toBe('unknown');
+    expect(result.conditionVerdict.charging).toBe('unknown');
+  });
+
+  test('a current-based reading makes a status-less device eligible', async () => {
+    const quiet = {...healthyConditions, batteryStatus: null, currentNowUa: -8000};
+    jest.mocked(conditions.readConditions).mockImplementation(async () => conditions.normalizeConditions(quiet));
+    jest.mocked(conditions.stopMonitor).mockResolvedValue(stoppedMonitor([quiet]));
+    const result = await runSession(adapter(), one, config.runs[0], identity, async () => {});
+    expect(result.conditionVerdict.charging).toBe('satisfied');
+  });
+
+  test('readiness waits while the battery is charging, then measures', async () => {
+    jest.mocked(conditions.readConditions)
+      .mockResolvedValueOnce(conditions.normalizeConditions(charging))
+      .mockResolvedValueOnce(conditions.normalizeConditions(charging));
+    const sleep = jest.fn(noSleep);
+    const result = await runSession(adapter(), one, config.runs[0], identity, async () => {}, sleep);
+    expect(sleep.mock.calls).toEqual([[5000], [5000]]);
+    expect(result.coldRuns[0]).toMatchObject({status: 'complete', readiness: {status: 'ready', polls: 3,
+      notReady: {charging: 2}}});
+    expect(result.conditionVerdict).toEqual({status: 'pass', reasons: [], charging: 'satisfied'});
+  });
+
+  test('charging until the readiness timeout skips the repetition with reason charging', async () => {
+    jest.mocked(conditions.readConditions).mockImplementation(async () => conditions.normalizeConditions(charging));
+    const engine = adapter();
+    const result = await runSession(engine, {...config, readinessTimeoutSec: 10}, config.runs[0], identity,
+      async () => {}, noSleep);
+    expect(engine.load).not.toHaveBeenCalled();
+    expect(result.coldRuns[0]).toMatchObject({status: 'skipped', reason: 'charging',
+      readiness: {status: 'timeout', reasons: ['charging']}, conditions: {charging: 'violated'}});
+    // Charging is eligibility, not validity: the skipped session is unverified, not a failed condition.
+    expect(result).toMatchObject({status: 'failed', stopReason: 'readiness-timeout', guardsPassed: null,
+      conditionVerdict: {status: 'unverified', reasons: [], charging: 'violated'}});
+  });
 });
