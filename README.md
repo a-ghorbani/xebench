@@ -113,11 +113,11 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 
 **[`data/benchmarks.json`](./data/benchmarks.json) is the canonical, published results file** and the single source of truth. It's a versioned envelope (`schemaVersion`, `generatedAt`, `source`, `rows[]`) validated by **[`data/benchmarks.schema.json`](./data/benchmarks.schema.json)**. Each row carries its `provenance` (`measured` = our lab runs · `vendor` = engine-maker official numbers), `quant`, source link, and methodology caveats (`asStated`).
 
-**Publish reviewed measurements through a PR — no website change:**
+**Publish reviewed measurements through a PR — no website change.** Only legacy records (no `schemaVersion`) can currently be published, and only with `--allow-legacy`. Sessions captured from the current app (`schemaVersion` 1) are preview-only until consumer migration ([#4](https://github.com/a-ghorbani/xebench/issues/4)).
 
 ```bash
 git switch -c results/reviewed-measurements
-node scripts/aggregate.mjs results/<reviewed-capture-id>/raw-*.jsonl --update --allow-legacy
+node scripts/aggregate.mjs <reviewed-legacy-raw>.jsonl --update --allow-legacy
 git add data/benchmarks.json
 git commit -m "results: add reviewed measurements"
 git push -u origin results/reviewed-measurements
@@ -130,10 +130,10 @@ Publication fails closed: on any error it exits 1 and leaves `data/benchmarks.js
 
 - The existing file and the result must match the schema, with unique row keys and a correct `rowCount`. The file is replaced atomically (temp file + rename).
 - Every input line must be a finite, complete `xebench-raw` record. Malformed, truncated or non-finite lines, unknown schema/protocol versions and empty input reject the whole run (also in preview).
-- Legacy records (no `schemaVersion`) are published only with the explicit `--allow-legacy` flag and are logged as `LEGACY`. `schemaVersion` 1 reference sessions remain preview-only.
-- Failed or unverified guards and incomplete sessions are rejected. `sampleCount` is the summary `n`, checked against the successful repetitions in the record (llama-bench records carry only a self-reported `n`, which is logged).
+- Legacy records are published only with the explicit `--allow-legacy` flag and are logged as `LEGACY`.
+- Failed or unverified guards and incomplete sessions are rejected. `sampleCount` is the summary `n`, checked against the successful repetitions in the record. Two legacy producers never exported repetitions: the old app (`xebench-0.4-app`) and `bench_llamacpp.py` (`xebench-0.2-native`). Their self-reported `n` is accepted and logged; any other record without repetitions is rejected.
 - Two input records with the same row key are rejected rather than picking one implicitly; a single input row replacing an existing row is logged.
-- Rows are ordered by platform, device, model, engine, backend, quant and provenance (codepoint order), independent of input order and locale.
+- Rows are ordered by platform, device, model, engine, backend, quant and provenance (plain string comparison), independent of input order and locale. The first update after this change swaps three pairs of existing rows that tied on the first four fields.
 
 `node scripts/validate_data.mjs` checks the checked-in `data/*.json` against their schemas; CI runs it with `tests/test_publication.py`.
 

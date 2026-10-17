@@ -20,5 +20,5 @@ jobs:
         run: node scripts/validate_data.mjs
       - name: Aggregation fail-closed tests
         run: python3 -m unittest discover -s tests -p 'test_*publication.py' -v
-      - name: Canonical data is unchanged by the tests
-        run: git diff --exit-code -- data/
+      - name: Canonical data is unchanged by the tests (no edits or leftover files)
+        run: test -z "$(git status --porcelain -- data/)"
