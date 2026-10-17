@@ -8,7 +8,7 @@ This is the doc that gives the cross-engine comparison meaning. A tokens/sec tab
 
 | Engine | Why it exists (one line) | Shines most on | Are we measuring it there? |
 |---|---|---|---|
-| **llama.cpp** (llama.rn) | Portable, model-universal CPU-first inference that runs *anywhere* | **CPU**, any SoC; broadest model/quant coverage | ✅ **Yes** — CPU everywhere, + its OpenCL GPU (Adreno) and own Hexagon NPU |
+| **llama.cpp** (llama.rn) | Portable, model-universal CPU-first inference that runs *anywhere* | **CPU**, any SoC; broadest model/quant coverage | ✅ **Yes** — CPU everywhere, + its OpenCL GPU (Adreno). Its own Hexagon NPU row is **marked failed**: with llama.rn 0.12.4 its output was wrong (re-check on 0.13.0-rc.7 in progress) |
 | **ExecuTorch** (rn-executorch) | Ship the exact PyTorch model on-device with delegate acceleration | **XNNPACK CPU** (mobile), + Qualcomm/CoreML NPU **delegates** | ⚠️ **Partial** — CPU only; its NPU delegate isn't exposed in the RN binding |
 | **LiteRT-LM** (Google AI Edge) | One runtime, vendor-accelerated across the fragmented SoC landscape | **NPU** (Qualcomm/MediaTek/Tensor), then GPU | ⚠️ **Partial** — NPU and GPU run for third parties (S23, F8 Ultra spikes); SM8550 NPU bundle gives wrong output past one prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)); not yet measured as board rows |
 | **GENIE-X** (Qualcomm) | Squeeze max perf/efficiency out of Snapdragon Hexagon NPUs | **Qualcomm Hexagon NPU** on flagship Snapdragons | ✅ **NPU measured** (F8 Ultra v81, Llama 3.2 1B W4A16: **354.6 / 16.8** — wins prefill, loses decode). CPU fallback also measured |
@@ -54,8 +54,13 @@ What remains true: the S23 NPU output problem above is real, and it is upstream.
 - **What / who:** ggml-based C/C++ LLM inference (ggml-org / Georgi Gerganov), GGUF format. Reaches PocketPal through `llama.rn`.
 - **Why it exists:** the *universal baseline* — dependency-light, portable inference that runs on essentially any CPU, with the broadest model and quant coverage and day-one support for new architectures. If a model exists as a GGUF, llama.cpp runs it.
 - **Where it shines most:** **CPU**, on any SoC — hand-tuned ARM NEON / i8mm / dotprod kernels make it the strongest CPU decode engine we measured (it beats LiteRT on Qwen decode). Secondary: an **OpenCL GPU** path (Adreno) and an **experimental Hexagon NPU** backend (`ggml-hexagon`) that runs a normal GGUF on the DSP with no vendor SDK.
-- **Where it's *not* the point:** GPU/NPU are secondary and uneven — OpenCL only initializes on Adreno (not Mali/Tensor), and the Hexagon backend, while functional, *lost to the CPU* on the 8 Elite Gen 5 (Oryon cores too strong for a 1B). It is not architected around vendor accelerators.
-- **Our coverage — ✅ measured at its best (and beyond):** CPU across Pixel 9 / S23 / OnePlus 6 / F8 Ultra, plus OpenCL GPU (S23, F8 Ultra) and its own Hexagon NPU (F8 Ultra, v81). This is *why the board tilts toward llama.cpp* — it's the one engine whose happy path we fully lit up.
+- **Where it's *not* the point:** GPU/NPU are secondary and uneven — OpenCL only initializes on Adreno (not Mali/Tensor). It is not architected around vendor accelerators.
+- **Hexagon output with llama.rn 0.12.4 (correction, 2026-10-17):** we previously described the Hexagon backend as functional and said it *lost to the CPU* on the 8 Elite Gen 5. Both statements are withdrawn. With llama.rn 0.12.4, the version our harness locks and the one the board row was measured with, the backend (`HTP0`) gave **wrong output** on the POCO F8 Ultra:
+  - Llama 3.2 1B (Q4_K_M and Q4_0): a ~20-token prompt was answered correctly, but every prompt over about 128 tokens degenerated into repeated fragments ("which, which, which …", "ususus…"). That includes the ~460-token measured prompt.
+  - Gemma 3 1B (Q4_0): even the short prompt failed, with a repeated token.
+
+  llama.cpp CPU on the same Q4_K_M file passed every probe. The output-correctness gate caught this, so the board's legacy llama.cpp NPU row (F8 Ultra, Llama 3.2 1B Q4_0, measured on a ~512-token prompt with no output check) is now marked **failed**. A speed measured while the output is wrong says nothing about correct inference, so we make no speed claim for this backend. This applies to llama.rn 0.12.4 only. A re-check on the current llama.rn release (0.13.0-rc.7) is in progress, and its result will be added here. Details: `docs/experiments/litert-accelerators.md`, "Legacy Hexagon row check".
+- **Our coverage — ✅ measured at its best:** CPU across Pixel 9 / S23 / OnePlus 6 / F8 Ultra, plus OpenCL GPU (S23, F8 Ultra). Its own Hexagon NPU row (F8 Ultra, v81) is marked failed (see above). This is *why the board tilts toward llama.cpp*: CPU is its happy path, and we fully lit it up.
 
 ## ExecuTorch (via react-native-executorch)
 
