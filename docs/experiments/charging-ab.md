@@ -482,10 +482,11 @@ Under LLM load, both phones discharged in **both** conditions. The S23
 (raw `currentNowUa`, which looks like mA) read about −1150 to −1475 while its
 status was `CHARGING`, and −1200 to −1600 while `NOT_CHARGING`. The Pixel 9 (µA,
 on AC) read about −0.37 to −0.89 A while `CHARGING` and −0.43 to −0.79 A while
-`NOT_CHARGING`. The `CHARGING` status therefore meant that some charge current
-offset part of the load, not that the battery gained charge. The charging state
-changed the physical conditions only a little, which fits the small throughput
-differences above.
+`NOT_CHARGING`. During load, the `CHARGING` status therefore meant that some
+charge current offset part of the load, not that the battery gained charge. Over a
+block it could: the Pixel's level rose from 78% to 80% across its A blocks. The
+charging state changed the physical conditions only a little, which fits the small
+throughput differences above.
 
 ### Recommendation on legacy rows (pre-registered rule)
 
@@ -494,7 +495,7 @@ The pre-registered rule applies its third branch, because there is no verdict:
 
 - Label legacy rows "charging state unknown, effect not ruled out".
 - Do not rank them against charging-policy-v3 rows where the difference is
-  below about 3%.
+  below about 3% plus the observed CI (the pre-registered wording).
 - Descriptively, these limited data show no sign of an effect of 3% or more on
   the S23 or Pixel 9 for this model and configuration. The POCO could not be
   tested in A.
@@ -526,7 +527,8 @@ pre-registered verdict.
   - Pixel 9 decode +0.57% [0.00, +1.38] and prefill +0.24% [−0.44, +2.09];
   - no thermal effect was supported, and thermal status was `NONE` throughout;
   - under load the phones discharged in both conditions, so a `CHARGING` status
-    was not net charging.
+    was not net charging during load (the Pixel still gained charge between
+    loads, 78% to 80%).
 - **`charging-policy-v3` ("tethered, not charging") is the lab policy.**
   Repetitions are publication-eligible only with `FULL`/`NOT_CHARGING` at every
   snapshot and sample. This is a conservative rule, adopted whatever the size of

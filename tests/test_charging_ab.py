@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import unittest.mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("charging_ab_analyze",
@@ -107,3 +108,115 @@ class StatisticsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+RUN_SPEC = importlib.util.spec_from_file_location("charging_ab_run", ROOT / "scripts/experiments/charging_ab_run.py")
+driver = importlib.util.module_from_spec(RUN_SPEC)
+RUN_SPEC.loader.exec_module(driver)
+
+
+class FakePhone:
+    """A fake device: one charge setting, a battery that follows it, and adb failures on demand."""
+
+    def __init__(self, original="3"):
+        self.setting, self.original, self.config = original, original, None
+        self.fail_restores = 0  # restore attempts that time out, like the hung adb server of D1
+        self.commands = []
+
+    def device(self, serial):
+        phone = self
+
+        class Device:
+            def __init__(self, _serial):
+                self.serial = serial
+
+            def adb(self, *args, timeout=30, check=True):
+                phone.commands.append(args)
+                if args[0] == "push":
+                    phone.config = Path(args[1]).read_text()
+                elif args[:3] == ("shell", "rm", "-f"):
+                    phone.config = None
+                elif args[:2] == ("shell", "ls"):
+                    return "ls: No such file or directory"
+                elif args[:2] == ("shell", "getprop"):
+                    return "Fixture"
+                return ""
+
+            def shell(self, command):
+                phone.commands.append(("shell", command))
+                if command.startswith("settings get"):
+                    return phone.setting
+                if command.endswith(" " + phone.original) and phone.fail_restores:
+                    phone.fail_restores -= 1
+                    raise driver.subprocess.TimeoutExpired(command, 30)
+                phone.setting = command.rsplit(" ", 1)[1]
+                return ""
+
+            def battery(self):
+                status = "2" if phone.setting == "0" else "4"
+                return {"status": status, "level": "90", "temperature": "300", "readAt": driver.utc()}
+
+        return Device(serial)
+
+
+class DriverRestoreTests(unittest.TestCase):
+    """The driver must leave no charge setting or staged configuration changed (D1)."""
+
+    ARGS = ["SERIAL", "--label", "fixture", "--start", "A", "--read", "settings get global protect_battery",
+            "--set-a", "settings put global protect_battery 0", "--set-b", "settings put global protect_battery 1",
+            "--restore", "settings put global protect_battery {original}", "--max-pairs", "1"]
+
+    def run_driver(self, phone, capture):
+        self.blocks = []
+        with tempfile.TemporaryDirectory() as root, \
+                unittest.mock.patch.object(driver, "ROOT", Path(root)), \
+                unittest.mock.patch.object(driver, "Device", phone.device), \
+                unittest.mock.patch.object(driver.capture_app_run, "capture_device", capture), \
+                unittest.mock.patch.object(driver, "counts", lambda _d: {"A": 0, "B": 0}), \
+                unittest.mock.patch.object(driver, "STATE_POLL_S", 0), \
+                unittest.mock.patch.object(driver.time, "sleep", lambda _s: None):
+            try:
+                driver.main(self.ARGS)
+            finally:
+                lines = (Path(root) / "results/charging-ab/fixture/blocks.jsonl").read_text().splitlines()
+                self.blocks = [json.loads(line) for line in lines]
+
+    def test_crash_mid_run_restores_the_setting_and_config(self):
+        phone = FakePhone()
+
+        def crash(*_args):
+            self.assertEqual(phone.setting, "0")  # condition A was applied
+            raise RuntimeError("driver bug")
+        with self.assertRaises(RuntimeError):
+            self.run_driver(phone, crash)
+        self.assertEqual((phone.setting, phone.config), ("3", None))
+        self.assertEqual(self.blocks[-1]["kind"], "restore")
+        self.assertTrue(self.blocks[-1]["restored"])
+
+    def test_hung_adb_during_restore_is_retried(self):
+        phone = FakePhone()
+        phone.fail_restores = 2
+        self.run_driver(phone, lambda *_args: 0)
+        self.assertEqual(phone.setting, "3")
+        self.assertTrue(self.blocks[-1]["restored"])
+
+    def test_sigterm_outside_a_capture_still_restores(self):
+        phone = FakePhone()
+
+        def terminated(*_args):
+            driver._terminate(15, None)
+        with self.assertRaises(KeyboardInterrupt):
+            self.run_driver(phone, terminated)
+        self.assertEqual(phone.setting, "3")
+        self.assertIs(driver.signal.getsignal(driver.signal.SIGTERM), driver.signal.SIG_DFL)
+
+    def test_interrupted_capture_stops_the_experiment(self):
+        phone, calls = FakePhone(), []
+
+        def interrupted(*_args):
+            calls.append(1)
+            return 143
+        self.run_driver(phone, interrupted)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([block["reason"] for block in self.blocks if block["kind"] == "stop"], ["interrupted"])
+        self.assertEqual(phone.setting, "3")

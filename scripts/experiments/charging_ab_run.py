@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -47,6 +48,13 @@ STATE_POLL_S, STATE_CONFIRM_POLLS, STATE_TIMEOUT_S = 10, 3, 600
 # Amendment 1: a 3-repetition block can wait up to 3 x 300 s for readiness.
 CAPTURE_TIMEOUT_S, BLOCK_RESERVE_S, MIN_BATTERY_PCT = 1500, 12 * 60, 55
 RESTORE_RETRY_S = 15 * 60
+INTERRUPTED_EXITS = (130, 143)  # capture_app_run.py: SIGINT / SIGTERM during a capture
+
+
+def _terminate(signum, _frame):
+    # SIGTERM (e.g. the lease ending) must unwind through `finally` and restore the device;
+    # Python's default SIGTERM action exits without running it.
+    raise KeyboardInterrupt(f"signal {signum}")
 
 
 def utc():
@@ -150,6 +158,7 @@ def main(argv=None):
           restore=args.restore, configBackedUp=backup is not None, battery=device.battery(),
           model=device.adb("shell", "getprop", "ro.product.model"), budgetMin=args.budget_min)
     log(f"setting original value: {original!r}; staged config present: {backup is not None}")
+    previous_term = signal.signal(signal.SIGTERM, _terminate)
     try:
         device.adb("push", str(CONFIG), f"{APP_DIR}/xebench-config.json")
         order = ["A", "B"] if args.start == "A" else ["B", "A"]
@@ -186,6 +195,10 @@ def main(argv=None):
             write("block", block=block, condition=condition, setting=setting, stateReached=True,
                   stateWaitS=waited, batteryBefore=state, batteryAfter=device.battery(), startedAt=block_started,
                   captureExit=code, captureId=new[0] if len(new) == 1 else None)
+            if code in INTERRUPTED_EXITS:
+                # The capture absorbed a SIGINT/SIGTERM meant to stop the experiment.
+                stop = "interrupted"
+                break
             seen = counts(captures)
             log(f"block {block} {condition}: capture exit {code}; pure-label reps so far {seen}")
             if block % 2 == 1 and min(seen.values()) >= TARGET_PER_CONDITION:
@@ -196,6 +209,9 @@ def main(argv=None):
     finally:
         # Restoring the device comes first and is retried: a hung adb server (seen on
         # 2026-10-17) must not leave a charge setting changed or crash before restoring.
+        # Repeated SIGINT/SIGTERM must not abort the bounded restore (as in capture_app_run.py).
+        previous_int = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
         restore = args.restore.replace("{original}", original)
         after, config_restored = None, False
         deadline = time.monotonic() + RESTORE_RETRY_S
@@ -213,7 +229,7 @@ def main(argv=None):
                     else:
                         device.adb("shell", "rm", "-f", f"{APP_DIR}/xebench-config.json")
                     config_restored = True
-            except (subprocess.SubprocessError, OSError) as error:
+            except Exception as error:  # noqa: BLE001 - any failure is retried until the deadline
                 log(f"restore attempt failed: {type(error).__name__}; retrying")
             if (after == original and config_restored) or time.monotonic() > deadline:
                 break
@@ -225,6 +241,8 @@ def main(argv=None):
         write("restore", settingOriginal=original, settingAfterRestore=after, restored=after == original,
               configRestored=config_restored, battery=battery)
         log(f"restored setting: {after!r} (original {original!r}); config restored: {config_restored}")
+        signal.signal(signal.SIGINT, previous_int)
+        signal.signal(signal.SIGTERM, previous_term)
     return 0
 
 
