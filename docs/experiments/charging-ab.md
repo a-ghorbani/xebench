@@ -374,7 +374,25 @@ drift.
 
 ### A1.5 Build identity (replaces the earlier one)
 
-Recorded below, at build time and before any device run.
+Recorded at build time, before any device run:
+
+- Base: `origin/main` at `b90545b` (PR #20 merged).
+- APK built from `exp/charging-ab` at
+  `0a6eaacdb91ece2c9f9889835d61a5deed76dde8`. The app code is the same as at
+  `5c87e1ed1021e24ba73bd5f106c33ede836857a8` (the record-only flag); later
+  commits change only docs, tests and host scripts.
+- Build: `npm ci` (install scripts enabled), then
+  `./gradlew assembleReferenceRelease` (arm64-v8a, `reference` flavor, signed
+  with the debug key).
+- APK `app-reference-release.apk`: 32,103,164 bytes, SHA-256
+  `c5239553b0daf3dd6a8a5ff866fed81757d83bb89ac6665e2e597660f5b283d7`.
+- `scripts/check_reference_apk.py --flavor reference`: passes. The bundle
+  contains the `record-only-experiment` policy.
+- Tests on this tree: Jest 7 suites, 125 tests, all passed; `tsc --noEmit` is
+  clean; Python `unittest discover -s tests`: 151 tests, all passed; ESLint
+  reports 0 errors (1 existing warning).
+- Installed APK identity on each device is recorded by the capture manifest
+  (`appIdentity`, before and after each block).
 
 ## Results
 
