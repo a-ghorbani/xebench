@@ -537,12 +537,13 @@ pre-registered verdict.
   stays for reference runs. The 10 °C override and the 300 s readiness bound of
   Amendment 1 were experiment-only.
 - **Legacy rows** stay `validation: legacy`, which means "charging state
-  unknown, effect not ruled out at 3%". They must not be ranked against v3 rows
-  on gaps under about 3%.
+  unknown, effect not ruled out at 3%". They are not ranked against v3 rows
+  where differences are below about 3% plus the observed CI.
 - **Experiment records are never publication evidence.** `aggregate.mjs`
   refuses any record with `chargingPolicy.readiness: "record-only-experiment"`
-  or `configuration.experimentChargingReadiness`, in preview and in `--update`.
-  Evidence bundles keep the marker.
+  or `configuration.experimentChargingReadiness`, or whose `configuration.id`
+  starts with `experiment-`, in preview and in `--update`. Evidence bundles keep
+  the marker.
 - **Optional future work:** a follow-up on the S23 and Pixel 9, whose charge
   limits can be set over adb, with ≥ 10 repetitions per condition, starting
   below the limit so that A is reachable, and using the hardened driver.

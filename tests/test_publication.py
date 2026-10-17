@@ -454,6 +454,15 @@ class PublicationTests(unittest.TestCase):
                 self.assert_rejected(self.write(record), reason='never publishable')
                 self.assert_rejected(self.write(record), '--update', '--allow-legacy', reason='never publishable')
 
+    def test_experiment_configurations_are_never_published(self):
+        """A record from an experiment-* configuration is refused even with its markers stripped."""
+        stripped = {**reference_record(), 'configuration': {'id': 'experiment-charging-ab-v1'}}
+        for args in ((), ('--update', '--allow-legacy')):
+            with self.subTest(args=args):
+                self.assert_rejected(self.write(stripped), *args, reason='experiment configuration')
+        # Only the prefix counts: other ids are unaffected.
+        self.preview(self.write({**reference_record(), 'configuration': {'id': 'cpu-reference-v1-experimental'}}))
+
 
 class DataValidationTests(unittest.TestCase):
     def run_node(self, script):

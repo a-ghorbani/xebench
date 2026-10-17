@@ -193,6 +193,12 @@ function toRow({ rec, where }, warnings) {
       `${where}: experiment-only record (record-only-experiment charging readiness) is never publishable`,
     );
   }
+  // Experiment configurations are named experiment-*; a record from one is never a row,
+  // even if its experiment markers were removed.
+  if (isObject(rec.configuration) && typeof rec.configuration.id === 'string' &&
+      rec.configuration.id.startsWith('experiment-')) {
+    throw new PublicationError(`${where}: record from an experiment configuration (experiment-*) is never publishable`);
+  }
   const legacy = !Object.hasOwn(rec, 'schemaVersion');
   if (!legacy) {
     if (rec.schemaVersion !== 1 || rec.status !== 'complete') {

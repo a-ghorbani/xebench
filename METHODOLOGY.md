@@ -144,7 +144,7 @@ snapshot and sample. `current_now` is recorded only as a diagnostic. Charging is
 waits, within the bound, for charging to stop. The activity keeps the screen on
 while visible. Historical records are not retroactively certified: legacy rows are
 "charging state unknown, effect not ruled out at 3%" and are not ranked against v3
-rows on gaps under about 3% ([charging A/B decision](docs/experiments/charging-ab.md#decision-2026-10-17)).
+rows where differences are below about 3% plus the observed CI ([charging A/B decision](docs/experiments/charging-ab.md#decision-2026-10-17)).
 → `xebenchapp/src/harness/conditions.ts`, `readiness.ts`, `session.ts`;
 `BenchConditionsModule.kt`; tests listed in
 [rule traceability](docs/RUN-CONDITIONS.md#rule-traceability).
