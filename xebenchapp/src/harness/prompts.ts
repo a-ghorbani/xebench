@@ -77,5 +77,15 @@ export const ACCELERATOR_PROMPT_LABEL = 'std-chat-v1';
 export const gemma3Turn = (text: string) =>
   `<start_of_turn>user\n${text}<end_of_turn>\n<start_of_turn>model\n`;
 
+/** Llama 3.2 instruct single user turn, no system message. BOS is added by the tokenizer. */
+export const llama32Turn = (text: string) =>
+  `<|start_header_id|>user<|end_header_id|>\n\n${text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
+
+export type ChatTemplate = 'gemma3' | 'llama32';
+export const CHAT_TEMPLATES = ['gemma3', 'llama32'] as const;
+/** The raw single-turn prompt for engines that take a pre-templated string (llama.cpp). */
+export const chatTurn = (template: ChatTemplate, text: string) =>
+  template === 'llama32' ? llama32Turn(text) : gemma3Turn(text);
+
 /** Decode budget per run — comparable to llama-bench tg128 convention. */
 export const MAX_DECODE_TOKENS = 128;

@@ -814,7 +814,7 @@
         "externalPower": {"const": "allowed"},
         "notChargingStatuses": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": [4, 5]}},
         "chargingStatus": {"const": 2},
-        "readiness": {"const": "wait-while-charging"},
+        "readiness": {"enum": ["wait-while-charging", "record-only-experiment"], "description": "record-only-experiment only with configuration.experimentChargingReadiness (experiment only, never publication evidence)."},
         "unknown": {"const": "never-eligible"},
         "effect": {"const": "publication-eligibility-only"},
         "currentNow": {"const": "diagnostic-only"},
@@ -888,7 +888,7 @@
         "readinessTimeoutSec": {"type": "integer", "minimum": 10, "maximum": 900},
         "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10},
         "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
-        "chatTemplate": {"const": "gemma3"},
+        "chatTemplate": {"enum": ["gemma3", "llama32"]},
         "orderSeed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
         "runs": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/acceleratorRun"}}
       }
@@ -1251,7 +1251,7 @@
             "processRestartBetweenRepetitions": {"const": false},
             "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10},
             "promptFormat": {"const": "user-turn-chat-template"},
-            "chatTemplate": {"const": "gemma3"},
+            "chatTemplate": {"enum": ["gemma3", "llama32"]},
             "sampling": {"const": "greedy"},
             "gate": {"const": "output-gate-v1"}
           }
