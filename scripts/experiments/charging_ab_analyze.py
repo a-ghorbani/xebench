@@ -61,9 +61,11 @@ def _records(directory):
 
 def label(conditions):
     """A, B or the reason a measured repetition is excluded from the primary comparison."""
-    during = conditions.get("during") or {}
-    if during.get("status") != "complete":
-        return "excluded:unsampled"
+    during = conditions.get("during")
+    # Amendment 1: the status must be observed throughout, so a repetition counts only with
+    # full monitor coverage (the validator's own rule: no expiry, gaps or dropped ticks).
+    if during is None or not raw_session._monitor_covered(during):
+        return "excluded:incomplete-coverage"
     summary = during["summary"]
     observations = [conditions["before"], conditions["after"], *during.get("samples", [])]
     statuses = [item.get("batteryStatus") for item in observations]
@@ -103,6 +105,8 @@ def repetition(attempt):
                              summary.get("maxThermalHeadroom")]),
         "medianCurrentRaw": statistics.median(currents) if currents else None,
         "readinessWaitS": attempt["readiness"]["waitedMs"] / 1000,
+        "monitorDurationS": None if not during or None in (during.get("startedElapsedMs"), during.get("stoppedElapsedMs"))
+        else (during["stoppedElapsedMs"] - during["startedElapsedMs"]) / 1000,
         "batteryPctBefore": before.get("batteryPct"),
         "statuses": sorted({item.get("batteryStatus") for item in [before, after or {}, *samples]}, key=str),
         "timestampMs": before.get("timestampMs"),
@@ -258,11 +262,15 @@ def report(devices, plan, seed=SEED, resamples=RESAMPLES):
         result.update(labels=labels, plannedLabelMismatch=mismatched, skipped=entry["skipped"],
                       invalidRecords=entry["invalid"], failedAttempts=entry["failed"])
         summary[device] = result
+        durations = [rep["monitorDurationS"] for rep in reps if rep["monitorDurationS"] is not None]
+        result["maxMonitorDurationS"] = max(durations) if durations else None
         lines += [f"### {device}", "",
                   f"Pure-label repetitions: A (charging) n={result['nA']}, B (not charging) n={result['nB']}. "
                   f"Labels: {labels}. Planned≠observed: {mismatched}. Skipped attempts: {len(entry['skipped'])} "
                   f"({', '.join(sorted({s['reason'] + '/' + s['label'] for s in entry['skipped']})) or 'none'}). "
-                  f"Failed attempts: {entry['failed']}. Rejected records: {entry['invalid']}.", "",
+                  f"Failed attempts: {entry['failed']}. Rejected records: {entry['invalid']}. "
+                  f"Longest sampled repetition (load + inference): {_fmt(result['maxMonitorDurationS'], 1)} s"
+                  f"{' (above the 120 s limit of Amendment 1)' if (result['maxMonitorDurationS'] or 0) > 120 else ''}.", "",
                   "| Metric | median A | median B | Δ (B−A)/A | 95% CI | IQR% A / B | var B/A [95% CI] | Verdict |",
                   "| --- | ---: | ---: | ---: | --- | --- | --- | --- |"]
         for metric in METRICS:
