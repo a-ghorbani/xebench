@@ -13,7 +13,7 @@ It powers the cross-engine leaderboard at **[pocketpal.dev/leaderboard/engines](
 |---|---|---|---|---|
 | **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | ✅ Hexagon (`ggml-hexagon`) |
 | **ExecuTorch** | `react-native-executorch` | ✅ XNNPACK | — | — (delegate not in RN binding) |
-| **LiteRT-LM** | native Kotlin bridge | ✅ | ✅ ML Drift (needs `uses-native-library`) | ✅ runs; ⚠️ SM8550 bundle output wrong ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) |
+| **LiteRT-LM** | native Kotlin bridge | ✅ | ⚠️ ML Drift runs in spike (not measured; needs `uses-native-library`) | ⚠️ runs in spike (not measured); SM8550 bundle output wrong ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) |
 | **GENIE-X / Genie** | `geniex-android` / QAIRT `genie-t2t-run` | ✅ | — | ✅ Hexagon (QNN context binary) |
 
 LiteRT-LM GPU and NPU ran in 2026-10-17 spikes on the S23 and F8 Ultra, outside this repo's harness. They are not yet in the harness or measured as board rows. See [ENGINES.md](./ENGINES.md#correction-2026-10-17-litert-npu-and-gpu).

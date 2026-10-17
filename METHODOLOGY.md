@@ -138,10 +138,11 @@ We concluded that a stock, non-rooted Android app cannot load the vendor
 the Galaxy S23 and POCO F8 Ultra, the app loaded `libOpenCL.so` once its
 manifest declared it with
 `<uses-native-library android:name="libOpenCL.so" android:required="false" />`.
-LiteRT-LM also needs `libvndksupport.so` declared the same way. The LiteRT-LM
-Kotlin guide has required both declarations since 0.14.0 (LiteRT-LM#1860).
-Our app did not declare them, so on those devices the failure was our bug, not a
-platform limit.
+The LiteRT-LM Kotlin guide has required declaring both `libOpenCL.so` and
+`libvndksupport.so` since 0.14.0 (LiteRT-LM#1860). We declared both; on both
+phones the native loader registered only `libOpenCL.so`, so that is the
+declaration that mattered there. Our July app declared neither, so on those
+devices the failure was our bug, not a platform limit.
 In 2026-10-17 spikes, ML Drift GPU ran on the S23 and the F8 Ultra with the
 declarations, and a control build without them failed again. We have not
 re-tested the Pixel 9 (Tensor G4), so whether it exposes `libOpenCL.so` to apps
