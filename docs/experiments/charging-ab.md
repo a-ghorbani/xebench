@@ -260,11 +260,11 @@ changes it.
 
 ### A1.1 Base code: final #20, charging-policy-v3
 
-The experiment now builds on `feat/conditions-enforcement` at
-`a113ee924a225aa3cd0737dd4eda3c75240d8882` (PR #20, rebased onto main with the
-#19 build flavors). With this change, experiment records validate under the
-final schema and validator, and their evidence bundles verify. That version
-uses **`charging-policy-v3`**:
+The experiment now builds on `main` at `b90545b`, where PR #20 has been merged.
+That version includes the #19 build flavors and the coverage fix `347bacd`: a
+repetition with an unsampled stretch is never `satisfied`. With this change,
+experiment records validate under the final schema and validator, and their
+evidence bundles verify. That version uses **`charging-policy-v3`**:
 
 - the charging decision uses only the status: `FULL`/`NOT_CHARGING` are
   eligible and `CHARGING` is violated;
@@ -350,7 +350,29 @@ unchanged. A large temperature difference with an "irrelevant" throughput
 verdict would mean that charging heats the phone without changing the
 measurements within 3%.
 
-### A1.4 Build identity (replaces the earlier one)
+### A1.4 Monitor coverage and repetition length
+
+A repetition is labelled A or B only if Android's status was observed for the
+whole run. A measured repetition whose monitor coverage is incomplete is
+**excluded** and counted as `excluded:incomplete-coverage`, in the same way as
+"mixed". Incomplete coverage means any of these: no monitor, a monitor that was
+not stopped cleanly, expiry, dropped ticks, a gap above two intervals, too few
+ticks, or a sample count that differs from the tick count. The rule is the
+validator's own coverage check (`raw_session._monitor_covered`, the mirror of
+`monitorCovered`).
+
+The 1 Hz sampler drifts because it sleeps for a fixed time between samples.
+Coverage can therefore fail when load plus inference lasts longer than about
+300 s on the S23, and sooner on slower phones. A fix is coming separately. In
+this configuration (1B Q4_K_M, about 512 prompt tokens, 128 decode tokens),
+earlier S23 and Pixel 9 runs took about 10 s per repetition: roughly 1 s load,
+3–3.5 s TTFT and about 5 s decode. Each repetition must stay **under 120 s of
+load plus inference**. The analysis reports the longest sampled repetition on
+each device. If any repetition exceeds 120 s, that is reported as a deviation,
+and coverage exclusions for that device are treated as possibly caused by
+drift.
+
+### A1.5 Build identity (replaces the earlier one)
 
 Recorded below, at build time and before any device run.
 

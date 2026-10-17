@@ -33,6 +33,16 @@ class LabelTests(unittest.TestCase):
         mixed["during"]["samples"][0]["batteryStatus"] = 3
         self.assertEqual(analyze.label(mixed), "excluded:mixed-or-other-status")
         self.assertEqual(analyze.label(conditions(5, plugged=0)), "excluded:unplugged-or-unknown-plug")
+        # Incomplete monitor coverage leaves the status partly unobserved: excluded, never A or B.
+        gap = conditions(2)
+        gap["during"]["dropped"] = 1
+        self.assertEqual(analyze.label(gap), "excluded:incomplete-coverage")
+        expired = conditions(4)
+        expired["during"]["expired"] = True
+        self.assertEqual(analyze.label(expired), "excluded:incomplete-coverage")
+        unsampled = conditions(5)
+        unsampled["during"] = None
+        self.assertEqual(analyze.label(unsampled), "excluded:incomplete-coverage")
         # A charging sample in a not-charging run makes it mixed, never B.
         flipped = copy.deepcopy(APP["chargingDuringRun"]["coldRuns"][0]["conditions"])
         self.assertEqual(analyze.label(flipped), "excluded:mixed-or-other-status")
