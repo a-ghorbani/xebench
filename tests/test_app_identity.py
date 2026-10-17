@@ -77,7 +77,9 @@ class AppIdentityTests(unittest.TestCase):
         def adb(*args):
             calls.append(args)
             if args[:3] == ('shell', 'pm', 'path'):
-                return 'unsupported' if unavailable else f'package:{BASE}'
+                if unavailable == 'after' and hashes:
+                    raise subprocess.CalledProcessError(1, ['adb', 'private-serial'])
+                return 'unsupported' if unavailable is True else f'package:{BASE}'
             if args[:2] == ('shell', 'sha256sum'):
                 if hashes and after_digest == 'timeout':
                     raise TimeoutError('deadline')
@@ -123,6 +125,14 @@ class AppIdentityTests(unittest.TestCase):
             self.assertEqual(manifest['appIdentity']['consistency'], 'unverified')
             self.assertEqual(manifest['appIdentity']['before']['status'], 'unavailable')
             self.assertFalse(manifest['publicationReady'])
+
+    def test_unavailable_after_probe_cannot_confirm_a_recorded_before_probe(self):
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest = self.capture_fixture(root, unavailable='after')
+            self.assertEqual(code, 0)
+            self.assertEqual(manifest['appIdentity']['before']['status'], 'recorded')
+            self.assertEqual(manifest['appIdentity']['after'], {'status': 'unavailable'})
+            self.assertEqual(manifest['appIdentity']['consistency'], 'unverified')
 
     def test_post_run_hash_deadline_preserves_results_and_cleanup(self):
         with tempfile.TemporaryDirectory() as root:
