@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+      <!-- llama.rn Hexagon (HTP) and QNN-backed LiteRT-LM need the cdsprpc loader. -->
+      <uses-native-library android:name="libcdsprpc.so" android:required="false" />
+    </application>
+</manifest>

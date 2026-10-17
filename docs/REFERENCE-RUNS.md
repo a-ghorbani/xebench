@@ -3,16 +3,24 @@
 The default app runs the versioned configuration in
 [`cpu-reference-v1.json`](../xebenchapp/configs/cpu-reference-v1.json).
 This first reference path supports **llama.cpp CPU**. Other engine adapters remain
-experimental; expanding reference coverage and separating native build flavors
-are follow-ups in issue #3.
+experimental; expanding reference coverage is a follow-up in issue #3.
 
-Build prerequisites: run `npm ci` in `xebenchapp` with install scripts enabled;
-llama.rn downloads checksum-verified native libraries during installation.
-If dependencies were installed with `--ignore-scripts` for unit tests, run
-`npm rebuild llama.rn --foreground-scripts` before building an APK. A successful
-Gradle build alone does not prove that these runtime libraries were packaged.
-Check the arm64 APK before installation with
-`python3 scripts/check_reference_apk.py <apk>` from the repository root.
+Build the `reference` flavor, which packages only llama.rn's CPU libraries. It
+needs no vendor SDK and no source or packaging edits; prerequisites are listed in
+the README's [build flavors](../README.md#build-flavors-and-prerequisites) section.
+From `xebenchapp/android`:
+
+```sh
+./gradlew assembleReferenceRelease
+python3 ../../scripts/check_reference_apk.py app/build/outputs/apk/reference/release/app-reference-release.apk
+```
+
+A successful Gradle build alone does not prove that the runtime libraries were
+packaged. The check fails if any llama.rn CPU variant or the JS bundle is missing,
+or if the APK carries a native library outside React Native core and llama.rn CPU
+(for example Hexagon/HTP, OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X or ExecuTorch) or a
+LiteRT-LM/GENIE-X engine bridge. ExecuTorch's Java glue remains because autolinking
+is not flavor-aware. The application ID stays `com.xebenchapp`.
 
 ## Configure and capture
 

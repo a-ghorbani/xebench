@@ -21,7 +21,7 @@ react {
     //   The list of variants to that are debuggable. For those we're going to
     //   skip the bundling of the JS bundle and the assets. By default is just 'debug'.
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
-    // debuggableVariants = ["liteDebug", "prodDebug"]
+    debuggableVariants = ["referenceDebug", "experimentalDebug", "geniexDebug"]
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
@@ -84,32 +84,53 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    // LITERT-NPU VARIANT (S23 / SM8550 / Hexagon v73): bundle QAIRT 2.48.40 QNN libs
-    // (in jniLibs/arm64-v8a) so LiteRT-LM's Backend.NPU(nativeLibraryDir) can run the
-    // Qualcomm HTP. llama.rn's Hexagon variant is EXCLUDED — on the S23 its combined
-    // hexagon_opencl .so hangs at first model load (fastrpc/DSP init); excluding it
-    // makes llama.cpp fall back to the CPU variant. GENIE-X stays dropped.
-    // NOTE: QNN libs alone are not enough. LiteRT-LM's NPU path also needs Google's
-    // published dispatch lib (libLiteRtDispatch_Qualcomm.so, from
-    // com.google.ai.edge.litert:litert-npu-runtime-qualcomm or the LiteRT release
-    // zip) whose ABI matches the LiteRT-LM release's LITERT_REF. For the 0.14.0 pinned
-    // below use the LiteRT v2.1.6 release zip; Maven 2.3.0 pairs with 0.18.0. See ENGINES.md.
     packagingOptions {
-        exclude "**/librnllama*hexagon*.so"
         jniLibs {
-            // libQnnHtpV73Skel.so is a Hexagon-DSP ELF; the arm64 strip tool would
-            // corrupt it. Don't strip any bundled QNN lib (they're prebuilt vendor libs).
+            // QNN libs (user-supplied in experimental, bundled by geniex-android) include
+            // Hexagon-DSP ELFs such as libQnnHtpV73Skel.so; arm64 strip would corrupt them.
             keepDebugSymbols += ["**/libQnn*.so"]
         }
     }
 
     namespace "com.xebenchapp"
     defaultConfig {
+        // Every flavor keeps this id: capture tooling expects it, and the flavors are
+        // alternative installs of the same app (installing one replaces another).
         applicationId "com.xebenchapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+    }
+
+    // Native runtimes that cannot share one APK are separate flavors (issue #3).
+    // See README "Build flavors". Proprietary libraries are never in this repo.
+    flavorDimensions "runtime"
+    productFlavors {
+        // llama.rn CPU only: no LiteRT-LM, GENIE-X, QNN, Hexagon/OpenCL or ExecuTorch
+        // native runtime. Builds from a clean checkout without vendor SDKs.
+        reference {
+            dimension "runtime"
+            versionNameSuffix "-reference"
+        }
+        // LiteRT-LM + ExecuTorch + llama.rn Hexagon/OpenCL accelerators. Optional QNN
+        // libs for LiteRT NPU go in src/experimental/jniLibs/arm64-v8a (git-ignored).
+        // QNN libs alone are not enough: LiteRT-LM's NPU path also needs Google's
+        // published dispatch lib (libLiteRtDispatch_Qualcomm.so, from
+        // com.google.ai.edge.litert:litert-npu-runtime-qualcomm or the LiteRT release
+        // zip) whose ABI matches the LiteRT-LM release's LITERT_REF. For the 0.14.0
+        // pinned below use the LiteRT v2.1.6 release zip; Maven 2.3.0 pairs with 0.18.0.
+        // See ENGINES.md.
+        experimental {
+            dimension "runtime"
+            versionNameSuffix "-experimental"
+        }
+        // GENIE-X (Maven Central) + llama.rn CPU. Its Hexagon runtime conflicts with
+        // llama.rn's, so llama.rn accelerators are excluded here.
+        geniex {
+            dimension "runtime"
+            versionNameSuffix "-geniex"
+        }
     }
     signingConfigs {
         debug {
@@ -143,11 +164,46 @@ dependencies {
         implementation jscFlavor
     }
 
-    // LiteRT-LM (Google) — no RN binding; driven via LiteRtBenchModule.kt.
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
-    // GENIE-X (Qualcomm) — DISABLED in the main variant: geniex-android bundles its own
-    // llama.cpp+Hexagon runtime that conflicts with llama.rn's HTP path (llama.cpp hangs
-    // on fastrpc/HTP init when both are present). Re-enable this + GenieXBenchPackage()
-    // in MainApplication + restore GenieXBench*.kt (in geniex-disabled/) for the GENIE-X build.
-    // implementation("com.qualcomm.qti:geniex-android:0.3.1")
+    // LiteRT-LM (Google): no RN binding; driven via src/experimental LiteRtBenchModule.kt.
+    experimentalImplementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
+    // GENIE-X (Qualcomm, Maven Central): no RN binding; driven via src/geniex
+    // GenieXBenchModule.kt. Bundles its own llama.cpp+Hexagon runtime, which conflicts
+    // with llama.rn's HTP path, hence its own flavor.
+    geniexImplementation("com.qualcomm.qti:geniex-android:0.3.1")
+}
+
+// Per-flavor native packaging. Autolinking is not flavor-aware, so llama.rn (one AAR
+// with CPU and Hexagon/OpenCL variants) and react-native-executorch are linked into
+// every flavor; native runtimes a flavor must not carry are removed from its APK here.
+// scripts/check_reference_apk.py --flavor <name> verifies the result.
+def llamaRnAccelerators = ["**/librnllama*hexagon*.so", "**/librnllama*opencl*.so"]
+// aapt-style ignore patterns: llama.rn syncs its HTP libs into src/main/assets/ggml-hexagon.
+// A non-empty list replaces AGP's default asset ignores, so they are restated first.
+def llamaRnHtpAssets = ["!.svn", "!.git", "!.ds_store", "!*.scc", ".*", "<dir>_*", "!CVS",
+                        "!thumbs.db", "!picasa.ini", "!*~", "<dir>ggml-hexagon"]
+def executorchNative = ["**/libexecutorch.so", "**/libreact-native-executorch.so",
+                        "**/libcpuinfo.so", "**/libpthreadpool.so"]
+// Defensive: proprietary/vendor runtimes that only belong in experimental or geniex,
+// in case someone stages them under src/main/jniLibs.
+def vendorNative = ["**/libQnn*.so", "**/libQairt*.so", "**/libSNPE*.so", "**/libGenie*.so",
+                    "**/libcdsprpc.so", "**/libLiteRt*.so", "**/liblitertlm*.so"]
+// S23 (SM8550): llama.rn's combined hexagon_opencl library hangs at first model load.
+// `-Pxebench.excludeLlamaHexagon=true` drops it from experimental so llama.cpp uses CPU.
+def excludeLlamaHexagon = (findProperty("xebench.excludeLlamaHexagon") ?: "false").toString() == "true"
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        def jniExcludes = variant.packaging.jniLibs.excludes
+        def flavor = variant.flavorName
+        if (flavor == "reference") {
+            jniExcludes.addAll(llamaRnAccelerators + executorchNative + vendorNative)
+            variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
+        } else if (flavor == "geniex") {
+            jniExcludes.addAll(llamaRnAccelerators + executorchNative)
+            variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
+        } else if (flavor == "experimental" && excludeLlamaHexagon) {
+            jniExcludes.addAll(llamaRnAccelerators)
+            variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
+        }
+    }
 }
