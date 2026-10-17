@@ -109,10 +109,11 @@ apples-to-apples even where tok/s provenance differs.
   valid).
 → `src/harness/protocol.ts`.
 
-### 5. Run conditions are gated and recorded — no laundered numbers
+### 5. Run conditions are recorded and flagged — no laundered numbers
 The current runner records [native condition endpoints](docs/RUN-CONDITIONS.md)
 around each repetition. Low battery, power saving, severe thermal state, screen,
-foreground and lock failures are flagged (`guardsPassed=false`). Missing evidence
+foreground and lock failures are flagged (`guardsPassed=false`); flagged
+repetitions stay in the summary rather than being gated out. Missing evidence
 cannot pass; healthy endpoints do not establish full protocol compliance. The
 activity keeps the screen on while visible. Headroom, continuous monitoring and
 bounded thermal-readiness enforcement remain planned; historical records are not

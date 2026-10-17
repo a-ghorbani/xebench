@@ -25,5 +25,11 @@ Still open in #2: bounded thermal-readiness waiting, headroom, continuous condit
 and peak-memory sampling, balanced run order, and a publication charging policy.
 Endpoint checks can miss changes between samples. Publication remains blocked.
 
+Implementation: [`conditions.ts`](../xebenchapp/src/harness/conditions.ts),
+[`session.ts`](../xebenchapp/src/harness/session.ts) and
+[`BenchConditionsModule.kt`](../xebenchapp/android/app/src/main/java/com/xebenchapp/BenchConditionsModule.kt);
+tests: [`conditions.test.ts`](../xebenchapp/__tests__/conditions.test.ts) and
+[`session.test.ts`](../xebenchapp/__tests__/session.test.ts).
+
 API semantics: [Android thermal status](https://developer.android.com/reference/android/os/PowerManager#getCurrentThermalStatus())
 and [process PSS](https://developer.android.com/reference/android/os/Debug.MemoryInfo#getTotalPss()).
