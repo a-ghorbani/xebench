@@ -271,7 +271,7 @@ ENUM_WORDS = (
     "interrupted", "ios", "litert-lm", "load", "low-battery", "macos", "matched", "measured", "never-eligible",
     "not-foreground", "not-measured", "not-running", "npu", "pass", "power-saving", "probe-incomplete",
     "probe-pending", "publication-eligibility-only", "readiness-timeout", "ready", "record-and-flag", "record-only",
-    "recorded", "release", "repetition-failed", "running", "satisfied", "screen-off", "setup-failed",
+    "record-only-experiment", "recorded", "release", "repetition-failed", "running", "satisfied", "screen-off", "setup-failed",
     "severe-thermal-state", "skipped", "snapshots-not-peak", "started", "stopped", "stuck", "tethered-not-charging",
     "thermal-headroom-low", "thermal-not-ready", "timeout", "total-time-derived", "ttft-derived", "unavailable",
     "unknown", "unverified", "vendor", "violated", "wait-then-skip", "wait-while-charging",
@@ -391,6 +391,8 @@ CONFIGURATION = Obj({
     "schemaVersion": INT, "id": LABEL, "nColdRuns": COUNT, "cooldownSec": NONNEG,
     "readinessTimeoutSec": NONNEG, "maxBatteryTempRiseC": NONNEG, "maxDecodeTokens": COUNT,
     "orderSeed": _number(0, 2 ** 32 - 1, integer=True),
+    # EXPERIMENT ONLY (docs/experiments/charging-ab.md): kept so a bundle shows the marker.
+    "experimentChargingReadiness": ENUM,
     "runs": Arr(Obj({"id": LABEL, "engine": LABEL, "model": LABEL, "modelFile": MODEL_FILE, "quant": LABEL,
                      "nThreads": COUNT, "nCtx": COUNT}, required=("id",)), max_items=64),
 }, required=("id", "runs"))
