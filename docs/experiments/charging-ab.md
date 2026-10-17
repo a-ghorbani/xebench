@@ -514,6 +514,37 @@ limit so that A can be reached: S23 below 100% with protection 0, Pixel below
   to 80%. Several repetitions changed status mid-run, which makes them "mixed"
   (2 excluded).
 
+## Decision (2026-10-17)
+
+This is the owner's decision after the results above. It is not a
+pre-registered verdict.
+
+- **The experiment ended without the pre-registered verdict.** No device
+  reached 10 pure-label repetitions per condition (see D1–D5).
+- **The observed differences were small:**
+  - Galaxy S23 decode −1.05% [−2.80, +1.40] and prefill −1.59% [−2.77, +0.69];
+  - Pixel 9 decode +0.57% [0.00, +1.38] and prefill +0.24% [−0.44, +2.09];
+  - no thermal effect was supported, and thermal status was `NONE` throughout;
+  - under load the phones discharged in both conditions, so a `CHARGING` status
+    was not net charging.
+- **`charging-policy-v3` ("tethered, not charging") is the lab policy.**
+  Repetitions are publication-eligible only with `FULL`/`NOT_CHARGING` at every
+  snapshot and sample. This is a conservative rule, adopted whatever the size of
+  the effect, so it does not depend on this experiment's estimates.
+- **Readiness bound:** the 2 °C battery-rise default (`maxBatteryTempRiseC`)
+  stays for reference runs. The 10 °C override and the 300 s readiness bound of
+  Amendment 1 were experiment-only.
+- **Legacy rows** stay `validation: legacy`, which means "charging state
+  unknown, effect not ruled out at 3%". They must not be ranked against v3 rows
+  on gaps under about 3%.
+- **Experiment records are never publication evidence.** `aggregate.mjs`
+  refuses any record with `chargingPolicy.readiness: "record-only-experiment"`
+  or `configuration.experimentChargingReadiness`, in preview and in `--update`.
+  Evidence bundles keep the marker.
+- **Optional future work:** a follow-up on the S23 and Pixel 9, whose charge
+  limits can be set over adb, with ≥ 10 repetitions per condition, starting
+  below the limit so that A is reachable, and using the hardened driver.
+
 ## Deviations
 
 - **D1 — adb stall, early stop, late restore.** At about 16:39 UTC every

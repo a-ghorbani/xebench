@@ -185,6 +185,14 @@ function sampleCount(rec, where, metrics, legacy, warnings) {
 }
 
 function toRow({ rec, where }, warnings) {
+  // EXPERIMENT ONLY records (docs/experiments/charging-ab.md) never become rows, in
+  // preview or --update, whatever their protocol: readiness did not wait for charging.
+  if (rec.chargingPolicy?.readiness === 'record-only-experiment' ||
+      (isObject(rec.configuration) && Object.hasOwn(rec.configuration, 'experimentChargingReadiness'))) {
+    throw new PublicationError(
+      `${where}: experiment-only record (record-only-experiment charging readiness) is never publishable`,
+    );
+  }
   const legacy = !Object.hasOwn(rec, 'schemaVersion');
   if (!legacy) {
     if (rec.schemaVersion !== 1 || rec.status !== 'complete') {

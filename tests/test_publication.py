@@ -437,6 +437,23 @@ class PublicationTests(unittest.TestCase):
         result = self.assert_rejected(self.write(ref), '--update', '--allow-legacy')
         self.assertIn('preview-only', result.stderr)
 
+    def test_experiment_only_records_are_never_published(self):
+        """docs/experiments/charging-ab.md: record-only-experiment readiness is never publication evidence."""
+        app = json.loads((ROOT / 'tests/fixtures/raw-session/app-emitted.json').read_text())['records']
+        experiment = app['chargingRecordOnly']
+        self.assertEqual(experiment['chargingPolicy']['readiness'], 'record-only-experiment')
+        # Also with a protocol aggregate.mjs would otherwise accept, and with either marker alone.
+        as_reference = {**reference_record(), 'configuration': experiment['configuration'],
+                        'chargingPolicy': experiment['chargingPolicy']}
+        only_policy = {**reference_record(), 'chargingPolicy': experiment['chargingPolicy']}
+        only_flag = {**reference_record(), 'configuration': {**reference_record()['configuration'],
+                                                             'experimentChargingReadiness': 'record-only'}}
+        for name, record in {'app': experiment, 'reference': as_reference, 'policy': only_policy,
+                             'flag': only_flag}.items():
+            with self.subTest(case=name):
+                self.assert_rejected(self.write(record), reason='never publishable')
+                self.assert_rejected(self.write(record), '--update', '--allow-legacy', reason='never publishable')
+
 
 class DataValidationTests(unittest.TestCase):
     def run_node(self, script):
