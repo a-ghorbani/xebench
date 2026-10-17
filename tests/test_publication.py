@@ -399,6 +399,20 @@ class PublicationTests(unittest.TestCase):
         self.assert_rejected(self.write(legacy_record(model='Fine'), failed), '--update', '--allow-legacy',
                              reason='guards did not pass')
 
+    def test_flagged_reference_session_previews_but_never_publishes(self):
+        # observed-conditions-v1 (session.ts) sets guardsPassed=false on a flagged
+        # endpoint and keeps the measurements; it never sets true.
+        flagged = reference_record(
+            guardsPassed=False,
+            guardNotes=['Run conditions and actual backend execution have not been verified', 'not-foreground'],
+            conditionPolicy={'version': 'observed-conditions-v1', 'mode': 'record-and-flag'})
+        rows, _ = self.preview(self.write(flagged))
+        self.assertEqual(rows[0]['sampleCount'], 3)
+        self.assertIn('GUARDS FAILED', rows[0]['asStated'])
+        self.assertIn('not-foreground', rows[0]['asStated'])
+        self.assert_rejected(self.write(flagged), '--update', '--allow-legacy', reason='preview-only')
+        self.assert_rejected(self.write(reference_record(guardsPassed=True)), reason='guardsPassed must be null or false')
+
     # 8. unsupported schema/protocol versions are rejected
     def test_incompatible_versions_are_rejected(self):
         ref = reference_record()

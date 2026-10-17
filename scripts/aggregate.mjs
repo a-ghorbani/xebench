@@ -224,8 +224,10 @@ function toRow({ rec, where }, warnings) {
     throw new PublicationError(`${where}: protocol needs positive integer nColdRuns/maxDecodeTokens and a promptLabel`);
   }
   if (!isObject(rec.summary)) throw new PublicationError(`${where}: summary is missing (no successful repetitions)`);
-  if (legacy ? typeof rec.guardsPassed !== 'boolean' : rec.guardsPassed !== null) {
-    throw new PublicationError(`${where}: guardsPassed must be ${legacy ? 'a boolean' : 'null'}`);
+  // Reference sessions never claim a pass: null = unverified, false = an observed
+  // condition failure was flagged (observed-conditions-v1, docs/RUN-CONDITIONS.md).
+  if (legacy ? typeof rec.guardsPassed !== 'boolean' : rec.guardsPassed !== null && rec.guardsPassed !== false) {
+    throw new PublicationError(`${where}: guardsPassed must be ${legacy ? 'a boolean' : 'null or false'}`);
   }
 
   const summary = rec.summary;
@@ -285,8 +287,9 @@ function writeAtomic(target, text, expectedBefore) {
     fd = openSync(tmp, 'wx', 0o644);
     writeFileSync(fd, text); // loops until every byte is written; throws on EFBIG/ENOSPC
     fsyncSync(fd);
-    closeSync(fd);
-    fd = undefined;
+    const written = fd;
+    fd = undefined; // never close twice: a failed close must still reach the cleanup below
+    closeSync(written);
     chmodSync(tmp, statSync(target).mode & 0o777);
     if (readFileSync(tmp, 'utf8') !== text) throw new PublicationError('temporary file does not match the output');
     if (readFileSync(target, 'utf8') !== expectedBefore) {
@@ -301,7 +304,11 @@ function writeAtomic(target, text, expectedBefore) {
       // not supported on this platform
     }
   } catch (error) {
-    if (fd !== undefined) closeSync(fd);
+    try {
+      if (fd !== undefined) closeSync(fd);
+    } catch {
+      // keep the original error; still remove the temp file
+    }
     try {
       unlinkSync(tmp);
     } catch {
