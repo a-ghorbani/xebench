@@ -18,7 +18,7 @@
       "required": ["id", "headline", "claims", "sources", "verifiedAt"],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "description": "stable slug, e.g. 'litert-lm-npu-blocked'" },
+        "id": { "type": "string", "description": "stable slug, e.g. 'litert-lm-npu-integration'" },
         "kind": { "type": "string", "enum": ["gap", "contrast", "result", "caveat"], "description": "gap = a capability that can't be reproduced; contrast = A-vs-B; result = a measured takeaway; caveat = a methodology note" },
         "blocks": {
           "type": "array",
@@ -43,7 +43,7 @@
         },
         "steps": {
           "type": "array",
-          "description": "an optional pass/fail strip (e.g. the LiteRT stack: loads OK / skel present OK / bridge libs MISSING)",
+          "description": "an optional pass/fail strip (e.g. a stack bring-up: runtime loads OK / engine runs OK / output correct FAIL)",
           "items": {
             "type": "object",
             "required": ["label", "status"],
