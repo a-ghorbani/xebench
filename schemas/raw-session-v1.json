@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/a-ghorbani/xebench/schemas/raw-session-v1.json",
+  "title": "xebench raw reference session, schemaVersion 1",
+  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal). Structural rules only; cross-field rules (repetition count, status vs attempts, recomputed summaries, configuration agreement, guard consistency) are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration are intentionally open to additive fields. Records from apps built before condition snapshots (PR #11) omit conditionPolicy and every attempt's conditions; the validator accepts all or none.",
+  "type": "object",
+  "required": [
+    "runId", "timestampIso", "deviceInfo", "artifact", "schema", "schemaVersion",
+    "harnessVersion", "engine", "engineVersion", "backend", "observedBackend", "platform",
+    "model", "quant", "modelFile", "configuration", "configurationRunId", "protocol",
+    "status", "coldRuns", "summary", "guardsPassed", "guardNotes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,99}$"},
+    "timestampIso": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"},
+    "deviceInfo": {
+      "type": "object",
+      "required": ["model", "androidRelease"],
+      "additionalProperties": false,
+      "properties": {
+        "model": {"type": "string"},
+        "androidRelease": {"type": "string"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["sha256", "sizeBytes"],
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "sizeBytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "schema": {"const": "xebench-raw"},
+    "schemaVersion": {"const": 1},
+    "harnessVersion": {"const": "xebench-0.5-reference"},
+    "engine": {"$ref": "#/$defs/label"},
+    "engineVersion": {"type": "string", "minLength": 1},
+    "backend": {"const": "cpu"},
+    "observedBackend": {"const": null, "description": "Actual backend execution is not observed; unknown stays null."},
+    "platform": {"const": "android"},
+    "model": {"$ref": "#/$defs/label"},
+    "quant": {"$ref": "#/$defs/label"},
+    "modelFile": {"$ref": "#/$defs/modelFile"},
+    "configuration": {"$ref": "#/$defs/configuration"},
+    "configurationRunId": {"$ref": "#/$defs/label"},
+    "protocol": {
+      "type": "object",
+      "description": "Open to additive fields (run kind, sampling, order) from later protocol work.",
+      "required": ["version", "nColdRuns", "cooldownSec", "promptLabel", "prompt", "maxDecodeTokens", "nThreads", "nCtx", "coldDefinition"],
+      "additionalProperties": true,
+      "properties": {
+        "version": {"const": "cpu-reference-v1"},
+        "nColdRuns": {"type": "integer", "minimum": 1, "maximum": 20},
+        "cooldownSec": {"type": "integer", "minimum": 0, "maximum": 300},
+        "promptLabel": {"type": "string", "minLength": 1},
+        "prompt": {"type": "string", "minLength": 1},
+        "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+        "nThreads": {"type": "integer", "minimum": 1, "maximum": 32},
+        "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768},
+        "coldDefinition": {"type": "string", "minLength": 1}
+      }
+    },
+    "status": {"enum": ["running", "complete", "failed"]},
+    "coldRuns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {"oneOf": [{"$ref": "#/$defs/completeAttempt"}, {"$ref": "#/$defs/failedAttempt"}]}
+    },
+    "summary": {
+      "type": "object",
+      "required": ["loadMs", "ttftMs", "prefillTps", "decodeTps"],
+      "additionalProperties": false,
+      "properties": {
+        "loadMs": {"$ref": "#/$defs/optionalAggregate"},
+        "ttftMs": {"$ref": "#/$defs/optionalAggregate"},
+        "prefillTps": {"$ref": "#/$defs/optionalAggregate"},
+        "decodeTps": {"$ref": "#/$defs/optionalAggregate"}
+      }
+    },
+    "guardsPassed": {"enum": [false, null], "description": "Never true in v1: passing endpoint checks is not protocol validation."},
+    "guardNotes": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+    "conditionPolicy": {
+      "type": "object",
+      "description": "Open to additive fields from condition-enforcement work.",
+      "required": ["version", "mode"],
+      "additionalProperties": true,
+      "properties": {
+        "version": {"type": "string", "minLength": 1},
+        "mode": {"type": "string", "minLength": 1},
+        "minBatteryPct": {"type": "number", "minimum": 0, "maximum": 100},
+        "maxThermalStatus": {"type": "integer", "minimum": 0, "maximum": 6}
+      }
+    }
+  },
+  "$defs": {
+    "label": {"type": "string", "minLength": 1, "maxLength": 128, "description": "Mirrors config.ts: not blank after JS trim(), no C0 control characters.", "pattern": "^(?=[\\s\\S]*[^\\t\\n\\u000b\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff])[^\\u0000-\\u001f]*$"},
+    "modelFile": {"type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*\\.gguf$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegative": {"type": "number", "minimum": 0},
+    "positive": {"type": "number", "exclusiveMinimum": 0},
+    "tokenCount": {"type": "integer", "minimum": 1},
+    "measureMethod": {"enum": ["engine-timings", "ttft-derived", "callback-derived", "total-time-derived"]},
+    "configuration": {
+      "type": "object",
+      "description": "The parsed configuration echoed into the record. Open to additive fields.",
+      "required": ["schemaVersion", "id", "nColdRuns", "cooldownSec", "maxDecodeTokens", "runs"],
+      "additionalProperties": true,
+      "properties": {
+        "schemaVersion": {"const": 1},
+        "id": {"$ref": "#/$defs/label"},
+        "nColdRuns": {"type": "integer", "minimum": 1, "maximum": 20},
+        "cooldownSec": {"type": "integer", "minimum": 0, "maximum": 300},
+        "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+        "runs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": ["id", "engine", "model", "modelFile", "quant", "nThreads", "nCtx"],
+            "additionalProperties": true,
+            "properties": {
+              "id": {"$ref": "#/$defs/label"},
+              "engine": {"const": "llama.cpp"},
+              "model": {"$ref": "#/$defs/label"},
+              "modelFile": {"$ref": "#/$defs/modelFile"},
+              "quant": {"$ref": "#/$defs/label"},
+              "nThreads": {"type": "integer", "minimum": 1, "maximum": 32},
+              "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768}
+            }
+          }
+        }
+      }
+    },
+    "engineInternal": {
+      "type": "object",
+      "required": ["promptMs", "promptPerSecond", "predictedMs", "predictedPerSecond"],
+      "additionalProperties": false,
+      "properties": {
+        "promptMs": {"$ref": "#/$defs/nonNegative"},
+        "promptPerSecond": {"$ref": "#/$defs/nonNegative"},
+        "predictedMs": {"$ref": "#/$defs/positive"},
+        "predictedPerSecond": {"$ref": "#/$defs/nonNegative"}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["loadMs", "ttftMs", "promptTokens", "prefillTps", "prefillMethod", "decodeTokens", "decodeTps", "decodeMethod"],
+      "additionalProperties": false,
+      "properties": {
+        "loadMs": {"$ref": "#/$defs/nonNegative"},
+        "ttftMs": {"$ref": "#/$defs/nonNegative"},
+        "promptTokens": {"$ref": "#/$defs/tokenCount"},
+        "prefillTps": {"$ref": "#/$defs/nonNegative"},
+        "prefillMethod": {"$ref": "#/$defs/measureMethod"},
+        "decodeTokens": {"$ref": "#/$defs/tokenCount"},
+        "decodeTps": {"$ref": "#/$defs/positive"},
+        "decodeMethod": {"$ref": "#/$defs/measureMethod"},
+        "engineInternal": {"$ref": "#/$defs/engineInternal"}
+      }
+    },
+    "completeAttempt": {
+      "type": "object",
+      "description": "A successful repetition: metrics are flattened beside runIndex/conditions/status.",
+      "required": ["runIndex", "status", "loadMs", "ttftMs", "promptTokens", "prefillTps", "prefillMethod", "decodeTokens", "decodeTps", "decodeMethod"],
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 0},
+        "conditions": {"$ref": "#/$defs/attemptConditions"},
+        "status": {"const": "complete"},
+        "loadMs": {"$ref": "#/$defs/nonNegative"},
+        "ttftMs": {"$ref": "#/$defs/nonNegative"},
+        "promptTokens": {"$ref": "#/$defs/tokenCount"},
+        "prefillTps": {"$ref": "#/$defs/nonNegative"},
+        "prefillMethod": {"$ref": "#/$defs/measureMethod"},
+        "decodeTokens": {"$ref": "#/$defs/tokenCount"},
+        "decodeTps": {"$ref": "#/$defs/positive"},
+        "decodeMethod": {"$ref": "#/$defs/measureMethod"},
+        "engineInternal": {"$ref": "#/$defs/engineInternal"}
+      }
+    },
+    "attemptError": {
+      "type": "object",
+      "required": ["phase", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "phase": {"enum": ["conditions", "load", "inference", "release"]},
+        "message": {"type": "string"}
+      }
+    },
+    "failedAttempt": {
+      "type": "object",
+      "required": ["runIndex", "status", "error", "metrics"],
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 0},
+        "conditions": {"$ref": "#/$defs/attemptConditions"},
+        "status": {"const": "failed"},
+        "error": {"$ref": "#/$defs/attemptError"},
+        "metrics": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/metrics"}]},
+        "cleanupError": {
+          "type": "object",
+          "required": ["phase", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "phase": {"const": "release"},
+            "message": {"type": "string"}
+          }
+        }
+      }
+    },
+    "attemptConditions": {
+      "type": "object",
+      "description": "Endpoint observations. Open to additive fields (readiness, sampling, run kind).",
+      "required": ["before", "after", "beforeAssessment", "afterAssessment"],
+      "additionalProperties": true,
+      "properties": {
+        "before": {"$ref": "#/$defs/conditionSnapshot"},
+        "after": {"$ref": "#/$defs/conditionSnapshot"},
+        "beforeAssessment": {"$ref": "#/$defs/conditionAssessment"},
+        "afterAssessment": {"$ref": "#/$defs/conditionAssessment"}
+      }
+    },
+    "conditionSnapshot": {
+      "type": "object",
+      "required": ["probeStatus", "unavailable"],
+      "additionalProperties": true,
+      "properties": {
+        "probeStatus": {"type": "string", "minLength": 1},
+        "timestampMs": {"type": ["number", "null"], "minimum": 0},
+        "batteryPct": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "batteryTempC": {"type": ["number", "null"]},
+        "charging": {"type": ["boolean", "null"]},
+        "powerSaveMode": {"type": ["boolean", "null"]},
+        "thermalStatus": {"type": ["integer", "null"], "minimum": 0, "maximum": 6},
+        "screenOn": {"type": ["boolean", "null"]},
+        "foreground": {"type": ["boolean", "null"]},
+        "keyguardLocked": {"type": ["boolean", "null"]},
+        "pssMb": {"type": ["number", "null"], "minimum": 0},
+        "unavailable": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "conditionAssessment": {
+      "type": "object",
+      "required": ["status", "reasons"],
+      "additionalProperties": true,
+      "properties": {
+        "status": {"type": "string", "minLength": 1},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "description": "Median and IQR use linear interpolation at index (n - 1) * p over successful repetitions.",
+      "required": ["median", "iqr", "min", "max", "n"],
+      "additionalProperties": false,
+      "properties": {
+        "median": {"$ref": "#/$defs/nonNegative"},
+        "iqr": {"$ref": "#/$defs/nonNegative"},
+        "min": {"$ref": "#/$defs/nonNegative"},
+        "max": {"$ref": "#/$defs/nonNegative"},
+        "n": {"type": "integer", "minimum": 1}
+      }
+    },
+    "optionalAggregate": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/aggregate"}]}
+  }
+}

@@ -1,0 +1,30 @@
+name: Raw session schema
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: xebenchapp/package-lock.json
+      - run: python3 -m unittest tests/test_raw_session.py -v
+      - run: npm ci --ignore-scripts
+        working-directory: xebenchapp
+      # Records produced by the app's runSession must match the committed fixture
+      # and pass the host validator, so app output and schema cannot drift apart.
+      - run: npx jest __tests__/rawSessionSchema.test.ts --runInBand
+        working-directory: xebenchapp
+        env:
+          XEBENCH_RAW_SESSION_OUT: ${{ runner.temp }}/app-emitted.json
+      - run: python3 scripts/raw_session.py "$RUNNER_TEMP/app-emitted.json"
