@@ -15,6 +15,8 @@ SPEC = importlib.util.spec_from_file_location(
     "capture_app_run", Path(__file__).resolve().parents[1] / "scripts/capture_app_run.py")
 capture = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(capture)
+APP_RECORDS = json.loads((Path(__file__).resolve().parent / "fixtures/raw-session/app-emitted.json")
+                         .read_text())["records"]
 
 
 def result_line(timestamp="100.000", quant="Q4_0"):
@@ -47,24 +49,53 @@ class CaptureTests(unittest.TestCase):
     def test_file_references_preserve_large_records_and_checkpoints(self):
         with tempfile.TemporaryDirectory() as root:
             session = capture.Capture(root, {})
-            record = json.loads(result_line().split('XEBENCH_RESULT ', 1)[1])
-            record.update(schemaVersion=1, status='running', prompt='fixture ' * 2000)
             files = {}
             lines = []
-            for index, status in enumerate(('running', 'complete')):
-                record['status'] = status
+            for index, key in enumerate(('partial', 'complete')):
                 name = f'fixture-{index}.json'
-                files[name] = json.dumps(record)
+                files[name] = json.dumps(APP_RECORDS[key])
                 reference = {'name': name, 'sha256': hashlib.sha256(files[name].encode()).hexdigest()}
                 lines.append(f'{index} I ReactNativeJS: XEBENCH_RESULT_FILE {json.dumps(reference)}')
             snapshot = '\n'.join(lines)
             session.ingest(snapshot, files.__getitem__)
             session.ingest(snapshot, files.__getitem__)
             manifest = session.finish('complete')
+            self.assertEqual(manifest['invalidRecords'], 0)
             self.assertEqual(len(manifest['checkpoints']), 1)
             self.assertEqual(len(manifest['records']), 1)
-            saved = json.loads((session.directory / manifest['records'][0]['file']).read_text())
-            self.assertEqual(saved['prompt'], record['prompt'])
+            self.assertEqual(manifest['records'][0]['validation'], 'raw-session-v1')
+            saved = (session.directory / manifest['records'][0]['file']).read_text()
+            self.assertEqual(saved, files['fixture-1.json'])
+            self.assertEqual(json.loads(saved)['protocol']['prompt'], APP_RECORDS['complete']['protocol']['prompt'])
+
+    def test_rejections_keep_payload_and_machine_readable_reason(self):
+        complete = APP_RECORDS['complete']
+        legacy = json.loads(result_line().split('XEBENCH_RESULT ', 1)[1])
+        cases = {
+            'version.missing': legacy,
+            'version.unsupported': {**complete, 'schemaVersion': 2},
+            'summary.mismatch': {**complete, 'summary': {**complete['summary'], 'decodeTps': {
+                **complete['summary']['decodeTps'], 'median': 99}}},
+            'status.attempts': {**complete, 'coldRuns': complete['coldRuns'][:2]},
+        }
+        for code, record in cases.items():
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as root:
+                session = capture.Capture(root, {})
+                payload = json.dumps(record)
+                reference = {'name': 'fixture.json', 'sha256': hashlib.sha256(payload.encode()).hexdigest()}
+                session.ingest('1 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference),
+                               {'fixture.json': payload}.__getitem__)
+                manifest = session.finish('partial')
+                self.assertEqual(session.invalid, 1)
+                self.assertFalse(manifest['records'] or manifest['checkpoints'])
+                rejection = manifest['rejections'][0]
+                self.assertIn(code, rejection['codes'])
+                self.assertEqual((session.directory / rejection['file']).read_text(), payload + '\n')
+                detail = json.loads((session.directory / rejection['reasonFile']).read_text())
+                self.assertEqual(detail['payloadFile'], rejection['file'])
+                self.assertEqual(detail['sourceFile'], 'fixture.json')
+                self.assertIn(code, [item['code'] for item in detail['reasons']])
+                self.assertTrue(all(set(item) == {'code', 'path', 'message'} for item in detail['reasons']))
 
     def test_file_reference_rejects_traversal_mismatch_and_size(self):
         cases = [
@@ -83,14 +114,62 @@ class CaptureTests(unittest.TestCase):
                 self.assertEqual(bool(reads), should_read)
                 self.assertEqual(session.invalid, 1)
                 self.assertFalse(session.records)
+                expected = 'transport.size' if len(payload) > capture.MAX_RECORD_BYTES else \
+                    'transport.checksum' if should_read else 'transport.reference'
+                self.assertEqual(session.rejections[0]['codes'], [expected])
+                stored = (session.directory / session.rejections[0]['file']).read_text()
+                self.assertEqual(stored, (payload if should_read else json.dumps(reference)) + '\n')
+
+    def test_hostile_inline_payloads_are_rejected_not_fatal(self):
+        with tempfile.TemporaryDirectory() as root:
+            session = capture.Capture(root, {})
+            for index, payload in enumerate(['{"a": [' * 2000 + '1' + ']}' * 2000, '{"a": ' + '1' * 5000 + '}']):
+                session.ingest(f'{index} I ReactNativeJS: XEBENCH_RESULT {payload}')
+            self.assertEqual(session.invalid, 2)
+            self.assertFalse(session.records)
+
+    def test_integer_beyond_double_range_is_rejected_with_payload_kept(self):
+        payload = json.dumps(APP_RECORDS['partial']).replace('"loadMs": 17', '"loadMs": 1' + '0' * 400)
+        reference = {'name': 'fixture.json', 'sha256': hashlib.sha256(payload.encode()).hexdigest()}
+        with tempfile.TemporaryDirectory() as root:
+            session = capture.Capture(root, {})
+            session.ingest('1 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference),
+                           {'fixture.json': payload}.__getitem__)
+            self.assertEqual(session.rejections[0]['codes'], ['json.non-finite'])
+            self.assertEqual((session.directory / session.rejections[0]['file']).read_text(), payload + '\n')
+
+    def test_undecodable_reference_is_rejected_not_fatal(self):
+        def read_file(_name):
+            raise UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid start byte')
+        with tempfile.TemporaryDirectory() as root:
+            session = capture.Capture(root, {})
+            reference = {'name': 'fixture.json', 'sha256': 'a' * 64}
+            session.ingest('1 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference), read_file)
+            self.assertEqual(session.rejections[0]['codes'], ['transport.encoding'])
 
     def test_failed_session_cannot_be_successful_without_error_marker(self):
+        payload = json.dumps(APP_RECORDS['failed'])
+        reference = {'name': 'fixture.json', 'sha256': hashlib.sha256(payload.encode()).hexdigest()}
+        log = '100 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference) + \
+              '\n101 I ReactNativeJS: XEBENCH_DONE'
         with tempfile.TemporaryDirectory() as root:
-            line = result_line().replace('"schema": "xebench-raw"',
-                                        '"schema": "xebench-raw", "schemaVersion": 1, "status": "failed"')
-            code, manifest = self.run_device(root, line + '\n101 I ReactNativeJS: XEBENCH_DONE')
+            code, manifest = self.run_device(root, log, files={'fixture.json': payload})
             self.assertEqual(code, 4)
             self.assertEqual(manifest['failedRecords'], 1)
+            self.assertEqual(manifest['invalidRecords'], 0)
+
+    def test_deeply_invalid_record_makes_capture_partial(self):
+        record = {**APP_RECORDS['complete'], 'coldRuns': APP_RECORDS['complete']['coldRuns'][:3]}
+        payload = json.dumps(record)
+        reference = {'name': 'fixture.json', 'sha256': hashlib.sha256(payload.encode()).hexdigest()}
+        log = '100 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference) + \
+              '\n101 I ReactNativeJS: XEBENCH_DONE'
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest = self.run_device(root, log, files={'fixture.json': payload})
+            self.assertEqual(code, 4)
+            self.assertEqual(manifest['status'], 'partial')
+            self.assertEqual(manifest['invalidRecords'], 1)
+            self.assertIn('status.attempts', manifest['rejections'][0]['codes'])
 
     def test_repetitions_quants_and_invocations_are_preserved(self):
         with tempfile.TemporaryDirectory() as root:
@@ -119,6 +198,9 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(session.invalid, 5)
             self.assertFalse(session.records)
             self.assertEqual(len(list(session.directory.glob("invalid-*.txt"))), 5)
+            self.assertEqual(len(list(session.directory.glob("invalid-*.reason.json"))), 5)
+            self.assertEqual([item["codes"] for item in session.rejections], [
+                ["json.parse"], ["json.not-object"], ["json.non-finite"], ["record.schema"], ["json.non-finite"]])
 
     def test_marker_inside_payload_is_not_control_message(self):
         with tempfile.TemporaryDirectory() as root:
@@ -165,9 +247,10 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(manifest["status"], "complete")
             self.assertFalse(manifest["publicationReady"])
+            self.assertEqual(manifest["records"][0]["validation"], "legacy-unvalidated")
 
     def test_capture_retrieves_referenced_file_without_trimming_bytes(self):
-        payload = result_line().split('XEBENCH_RESULT ', 1)[1] + '\n'
+        payload = json.dumps(APP_RECORDS['complete']) + '\n'
         reference = {'name': 'fixture.json', 'sha256': hashlib.sha256(payload.encode()).hexdigest()}
         log = '100 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference) + \
               '\n101 I ReactNativeJS: XEBENCH_DONE'
