@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.0",
-  "generatedAt": "2026-07-22",
+  "schemaVersion": "1.1",
+  "generatedAt": "2026-10-17T13:40:03Z",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Cross-engine on-device LLM benchmark results. provenance: measured = xebench lab runs; vendor = engine-maker official published numbers.",
   "rowCount": 41,
@@ -52,7 +52,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -70,7 +71,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -88,7 +90,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "litert-lm",
@@ -106,7 +109,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -124,7 +128,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "executorch",
@@ -259,7 +264,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -277,7 +283,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -295,7 +302,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "litert-lm",
@@ -313,7 +321,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -331,7 +340,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "executorch",
@@ -349,7 +359,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)",
+      "validation": "legacy"
     },
     {
       "engine": "genie-x",
@@ -368,7 +379,8 @@
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sourceDate": "2026-07",
       "sampleCount": 3,
-      "asStated": "n=3 median; Genie 1.19 (QAIRT 2.42.0 bundle, runanywhere) on Hexagon v81; engine-profiler KPIs. CLI-measured (genie-t2t-run); decode dead-stable across runs (16.72/16.90/16.78) => NPU/memory-bound, not CPU-throttle-limited, so the background-cpuset caveat is negligible. A foreground/top-app run was built and attempted (app confirmed in top-app) but HyperOS blocks app exec of the packaged binary (EACCES); an in-process libGenie/JNI path is roadmapped to make it fully Rule-0-clean. W4A16 quant differs from other rows."
+      "asStated": "n=3 median; Genie 1.19 (QAIRT 2.42.0 bundle, runanywhere) on Hexagon v81; engine-profiler KPIs. CLI-measured (genie-t2t-run); decode dead-stable across runs (16.72/16.90/16.78) => NPU/memory-bound, not CPU-throttle-limited, so the background-cpuset caveat is negligible. A foreground/top-app run was built and attempted (app confirmed in top-app) but HyperOS blocks app exec of the packaged binary (EACCES); an in-process libGenie/JNI path is roadmapped to make it fully Rule-0-clean. W4A16 quant differs from other rows.",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -386,7 +398,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -404,7 +417,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -422,7 +436,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "litert-lm",
@@ -440,7 +455,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -458,7 +474,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -476,7 +493,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "executorch",
@@ -509,7 +527,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -527,7 +546,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "executorch",
@@ -545,7 +565,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -563,7 +584,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "genie-x",
@@ -582,7 +604,8 @@
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sourceDate": "2026-07",
       "sampleCount": 1,
-      "asStated": "n=1 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=1 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "litert-lm",
@@ -600,7 +623,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -618,7 +642,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "llama.cpp",
@@ -636,7 +661,8 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
     },
     {
       "engine": "executorch",

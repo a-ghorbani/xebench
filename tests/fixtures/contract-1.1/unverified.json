@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.1",
+  "generatedAt": "2026-10-17T12:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract 1.1 consumer fixture: a SYNTHETIC measured row whose run conditions were not verified (guardsPassed null). Unknown is not a pass.",
+  "rowCount": 1,
+  "rows": [
+    {
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Fixture Phone",
+      "model": "Fixture Model 1B",
+      "quant": "Q8_0",
+      "ppTps": 180.6,
+      "tgTps": 15.2,
+      "ttftMs": null,
+      "memoryMb": null,
+      "provenance": "measured",
+      "sourceName": "PocketPal R&D lab (xebench)",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sourceDate": "2026-10",
+      "sampleCount": 3,
+      "asStated": "SYNTHETIC FIXTURE; n=3 cold-run median; prompt std-pp512-v1; decode 64 tok; GUARDS UNVERIFIED",
+      "validation": "unverified",
+      "guardsPassed": null,
+      "protocolVersion": "cpu-reference-v1"
+    }
+  ]
+}

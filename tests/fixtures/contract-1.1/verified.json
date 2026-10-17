@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.1",
+  "generatedAt": "2026-10-17T12:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract 1.1 consumer fixture: a SYNTHETIC verified measured row carrying every 1.1 field. It is validator-valid but not real data; the producer does not emit verified rows yet, and the evidence URL does not resolve.",
+  "rowCount": 1,
+  "rows": [
+    {
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Fixture Phone",
+      "soc": "Fixture SoC",
+      "model": "Fixture Model 1B",
+      "quant": "Q4_0",
+      "ppTps": 210.4,
+      "tgTps": 27.3,
+      "ttftMs": 2480,
+      "memoryMb": 712.5,
+      "provenance": "measured",
+      "sourceName": "PocketPal R&D lab (xebench)",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sourceDate": "2026-10",
+      "sampleCount": 5,
+      "asStated": "SYNTHETIC FIXTURE; n=5 cold-run median; prompt std-pp512-v1; decode 64 tok",
+      "validation": "verified",
+      "guardsPassed": true,
+      "conditionPolicy": "observed-conditions-v1",
+      "protocolVersion": "cpu-reference-v1",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": { "iqr": 3.1, "min": 205.9, "max": 214.2 },
+        "tgTps": { "iqr": 0.4, "min": 26.8, "max": 27.9 }
+      },
+      "evidence": {
+        "sessionIds": ["fixture-session-0001"],
+        "bundleSha256": "c699d5b79c8121dd7325ebd1976ffa5e46a4af76ef92bcc29e6638633174b635",
+        "url": "https://example.com/xebench/evidence/fixture-session-0001.tar.gz"
+      },
+      "build": {
+        "engineVersion": "llama.cpp b0000-fixture",
+        "bindingVersion": "llama.rn 0.0.0-fixture",
+        "apkSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "harnessCommit": "0000000000000000000000000000000000000000"
+      }
+    }
+  ]
+}

@@ -5,11 +5,16 @@
  * data/*.schema.json use. Any other keyword is rejected so that a schema change
  * cannot silently bypass validation; extend this file when a schema needs more.
  */
-import { readFileSync } from 'node:fs';
+import {
+  chmodSync, closeSync, fsyncSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync,
+} from 'node:fs';
+import { basename, dirname, join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const ANNOTATIONS = new Set(['$schema', '$id', '$comment', '$defs', 'title', 'description', 'default', 'examples']);
 const ASSERTIONS = new Set([
-  'type', 'enum', 'required', 'properties', 'additionalProperties', 'items', '$ref', 'minimum', 'format',
+  'type', 'enum', 'const', 'required', 'properties', 'additionalProperties', 'items', '$ref', 'minimum', 'format',
+  'pattern', 'minLength', 'minItems', 'uniqueItems', 'allOf', 'if', 'then', 'else',
 ]);
 
 export class PublicationError extends Error {}
@@ -33,9 +38,40 @@ const matchesType = (value, type) => {
   }
 };
 
+/** JSON value equality (const/enum): same type and structure. */
+const jsonEqual = (a, b) => {
+  if (a === b) return true;
+  if (typeOf(a) !== typeOf(b) || typeof a !== 'object' || a === null) return false;
+  if (Array.isArray(a)) return a.length === b.length && a.every((item, index) => jsonEqual(item, b[index]));
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && jsonEqual(a[key], b[key]));
+};
+
+const compilePattern = (pattern, path) => {
+  if (typeof pattern !== 'string') throw new PublicationError(`pattern at ${path} must be a string`);
+  try {
+    return new RegExp(pattern, 'u');
+  } catch (error) {
+    throw new PublicationError(`invalid pattern at ${path}: ${error.message}`);
+  }
+};
+
+// Strict absolute URI per the RFC 3986 grammar (as ajv-formats "uri" checks it):
+// only unreserved/sub-delim characters and valid %XX escapes in each component,
+// brackets only around an IP literal, one '#'. WHATWG URL then also has to parse
+// it, so this is never looser than a stock RFC 3986 validator.
+const PCT = '%[0-9a-f]{2}';
+const SUB = "a-z0-9\\-._~!$&'()*+,;=";
+const PCHAR = `(?:[${SUB}:@]|${PCT})`;
+const AUTHORITY = `(?:(?:[${SUB}:]|${PCT})*@)?(?:\\[[0-9a-f:.]+\\]|\\[v[0-9a-f]+\\.[${SUB}:]+\\]|(?:[${SUB}]|${PCT})*)(?::[0-9]*)?`;
+const URI = new RegExp(
+  `^[a-z][a-z0-9+\\-.]*:(?://${AUTHORITY}(?:/${PCHAR}*)*|/(?:${PCHAR}+(?:/${PCHAR}*)*)?|${PCHAR}+(?:/${PCHAR}*)*)` +
+    `(?:\\?(?:${PCHAR}|[/?])*)?(?:#(?:${PCHAR}|[/?])*)?$`,
+  'i',
+);
 const isUri = (value) => {
   try {
-    return /^[a-z][a-z0-9+.-]*:/i.test(value) && Boolean(new URL(value));
+    return URI.test(value) && Boolean(new URL(value));
   } catch {
     return false;
   }
@@ -81,6 +117,24 @@ export function checkSchema(schema, path = '#') {
   if (schema.minimum !== undefined && typeof schema.minimum !== 'number') {
     throw new PublicationError(`minimum at ${path} must be a number`);
   }
+  for (const key of ['minLength', 'minItems']) {
+    if (schema[key] !== undefined && !(Number.isInteger(schema[key]) && schema[key] >= 0)) {
+      throw new PublicationError(`${key} at ${path} must be a non-negative integer`);
+    }
+  }
+  if (schema.pattern !== undefined) compilePattern(schema.pattern, path);
+  if (schema.uniqueItems !== undefined && typeof schema.uniqueItems !== 'boolean') {
+    throw new PublicationError(`uniqueItems at ${path} must be a boolean`);
+  }
+  if ((schema.then !== undefined || schema.else !== undefined) && schema.if === undefined) {
+    throw new PublicationError(`then/else without if at ${path}`);
+  }
+  if (schema.allOf !== undefined) {
+    if (!Array.isArray(schema.allOf) || schema.allOf.length === 0) {
+      throw new PublicationError(`allOf at ${path} must be a non-empty array`);
+    }
+    schema.allOf.forEach((sub, index) => checkSchema(sub, `${path}/allOf/${index}`));
+  }
   if (schema.format !== undefined && schema.format !== 'uri') {
     throw new PublicationError(`unsupported format ${schema.format} at ${path}`);
   }
@@ -90,14 +144,18 @@ export function checkSchema(schema, path = '#') {
   for (const map of SUBSCHEMA_MAPS) {
     for (const [key, sub] of Object.entries(schema[map] ?? {})) checkSchema(sub, `${path}/${map}/${key}`);
   }
-  for (const key of ['items', 'additionalProperties']) {
+  for (const key of ['items', 'additionalProperties', 'if', 'then', 'else']) {
     if (schema[key] !== undefined) checkSchema(schema[key], `${path}/${key}`);
   }
 }
 
 /** Returns a list of "path: message" errors; empty when `value` conforms. */
 export function validateSchema(value, schema, root = schema, path = '$', errors = []) {
-  if (path === '$') checkSchema(root);
+  checkSchema(root);
+  return validate(value, schema, root, path, errors);
+}
+
+function validate(value, schema, root, path, errors) {
   if (typeof schema === 'boolean') {
     if (!schema) errors.push(`${path}: not allowed`);
     return errors;
@@ -107,7 +165,12 @@ export function validateSchema(value, schema, root = schema, path = '$', errors 
       throw new PublicationError(`unsupported schema keyword ${keyword} at ${path}`);
     }
   }
-  if (schema.$ref) validateSchema(value, resolveRef(root, schema.$ref), root, path, errors);
+  if (schema.$ref) validate(value, resolveRef(root, schema.$ref), root, path, errors);
+  for (const sub of schema.allOf ?? []) validate(value, sub, root, path, errors);
+  if (schema.if !== undefined) {
+    const branch = validate(value, schema.if, root, path, []).length === 0 ? schema.then : schema.else;
+    if (branch !== undefined) validate(value, branch, root, path, errors);
+  }
   if (schema.type !== undefined) {
     const types = Array.isArray(schema.type) ? schema.type : [schema.type];
     if (!types.some((type) => matchesType(value, type))) {
@@ -115,8 +178,26 @@ export function validateSchema(value, schema, root = schema, path = '$', errors 
       return errors;
     }
   }
-  if (schema.enum && !schema.enum.some((item) => item === value)) {
+  if (schema.enum && !schema.enum.some((item) => jsonEqual(item, value))) {
     errors.push(`${path}: ${JSON.stringify(value)} is not one of ${JSON.stringify(schema.enum)}`);
+  }
+  if (schema.const !== undefined && !jsonEqual(schema.const, value)) {
+    errors.push(`${path}: ${JSON.stringify(value)} is not ${JSON.stringify(schema.const)}`);
+  }
+  if (typeof value === 'string') {
+    if (schema.minLength !== undefined && [...value].length < schema.minLength) {
+      errors.push(`${path}: shorter than ${schema.minLength} characters`);
+    }
+    if (schema.pattern !== undefined && !compilePattern(schema.pattern, path).test(value)) {
+      errors.push(`${path}: ${JSON.stringify(value)} does not match ${schema.pattern}`);
+    }
+  }
+  if (Array.isArray(value) && schema.minItems !== undefined && value.length < schema.minItems) {
+    errors.push(`${path}: fewer than ${schema.minItems} items`);
+  }
+  if (Array.isArray(value) && schema.uniqueItems === true &&
+      value.some((item, index) => value.slice(0, index).some((earlier) => jsonEqual(earlier, item)))) {
+    errors.push(`${path}: items are not unique`);
   }
   if (schema.minimum !== undefined && typeof value === 'number' && value < schema.minimum) {
     errors.push(`${path}: ${value} < minimum ${schema.minimum}`);
@@ -131,24 +212,24 @@ export function validateSchema(value, schema, root = schema, path = '$', errors 
     }
     const properties = schema.properties ?? {};
     for (const [key, item] of Object.entries(value)) {
-      if (Object.hasOwn(properties, key)) validateSchema(item, properties[key], root, `${path}.${key}`, errors);
+      if (Object.hasOwn(properties, key)) validate(item, properties[key], root, `${path}.${key}`, errors);
       else if (schema.additionalProperties !== undefined) {
-        validateSchema(item, schema.additionalProperties, root, `${path}.${key}`, errors);
+        validate(item, schema.additionalProperties, root, `${path}.${key}`, errors);
       }
     }
   }
   if (Array.isArray(value) && schema.items !== undefined) {
-    value.forEach((item, index) => validateSchema(item, schema.items, root, `${path}[${index}]`, errors));
+    value.forEach((item, index) => validate(item, schema.items, root, `${path}[${index}]`, errors));
   }
   return errors;
 }
 
-export function assertSchema(value, schema, label, root = schema) {
-  const errors = validateSchema(value, schema, root);
+export function assertSchema(value, schema, label, root = schema, extraErrors = []) {
+  const errors = [...validateSchema(value, schema, root), ...extraErrors];
   if (errors.length) {
     const shown = errors.slice(0, 20).join('\n  ');
     const more = errors.length > 20 ? `\n  ... ${errors.length - 20} more` : '';
-    throw new PublicationError(`${label} does not match its schema:\n  ${shown}${more}`);
+    throw new PublicationError(`${label} does not match its schema/contract:\n  ${shown}${more}`);
   }
 }
 
@@ -202,21 +283,163 @@ export function compareRows(a, b) {
   return 0;
 }
 
-/** Schema plus envelope invariants the schema cannot express. */
+/** The contract version this producer writes (data/benchmarks.schema.json). */
+export const CONTRACT_VERSION = '1.1';
+
+/** Row fields introduced in 1.1; valid on provenance=measured rows only. */
+export const MEASURED_ONLY_FIELDS = Object.freeze([
+  'validation', 'guardsPassed', 'conditionPolicy', 'protocolVersion', 'timingMethod', 'dispersion', 'evidence', 'build',
+]);
+
+/** Full ISO-8601 UTC timestamp without fractional seconds: YYYY-MM-DDTHH:MM:SSZ. */
+export const isoNow = (date = new Date()) => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+const isObject = (value) => typeOf(value) === 'object';
+
+const isCalendarTimestamp = (value) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})Z)?$/.exec(value);
+  if (!match) return false;
+  const [year, month, day, hour, minute, second] = match.slice(1).map((part) => Number(part ?? 0));
+  const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day &&
+    date.getUTCHours() === hour && date.getUTCMinutes() === minute && date.getUTCSeconds() === second;
+};
+
+/**
+ * Cross-field contract invariants for one row, as "path: message" errors. The
+ * schema expresses most of them (for consumers using a stock validator); this is
+ * the authoritative check, and also covers what the schema cannot express.
+ */
+export function rowInvariantErrors(row, path = '$') {
+  const errors = [];
+  if (row.provenance !== 'measured') {
+    for (const field of MEASURED_ONLY_FIELDS) {
+      if (Object.hasOwn(row, field)) errors.push(`${path}: ${field} is only valid on provenance=measured rows`);
+    }
+  }
+  if (row.validation === 'verified') {
+    if (row.guardsPassed !== true) errors.push(`${path}: validation=verified requires guardsPassed === true`);
+    if (!Object.hasOwn(row, 'evidence')) errors.push(`${path}: validation=verified requires evidence`);
+  }
+  if (row.guardsPassed === false && row.validation !== 'failed') {
+    errors.push(`${path}: guardsPassed=false requires validation=failed`);
+  }
+  // A measured row without validation (a 1.0 row) is legacy, so the same rule applies.
+  if (row.validation === 'legacy' || (row.provenance === 'measured' && !Object.hasOwn(row, 'validation'))) {
+    for (const field of ['dispersion', 'evidence']) {
+      if (Object.hasOwn(row, field)) errors.push(`${path}: legacy rows carry no ${field}`);
+    }
+  }
+  for (const [metric, spread] of Object.entries(isObject(row.dispersion) ? row.dispersion : {})) {
+    if (isObject(spread) && typeof spread.min === 'number' && typeof spread.max === 'number' && spread.min > spread.max) {
+      errors.push(`${path}.dispersion.${metric}: min ${spread.min} > max ${spread.max}`);
+    }
+  }
+  return errors;
+}
+
+/** Schema plus envelope and row invariants the schema cannot express. */
 export function assertBenchmarks(envelope, schema, label) {
   assertFinite(envelope, label);
-  assertSchema(envelope, schema, label);
+  // An unsupported major is rejected on its own, before any field is interpreted.
+  if (isObject(envelope) && String(envelope.schemaVersion).split('.')[0] !== '1') {
+    throw new PublicationError(`${label}: unsupported schemaVersion ${envelope.schemaVersion}`);
+  }
+  // Contract invariants are reported with the schema errors: the schema rejects
+  // most of them too, but these messages say which invariant was broken.
+  const invariants = Array.isArray(envelope?.rows)
+    ? envelope.rows.flatMap((row, index) => (isObject(row) ? rowInvariantErrors(row, `$.rows[${index}]`) : []))
+    : [];
+  if (envelope?.schemaVersion === '1.0' && Array.isArray(envelope.rows)) {
+    envelope.rows.forEach((row, index) => {
+      for (const field of MEASURED_ONLY_FIELDS) {
+        if (isObject(row) && Object.hasOwn(row, field)) invariants.push(`$.rows[${index}]: ${field} needs schemaVersion 1.1`);
+      }
+    });
+  }
+  assertSchema(envelope, schema, label, schema, invariants);
   if (envelope.rowCount !== undefined && envelope.rowCount !== envelope.rows.length) {
     throw new PublicationError(`${label}: rowCount ${envelope.rowCount} != ${envelope.rows.length} rows`);
   }
-  if (String(envelope.schemaVersion).split('.')[0] !== '1') {
-    throw new PublicationError(`${label}: unsupported schemaVersion ${envelope.schemaVersion}`);
+  if (!isCalendarTimestamp(envelope.generatedAt)) {
+    throw new PublicationError(`${label}: generatedAt ${JSON.stringify(envelope.generatedAt)} is not a real UTC date/time`);
   }
   const seen = new Set();
   for (const row of envelope.rows) {
     const key = rowKey(row);
     if (seen.has(key)) throw new PublicationError(`${label}: duplicate row key ${key}`);
     seen.add(key);
+  }
+}
+
+/** Why `envelope` is not yet at CONTRACT_VERSION; empty when fully migrated. */
+export function migrationNeeds(envelope) {
+  const needs = [];
+  if (envelope.schemaVersion !== CONTRACT_VERSION) needs.push(`schemaVersion is ${envelope.schemaVersion}, not ${CONTRACT_VERSION}`);
+  const unlabelled = envelope.rows.filter((row) => row.provenance === 'measured' && !Object.hasOwn(row, 'validation'));
+  if (unlabelled.length) needs.push(`${unlabelled.length} measured row(s) carry no validation`);
+  return needs;
+}
+
+/**
+ * The 1.0 -> 1.1 migration. Every provenance=measured row without `validation`
+ * gets validation "legacy" (appended, so its other fields keep their bytes);
+ * every other row is the same object. Already-migrated input is returned
+ * unchanged (`touched` 0, `changed` false), which makes the migration idempotent.
+ */
+export function migrateTo11(envelope, now = isoNow()) {
+  if (envelope.schemaVersion !== '1.0' && envelope.schemaVersion !== CONTRACT_VERSION) {
+    throw new PublicationError(`cannot migrate schemaVersion ${JSON.stringify(envelope.schemaVersion)} (only 1.0 -> 1.1)`);
+  }
+  if (migrationNeeds(envelope).length === 0) return { envelope, touched: 0, changed: false };
+  let touched = 0;
+  const rows = envelope.rows.map((row) => {
+    if (row.provenance !== 'measured' || Object.hasOwn(row, 'validation')) return row;
+    touched += 1;
+    return { ...row, validation: 'legacy' };
+  });
+  return { envelope: { ...envelope, schemaVersion: CONTRACT_VERSION, generatedAt: now, rows }, touched, changed: true };
+}
+
+/**
+ * Write next to the target, flush, then rename over it: readers see old or new,
+ * never partial. Refuses if the target no longer holds `expectedBefore`.
+ */
+export function writeAtomic(target, text, expectedBefore) {
+  const tmp = join(dirname(target), `.${randomUUID()}.${basename(target)}.tmp`);
+  let fd;
+  try {
+    fd = openSync(tmp, 'wx', 0o644);
+    writeFileSync(fd, text); // loops until every byte is written; throws on EFBIG/ENOSPC
+    fsyncSync(fd);
+    const written = fd;
+    fd = undefined; // never close twice: a failed close must still reach the cleanup below
+    closeSync(written);
+    chmodSync(tmp, statSync(target).mode & 0o777);
+    if (readFileSync(tmp, 'utf8') !== text) throw new PublicationError('temporary file does not match the output');
+    if (readFileSync(target, 'utf8') !== expectedBefore) {
+      throw new PublicationError(`${basename(target)} changed while it was being regenerated; re-run`);
+    }
+    renameSync(tmp, target);
+    try {
+      const dir = openSync(dirname(target), 'r');
+      fsyncSync(dir); // persist the rename; best-effort where directories cannot be fsynced
+      closeSync(dir);
+    } catch {
+      // not supported on this platform
+    }
+  } catch (error) {
+    try {
+      if (fd !== undefined) closeSync(fd);
+    } catch {
+      // keep the original error; still remove the temp file
+    }
+    try {
+      unlinkSync(tmp);
+    } catch {
+      // the temp file was never created or was already renamed
+    }
+    throw error;
   }
 }
 

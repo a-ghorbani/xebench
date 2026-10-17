@@ -115,7 +115,9 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 
 **[`data/benchmarks.json`](./data/benchmarks.json) is the canonical, published results file** and the single source of truth. It's a versioned envelope (`schemaVersion`, `generatedAt`, `source`, `rows[]`) validated by **[`data/benchmarks.schema.json`](./data/benchmarks.schema.json)**. Each row carries its `provenance` (`measured` = our lab runs · `vendor` = engine-maker official numbers), `quant`, source link, and methodology caveats (`asStated`).
 
-**Publish reviewed measurements through a PR — no website change.** Only legacy records (no `schemaVersion`) can currently be published, and only with `--allow-legacy`. Sessions captured from the current app (`schemaVersion` 1) are preview-only until consumer migration ([#4](https://github.com/a-ghorbani/xebench/issues/4)).
+The current contract is **1.1** (additive over 1.0; see the [website handoff](docs/WEBSITE-HANDOFF.md#agreed-contract-11) for the field table). `generatedAt` is ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`; the 1.0 date-only form stays valid). Measured rows may carry `validation` (`legacy` · `unverified` · `failed` · `verified`), `guardsPassed`, `conditionPolicy`, `protocolVersion`, `timingMethod`, `dispersion`, `evidence` and `build`; vendor rows never do. Provenance says who supplied a number; `validation` says what was checked. Every existing measured row is `legacy`. Nothing is `verified` yet: that needs an evidence pipeline.
+
+**Publish reviewed measurements through a PR — no website change.** Only legacy records (no `schemaVersion`) can currently be published, only with `--allow-legacy`, and always as `validation: "legacy"`. Sessions captured from the current app (`schemaVersion` 1) are preview-only ([#4](https://github.com/a-ghorbani/xebench/issues/4)); their preview rows are `unverified` or `failed`.
 
 ```bash
 git switch -c results/reviewed-measurements
@@ -126,20 +128,25 @@ git push -u origin results/reviewed-measurements
 # Open a PR targeting main. Publication happens after review and merge.
 ```
 
-`--update` reads `data/benchmarks.json`, upserts the freshly-measured rows (keyed by engine·backend·platform·device·model·quant·provenance, so re-runs overwrite in place), re-stamps `generatedAt`, and writes it back. Existing rows (other devices, vendor citations) are preserved.
+`--update` reads `data/benchmarks.json`, upserts the freshly-measured rows (keyed by engine·backend·platform·device·model·quant·provenance, so re-runs overwrite in place), re-stamps `generatedAt` (ISO-8601 UTC), and writes it back as contract 1.1. Existing rows (other devices, vendor citations) are preserved. It requires a file already migrated to 1.1.
 
 Publication fails closed: on any error it exits 1 and leaves `data/benchmarks.json` byte-identical.
 
 - The existing file and the result must match the schema, with unique row keys and a correct `rowCount`. The file is replaced atomically (temp file + rename).
 - Every input line must be a finite, complete `xebench-raw` record. Malformed, truncated or non-finite lines, unknown schema/protocol versions and empty input reject the whole run (also in preview).
-- Legacy records are published only with the explicit `--allow-legacy` flag and are logged as `LEGACY`.
+- Legacy records are published only with the explicit `--allow-legacy` flag, are logged as `LEGACY` and get `validation: "legacy"`.
+- Contract invariants are enforced on every emitted row and in validation: `verified` requires `guardsPassed: true` and `evidence`; `guardsPassed: false` requires `validation: "failed"`; legacy rows carry no `dispersion` or `evidence`; 1.1 fields appear on measured rows only. Aggregation refuses to emit `verified` (including a `verified` row already in the canonical file) until an evidence pipeline exists.
 - Failed or unverified guards and incomplete sessions are rejected. `sampleCount` is the summary `n`, checked against the successful repetitions in the record. Two legacy producers never exported repetitions: the old app (`xebench-0.4-app`) and `bench_llamacpp.py` (`xebench-0.2-native`). Their self-reported `n` is accepted and logged; any other record without repetitions is rejected.
 - Two input records with the same row key are rejected rather than picking one implicitly; a single input row replacing an existing row is logged.
 - Rows are ordered by platform, device, model, engine, backend, quant and provenance (plain string comparison), independent of input order and locale. The first update after this change swaps three pairs of existing rows that tied on the first four fields.
 
-`node scripts/validate_data.mjs` checks the checked-in `data/*.json` against their schemas; CI runs it with `tests/test_publication.py`.
+`node scripts/validate_data.mjs` checks the checked-in `data/*.json` against their schemas and contract invariants; `node scripts/validate_data.mjs <file>...` checks any benchmarks envelope. CI runs it with `tests/test_publication.py` and `tests/test_contract_publication.py`.
 
-**Consumers load this file dynamically** — the pocketpal.dev leaderboard fetches it from the repo (raw URL / CDN) with periodic revalidation and overlays live crowd data, so a commit here surfaces on the board with no redeploy or dashboard-dev work. The stable interface is the schema; bump `schemaVersion` on any breaking change. (`--pretty` without `--update` still just prints `EngineBenchmarkRow[]` to stdout for ad-hoc use.)
+**Contract migrations are explicit scripts.** `node scripts/migrate_contract_1_1.mjs` migrates a 1.0 file to 1.1: it sets `schemaVersion` "1.1", re-stamps `generatedAt` and appends `validation: "legacy"` to measured rows without one. No other field changes and vendor rows stay byte-identical. It fails closed like `--update` and is idempotent; `--check` exits 1 when a migration is still needed (CI runs it). Website consumer fixtures for 1.1 are in [`tests/fixtures/contract-1.1/`](tests/fixtures/contract-1.1/).
+
+**Rollout rule: the consumer is deployed before the producer merges.** A contract change to `data/benchmarks.json` (a new minor or major) merges only after the pocketpal.dev consumer that reads it is deployed.
+
+**Consumers load this file dynamically** — the pocketpal.dev leaderboard fetches it from the repo (raw URL / CDN) with periodic revalidation and overlays live crowd data, so a commit here surfaces on the board with no redeploy or dashboard-dev work. The stable interface is the schema; additive changes bump the minor, breaking changes bump the major, and consumers reject a major they do not support. (`--pretty` without `--update` still just prints `EngineBenchmarkRow[]` to stdout for ad-hoc use.)
 
 **Narrative findings are data too.** [`data/findings.json`](./data/findings.json) (schema: [`data/findings.schema.json`](./data/findings.schema.json)) publishes the lab’s written findings — headline, claim strings, a pass/fail step strip, sources, `verifiedAt` — so consumers render the lab’s wording **verbatim** and never re-word a claim. Same rule as the numbers: the benchmark owns the claim, the site renders it.
 
