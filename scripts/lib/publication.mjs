@@ -56,11 +56,22 @@ const compilePattern = (pattern, path) => {
   }
 };
 
-// Strict absolute URI: printable ASCII only (no whitespace, controls, backslash or
-// raw non-ASCII, which WHATWG URL silently repairs but RFC 3986 validators reject).
+// Strict absolute URI per the RFC 3986 grammar (as ajv-formats "uri" checks it):
+// only unreserved/sub-delim characters and valid %XX escapes in each component,
+// brackets only around an IP literal, one '#'. WHATWG URL then also has to parse
+// it, so this is never looser than a stock RFC 3986 validator.
+const PCT = '%[0-9a-f]{2}';
+const SUB = "a-z0-9\\-._~!$&'()*+,;=";
+const PCHAR = `(?:[${SUB}:@]|${PCT})`;
+const AUTHORITY = `(?:(?:[${SUB}:]|${PCT})*@)?(?:\\[[0-9a-f:.]+\\]|\\[v[0-9a-f]+\\.[${SUB}:]+\\]|(?:[${SUB}]|${PCT})*)(?::[0-9]*)?`;
+const URI = new RegExp(
+  `^[a-z][a-z0-9+\\-.]*:(?://${AUTHORITY}(?:/${PCHAR}*)*|/(?:${PCHAR}+(?:/${PCHAR}*)*)?|${PCHAR}+(?:/${PCHAR}*)*)` +
+    `(?:\\?(?:${PCHAR}|[/?])*)?(?:#(?:${PCHAR}|[/?])*)?$`,
+  'i',
+);
 const isUri = (value) => {
   try {
-    return /^[a-z][a-z0-9+.-]*:[!-[\]-~]*$/i.test(value) && Boolean(new URL(value));
+    return URI.test(value) && Boolean(new URL(value));
   } catch {
     return false;
   }

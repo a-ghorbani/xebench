@@ -336,6 +336,28 @@ class InvariantTests(Workspace):
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn('evidence.url', result.stderr)
 
+    def test_uri_format_is_never_looser_than_rfc_3986(self):
+        # Characters and escapes RFC 3986 forbids are rejected by stock validators
+        # (Ajv + ajv-formats "uri"); the producer must not publish them either.
+        row = verified_row()
+        vendor = load(FIXTURES / 'vendor.json')['rows'][0]
+        for url in ('https://a.com/a|b', 'https://a.com/a"b', 'https://a.com/a<b>', 'https://a.com/a{b}',
+                    'https://a.com/a^b', 'https://a.com/a`b', 'https://a.com/#a#b', 'https://a.com/%zz',
+                    'https://a.com/%4', 'https://a.com/[x]', 'https://a.com/?q=[1]'):
+            with self.subTest(url=url, field='evidence.url'):
+                result = self.validate(envelope_with({**row, 'evidence': {**row['evidence'], 'url': url}}))
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn('evidence.url', result.stderr)
+            with self.subTest(url=url, field='sourceUrl'):
+                result = self.validate(envelope_with({**vendor, 'sourceUrl': url}))
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn('sourceUrl', result.stderr)
+        for url in ('https://a.com/a%20b', "https://a.com/a'b(c)*,;=", 'https://[::1]/x', 'https://a.com/?a=1#f',
+                    'urn:isbn:0451450523', 'mailto:lab@example.com'):
+            with self.subTest(url=url, expect='valid'):
+                self.assert_valid(envelope_with({**vendor, 'sourceUrl': url}))
+        self.assert_invalid(envelope_with({**vendor, 'sourceUrl': 'urn:'}), 'sourceUrl')
+
     def test_schema_version_forms(self):
         vendor = load(FIXTURES / 'vendor.json')['rows'][0]
         for value in ('1.0', '1.1', '1.12'):
