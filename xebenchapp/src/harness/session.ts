@@ -4,7 +4,7 @@ import type {ReferenceConfig, ReferenceRun} from './config';
 import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
 import {
   assessCharging, assessConditions, assessDuring, CHARGING_POLICY, chargingState, CONDITION_POLICY,
-  emptyChargingCounts, monitorPending,
+  emptyChargingCounts, monitorCovered, monitorPending,
   normalizeMonitor, probePending, readConditions, startMonitor, stopMonitor,
 } from './conditions';
 import type {ChargingCounts, ChargingStatus, ConditionAssessment, ConditionSnapshot, MonitorResult} from './conditions';
@@ -190,7 +190,8 @@ export function chargingCounts(conditions: Pick<AttemptConditions, 'before' | 'd
   if (conditions.during) {
     for (const key of Object.keys(counts) as (keyof ChargingCounts)[]) counts[key] += conditions.during.summary.chargingStates[key];
   }
-  if (measured && conditions.during?.status !== 'complete') counts.unknown++;
+  // An unsampled stretch (no monitor, expiry, gaps, dropped ticks) is an unknown observation.
+  if (measured && !(conditions.during && monitorCovered(conditions.during))) counts.unknown++;
   return counts;
 }
 

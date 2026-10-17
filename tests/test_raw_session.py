@@ -272,8 +272,10 @@ class ConditionsV2Tests(unittest.TestCase):
             during["summary"].update(samples=0, maxGapMs=1500,
                                      externalPower={"connected": 0, "disconnected": 0, "unknown": 0},
                                      chargingStates={"notCharging": 0, "charging": 0, "onBattery": 0, "unknown": 0})
-        # maxGapMs left at 1500 no longer matches the (empty) samples: both checks fire.
-        self.assertCodes(v2("complete", no_samples), {"conditions.recomputed", "conditions.monitor"})
+        # maxGapMs left at 1500 no longer matches the (empty) samples: both checks fire, and an
+        # unsampled run cannot keep its satisfied charging status.
+        self.assertCodes(v2("complete", no_samples), {"conditions.recomputed", "conditions.monitor",
+                                                      "guards.recomputed"})
 
     def test_failures_cannot_be_hidden(self):
         flagged = APP["flagged"]
@@ -336,6 +338,17 @@ class ConditionsV2Tests(unittest.TestCase):
         self.assertCodes(v2("chargingUnknown", lambda r: r.update(conditionVerdict=dict(r["conditionVerdict"],
                                                                                        charging="satisfied"))),
                          {"guards.recomputed"})
+        # An unsampled stretch (here an expired monitor) is unknown, even when every persisted
+        # sample says not charging, under both policy versions (no leniency by relabelling).
+        self.assertEqual(APP["monitorIncomplete"]["coldRuns"][0]["conditions"]["during"]["expired"], True)
+        self.assertEqual(APP["monitorIncomplete"]["conditionVerdict"]["charging"], "unknown")
+        def claim_satisfied(record):
+            record["coldRuns"][0]["conditions"]["charging"] = "satisfied"
+            record["conditionVerdict"]["charging"] = "satisfied"
+        self.assertCodes(v2("monitorIncomplete", claim_satisfied), {"conditions.recomputed", "guards.recomputed"})
+        self.assertCodes(v2("monitorIncomplete", lambda r: (earlier_policy(r), claim_satisfied(r))),
+                         {"conditions.recomputed", "guards.recomputed"})
+        self.assertCodes(v2("monitorIncomplete", earlier_policy), set())
         self.assertCodes(v2("chargingTimeout", lambda r: r["coldRuns"][0].update(reason="readiness-timeout")),
                          {"readiness.inconsistent"})
         self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1].update(reason="charging")),

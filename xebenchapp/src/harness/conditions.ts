@@ -258,6 +258,15 @@ export const monitorPending = (monitor: MonitorResult) =>
   ['busy', 'timeout', 'stuck', 'error'].includes(monitor.status);
 
 /**
+ * The whole run was sampled at the policy rate: a stopped, unexpired monitor that kept
+ * every tick and has no gap. Charging eligibility needs this too, or the unsampled part
+ * of a run (for example after expiry) could hide charging.
+ */
+export const monitorCovered = (monitor: MonitorResult) =>
+  monitor.status === 'complete' && monitor.expired === false && monitor.dropped === 0 &&
+  monitor.ticks === monitor.summary.samples && sampledThroughout(monitor);
+
+/**
  * During-run evidence: sampled failures plus focus losses between the endpoints. Incomplete
  * coverage (missing monitor, expiry, dropped or unknown samples) stays unverified.
  */
@@ -266,9 +275,8 @@ export function assessDuring(monitor: MonitorResult, before: ConditionSnapshot, 
   const interrupted = before.focusLossCount !== null && after.focusLossCount !== null &&
     after.focusLossCount > before.focusLossCount;
   if (interrupted) reasons.push('interrupted');
-  const complete = monitor.status === 'complete' && monitor.expired === false && monitor.dropped === 0 &&
-    monitor.ticks === monitor.summary.samples && monitor.summary.incompleteSamples === 0 &&
-    sampledThroughout(monitor) && before.focusLossCount !== null && after.focusLossCount !== null;
+  const complete = monitorCovered(monitor) && monitor.summary.incompleteSamples === 0 &&
+    before.focusLossCount !== null && after.focusLossCount !== null;
   return {status: reasons.length ? 'fail' : complete ? 'pass' : 'unverified', reasons: [...new Set(reasons)]};
 }
 

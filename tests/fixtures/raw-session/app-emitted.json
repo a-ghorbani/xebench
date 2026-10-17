@@ -3234,7 +3234,7 @@
               "status": "pass",
               "reasons": []
             },
-            "charging": "satisfied"
+            "charging": "unknown"
           },
           "status": "complete",
           "loadMs": 17,
@@ -3339,7 +3339,7 @@
       "conditionVerdict": {
         "status": "unverified",
         "reasons": [],
-        "charging": "satisfied"
+        "charging": "unknown"
       },
       "guardsPassed": null,
       "guardNotes": [

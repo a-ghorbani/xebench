@@ -382,6 +382,19 @@ test('charging cannot be satisfied when the run itself was not sampled', async (
   expect(result.conditionVerdict.charging).toBe('unknown');
 });
 
+test.each([
+  ['expired', {expired: true}],
+  ['gappy', {stoppedElapsedMs: 4000}],
+  ['dropped-tick', {dropped: 1}],
+])('charging cannot be satisfied when sampling was incomplete (%s)', async (_label, extra) => {
+  // Every persisted sample says FULL, but part of the run was not observed.
+  jest.mocked(conditions.stopMonitor).mockResolvedValue(stoppedMonitor([healthyConditions], extra));
+  const result = await runSession(adapter(), one, config.runs[0], identity, async () => {});
+  expect(result.coldRuns[0].conditions.charging).toBe('unknown');
+  expect(result.conditionVerdict.charging).toBe('unknown');
+  expect(result.conditionVerdict.status).toBe('unverified');
+});
+
 test('a configured rise bound overrides the default and is recorded in the protocol', async () => {
   const result = await runSession(adapter(), {...one, readinessTimeoutSec: 10, maxBatteryTempRiseC: 0.5}, config.runs[0],
     identity, async () => {}, noSleep, {baseline: {batteryTempC: 29}});

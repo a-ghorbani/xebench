@@ -111,12 +111,14 @@ take one of four values:
 - `violated` if any endpoint or sample was charging;
 - `on-battery` otherwise, if any was on battery (not eligible under this policy);
 - `satisfied` only when every observation was measured as not charging, and every
-  measured repetition was sampled;
+  measured repetition was sampled throughout under the coverage rule above. An
+  expired, gappy or incomplete monitor leaves the unsampled stretch `unknown`, even
+  when every persisted sample reads `FULL`;
 - `unknown` otherwise. Unknown is never eligible.
 
 `charging-policy-v2`, written by earlier builds of this work, applies the same
-rules but counts `DISCHARGING` as unknown. The validator still accepts it, with
-those semantics.
+rules, including the coverage rule, but counts `DISCHARGING` as unknown. The
+validator still accepts it, with those semantics.
 
 Readiness also waits, within `readinessTimeoutSec`, while the battery is charging.
 On timeout the repetition is skipped with reason `charging`. Because charging is
@@ -169,7 +171,7 @@ Repetitions of one run stay contiguous.
 | Interruption detection | [`MainActivity.kt`](../xebenchapp/android/app/src/main/java/com/xebenchapp/MainActivity.kt) focus counter; `assessDuring` | `conditions.test.ts` focus losses; `session.test.ts` interruption then readiness wait; device runs |
 | Unresponsive probes/monitors abort after save and release | `conditions.ts` `bounded`; `session.ts` | `conditions.test.ts` unresponsive calls; `session.test.ts` late probes, busy sampler, monitor start/stop failures |
 | Cleanup on failure; unmeasured runs recorded | `session.ts`, `reference.ts` | `session.test.ts` failed load/inference/release, monitor stop on failure; `reference.test.ts` cleanup abort, unreadable model |
-| Charging policy: tethered allowed, charging never eligible, unknown never eligible, wait while charging | `conditions.ts` `chargingState`, `assessCharging`, `assessReadiness`; `session.ts` `chargingCounts`, `conditionVerdict`; `BenchConditionsModule.kt` raw status/plugged/current | `conditions.test.ts` charging-policy-v3; `session.test.ts` charging-policy-v3 in sessions; `test_raw_session.py` charging recompute |
+| Charging policy: tethered allowed, charging never eligible, unknown (including unsampled stretches) never eligible, wait while charging | `conditions.ts` `chargingState`, `assessCharging`, `assessReadiness`, `monitorCovered`; `session.ts` `chargingCounts`, `conditionVerdict`; `BenchConditionsModule.kt` raw status/plugged/current | `conditions.test.ts` charging-policy-v3; `session.test.ts` charging-policy-v3 in sessions, incomplete sampling; `test_raw_session.py` charging recompute |
 | Instance/process identity, seeded run order | `session.ts`; [`order.ts`](../xebenchapp/src/harness/order.ts) | `session.test.ts` identity; [`order.test.ts`](../xebenchapp/__tests__/order.test.ts); `reference.test.ts` run order |
 | Records cannot claim what their evidence does not support | [`raw_session.py`](../scripts/raw_session.py) `_semantic_v2` recomputes assessments, readiness, verdict and order | [`test_raw_session.py`](../tests/test_raw_session.py) `ConditionsV2Tests`; [`rawSessionSchema.test.ts`](../xebenchapp/__tests__/rawSessionSchema.test.ts) drift fixture |
 | v2 evidence survives sanitized export | [`export_evidence.py`](../scripts/export_evidence.py) allowlist (snapshot, monitor, readiness, charging, verdict, order) | [`test_export_evidence.py`](../tests/test_export_evidence.py) `ConditionsV2ExportTests` (capture → validation → export → verify) |

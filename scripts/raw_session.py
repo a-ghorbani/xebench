@@ -600,7 +600,10 @@ def charging_counts(conditions, measured, policy=CHARGING_POLICY_V3):
     if conditions["during"] is not None:
         for key in counts:
             counts[key] += conditions["during"]["summary"]["chargingStates"].get(key, 0)
-    if measured and (conditions["during"] or {}).get("status") != "complete":
+    # An unsampled stretch (no monitor, expiry, gaps, dropped ticks) is an unknown observation.
+    # Both policy versions require this ("every measured repetition was sampled"), so relabelling
+    # a record between v2 and v3 cannot make an unsampled run eligible.
+    if measured and not (conditions["during"] is not None and _monitor_covered(conditions["during"])):
         counts["unknown"] += 1
     return counts
 
@@ -632,15 +635,20 @@ def _sampled_throughout(monitor):
     return summary["maxGapMs"] <= factor * interval and ticks >= math.floor((stop - start) / interval)
 
 
+def _monitor_covered(monitor):
+    """Mirror of conditions.ts monitorCovered: the whole run was sampled at the policy rate."""
+    return (monitor["status"] == "complete" and monitor["expired"] is False and monitor["dropped"] == 0
+            and monitor["ticks"] == monitor["summary"]["samples"] and _sampled_throughout(monitor))
+
+
 def assess_during(monitor, before, after):
     reasons = list(monitor["summary"]["failures"])
     lost_before, lost_after = before.get("focusLossCount"), after.get("focusLossCount")
     if lost_before is not None and lost_after is not None and lost_after > lost_before:
         reasons.append("interrupted")
     summary = monitor["summary"]
-    complete = (monitor["status"] == "complete" and monitor["expired"] is False and monitor["dropped"] == 0
-                and monitor["ticks"] == summary["samples"] and summary["incompleteSamples"] == 0
-                and _sampled_throughout(monitor) and lost_before is not None and lost_after is not None)
+    complete = (_monitor_covered(monitor) and summary["incompleteSamples"] == 0
+                and lost_before is not None and lost_after is not None)
     reasons = list(dict.fromkeys(reasons))
     return {"status": "fail" if reasons else "pass" if complete else "unverified", "reasons": reasons}
 
