@@ -60,6 +60,8 @@ FLAVORS = {
     'experimental': {
         'required': COMMON_REQUIRED | {
             LIB + 'liblitertlm_jni.so',
+            # Google's Qualcomm dispatch (litert-npu-runtime-qualcomm, Maven).
+            LIB + 'libLiteRtDispatch_Qualcomm.so',
             LIB + 'libexecutorch.so',
             LIB + 'libreact-native-executorch.so',
         },
@@ -76,8 +78,19 @@ FLAVORS = {
 }
 
 
-def check_apk(path, flavor='reference'):
-    spec = FLAVORS[flavor]
+# QAIRT runtime libraries LiteRT-LM's Qualcomm NPU path loads (scripts/stage_qairt_libs.py).
+QNN_NPU_LIBS = {LIB + name for name in (
+    'libQnnHtp.so', 'libQnnSystem.so', 'libQnnHtpV73Stub.so', 'libQnnHtpV81Stub.so',
+    'libQnnHtpV73Skel.so', 'libQnnHtpV81Skel.so',
+)}
+
+
+def check_apk(path, flavor='reference', require_qnn=False):
+    if require_qnn and flavor != 'experimental':
+        raise ValueError('--require-qnn applies only to the experimental flavor')
+    spec = dict(FLAVORS[flavor])
+    if require_qnn:
+        spec['required'] = spec['required'] | QNN_NPU_LIBS
     with ZipFile(path) as apk:
         entries = apk.infolist()
         present = {entry.filename for entry in entries if entry.file_size > 0}
@@ -119,6 +132,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('apk')
     parser.add_argument('--flavor', choices=sorted(FLAVORS), default='reference')
+    parser.add_argument('--require-qnn', action='store_true',
+                        help='experimental only: also require the staged QAIRT libs for LiteRT NPU')
     args = parser.parse_args()
-    check_apk(args.apk, args.flavor)
+    check_apk(args.apk, args.flavor, args.require_qnn)
     print(f'{args.flavor} APK packages its expected runtimes; device validation is still required.')

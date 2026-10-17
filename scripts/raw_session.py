@@ -11,6 +11,7 @@ Usage: raw_session.py FILE... prints one JSON result per record and exits 1 if
 any record is invalid. A file holds one JSON record, a JSON array of records, a
 JSON object with a ``records`` mapping (test fixtures), or JSON Lines (.jsonl).
 """
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -360,7 +361,8 @@ def _semantic(record):
     if len(attempts) > expected:
         errors.append(reason("attempts.count", "/coldRuns",
                              f"{len(attempts)} attempts exceed the configured {expected}"))
-    v2 = protocol["version"] == "cpu-reference-v2"
+    # accelerator-v1 shares every cpu-reference-v2 rule and adds its own (_semantic_v3).
+    v2 = protocol["version"] in ("cpu-reference-v2", ACCELERATOR_PROTOCOL)
     failed = [index for index, attempt in enumerate(attempts) if attempt["status"] == "failed"]
     if v2:
         pass  # Status, stop reason and skipped repetitions: see _semantic_v2.
@@ -394,7 +396,8 @@ def _semantic(record):
                                      f"Reported {actual[key]!r}; repetitions give {recomputed[key]!r}"))
 
     if v2:
-        return errors + _semantic_v2(record)
+        errors += _semantic_v2(record)
+        return errors + _semantic_v3(record) if protocol["version"] == ACCELERATOR_PROTOCOL else errors
     # Apps built before condition snapshots (PR #11) omit all condition evidence;
     # a mix of present and missing evidence is never valid.
     observed = ["conditions" in attempt for attempt in attempts] + ["conditionPolicy" in record]
@@ -459,6 +462,11 @@ BACKEND_NOTE = "Actual backend execution has not been verified"
 UNVERIFIED_NOTE = "Run conditions not fully verified"
 UNMEASURED_NOTES = {"configuration-aborted": "Not run: an earlier run aborted the configuration",
                     "setup-failed": "Not run: the model artifact could not be read"}
+# accelerator-v1 (xebenchapp/src/harness/accelerator.ts) adds two ways a run is recorded unmeasured.
+ACCELERATOR_PROTOCOL = "accelerator-v1"
+ACCELERATOR_UNMEASURED_NOTES = {**UNMEASURED_NOTES,
+                                "engine-unavailable": "Not run: the engine is not linked in this build",
+                                "gate-cleanup-failed": "Not run: the correctness gate could not release the engine"}
 _M32 = 0xFFFFFFFF
 
 
@@ -706,6 +714,8 @@ def _semantic_v2(record):
     errors = []
     protocol, config, attempts = record["protocol"], record["configuration"], record["coldRuns"]
     planned, status, stop = record["repetitionsPlanned"], record["status"], record["stopReason"]
+    accelerator = protocol["version"] == ACCELERATOR_PROTOCOL
+    unmeasured_notes = ACCELERATOR_UNMEASURED_NOTES if accelerator else UNMEASURED_NOTES
     if planned != protocol["nColdRuns"]:
         errors.append(reason("protocol.configuration-mismatch", "/repetitionsPlanned",
                              "repetitionsPlanned must equal protocol.nColdRuns"))
@@ -730,7 +740,7 @@ def _semantic_v2(record):
     if status in ("running", "complete"):
         ok = (stop is None and all(kind == "complete" for kind in kinds) and
               (len(attempts) == planned if status == "complete" else 0 < len(attempts) < planned))
-    elif stop in STOP_REASONS_UNMEASURED:
+    elif stop in unmeasured_notes:
         ok = not attempts
     elif stop == "readiness-timeout":
         ok = bool(attempts) and earlier_ok and last["status"] == "skipped"
@@ -749,7 +759,7 @@ def _semantic_v2(record):
     if not ok or (status == "failed") != (stop is not None):
         errors.append(reason("status.attempts", "/status",
                              f"Status {status!r} with stopReason {stop!r} disagrees with the attempts {kinds}"))
-    if (record["artifact"] is None) != (stop in STOP_REASONS_UNMEASURED):
+    if (record["artifact"] is None) != (stop in unmeasured_notes):
         errors.append(reason("status.artifact", "/artifact",
                              "artifact is null exactly when the run was recorded without measurement"))
 
@@ -857,10 +867,13 @@ def _semantic_v2(record):
     if record["guardsPassed"] is not (False if verdict["status"] == "fail" else None):
         errors.append(reason("guards.inconsistent", "/guardsPassed",
                              "guardsPassed must be false exactly when the condition verdict fails"))
-    expected_notes = [BACKEND_NOTE, *(verdict["reasons"] if verdict["status"] == "fail" else
-                                     [UNVERIFIED_NOTE] if verdict["status"] == "unverified" else [])]
-    if stop in STOP_REASONS_UNMEASURED:
-        expected_notes.append(UNMEASURED_NOTES[stop])
+    # accelerator-v1 drops the backend note only when every repetition's engine confirmed the backend.
+    confirmed = accelerator and (record["observedBackend"] or {}).get("status") == "confirmed"
+    expected_notes = [*([] if confirmed else [BACKEND_NOTE]),
+                      *(verdict["reasons"] if verdict["status"] == "fail" else
+                        [UNVERIFIED_NOTE] if verdict["status"] == "unverified" else [])]
+    if stop in unmeasured_notes:
+        expected_notes.append(unmeasured_notes[stop])
     if record["guardNotes"] != expected_notes:
         errors.append(reason("guards.inconsistent", "/guardNotes",
                              f"guardNotes must be exactly {expected_notes}"))
@@ -880,6 +893,312 @@ def _semantic_v2(record):
             errors.append(reason("order.inconsistent", "/runOrder/seedSource",
                                  "seedSource/seed must match the configuration's orderSeed"))
     return errors
+
+
+# --- accelerator-v1 -------------------------------------------------------------
+# Mirrors xebenchapp/src/harness/config.ts (parseAcceleratorConfig), backend.ts and
+# gate.ts. Backend evidence status, every probe verdict, the correctness status and
+# the comparison status are recomputed from the recorded evidence.
+
+# output-gate-v1 probe set (gate.ts PROBES), pinned by ID, kind, expected keyword, budget and the
+# SHA-256 of the prompt text; maxOutputTokens None means the measured decode budget.
+GATE_PROBES = (
+    ("short-capital", "answer", "paris", 32, "06c008d3ea3ad613476854fc1073d46d7f3b20a38505bb9118021706cac2303a"),
+    ("long-fact-last", "answer", "pelican", 32, "e38bd86ecaf2c3a69a2816fb4d5f78016eacaefcf0e017c3ced6e6fe78714845"),
+    ("long-fact-first", "answer", "pelican", 32, "3cb9fa6e036defb76bc7e529893d2f5e936073d040360359701d6fb39cd6a970"),
+    ("long-fact-middle", "answer", "417", 32, "c7a0fe2d5ad6a5a33f7f56a9705d8a038713b549c2c971dcacf97d14564f6d55"),
+    ("measured-prompt", "agreement", None, None, "97b05f26c77fa84504cfa238dad74591d882e5e0a6264a47f05dd03605bdb4f8"),
+)
+# prompts.ts ACCELERATOR_PROMPT / ACCELERATOR_PROMPT_LABEL.
+ACCELERATOR_PROMPT_LABEL = "std-chat-v1"
+ACCELERATOR_PROMPT_SHA256 = "97b05f26c77fa84504cfa238dad74591d882e5e0a6264a47f05dd03605bdb4f8"
+
+
+def text_sha256(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def probe_set_errors(probes, max_decode_tokens, prompt_digest, where):
+    """Reasons when probes are not exactly the output-gate-v1 set (prompt_digest(probe) gives its SHA-256)."""
+    shape = [(probe.get("id"), probe.get("kind"), probe.get("expected"), probe.get("maxOutputTokens"),
+              prompt_digest(probe)) for probe in probes]
+    expected = [(id_, kind, keyword, max_decode_tokens if budget is None else budget, digest)
+                for id_, kind, keyword, budget, digest in GATE_PROBES]
+    if probes and shape != expected:
+        return [reason("correctness.probe-set", f"{where}/probes",
+                       "Probes must be exactly the output-gate-v1 set (IDs, prompts, keywords, budgets, order)")]
+    return []
+
+
+NPU_DISPATCH_LIB = "libLiteRtDispatch_Qualcomm.so"
+OPENCL_LIB = "libOpenCL.so"
+_BACKEND_RANK = {"unknown": 0, "consistent": 1, "confirmed": 2, "mismatch": 3}
+# ECMAScript String.prototype.trim() whitespace, so text comparisons match the app exactly.
+_JS_SPACE = "\t\n\u000b\f\r              " \
+            "    　﻿"
+
+
+def js_trim(text):
+    return text.strip(_JS_SPACE)
+
+
+def answer_passed(output, expected):
+    """gate.ts answerPassed: word-boundary keyword match after lowercasing and collapsing non [a-z0-9]."""
+    return f" {expected} " in f" {re.sub(r'[^a-z0-9]+', ' ', output.lower()).strip(' ')} "
+
+
+def common_prefix(a, b):
+    """gate.ts commonPrefix: shared leading code points of the trimmed strings."""
+    count = 0
+    for x, y in zip(js_trim(a), js_trim(b)):
+        if x != y:
+            break
+        count += 1
+    return count
+
+
+def assess_backend(engine, requested, evidence):
+    """backend.ts assessBackend."""
+    if engine == "llama.cpp":
+        report = evidence["report"]
+        if report is None or report["gpu"] is None:
+            return "unknown"
+        if requested == "cpu":
+            # gpu means GPU devices are attached, not that layers run there (backend.ts).
+            return "consistent" if report["gpu"] else "confirmed"
+        if not report["gpu"]:
+            return "mismatch"
+        devices = report["devices"]
+        if not devices:
+            return "consistent"
+        htp = sum(device.upper().startswith("HTP") for device in devices)
+        if requested == "gpu":
+            return "confirmed" if htp == 0 else "mismatch"
+        return "confirmed" if htp == len(devices) else "mismatch"
+    if engine == "litert-lm":
+        # Only a runtime newly loaded by this engine creation counts.
+        libraries = evidence["libraries"]
+        after = libraries["after"] if libraries else None
+        before = libraries["before"] if libraries else None
+        if after is None or before is None:
+            return "unknown"
+        loaded = [name for name in after if name not in before]
+        if requested == "npu":
+            return "consistent" if NPU_DISPATCH_LIB in loaded else "unknown"
+        if requested == "gpu":
+            return "consistent" if OPENCL_LIB in loaded else "unknown"
+        return "unknown" if NPU_DISPATCH_LIB in loaded or OPENCL_LIB in loaded else "consistent"
+    return "unknown"
+
+
+def summarize_backend(evidence):
+    """backend.ts summarizeBackend."""
+    if not evidence:
+        return None
+    statuses = [item["status"] for item in evidence]
+    if "mismatch" in statuses:
+        status = "mismatch"
+    else:
+        status = statuses[0]
+        for item in statuses:
+            if _BACKEND_RANK[item] < _BACKEND_RANK[status]:
+                status = item
+    sources = list(dict.fromkeys(item["source"] for item in evidence))
+    return {"status": status, "source": sources[0] if len(sources) == 1 else "none", "repetitions": len(evidence)}
+
+
+def correctness_status(role, error, probes, reference_status):
+    """gate.ts correctnessStatus."""
+    if not probes:
+        return "unverified", ["gate-not-run"]
+    answers = [probe for probe in probes if probe["kind"] == "answer"]
+    # A wrong answer is decisive even when a later probe errored.
+    if any(probe["passed"] is False and (role == "reference" or (probe["reference"] or {}).get("passed") is True)
+           for probe in answers):
+        return "fail", ["answer-mismatch"]
+    if error is not None:
+        return "unverified", ["gate-error"]
+    if role == "reference":
+        return ("fail", ["answer-mismatch"]) if any(probe["passed"] is not True for probe in answers) else ("pass", [])
+    if reference_status is None:
+        return "unverified", ["reference-unavailable"]
+    if reference_status != "pass":
+        return "unverified", ["reference-failed"]
+    if any(probe["passed"] is not True or (probe["reference"] or {}).get("passed") is not True for probe in answers):
+        return "fail", ["answer-mismatch"]
+    return "pass", []
+
+
+def comparison_status(purpose, correctness, backend_mismatch=False):
+    """gate.ts comparisonStatus."""
+    reasons = (["bug-repro"] if purpose == "bug-repro" else []) + (
+        ["correctness-fail"] if correctness["status"] == "fail" else
+        ["correctness-unverified"] if correctness["status"] == "unverified" else []) + (
+        ["backend-mismatch"] if backend_mismatch else [])
+    invalid = purpose == "bug-repro" or correctness["status"] == "fail" or backend_mismatch
+    return {"status": "invalid" if invalid else "unverified" if correctness["status"] == "unverified" else "valid",
+            "reasons": reasons}
+
+
+def _configuration_v3(config):
+    """config.ts parseAcceleratorConfig rules beyond the schema."""
+    errors, runs = [], config["runs"]
+    for index, run in enumerate(runs):
+        where = f"/configuration/runs/{index}"
+        llama = run["engine"] == "llama.cpp"
+        if not run["modelFile"].endswith(".gguf" if llama else ".litertlm"):
+            errors.append(reason("configuration.run-invalid", f"{where}/modelFile",
+                                 "modelFile extension does not match the engine"))
+        if llama:
+            devices = run.get("devices")
+            htp = sum(device.upper().startswith("HTP") for device in devices or [])
+            layers = run.get("nGpuLayers")
+            backend = run["backend"]
+            consistent = layers is not None and (
+                layers == 0 and devices is None if backend == "cpu" else
+                layers > 0 and htp == 0 if backend == "gpu" else
+                layers > 0 and htp > 0 and htp == len(devices))
+            if run["nThreads"] is None or run["nCtx"] is None or not consistent:
+                errors.append(reason("configuration.run-invalid", where,
+                                     "llama.cpp runs need nThreads, nCtx and nGpuLayers/devices matching the backend"))
+        elif "nGpuLayers" in run or "devices" in run or run["nCtx"] is not None or (
+                run["backend"] != "cpu" and run["nThreads"] is not None):
+            errors.append(reason("configuration.run-invalid", where,
+                                 "LiteRT-LM runs take nCtx null, no nGpuLayers/devices, and nThreads only on CPU"))
+        reference = next((item for item in runs if item["id"] == run["referenceRunId"]), None)
+        if (run["referenceRunId"] is not None) if run["backend"] == "cpu" else (
+                reference is None or reference["backend"] != "cpu" or reference["engine"] != run["engine"]):
+            errors.append(reason("configuration.run-invalid", f"{where}/referenceRunId",
+                                 "GPU/NPU runs name a CPU run of the same engine; CPU runs take null"))
+    return errors
+
+
+def _correctness_v3(record, run, runs):
+    errors, correctness = [], record["correctness"]
+    protocol, stop = record["protocol"], record["stopReason"]
+    probes, role, error = correctness["probes"], correctness["role"], correctness["error"]
+    where = "/correctness"
+    if role != ("reference" if record["backend"] == "cpu" else "candidate"):
+        errors.append(reason("correctness.inconsistent", f"{where}/role",
+                             "CPU runs are gate references; GPU/NPU runs are candidates"))
+    identity = correctness["reference"]
+    if role == "reference" and identity is not None:
+        errors.append(reason("correctness.inconsistent", f"{where}/reference", "A reference has no reference"))
+    if role == "candidate" and run is not None:
+        target = next((item for item in runs if item["id"] == run["referenceRunId"]), None)
+        if identity is None or target is None or identity["configurationRunId"] != target["id"] \
+                or identity["modelFile"] != target["modelFile"]:
+            errors.append(reason("correctness.inconsistent", f"{where}/reference",
+                                 "The reference must be the configured CPU run and its model file"))
+        elif identity["sameArtifact"] is not (None if identity["artifactSha256"] is None or record["artifact"] is None
+                                              else identity["artifactSha256"] == record["artifact"]["sha256"]):
+            errors.append(reason("correctness.inconsistent", f"{where}/reference/sameArtifact",
+                                 "sameArtifact must compare the reference and session artifact hashes"))
+    if not probes and stop not in ("configuration-aborted", "setup-failed", "engine-unavailable"):
+        errors.append(reason("correctness.inconsistent", f"{where}/probes",
+                             "Only a run recorded without measurement may lack a correctness gate"))
+    errors += probe_set_errors(probes, protocol["maxDecodeTokens"], lambda probe: text_sha256(probe["prompt"]), where)
+    for index, probe in enumerate(probes):
+        at = f"{where}/probes/{index}"
+        answer = probe["kind"] == "answer"
+        if (probe["expected"] is None) == answer or \
+                (not answer and probe["maxOutputTokens"] != protocol["maxDecodeTokens"]):
+            errors.append(reason("correctness.inconsistent", at,
+                                 "Answer probes need an expected keyword; agreement probes use the measured budget"))
+        if error is None and probe["output"] is None:
+            errors.append(reason("correctness.inconsistent", f"{at}/output",
+                                 "A gate without error has an output for every probe"))
+        output, ref = probe["output"], probe["reference"]
+        reference_ran = role == "candidate" and identity is not None and identity["status"] is not None
+        if (ref is not None) != reference_ran:
+            errors.append(reason("correctness.inconsistent", f"{at}/reference",
+                                 "Candidate probes carry the reference output exactly when the reference gate ran"))
+        passed = None if output is None or not answer else answer_passed(output, probe["expected"])
+        compared = output is not None and ref is not None and ref["output"] is not None
+        expected = {"passed": passed,
+                    "exactMatch": js_trim(output) == js_trim(ref["output"]) if compared else None,
+                    "commonPrefixChars": common_prefix(output, ref["output"]) if compared else None}
+        if ref is not None and (ref["output"] is not None or ref["passed"] is not None):
+            expected_ref = answer_passed(ref["output"], probe["expected"]) \
+                if ref["output"] is not None and answer else None
+            if ref["passed"] is not expected_ref:
+                errors.append(reason("correctness.recomputed", f"{at}/reference/passed",
+                                     f"Recorded {ref['passed']!r} but the reference output gives {expected_ref!r}"))
+        for key, value in expected.items():
+            if probe[key] != value or type(probe[key]) is not type(value):
+                errors.append(reason("correctness.recomputed", f"{at}/{key}",
+                                     f"Recorded {probe[key]!r} but the outputs give {value!r}"))
+    reference_status = identity["status"] if identity else None
+    if role == "candidate" and identity is not None and reference_status == "pass" and probes and any(
+            probe["kind"] == "answer" and (probe["reference"] or {}).get("passed") is not True for probe in probes):
+        errors.append(reason("correctness.inconsistent", f"{where}/reference/status",
+                             "A passing reference passed every answer probe"))
+    status, reasons = correctness_status(role, error, probes, reference_status)
+    if correctness["status"] != status or correctness["reasons"] != reasons:
+        errors.append(reason("correctness.recomputed", f"{where}/status",
+                             f"Recorded {correctness['status']!r} {correctness['reasons']} but the probes give "
+                             f"{status!r} {reasons}"))
+    mismatch = "mismatch" in ((record["observedBackend"] or {}).get("status"), (record["gateBackend"] or {}).get("status"))
+    comparison = comparison_status(record["purpose"], {"status": status}, mismatch)
+    if record["comparison"] != comparison:
+        errors.append(reason("comparison.recomputed", "/comparison",
+                             f"Recorded {record['comparison']} but correctness and purpose give {comparison}"))
+    return errors
+
+
+def backend_evidence_errors(engine, backend, observed, where):
+    """Source matches the engine and the status follows from the recorded evidence."""
+    if observed is None:
+        return []
+    errors = []
+    source = "engine-report" if observed.get("report") is not None else \
+        "process-libraries" if observed.get("libraries") is not None else "none"
+    engine_source = {"llama.cpp": "engine-report", "litert-lm": "process-libraries"}[engine]
+    if observed["source"] != source or source not in (engine_source, "none"):
+        errors.append(reason("backend.inconsistent", f"{where}/source",
+                             f"{engine} reports backend evidence as {engine_source}"))
+    status = assess_backend(engine, backend, observed)
+    if observed["status"] != status:
+        errors.append(reason("backend.recomputed", f"{where}/status",
+                             f"Recorded {observed['status']!r} but the evidence gives {status!r}"))
+    return errors
+
+
+def _semantic_v3(record):
+    config, protocol = record["configuration"], record["protocol"]
+    errors = _configuration_v3(config)
+    run = next((item for item in config["runs"] if item["id"] == record["configurationRunId"]), None)
+    if run is not None:
+        for key in ("backend", "purpose"):
+            if run[key] != record[key]:
+                errors.append(reason("configuration.run-mismatch", f"/{key}",
+                                     f"Record {key} disagrees with the configured run"))
+    if protocol["promptLabel"] != ACCELERATOR_PROMPT_LABEL or text_sha256(protocol["prompt"]) != ACCELERATOR_PROMPT_SHA256:
+        errors.append(reason("protocol.prompt", "/protocol/prompt",
+                             "accelerator-v1 measures the std-chat-v1 prompt (prompts.ts ACCELERATOR_PROMPT)"))
+    if protocol["chatTemplate"] != config["chatTemplate"]:
+        errors.append(reason("protocol.configuration-mismatch", "/protocol/chatTemplate",
+                             "Protocol chatTemplate disagrees with the configuration"))
+    errors += backend_evidence_errors(record["engine"], record["backend"], record["gateBackend"], "/gateBackend")
+    evidence = []
+    for index, attempt in enumerate(record["coldRuns"]):
+        if attempt["status"] == "skipped":
+            continue
+        where, observed = f"/coldRuns/{index}/observedBackend", attempt["observedBackend"]
+        loaded = attempt["instance"] is not None and not (
+            attempt["status"] == "failed" and attempt["error"]["phase"] == "load")
+        if attempt["status"] == "complete" and observed is None or observed is not None and not loaded:
+            errors.append(reason("backend.inconsistent", where,
+                                 "Backend evidence is recorded exactly for repetitions whose engine loaded"))
+        if observed is None:
+            continue
+        evidence.append(observed)
+        errors += backend_evidence_errors(record["engine"], record["backend"], observed, where)
+    summary = summarize_backend(evidence)
+    if record["observedBackend"] != summary:
+        errors.append(reason("backend.recomputed", "/observedBackend",
+                             f"Recorded {record['observedBackend']} but the repetitions give {summary}"))
+    return errors + _correctness_v3(record, run, config["runs"])
 
 
 def validate(record):

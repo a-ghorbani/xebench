@@ -1,12 +1,14 @@
 import * as FS from '@dr.pogodin/react-native-fs';
 import {Platform} from 'react-native';
 import bundledConfig from '../../configs/cpu-reference-v1.json';
-import {parseConfig} from './config';
+import {AcceleratorRun, parseAcceleratorConfig, parseConfig} from './config';
 import {runSession, ReferenceSession, UNMEASURED_NOTES, unmeasuredSession} from './session';
 import {LlamaRnAdapter} from './adapters/LlamaRnAdapter';
 import {generateSeed, ORDER_METHOD, seededOrder} from './order';
 import type {ReadinessBaseline} from './readiness';
 import {stopMonitor} from './conditions';
+import {AcceleratorSession, runAcceleratorConfiguration} from './accelerator';
+import {LiteRtAdapter} from './adapters/LiteRtAdapter';
 
 let sequence = 0;
 
@@ -19,8 +21,13 @@ export async function runReference(log: (message: string) => void) {
   if (await FS.exists(configFile) && (await FS.stat(configFile)).size > 65536) {
     throw new Error('Configuration exceeds 64 KiB');
   }
-  const config = parseConfig(await FS.exists(configFile) ? JSON.parse(await FS.readFile(configFile, 'utf8')) : bundledConfig);
+  const raw: unknown = await FS.exists(configFile) ? JSON.parse(await FS.readFile(configFile, 'utf8')) : bundledConfig;
   const directory = `${root}/xebench-results`;
+  if ((raw as {schemaVersion?: unknown} | null)?.schemaVersion === 2) {
+    return runAccelerators(raw, root, directory, log,
+      {model: Platform.constants.Model, androidRelease: Platform.constants.Release});
+  }
+  const config = parseConfig(raw);
   await FS.mkdir(directory);
   const seed = config.orderSeed ?? generateSeed();
   const runs = seededOrder(config.runs, seed);
@@ -95,4 +102,49 @@ export async function runReference(log: (message: string) => void) {
   if (fatal) {
     throw fatal;
   }
+}
+
+/** Evidence file per checkpoint; only a bounded reference goes to logcat. */
+function persister(directory: string, runId: string, label: string, planned: number, log: (message: string) => void) {
+  return async (record: {coldRuns: unknown[]; status: string; stopReason: string | null}) => {
+    const name = `${runId}-${record.coldRuns.length}.json`;
+    const path = `${directory}/${name}`;
+    if (await FS.exists(path)) {
+      throw new Error('Session file already exists');
+    }
+    await FS.writeFile(path, JSON.stringify(record), 'utf8');
+    const sha256 = await FS.hash(path, 'sha256');
+    console.log('XEBENCH_RESULT_FILE ' + JSON.stringify({name, sha256}));
+    log(`${label}: ${record.coldRuns.length}/${planned} ${record.status}` +
+      (record.stopReason ? ` (${record.stopReason})` : ''));
+  };
+}
+
+/** accelerator-v1 configuration (schemaVersion 2): LiteRT-LM and llama.cpp CPU/GPU/NPU. */
+async function runAccelerators(raw: unknown, root: string, directory: string, log: (message: string) => void,
+  deviceInfo: {model: string; androidRelease: string}) {
+  const config = parseAcceleratorConfig(raw);
+  await FS.mkdir(directory);
+  const seed = config.orderSeed ?? generateSeed();
+  const runs = seededOrder(config.runs, seed);
+  const order = runs.map(run => run.id);
+  log(`Configuration ${config.id}: ${runs.length} run(s); order seed ${seed}: ${order.join(', ')}`);
+  const leftover = await stopMonitor();
+  if (leftover.status !== 'not-running') log(`Condition monitor before start: ${leftover.status}`);
+  const modelPath = (run: AcceleratorRun) => `${root}/${run.modelFile}`;
+  await runAcceleratorConfiguration(config, runs, (_run, position) => ({method: ORDER_METHOD, seed,
+    seedSource: config.orderSeed === undefined ? 'generated' : 'configured', order, position}), {
+    artifact: async run => ({sha256: await FS.hash(modelPath(run), 'sha256'), sizeBytes: (await FS.stat(modelPath(run))).size}),
+    adapter: run => run.engine === 'llama.cpp' ?
+      new LlamaRnAdapter({modelPath: modelPath(run), modelLabel: run.model, quantLabel: run.quant,
+        nThreads: run.nThreads!, nCtx: run.nCtx!, nGpuLayers: run.nGpuLayers ?? 0,
+        ...(run.devices ? {devices: run.devices} : {})}) :
+      new LiteRtAdapter({modelPath: modelPath(run), backend: run.backend, modelLabel: run.model,
+        quantLabel: run.quant, nThreads: run.nThreads}),
+    identity: () => ({runId: `${Date.now()}-${sequence++}-${Math.random().toString(36).slice(2)}`,
+      timestampIso: new Date().toISOString(), artifact: null, deviceInfo}),
+    persister: (run, identity) => persister(directory, identity.runId, run.id, config.nColdRuns, log) as
+      (record: AcceleratorSession) => Promise<void>,
+    log,
+  });
 }

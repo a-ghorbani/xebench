@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "id": "s23-litert-npu-bugrepro-v1",
+  "nColdRuns": 5,
+  "cooldownSec": 30,
+  "readinessTimeoutSec": 300,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "gemma3",
+  "orderSeed": 20261019,
+  "runs": [
+    {
+      "id": "litert-cpu",
+      "engine": "litert-lm",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Gemma 3 1B",
+      "modelFile": "gemma3-1b-it-int4.litertlm",
+      "quant": "int4 (litertlm)",
+      "nThreads": 4,
+      "nCtx": null,
+      "referenceRunId": null
+    },
+    {
+      "id": "litert-npu-sm8550",
+      "engine": "litert-lm",
+      "backend": "npu",
+      "purpose": "bug-repro",
+      "model": "Gemma 3 1B",
+      "modelFile": "Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm",
+      "quant": "q4 ekv1280 (sm8550 NPU bundle)",
+      "nThreads": null,
+      "nCtx": null,
+      "referenceRunId": "litert-cpu"
+    }
+  ]
+}

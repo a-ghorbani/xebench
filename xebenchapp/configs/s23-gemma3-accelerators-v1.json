@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 2,
+  "id": "s23-gemma3-accelerators-v1",
+  "nColdRuns": 10,
+  "cooldownSec": 30,
+  "readinessTimeoutSec": 300,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "gemma3",
+  "orderSeed": 20261018,
+  "runs": [
+    {
+      "id": "litert-cpu",
+      "engine": "litert-lm",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Gemma 3 1B",
+      "modelFile": "gemma3-1b-it-int4.litertlm",
+      "quant": "int4 (litertlm)",
+      "nThreads": 4,
+      "nCtx": null,
+      "referenceRunId": null
+    },
+    {
+      "id": "litert-gpu",
+      "engine": "litert-lm",
+      "backend": "gpu",
+      "purpose": "measurement",
+      "model": "Gemma 3 1B",
+      "modelFile": "gemma3-1b-it-int4.litertlm",
+      "quant": "int4 (litertlm)",
+      "nThreads": null,
+      "nCtx": null,
+      "referenceRunId": "litert-cpu"
+    },
+    {
+      "id": "llama-cpu",
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Gemma 3 1B",
+      "modelFile": "gemma-3-1b-it-q4_0.gguf",
+      "quant": "Q4_0 (GGUF)",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "nGpuLayers": 0,
+      "referenceRunId": null
+    },
+    {
+      "id": "llama-opencl",
+      "engine": "llama.cpp",
+      "backend": "gpu",
+      "purpose": "measurement",
+      "model": "Gemma 3 1B",
+      "modelFile": "gemma-3-1b-it-q4_0.gguf",
+      "quant": "Q4_0 (GGUF)",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "nGpuLayers": 99,
+      "referenceRunId": "llama-cpu"
+    }
+  ]
+}

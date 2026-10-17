@@ -2,5 +2,12 @@
     <application>
       <!-- llama.rn Hexagon (HTP) and QNN-backed LiteRT-LM need the cdsprpc loader. -->
       <uses-native-library android:name="libcdsprpc.so" android:required="false" />
+      <!-- LiteRT-LM GPU (ML Drift) and llama.rn OpenCL dlopen() the vendor OpenCL driver.
+           Since targetSdk 31, vendor public libraries are invisible to the app's linker
+           namespace unless declared here. Without these, LiteRT-LM GPU fails ("Can not
+           find OpenCL library on this device", or a WebGPU fallback that cannot create
+           the engine). The LiteRT-LM Kotlin guide requires both (LiteRT-LM#1860). -->
+      <uses-native-library android:name="libOpenCL.so" android:required="false" />
+      <uses-native-library android:name="libvndksupport.so" android:required="false" />
     </application>
 </manifest>

@@ -2,6 +2,7 @@ import { initLlama, LlamaContext } from 'llama.rn';
 import type { BackendId, SingleRunMetrics } from '../types';
 import type { BenchOnceConfig, EngineAdapter } from './EngineAdapter';
 import {monotonicNow} from '../clock';
+import {backendEvidence, BackendEvidence, EngineReport} from '../backend';
 
 import {version as LLAMA_RN_VERSION} from 'llama.rn/package.json';
 
@@ -26,6 +27,7 @@ export class LlamaRnAdapter implements EngineAdapter {
   readonly modelFile: string;
   private opts: LlamaRnAdapterOptions;
   private ctx: LlamaContext | null = null;
+  private report: EngineReport | null = null;
 
   constructor(opts: LlamaRnAdapterOptions) {
     this.opts = opts;
@@ -58,7 +60,29 @@ export class LlamaRnAdapter implements EngineAdapter {
       ...(this.opts.devices ? { devices: this.opts.devices } : {}), // ['HTP0'] => Hexagon NPU
       ...(this.opts.nThreads ? { n_threads: this.opts.nThreads } : {}),
     });
-    return monotonicNow() - t0;
+    const elapsed = monotonicNow() - t0;
+    // What llama.rn reports it actually initialized (used devices, loaded native variant).
+    const ctx = this.ctx as unknown as {gpu?: unknown; devices?: unknown; androidLib?: unknown; reasonNoGPU?: unknown};
+    this.report = {
+      gpu: typeof ctx.gpu === 'boolean' ? ctx.gpu : null,
+      devices: Array.isArray(ctx.devices) && ctx.devices.every(item => typeof item === 'string') ?
+        ctx.devices as string[] : null,
+      androidLib: typeof ctx.androidLib === 'string' && ctx.androidLib ? ctx.androidLib : null,
+      reasonNoGpu: typeof ctx.reasonNoGPU === 'string' && ctx.reasonNoGPU ? ctx.reasonNoGPU : null,
+    };
+    return elapsed;
+  }
+
+  backendEvidence(): BackendEvidence {
+    return backendEvidence(this.engine, this.backend, this.report ? 'engine-report' : 'none', this.report, null);
+  }
+
+  /** Greedy reply text for the correctness gate (same sampling as benchOnce). */
+  async generate(cfg: BenchOnceConfig): Promise<string> {
+    if (!this.ctx) throw new Error('llama.rn: load() first');
+    const result = await this.ctx.completion({prompt: cfg.prompt, n_predict: cfg.maxDecodeTokens,
+      temperature: 0, seed: 42});
+    return result.text;
   }
 
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {
@@ -103,6 +127,7 @@ export class LlamaRnAdapter implements EngineAdapter {
   }
 
   async release(): Promise<void> {
+    this.report = null;
     if (this.ctx) {
       await this.ctx.release();
       this.ctx = null;
