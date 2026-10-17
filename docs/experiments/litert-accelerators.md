@@ -162,6 +162,7 @@ The drift fixture `tests/fixtures/raw-session/app-emitted-accelerator.json` is g
 |---|---|---|---|
 | `xebenchapp/configs/f8-gemma3-accelerators-v1.json` | LiteRT cpu, gpu, npu (sm8850); llama.cpp cpu, opencl, hexagon | 10 | 20261017 |
 | `xebenchapp/configs/f8-gemma3-litert-cpu-rerun-v1.json` | LiteRT cpu only, readiness timeout 900 s (rerun after a charging skip, see results) | 10 | 20261020 |
+| `xebenchapp/configs/f8-llama32-hexagon-check-v1.json` | llama.cpp cpu + hexagon on Llama 3.2 1B Q4_K_M (pinned) and Q4_0 (legacy row), `chatTemplate: llama32` | 4 | 20261021 |
 | `xebenchapp/configs/s23-gemma3-accelerators-v1.json` | LiteRT cpu, gpu; llama.cpp cpu, opencl | 10 | 20261018 |
 | `xebenchapp/configs/s23-litert-npu-bugrepro-v1.json` | LiteRT cpu (reference), npu sm8550 (`bug-repro`) | 5 | 20261019 |
 
@@ -268,6 +269,55 @@ it recorded llama.cpp CPU with GPU devices attached as `mismatch`; they are not 
 
 Build identity to record with the results: APK SHA-256, `qairt-libs.json` hashes, artifact
 SHA-256 per model file, evidence bundle SHA-256 per capture.
+
+## Legacy Hexagon row check (POCO F8 Ultra, Llama 3.2 1B, 2026-10-17)
+
+The board's legacy llama.cpp NPU row for the F8 Ultra (Llama 3.2 1B, Q4_0, **197.6 prefill /
+38.6 decode tok/s**, n=3, prompt `std-pp512-v1`, `validation: legacy`) was measured without any
+output check. Because llama.cpp Hexagon produced garbage on Gemma 3 1B above, the same gate was run
+on Llama 3.2 1B: `xebenchapp/configs/f8-llama32-hexagon-check-v1.json`. It has llama.cpp CPU as the
+gate reference and llama.cpp Hexagon (`HTP0`, `nGpuLayers` 99), for both the pinned reference GGUF
+(`Llama-3.2-1B-Instruct-Q4_K_M.gguf`, MODELS.md) and the Q4_0 file of the legacy row (not pinned;
+SHA-256 below). It ran 4 repetitions each, with the same prompt text and probes as above, wrapped
+in the Llama 3.2 user turn (`chatTemplate: llama32`, no system message). It used APK
+`1cf22fb1845e567e84ab64cc74029b993d6d801acfc25ca47d38fb154b673919` (commit `e33ac64`) with
+llama.rn 0.12.4.
+
+| Engine | Backend | Artifact | Prefill tok/s | Decode tok/s | TTFT ms | n | Observed backend | Answer probes (capital, fact last, first, middle) | Comparison |
+|---|---|---|---|---|---|---|---|---|---|
+| llama.cpp | CPU | Q4_K_M | 204.8 (2.2) | 47.6 (1.2) | 2251 (26) | 4/4 | consistent | pass, pass, pass, pass | valid (reference) |
+| llama.cpp | Hexagon | Q4_K_M | 213.6 (1.0) | 39.6 (0.1) | 2157 (10) | 4/4 | confirmed (`HTP0`) | pass, **fail**, **fail**, **fail** | **invalid** |
+| llama.cpp | CPU | Q4_0 | 301.8 (2.8) | 53.1 (0.4) | 1528 (15) | 4/4 | consistent | pass, fail ("Peanut"), pass, pass | invalid (its own gate failed) |
+| llama.cpp | Hexagon | Q4_0 | 1211.6 (14.9) | 51.8 (1.3) | 382 (5) | 4/4 | confirmed (`HTP0`) | pass, **fail**, **fail**, **fail** | **invalid** |
+
+All four sessions passed run conditions with charging eligibility satisfied. Evidence bundle
+`7cd4368bf08f339b78e731c2eed789768de44f736f338ad38f06ee154c3ae478` (4 sessions, verified).
+Q4_0 SHA-256 `fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8`; Q4_K_M
+`6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83`.
+
+Findings:
+
+- **Hexagon output is wrong for Llama 3.2 1B, for both quantizations, on every prompt longer than
+  about 128 tokens.** The short prompt (about 20 tokens) is answered correctly. The long probes and the
+  measured ~460-token prompt degenerate into repeated fragments ("which, which, which …",
+  "ususus…"). The CPU run of the same file answers them correctly (Q4_K_M) or misses one (Q4_0,
+  which is a model-quality miss on CPU too). Together with the Gemma 3 result above, where even the
+  short probe failed, the llama.rn 0.12.4 Hexagon backend does not produce trustworthy output for
+  these models on this phone.
+- **The legacy row cannot be trusted as a measurement of correct inference.** It used a ~512-token
+  prompt, which is the failing regime here, and it had no output check. Its speed is not directly
+  comparable to these rows:
+  - The July build's llama.rn version is not recorded.
+  - It used the `std-pp512-v1` prompt with a system message.
+  - Today, the Q4_0 Hexagon prefill is 1211.6 tok/s against the legacy 197.6, while decode is
+    51.8 against 38.6.
+  
+  The legacy figures are close to today's **Q4_K_M** Hexagon row (213.6 / 39.6), whose output is
+  wrong. Whether the July build produced correct output cannot be established from the record.
+  Recommendation for the board (a PM-gated step, not done here): mark that row as unverified for
+  output correctness, or withdraw it, until a Hexagon build passes the gate.
+- Hexagon on Q4_K_M is not faster than CPU (213.6 vs 204.8 prefill, 39.6 vs 47.6 decode),
+  consistent with the old note that Q4_K_M largely falls back on the DSP.
 
 ## Limitations and threats to validity
 
