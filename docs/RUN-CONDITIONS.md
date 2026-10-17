@@ -185,7 +185,7 @@ loop fell out of coverage. CI has no Android SDK, so the test runs locally. The
 other native rules (expiry, single-flight, focus counter) have no JVM tests. They
 are validated by the device runs listed in the #2 pull requests.
 
-## Device observations (two devices, not general limits)
+## Device observations (named devices, not general limits)
 
 On a Pixel 9 (AC power) and a Galaxy S23 (USB power), idle thermal status was 0
 and headroom about 0.44–0.63. One sample cost about 2–5 ms; the first sample was
@@ -212,6 +212,12 @@ headroom, and the device then reached `SEVERE` during the first repetition (tg
 repetition was skipped after a readiness timeout. This is real throttling. The
 device stays in the lab as an example of an old device that throttles, not as a
 reference device. It reported `currentNowUa` 0 at `FULL`.
+
+With fixed-rate sampling, a long OnePlus 6 run (one thread, 512 decode tokens)
+kept full coverage over 139.7 s: 140 ticks, at most 1001 ms between samples, and
+about 5 ms per sample on average (at most about 9 ms). With the fixed-delay loop
+it replaced, an earlier 43 s capture on this device (about 14 ms per sample) had
+no tick-count margin left.
 
 ## Limits
 
