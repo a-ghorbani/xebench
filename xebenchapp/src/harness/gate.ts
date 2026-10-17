@@ -12,7 +12,8 @@
  * Mirrored by scripts/raw_session.py (assess_probe / correctness_status); keep in step.
  */
 import type {EngineAdapter} from './adapters/EngineAdapter';
-import {ACCELERATOR_PROMPT, gemma3Turn} from './prompts';
+import {ACCELERATOR_PROMPT, chatTurn} from './prompts';
+import type {ChatTemplate} from './prompts';
 import type {BackendEvidence} from './backend';
 
 export const GATE_VERSION = 'output-gate-v1' as const;
@@ -165,8 +166,8 @@ export interface GateResult {
   backend: BackendEvidence | null;
 }
 
-export async function runGate(adapter: EngineAdapter, maxDecodeTokens: number, onLoad: () => void = () => {}):
-  Promise<GateResult> {
+export async function runGate(adapter: EngineAdapter, maxDecodeTokens: number, onLoad: () => void = () => {},
+  template: ChatTemplate = 'gemma3'): Promise<GateResult> {
   const probes = probesFor(maxDecodeTokens);
   const outputs: (string | null)[] = probes.map(() => null);
   let error: GateError | null = null;
@@ -182,7 +183,7 @@ export async function runGate(adapter: EngineAdapter, maxDecodeTokens: number, o
     backend = adapter.backendEvidence ? adapter.backendEvidence() : null;
     phase = 'inference';
     for (const [index, probe] of probes.entries()) {
-      outputs[index] = await adapter.generate({prompt: gemma3Turn(probe.prompt), text: probe.prompt,
+      outputs[index] = await adapter.generate({prompt: chatTurn(template, probe.prompt), text: probe.prompt,
         maxDecodeTokens: probe.maxOutputTokens});
     }
   } catch (failure) {

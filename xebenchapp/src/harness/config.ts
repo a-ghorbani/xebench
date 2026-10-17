@@ -1,3 +1,6 @@
+import {CHAT_TEMPLATES} from './prompts';
+import type {ChatTemplate} from './prompts';
+
 export interface ReferenceRun {
   id: string;
   engine: 'llama.cpp';
@@ -152,7 +155,7 @@ export interface AcceleratorConfig {
   maxBatteryTempRiseC: number;
   maxDecodeTokens: number;
   /** Chat template the harness applies for raw-prompt engines (llama.cpp). */
-  chatTemplate: 'gemma3';
+  chatTemplate: ChatTemplate;
   orderSeed?: number;
   runs: AcceleratorRun[];
 }
@@ -252,7 +255,7 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
     cooldownSec: integer(value.cooldownSec, 0, 300), readinessTimeoutSec: integer(value.readinessTimeoutSec, 10, 900),
     maxBatteryTempRiseC: decimal(value.maxBatteryTempRiseC, 0.5, 10),
     maxDecodeTokens: integer(value.maxDecodeTokens, 1, 512),
-    chatTemplate: oneOf(value.chatTemplate, ['gemma3'] as const, 'chatTemplate'),
+    chatTemplate: oneOf(value.chatTemplate, CHAT_TEMPLATES, 'chatTemplate'),
     ...(value.orderSeed === undefined ? {} : {orderSeed: integer(value.orderSeed, 0, 0xffffffff)}), runs,
   };
 }

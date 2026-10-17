@@ -6,7 +6,8 @@
  */
 import type {EngineAdapter} from './adapters/EngineAdapter';
 import type {AcceleratorConfig, AcceleratorRun} from './config';
-import {ACCELERATOR_PROMPT, ACCELERATOR_PROMPT_LABEL, gemma3Turn} from './prompts';
+import {ACCELERATOR_PROMPT, ACCELERATOR_PROMPT_LABEL, chatTurn} from './prompts';
+import type {ChatTemplate} from './prompts';
 import {CHARGING_POLICY, CONDITION_POLICY} from './conditions';
 import {
   Attempt, BACKEND_NOTE, conditionVerdict, ConditionVerdict, noteModelLoad, runRepetitions, SessionContext,
@@ -52,7 +53,7 @@ export interface AcceleratorSession extends SessionIdentity {
   protocol: {
     version: 'accelerator-v1'; nColdRuns: number; cooldownSec: number; readinessTimeoutSec: number;
     maxBatteryTempRiseC: number;
-    promptLabel: string; prompt: string; promptFormat: 'user-turn-chat-template'; chatTemplate: 'gemma3';
+    promptLabel: string; prompt: string; promptFormat: 'user-turn-chat-template'; chatTemplate: ChatTemplate;
     maxDecodeTokens: number; sampling: 'greedy'; nThreads: number | null; nCtx: number | null;
     coldDefinition: string; measurementKind: 'fresh-instance-first-request'; warmRequests: 'not-measured';
     processRestartBetweenRepetitions: false; gate: typeof GATE_VERSION;
@@ -166,7 +167,8 @@ export async function runAcceleratorSession(
   return runRepetitions(record, adapter, {
     nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec, readinessTimeoutSec: config.readinessTimeoutSec,
     maxBatteryTempRiseC: config.maxBatteryTempRiseC,
-    bench: {prompt: gemma3Turn(ACCELERATOR_PROMPT), text: ACCELERATOR_PROMPT, maxDecodeTokens: config.maxDecodeTokens},
+    bench: {prompt: chatTurn(config.chatTemplate, ACCELERATOR_PROMPT), text: ACCELERATOR_PROMPT,
+      maxDecodeTokens: config.maxDecodeTokens},
     update: updateAcceleratorVerdict,
     observe: () => adapter.backendEvidence ? adapter.backendEvidence() :
       {status: 'unknown', source: 'none', report: null, libraries: null},
@@ -214,7 +216,7 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
   const gate = async (adapter: EngineAdapter, run: AcceleratorRun, reference: GateOutcome | undefined,
     artifact: {sha256: string} | null): Promise<GateOutcome> => {
     io.log(`${run.id}: correctness gate…`);
-    const result = await runGate(adapter, config.maxDecodeTokens, noteModelLoad);
+    const result = await runGate(adapter, config.maxDecodeTokens, noteModelLoad, config.chatTemplate);
     if (run.backend === 'cpu') {
       return {correctness: referenceCorrectness(config.maxDecodeTokens, result), gateBackend: result.backend,
         releaseFailed: result.releaseFailed};

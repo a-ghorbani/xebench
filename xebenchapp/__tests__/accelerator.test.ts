@@ -22,6 +22,7 @@ import {ORDER_METHOD, seededOrder} from '../src/harness/order';
 import f8Config from '../configs/f8-gemma3-accelerators-v1.json';
 import s23Config from '../configs/s23-gemma3-accelerators-v1.json';
 import bugReproConfig from '../configs/s23-litert-npu-bugrepro-v1.json';
+import llamaHexagonConfig from '../configs/f8-llama32-hexagon-check-v1.json';
 
 declare const __dirname: string;
 declare const process: {env: Record<string, string | undefined>};
@@ -156,6 +157,11 @@ test('versioned matrix configurations parse and pair every accelerator with a CP
   expect(s23.runs.map(run => `${run.engine}/${run.backend}`)).toEqual(['litert-lm/cpu', 'litert-lm/gpu',
     'llama.cpp/cpu', 'llama.cpp/gpu']);
   expect(bug.runs.find(run => run.backend === 'npu')!.purpose).toBe('bug-repro');
+  // Legacy-row check: llama.cpp Hexagon on Llama 3.2 1B, gated against llama.cpp CPU.
+  const legacy = parseAcceleratorConfig(llamaHexagonConfig);
+  expect(legacy.chatTemplate).toBe('llama32');
+  expect(legacy.runs.map(run => `${run.backend}<-${run.referenceRunId}`)).toEqual(['cpu<-null',
+    'npu<-llama32-q4km-cpu', 'cpu<-null', 'npu<-llama32-q40-cpu']);
   // The parsed configuration is exactly what is echoed into records.
   expect(f8).toEqual(f8Config);
 });
