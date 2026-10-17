@@ -7551,7 +7551,7 @@
       "coldRuns": [
         {
           "runIndex": 0,
-          "cooldownMs": 0,
+          "cooldownMs": 30000,
           "readiness": {
             "status": "ready",
             "waitedMs": 0,
