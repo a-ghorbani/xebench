@@ -24,8 +24,8 @@ is not flavor-aware. The application ID stays `com.xebenchapp`.
 
 ## Configure and capture
 
-Install the app first. Then stage the pinned reference GGUF in the app's external
-files directory:
+Install the app first. Then stage the pinned reference GGUF in the
+app's external files directory:
 
 ```sh
 python3 scripts/stage_model.py --serial <serial>   # default: models/Llama-3.2-1B-Instruct-Q4_K_M.gguf

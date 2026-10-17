@@ -21,8 +21,10 @@ FILE = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf'
 PAYLOAD = b'GGUF fixture bytes, not a real model\n' * 64
 
 # A stand-in for adb: logs every invocation and maps device paths into a temp dir.
-# FAKE_ADB_CORRUPT alters the pushed bytes, FAKE_ADB_NO_SHA makes sha256sum
-# unavailable and FAKE_ADB_NO_APP reports the app as not installed.
+# FAKE_ADB_CORRUPT alters the pushed bytes, FAKE_ADB_PUSH_FAIL fails the push after
+# writing a partial copy, FAKE_ADB_NO_SHA makes sha256sum unavailable,
+# FAKE_ADB_NO_APP reports the app as not installed and FAKE_ADB_OFFLINE the device
+# as missing.
 FAKE_ADB = r'''#!{python}
 import hashlib, json, os, shlex, shutil, sys
 from pathlib import Path
@@ -33,11 +35,18 @@ if sys.argv[1:3] != ['-s', os.environ['FAKE_ADB_SERIAL']]:
     sys.exit('fake adb: missing or wrong -s serial')
 args = sys.argv[3:]
 device = lambda path: root / path.lstrip('/')
+if args[0] == 'get-state':
+    if os.environ.get('FAKE_ADB_OFFLINE'):
+        sys.exit("error: device '" + sys.argv[2] + "' not found")
+    print('device')
+    sys.exit(0)
 if args[0] == 'push':
     target = device(args[2])
     if not target.parent.is_dir():
         sys.exit('adb: error: remote directory does not exist')
     shutil.copyfile(args[1], target)
+    if os.environ.get('FAKE_ADB_PUSH_FAIL'):
+        sys.exit('adb: error: failed to copy: connection reset')
     if os.environ.get('FAKE_ADB_CORRUPT'):
         with open(target, 'ab') as handle:
             handle.write(b'!')
@@ -193,6 +202,39 @@ class StageModelTests(unittest.TestCase):
         code, _, err = self.run_main()
         self.assertEqual(code, 0, err)
         self.assertEqual(self.staged().read_bytes(), PAYLOAD)
+
+    def test_device_mismatch_leaves_stale_copy_untouched_and_says_so(self):
+        self.staged().parent.mkdir(parents=True)
+        self.staged().write_bytes(b'stale')
+        with mock.patch.dict(os.environ, {'FAKE_ADB_CORRUPT': '1'}):
+            code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertEqual(self.staged().read_bytes(), b'stale')
+        self.assertFalse(self.staged('.partial').exists())
+        self.assertIn('left in place', err)
+
+    def test_failed_push_is_refused_and_partial_removed(self):
+        with mock.patch.dict(os.environ, {'FAKE_ADB_PUSH_FAIL': '1'}):
+            code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn('connection reset', err)
+        self.assertFalse(self.staged().exists())
+        self.assertFalse(self.staged('.partial').exists())
+
+    def test_missing_adb_is_reported(self):
+        self.adb = Path(self.tmp.name) / 'no-such-adb'
+        code, _, err = self.run_main()
+        self.assertEqual(code, 2)
+        self.assertIn('cannot run', err)
+
+    def test_unavailable_device_is_reported_as_such(self):
+        with mock.patch.dict(os.environ, {'FAKE_ADB_OFFLINE': '1'}):
+            code, _, err = self.run_main()
+        self.assertEqual(code, 2)
+        self.assertIn('not available', err)
+        self.assertIn('not found', err)
+        self.assertNotIn('not installed', err)
+        self.assertEqual(self.pushes(), [])
 
     def test_app_not_installed_is_refused(self):
         with mock.patch.dict(os.environ, {'FAKE_ADB_NO_APP': '1'}):

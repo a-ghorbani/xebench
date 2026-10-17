@@ -48,7 +48,7 @@ directory is git-ignored):
 hf download bartowski/Llama-3.2-1B-Instruct-GGUF Llama-3.2-1B-Instruct-Q4_K_M.gguf \
   --revision 067b946cf014b7c697f3654f621d577a3e3afd1c --local-dir models
 # or, without the Hugging Face CLI:
-curl -L --fail -o models/Llama-3.2-1B-Instruct-Q4_K_M.gguf \
+curl -L --fail --create-dirs -o models/Llama-3.2-1B-Instruct-Q4_K_M.gguf \
   https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/067b946cf014b7c697f3654f621d577a3e3afd1c/Llama-3.2-1B-Instruct-Q4_K_M.gguf
 ```
 
@@ -68,10 +68,12 @@ python3 scripts/stage_model.py --serial <serial> path/to/Llama-3.2-1B-Instruct-Q
 The script refuses to continue in these cases:
 
 - the local file name, size or SHA-256 does not match the manifest;
-- the app is not installed;
+- the device is unavailable (`adb -s <serial> get-state` is not `device`), or the app
+  is not installed;
 - after `adb -s <serial> push` to a temporary `.partial` name, the `sha256sum` of the
-  pushed copy on the device does not match. The partial copy is deleted and the
-  verified file is not renamed into place.
+  pushed copy on the device does not match. The script deletes the partial copy and
+  does not rename it into place. Any older copy under the final name stays as it was,
+  and the error message reports it.
 
 If the device already holds a verified copy, the script does not push again.
 

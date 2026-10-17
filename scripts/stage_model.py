@@ -100,7 +100,7 @@ def download_help(model):
         'Read and accept those terms yourself; xebench does not download or redistribute the weights.',
         f'Download the pinned revision {model["revision"]} of {model["repo"]} with either:',
         f'  hf download {model["repo"]} {model["file"]} --revision {model["revision"]} --local-dir models',
-        f'  curl -L --fail -o models/{model["file"]} {download_url(model)}',
+        f'  curl -L --fail --create-dirs -o models/{model["file"]} {download_url(model)}',
         f'Expected size {model["size"]} bytes, sha256 {model["sha256"]}.',
     ])
 
@@ -164,12 +164,17 @@ class Adb:
 def stage(path, model, adb, out=print):
     verify_local(path, model)
     out(f'local {model["file"]}: size and sha256 match the manifest')
+    state = adb.run('get-state', check=False)
+    if state.returncode != 0 or state.stdout.strip() != 'device':
+        detail = (state.stderr or state.stdout).strip() or f'exit {state.returncode}'
+        raise StageError(f'device {adb.serial} is not available: {detail}', 2)
     installed = adb.shell('pm', 'path', APP, check=False)
     if installed.returncode != 0 or 'package:' not in installed.stdout:
-        raise StageError(f'{APP} is not installed on {adb.serial}; install the app first so its '
-                         'external files directory belongs to it', 2)
+        raise StageError(f'{APP} is not installed on {adb.serial}; install the app first so '
+                         'its external files directory belongs to it', 2)
     target = f'{DEVICE_DIR}/{model["file"]}'
-    if adb.sha256(target) == model['sha256']:
+    existing = adb.sha256(target)
+    if existing == model['sha256']:
         out(f'{target} already present and verified on {adb.serial}; not pushing')
         return target
     partial = f'{target}.partial'
@@ -178,11 +183,16 @@ def stage(path, model, adb, out=print):
         adb.run('push', str(path), partial)
         pushed = adb.sha256(partial)
         if pushed != model['sha256']:
+            stale = (f' The existing {target} (sha256 {existing}) was left in place and does not match.'
+                     if existing else '')
             raise StageError(f'device-side sha256 of {partial} is {pushed or "unavailable"}, expected '
-                             f'{model["sha256"]}; removed the partial copy and refusing to stage')
+                             f'{model["sha256"]}; refusing to stage.{stale}')
         adb.shell('mv', '-f', partial, target)
     except BaseException:
-        adb.shell('rm', '-f', partial, check=False)
+        try:
+            adb.shell('rm', '-f', partial, check=False)
+        except StageError:
+            pass  # keep the original error; the .partial name is never loaded by the app
         raise
     final = adb.sha256(target)
     if final != model['sha256']:
