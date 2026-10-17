@@ -89,6 +89,10 @@ android {
     // Qualcomm HTP. llama.rn's Hexagon variant is EXCLUDED — on the S23 its combined
     // hexagon_opencl .so hangs at first model load (fastrpc/DSP init); excluding it
     // makes llama.cpp fall back to the CPU variant. GENIE-X stays dropped.
+    // NOTE: QNN libs alone are not enough. LiteRT-LM's NPU path also needs Google's
+    // published dispatch lib (libLiteRtDispatch_Qualcomm.so, from
+    // com.google.ai.edge.litert:litert-npu-runtime-qualcomm or the LiteRT release
+    // zip) whose ABI matches the LiteRT-LM release's LITERT_REF. See ENGINES.md.
     packagingOptions {
         exclude "**/librnllama*hexagon*.so"
         jniLibs {

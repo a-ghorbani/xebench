@@ -13,14 +13,16 @@ It powers the cross-engine leaderboard at **[pocketpal.dev/leaderboard/engines](
 |---|---|---|---|---|
 | **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | ✅ Hexagon (`ggml-hexagon`) |
 | **ExecuTorch** | `react-native-executorch` | ✅ XNNPACK | — | — (delegate not in RN binding) |
-| **LiteRT-LM** | native Kotlin bridge | ✅ | ⛔ ML Drift no-OpenCL | ⛔ blocked — Google withholds prebuilt bridge libs ([#6889](https://github.com/google-ai-edge/LiteRT/issues/6889)) |
+| **LiteRT-LM** | native Kotlin bridge | ✅ | ✅ ML Drift (needs `uses-native-library`) | ✅ runs; ⚠️ SM8550 bundle output wrong ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) |
 | **GENIE-X / Genie** | `geniex-android` / QAIRT `genie-t2t-run` | ✅ | — | ✅ Hexagon (QNN context binary) |
+
+LiteRT-LM GPU and NPU were verified in 2026-10-17 spikes on the S23 and F8 Ultra. They are not yet measured as board rows. See [ENGINES.md](./ENGINES.md#correction-2026-10-17-litert-npu-and-gpu).
 
 ## Headline findings so far
 
 - **There is no single "fastest engine."** The ranking flips by model *and* by metric: LiteRT wins Gemma prefill; llama.cpp wins Qwen decode; ExecuTorch wins Llama prefill; llama.cpp wins Llama decode.
 - **NPU is not automatically faster.** On a Snapdragon 8 Elite Gen 5 (Hexagon v81), for Llama 3.2 1B, the NPU *wins prefill outright* but *loses decode badly* to the CPU — the Oryon cores are strong and decode is memory-bandwidth-bound.
-- **Same NPU, opposite outcomes for the two "NPU-first" engines.** Give Qualcomm's Genie a device+version-matched context binary and it runs end-to-end. LiteRT-LM can't — Google ships the runtime but not the prebuilt Qualcomm bridge libraries. One vendor shipped everything; the other didn't. (This is the load-bearing story — see ENGINES.md.)
+- **Same NPU, very different integration effort for the two "NPU-first" engines.** Qualcomm's Genie ships as a complete stack: give it a device+version-matched context binary and it runs end-to-end. LiteRT-LM's Qualcomm NPU path also runs for a third party, but only after you assemble four pieces by hand: the AAR, Google's `litert-npu-runtime-qualcomm` from Maven, a QAIRT version matched to the release's `LITERT_REF`, and manifest `<uses-native-library>` declarations. A mismatch fails with opaque errors. Separately, Google's published SM8550 Gemma 3 1B bundle gives wrong output past one 128-token prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)). **Correction (2026-10-17):** we previously wrote here that Google ships the runtime but not the prebuilt Qualcomm bridge libraries. That was wrong. Those libraries are published; our app was not bundling them. (See ENGINES.md.)
 
 ## Architecture
 
@@ -100,7 +102,7 @@ before JavaScript starts. These diagnostic files must not be published.
 This repo does **not** vendor model weights or proprietary vendor SDKs.
 
 - **Models** — GGUF / `.pte` / `.litertlm` / QNN context binaries. See **[MODELS.md](./MODELS.md)** for exact files and sources.
-- **QAIRT SDK** (Qualcomm AI Runtime) — needed for the LiteRT-NPU and Genie-NPU paths. Download the *Community* track (direct download) from Qualcomm; the `lib/aarch64-android/` host libs + the matching `lib/hexagon-vNN/unsigned/libQnnHtpVNNSkel.so` go into the app's `jniLibs/` (git-ignored — Qualcomm-licensed, do not redistribute).
+- **QAIRT SDK** (Qualcomm AI Runtime) — needed for the LiteRT-NPU and Genie-NPU paths. Download the *Community* track (direct download) from Qualcomm; the `lib/aarch64-android/` host libs + the matching `lib/hexagon-vNN/unsigned/libQnnHtpVNNSkel.so` go into the app's `jniLibs/` (git-ignored — Qualcomm-licensed, do not redistribute). For **LiteRT-LM**, the QAIRT version must match the `LITERT_REF` of the LiteRT-LM release you use. The dispatch lib (`libLiteRtDispatch_Qualcomm.so`) is not part of QAIRT: it comes from Google's `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` Maven artifact, or from the per-arch `litert_npu_runtime_libraries.zip` on LiteRT GitHub releases. A combination that worked in our spikes: `litertlm-android` 0.18.0 + `litert-npu-runtime-qualcomm` 2.3.0 + QAIRT 2.50.0.260828.
 - **GENIE-X** (`com.qualcomm.qti:geniex-android`) — Qualcomm Maven dependency.
 - **Genie context binaries** — per-SoC, per-QAIRT-version compiled `.bin` bundles (e.g. from `runanywhere/genie-npu-models` or Qualcomm AI Hub). They must match *both* your device's Hexagon arch (v73/v75/v79/v81) *and* a QAIRT version you can obtain.
 
@@ -109,6 +111,7 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 - Host is often aarch64 Linux — point `hermesCommand` at the x86-64 hermesc (runs via emulation).
 - **Kotlin 2.3.0** required by `litertlm-android` (pin `kotlinVersion` *and* the plugin classpath).
 - `litertlm-android` needs `useLegacyPackaging` / `extractNativeLibs=true` so QNN libs land in `nativeLibraryDir`.
+- LiteRT-LM **GPU** (ML Drift) needs `<uses-native-library android:name="libOpenCL.so" android:required="false" />` and the same for `libvndksupport.so` in the app manifest, as the LiteRT-LM Kotlin guide says ([LiteRT-LM#1860](https://github.com/google-ai-edge/LiteRT-LM/issues/1860)). Without them it fails with `Can not find OpenCL library on this device`. The manifest in this repo does not declare them yet.
 - **Build variants don't coexist:** llama.rn's Hexagon lib and GENIE-X's bundled Hexagon runtime collide, and llama.rn hijacks `ADSP_LIBRARY_PATH`. Toggle via `android/app/build.gradle` packaging excludes + `App.tsx` RUNS. (Turning this into a proper Gradle flavor is a good first contribution — see below.)
 
 ## Results are published here — the website loads them dynamically

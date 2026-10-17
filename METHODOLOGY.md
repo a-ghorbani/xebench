@@ -129,16 +129,26 @@ for 5 minutes and reports first-minute vs last-minute median decode tok/s and a
 degradation %, with thermal state per iteration. When present it is shown as its
 own column, never blended into the cold number.
 
-## GPU backend reality on stock Android (measured 2026-07-18)
+## GPU backend reality on stock Android (measured 2026-07-18, corrected 2026-10-17)
 
-LiteRT-LM's `Backend.GPU()` failed on **both** a Tensor G4 (Pixel 9) and an Adreno
-740 (Galaxy S23) with `Can not find OpenCL library on this device`. On stock,
-non-rooted Android an app generally cannot `dlopen` the vendor `libOpenCL.so`
-(linker-namespace restriction) — so an engine's OpenCL GPU path won't initialize
-in a normal app without bundling an OpenCL loader or being on a device that
-exposes it. This is why v1 is CPU-only and GPU is a later, device-specific axis:
-"GPU support" in an engine's docs does not mean it runs from an installed app on a
-given device. Document the exact failure per device rather than assuming GPU works.
+On 2026-07-18, LiteRT-LM's `Backend.GPU()` failed on **both** a Tensor G4 (Pixel 9)
+and an Adreno 740 (Galaxy S23) with `Can not find OpenCL library on this device`.
+We concluded that a stock, non-rooted Android app cannot load the vendor
+`libOpenCL.so`. **That conclusion was wrong.** An app can load `libOpenCL.so`
+once its manifest declares it with
+`<uses-native-library android:name="libOpenCL.so" android:required="false" />`.
+LiteRT-LM also needs `libvndksupport.so` declared the same way. The LiteRT-LM
+Kotlin guide has required both declarations since at least 0.14.0 (LiteRT-LM#1860).
+Our app did not declare them, so the failure was our bug, not a platform limit.
+In 2026-10-17 spikes, ML Drift GPU ran on the S23 and the F8 Ultra with the
+declarations, and a control build without them failed again. We have not
+re-tested the Pixel 9.
+
+What still holds: "GPU support" in an engine's docs depends on app-side
+packaging and manifest requirements that are easy to miss. Check the engine's
+integration guide before attributing a failure to the platform, and record the
+exact failure per device rather than assuming GPU works. v1 remains CPU-only (see
+§"What v1 measures"), and GPU is a later axis.
 
 ## Energy
 Android energy is **best-effort** via `BatteryManager` and is labeled as such;

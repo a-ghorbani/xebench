@@ -1,42 +1,50 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-07-22",
+  "generatedAt": "2026-10-17",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Narrative findings from the xebench cross-engine benchmark, published as data so consumers render the lab's wording verbatim and never re-word a claim. Schema: data/findings.schema.json.",
   "findings": [
     {
-      "id": "litert-lm-npu-blocked",
+      "id": "litert-lm-npu-integration",
       "kind": "gap",
-      "blocks": [{ "engine": "litert-lm", "backend": "npu" }],
-      "headline": "Missing from this board: LiteRT-LM on NPU — and exactly why",
-      "deck": "NPU is LiteRT-LM's flagship capability, yet no third party can currently reproduce it — the runtime ships, the bridge libs don't.",
+      "blocks": [{ "engine": "litert-lm", "backend": "npu", "device": "Samsung Galaxy S23" }],
+      "headline": "Correction: LiteRT-LM on NPU is not blocked upstream. It runs, but must be assembled by hand, and one published bundle gives wrong output",
+      "deck": "We previously said Google withholds the libraries LiteRT-LM needs to run on a Qualcomm NPU. That was wrong: they are published, and our app was not bundling them. NPU and GPU both ran in our 2026-10-17 spikes, but neither is measured on this board yet.",
       "claims": [
-        "NPU acceleration is LiteRT-LM's flagship capability — Google reports up to ~12× CPU / 10× GPU for LLMs on a Qualcomm/MediaTek NPU.",
-        "It is absent here because no third party can currently reproduce it.",
-        "We built the full stack on a Galaxy S23 (Snapdragon 8 Gen 2): Qualcomm's QAIRT 2.48.40 runtime loads, the Hexagon v73 DSP skel is present, and the model parses through to its decode-signature quantization — then it stops.",
-        "The missing pieces are the LiteRT↔Qualcomm bridge libraries (libLiteRtDispatch_Qualcomm.so, libGemmaModelConstraintProvider.so), which Google builds from internal sources and does not publish as prebuilt binaries.",
-        "The Qualcomm hardware libraries are available; the Google glue that connects them is not."
+        "Correction (2026-10-17): this finding previously said that no third party could run LiteRT-LM on a Qualcomm NPU, because Google withholds two prebuilt bridge libraries (libLiteRtDispatch_Qualcomm.so, libGemmaModelConstraintProvider.so). That conclusion was wrong.",
+        "Both libraries are published. Google has attached per-architecture dispatch libraries to LiteRT GitHub releases since v2.1.0rc1 (2025-11). They are also on Google Maven as com.google.ai.edge.litert:litert-npu-runtime-qualcomm (2.3.0, published 2026-10-06). libGemmaModelConstraintProvider.so has been committed in the LiteRT-LM repository under prebuilt/android_arm64/ since 2025-12.",
+        "Our July 2026 NPU failure (SIGABRT: 'No dispatch library found' / 'No usable Dispatch runtime found') happened because our app did not bundle the published dispatch library. We had misattributed it to a missing Hexagon v73 skel.",
+        "In 2026-10-17 spikes, Gemma 3 1B ran on the NPU of a Galaxy S23 (Snapdragon SM8550, Hexagon v73) and a POCO F8 Ultra (SM8850, Hexagon v81). The stack was litertlm-android 0.18.0, litert-npu-runtime-qualcomm 2.3.0, QAIRT 2.50.0.260828 (public download) and <uses-native-library> manifest declarations. It also ran with our July version, LiteRT-LM 0.14.0, using Google's prebuilt dispatch library from the LiteRT v2.1.6 release (2026-07-02).",
+        "The remaining friction is integration. The integrator assembles four artifacts by hand, and the dispatch library's ABI must match the LITERT_REF of the LiteRT-LM release. A mismatch aborts natively with 'Unsupported dispatch runtime version', and the Kotlin API reports only a generic engine-creation failure.",
+        "The remaining upstream problem is correctness. On the Galaxy S23, Google's published SM8550 Gemma 3 1B NPU bundle (built with QAIRT 2.34.0) produces degenerate output for prompts longer than one 128-token prefill chunk (LiteRT-LM #3508). The SM8850 bundle (QAIRT 2.44) gives correct output on the F8 Ultra, and CPU and GPU output is correct on both phones.",
+        "These were single-run spikes, not benchmark rows. This board does not yet publish any LiteRT-LM NPU measurement."
       ],
       "steps": [
-        { "label": "QAIRT 2.48.40 runtime loads", "status": "ok" },
-        { "label": "Hexagon v73 DSP skel present", "status": "ok" },
-        { "label": "Model parses (reaches decode-signature quantization)", "status": "ok" },
-        { "label": "LiteRT↔Qualcomm bridge libs", "status": "missing", "detail": "libLiteRtDispatch_Qualcomm.so, libGemmaModelConstraintProvider.so — Google does not publish prebuilt" }
+        { "label": "Dispatch library published (litert-npu-runtime-qualcomm / LiteRT releases)", "status": "ok", "detail": "our July build did not bundle it" },
+        { "label": "QAIRT version matched to the release's LITERT_REF", "status": "ok", "detail": "QAIRT 2.50.0.260828 with litertlm-android 0.18.0" },
+        { "label": "NPU engine runs on S23 (SM8550) and F8 Ultra (SM8850)", "status": "ok" },
+        { "label": "F8 Ultra output correct (SM8850 bundle)", "status": "ok" },
+        { "label": "S23 output correct past one 128-token prefill chunk (SM8550 bundle)", "status": "fail", "detail": "degenerate output; LiteRT-LM #3508" }
       ],
-      "resolution": "Publishing those libs is all it would take for a real LiteRT-NPU row to appear here.",
+      "resolution": "LiteRT-LM NPU rows will appear here once they pass an output-correctness check. The S23 stays off the board until the SM8550 bundle bug (LiteRT-LM #3508) is fixed or a correct bundle is published.",
       "context": {
-        "device": "Samsung Galaxy S23",
-        "soc": "SM8550",
-        "hexagon": "v73",
-        "qairtVersion": "2.48.40",
-        "missingLibs": ["libLiteRtDispatch_Qualcomm.so", "libGemmaModelConstraintProvider.so"]
+        "device": "Galaxy S23 + POCO F8 Ultra",
+        "soc": "SM8550 + SM8850",
+        "hexagon": "v73 + v81",
+        "qairtVersion": "2.50.0.260828",
+        "litertLmVersion": "0.18.0",
+        "npuRuntime": "com.google.ai.edge.litert:litert-npu-runtime-qualcomm:2.3.0",
+        "correctedAt": "2026-10-17",
+        "supersedes": "litert-lm-npu-blocked"
       },
       "sources": [
-        { "label": "LiteRT #6889", "url": "https://github.com/google-ai-edge/LiteRT/issues/6889" },
-        { "label": "LiteRT-LM #1121", "url": "https://github.com/google-ai-edge/LiteRT-LM/issues/1121" },
-        { "label": "LiteRT-LM #1377", "url": "https://github.com/google-ai-edge/LiteRT-LM/issues/1377" }
+        { "label": "LiteRT-LM #3508", "url": "https://github.com/google-ai-edge/LiteRT-LM/issues/3508" },
+        { "label": "LiteRT-LM #1860", "url": "https://github.com/google-ai-edge/LiteRT-LM/issues/1860" },
+        { "label": "LiteRT releases", "url": "https://github.com/google-ai-edge/LiteRT/releases" },
+        { "label": "LiteRT-LM prebuilt/android_arm64", "url": "https://github.com/google-ai-edge/LiteRT-LM/tree/main/prebuilt/android_arm64" },
+        { "label": "Gemma3-1B-IT bundles", "url": "https://huggingface.co/litert-community/Gemma3-1B-IT" }
       ],
-      "verifiedAt": "2026-07-21",
+      "verifiedAt": "2026-10-17",
       "verifiedBy": "PocketPal R&D lab (xebench)"
     }
   ]
