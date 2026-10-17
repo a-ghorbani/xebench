@@ -183,7 +183,10 @@ class SchemaAndCliTests(unittest.TestCase):
                         {"properties": {"properties": {"format": "date-time"}}},
                         {"type": "decimal"},
                         {"type": "array", "items": True},
-                        {"$defs": {"a": {"type": "string"}}, "$ref": "#/$defs/a", "minLength": 1}):
+                        {"$defs": {"a": {"type": "string"}}, "$ref": "#/$defs/a", "minLength": 1},
+                        {"properties": {"a": {"$ref": "#/$defs/missing"}}},
+                        {"properties": {"a": {"$ref": "https://example.com/x.json"}}},
+                        {"properties": {"a": {"type": "string", "pattern": "("}}}):
                 with self.subTest(schema=bad):
                     path.write_text(json.dumps(bad))
                     with self.assertRaises(ValueError):
@@ -225,6 +228,22 @@ class SchemaAndCliTests(unittest.TestCase):
                 self.assertEqual(len(reasons), 1)
                 self.assertIn(reasons[0]["code"], allowed)
 
+    def test_integers_beyond_double_range_are_non_finite(self):
+        # Below Python's digit limit but Infinity to the app's JSON.parse; summary
+        # recomputation must not raise OverflowError on them.
+        huge = "1" + "0" * 400
+        for name, needle, path in (("partial", '"median": 17', "/summary/loadMs/median"),
+                                   ("complete", '"loadMs": 17', "/coldRuns/0/loadMs"),
+                                   ("complete", '"sizeBytes": 770000000', "/artifact/sizeBytes")):
+            with self.subTest(path=path):
+                text = json.dumps(APP[name]).replace(needle, needle.split(":")[0] + ": -" + huge, 1)
+                self.assertEqual([(r["code"], r["path"]) for r in raw_session.validate_text(text)],
+                                 [("json.non-finite", path)])
+        record = mutate("complete", lambda r: r["coldRuns"][0].update(loadMs=10 ** 400))
+        self.assertEqual(codes(record), {"json.non-finite"})
+        # The largest exact doubles stay valid numbers.
+        self.assertEqual(raw_session.parse(str(2 ** 1023)), 2 ** 1023)
+
     def test_cli_reports_each_record(self):
         out = io.StringIO()
         with redirect_stdout(out):
@@ -236,6 +255,13 @@ class SchemaAndCliTests(unittest.TestCase):
         with redirect_stdout(out):
             self.assertEqual(raw_session.main([str(FIXTURES / "truncated.json")]), 1)
         self.assertEqual(json.loads(out.getvalue())["reasons"][0]["code"], "json.parse")
+        # No records at all must not pass vacuously.
+        with tempfile.TemporaryDirectory() as root:
+            for name, text in (("empty.json", "[]"), ("mapping.json", '{"records": {}}'), ("lines.jsonl", "")):
+                with self.subTest(name=name), redirect_stdout(io.StringIO()):
+                    path = Path(root) / name
+                    path.write_text(text)
+                    self.assertEqual(raw_session.main([str(path)]), 1)
 
 
 if __name__ == "__main__":

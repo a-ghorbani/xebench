@@ -128,6 +128,16 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(session.invalid, 2)
             self.assertFalse(session.records)
 
+    def test_integer_beyond_double_range_is_rejected_with_payload_kept(self):
+        payload = json.dumps(APP_RECORDS['partial']).replace('"loadMs": 17', '"loadMs": 1' + '0' * 400)
+        reference = {'name': 'fixture.json', 'sha256': hashlib.sha256(payload.encode()).hexdigest()}
+        with tempfile.TemporaryDirectory() as root:
+            session = capture.Capture(root, {})
+            session.ingest('1 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference),
+                           {'fixture.json': payload}.__getitem__)
+            self.assertEqual(session.rejections[0]['codes'], ['json.non-finite'])
+            self.assertEqual((session.directory / session.rejections[0]['file']).read_text(), payload + '\n')
+
     def test_undecodable_reference_is_rejected_not_fatal(self):
         def read_file(_name):
             raise UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid start byte')

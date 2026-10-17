@@ -89,6 +89,13 @@ def _non_finite(value, path):
         node, where = stack.pop()
         if isinstance(node, float) and not math.isfinite(node):
             return where
+        if isinstance(node, int) and not isinstance(node, bool):
+            # Integer literals beyond the double range are Infinity to the app's
+            # JSON.parse and would overflow the host's float arithmetic.
+            try:
+                float(node)
+            except OverflowError:
+                return where
         children = node.items() if isinstance(node, dict) else enumerate(node) if isinstance(node, list) else ()
         stack.extend((child, _pointer(where, key)) for key, child in reversed(list(children)))
     return None
@@ -110,30 +117,45 @@ def load_schema(path=SCHEMA_PATH):
 _TYPES = {"null", "boolean", "object", "array", "string", "number", "integer"}
 
 
-def _check_keywords(node, where):
+def _check_keywords(node, where, root=None):
     """Fail loudly on schema features this interpreter would otherwise ignore."""
     if not isinstance(node, dict):
         raise ValueError(f"Schema must be an object at {where}")
+    root = node if root is None else root
     unknown = set(node) - _KEYWORDS
     if unknown:
         raise ValueError(f"Unsupported JSON Schema keyword(s) {sorted(unknown)} at {where}")
     if "$ref" in node and set(node) - _ANNOTATIONS - {"$ref"}:
         raise ValueError(f"Keywords beside $ref are not supported at {where}")
+    # Broken references or patterns must fail at load time, not on the first
+    # record that reaches that branch (where they would escape as KeyError/re.error).
+    if "$ref" in node:
+        try:
+            target = _Validator(root).resolve(node["$ref"])
+        except (KeyError, TypeError, AttributeError) as error:
+            raise ValueError(f"Unresolvable $ref at {where}") from error
+        if not isinstance(target, dict):
+            raise ValueError(f"$ref does not name a schema at {where}")
+    if "pattern" in node:
+        try:
+            _pattern(node["pattern"])
+        except (re.error, TypeError, AttributeError) as error:
+            raise ValueError(f"Invalid pattern at {where}") from error
     if "type" in node:
         names = node["type"] if isinstance(node["type"], list) else [node["type"]]
         if not names or set(names) - _TYPES:
             raise ValueError(f"Unsupported type {node['type']!r} at {where}")
     for key in ("properties", "$defs"):
         for name, child in node.get(key, {}).items():
-            _check_keywords(child, f"{where}/{key}/{name}")
+            _check_keywords(child, f"{where}/{key}/{name}", root)
     if "items" in node:
-        _check_keywords(node["items"], f"{where}/items")
+        _check_keywords(node["items"], f"{where}/items", root)
     if isinstance(node.get("additionalProperties"), dict):
-        _check_keywords(node["additionalProperties"], f"{where}/additionalProperties")
+        _check_keywords(node["additionalProperties"], f"{where}/additionalProperties", root)
     elif not isinstance(node.get("additionalProperties", True), bool):
         raise ValueError(f"additionalProperties must be a boolean or schema at {where}")
     for index, child in enumerate(node.get("oneOf", [])):
-        _check_keywords(child, f"{where}/oneOf/{index}")
+        _check_keywords(child, f"{where}/oneOf/{index}", root)
 
 
 def _is_type(value, name):
@@ -409,13 +431,16 @@ def main(argv):
     if not argv:
         print(__doc__.strip(), file=sys.stderr)
         return 2
-    ok = True
+    ok, count = True, 0
     for path in argv:
         for key, text in _records(path):
             reasons = validate_text(text)
-            ok = ok and not reasons
+            ok, count = ok and not reasons, count + 1
             print(json.dumps({"file": path, "record": key, "valid": not reasons, "reasons": reasons}))
-    return 0 if ok else 1
+    # An empty array or records mapping must not pass a CI check vacuously.
+    if not count:
+        print("No records found", file=sys.stderr)
+    return 0 if ok and count else 1
 
 
 if __name__ == "__main__":

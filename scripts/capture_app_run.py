@@ -197,7 +197,7 @@ class Capture:
                         payload = error.payload
                     self.reject(marker, payload, source_file, error.reasons)
                     continue
-                except (ValueError, TypeError, RecursionError) as error:
+                except (ValueError, TypeError, RecursionError, ArithmeticError) as error:
                     # Unexpected content must still be preserved, never crash capture.
                     self.reject(marker, payload, source_file,
                                 [raw_session.reason("ingest.error", "", type(error).__name__)])
