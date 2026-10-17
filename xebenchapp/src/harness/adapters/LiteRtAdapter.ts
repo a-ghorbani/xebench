@@ -34,7 +34,7 @@ export class LiteRtAdapter implements EngineAdapter {
 
   constructor(opts: LiteRtAdapterOptions) {
     if (!LiteRtBench) {
-      throw new Error('LiteRtBench native module not linked — check LiteRtBenchPackage registration');
+      throw new Error('LiteRtBench native module not linked — build the experimental flavor (assembleExperimentalRelease)');
     }
     this.opts = opts;
     this.backend = opts.backend;

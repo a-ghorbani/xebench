@@ -177,8 +177,10 @@ dependencies {
 // every flavor; native runtimes a flavor must not carry are removed from its APK here.
 // scripts/check_reference_apk.py --flavor <name> verifies the result.
 def llamaRnAccelerators = ["**/librnllama*hexagon*.so", "**/librnllama*opencl*.so"]
-// aapt-style ignore pattern: llama.rn syncs its HTP libs into src/main/assets/ggml-hexagon.
-def llamaRnHtpAssets = ["<dir>ggml-hexagon"]
+// aapt-style ignore patterns: llama.rn syncs its HTP libs into src/main/assets/ggml-hexagon.
+// A non-empty list replaces AGP's default asset ignores, so they are restated first.
+def llamaRnHtpAssets = ["!.svn", "!.git", "!.ds_store", "!*.scc", ".*", "<dir>_*", "!CVS",
+                        "!thumbs.db", "!picasa.ini", "!*~", "<dir>ggml-hexagon"]
 def executorchNative = ["**/libexecutorch.so", "**/libreact-native-executorch.so",
                         "**/libcpuinfo.so", "**/libpthreadpool.so"]
 // Defensive: proprietary/vendor runtimes that only belong in experimental or geniex,

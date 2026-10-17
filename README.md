@@ -125,9 +125,10 @@ files in the table):
 `app/build/outputs/apk/<flavor>/release/app-<flavor>-release.apk`. A successful
 Gradle build does not prove the runtime libraries were packaged; check each APK with
 `python3 scripts/check_reference_apk.py [--flavor <flavor>] <apk>`. It requires the
-flavor's libraries and engine bridges, and rejects runtimes that belong to another
-flavor (for `reference`: Hexagon/HTP, OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X and
-ExecuTorch native libraries).
+flavor's libraries (for `reference`, every llama.rn CPU variant) and engine bridges,
+and rejects runtimes that belong to another flavor. `reference` allows no native
+library outside React Native core and llama.rn CPU, so Hexagon/HTP, OpenCL,
+QNN/QAIRT, LiteRT-LM, GENIE-X and ExecuTorch libraries all fail the check.
 
 Known limitations: React Native autolinking is not flavor-aware, so
 react-native-executorch's Java glue is linked into every flavor; `reference` and

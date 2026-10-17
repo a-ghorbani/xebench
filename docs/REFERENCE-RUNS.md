@@ -16,9 +16,11 @@ python3 ../../scripts/check_reference_apk.py app/build/outputs/apk/reference/rel
 ```
 
 A successful Gradle build alone does not prove that the runtime libraries were
-packaged. The check fails if the CPU runtime or JS bundle is missing, or if any
-Hexagon/HTP, OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X or ExecuTorch native library or
-engine bridge is present. The application ID stays `com.xebenchapp`.
+packaged. The check fails if any llama.rn CPU variant or the JS bundle is missing,
+or if the APK carries a native library outside React Native core and llama.rn CPU
+(for example Hexagon/HTP, OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X or ExecuTorch) or a
+LiteRT-LM/GENIE-X engine bridge. ExecuTorch's Java glue remains because autolinking
+is not flavor-aware. The application ID stays `com.xebenchapp`.
 
 ## Configure and capture
 

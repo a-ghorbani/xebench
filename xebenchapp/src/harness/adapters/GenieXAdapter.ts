@@ -13,9 +13,8 @@ import type {BenchOnceConfig, EngineAdapter} from './EngineAdapter';
  *    `llama_cpp` plugin (== our llama.cpp engine, redundant to bench).
  *  - The NPU path needs a precompiled QAIRT bundle from Qualcomm AI Hub, not a GGUF.
  *
- * To activate: add `implementation("com.qualcomm.qti:geniex-android:0.3.1")`,
- * write GenieXBenchModule.kt (design in GENIEX-INTEGRATION.md), register it, and
- * add configs to App RUNS. See GENIEX-INTEGRATION.md for the full wiring guide.
+ * The native bridge (GenieXBenchModule.kt) is only in the geniex build flavor
+ * (`assembleGeniexRelease`); no run configuration uses this adapter yet.
  *
  * Measurement note: GENIE-X streams tokens via generateStreamFlow (callbacks),
  * so like ExecuTorch its prefill/decode are ttft-/callback-derived unless
@@ -45,7 +44,7 @@ export class GenieXAdapter implements EngineAdapter {
   constructor(opts: GenieXAdapterOptions) {
     if (!GenieXBench) {
       throw new Error(
-        'GenieXBench native module not linked — GENIE-X is scaffold-only. See GENIEX-INTEGRATION.md',
+        'GenieXBench native module not linked — build the geniex flavor (assembleGeniexRelease)',
       );
     }
     this.opts = opts;

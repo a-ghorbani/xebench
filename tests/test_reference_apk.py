@@ -53,7 +53,8 @@ def write_apk(path, flavor, extra=(), dex=b'', drop=None, empty=None):
             apk.writestr(name, b'' if name == empty else b'fixture')
         for name in set(extra) - spec['required']:
             apk.writestr(name, b'fixture')
-        apk.writestr('classes.dex', b'dex\n' + b''.join(spec.get('required_dex', [])) + dex)
+        required_dex = apk_check.COMMON_REQUIRED_DEX + spec.get('required_dex', [])
+        apk.writestr('classes.dex', b'dex\n' + b''.join(required_dex) + dex)
 
 
 class ReferenceApkTests(unittest.TestCase):
@@ -99,16 +100,30 @@ class ReferenceApkTests(unittest.TestCase):
                     else:
                         self.check(flavor, dex=descriptor)
 
-    def test_accelerator_flavors_require_their_bridges(self):
+    def test_flavors_require_their_bridges(self):
+        for flavor, spec in apk_check.FLAVORS.items():
+            required = apk_check.COMMON_REQUIRED_DEX + spec.get('required_dex', [])
+            for descriptor in required:
+                with self.subTest(flavor=flavor, descriptor=descriptor), \
+                        tempfile.TemporaryDirectory() as root:
+                    path = Path(root) / 'fixture.apk'
+                    with ZipFile(path, 'w') as apk:
+                        for name in spec['required']:
+                            apk.writestr(name, b'fixture')
+                        kept = [d for d in required if d != descriptor]
+                        apk.writestr('classes.dex', b'dex\n' + b''.join(kept))
+                    with self.assertRaisesRegex(ValueError, 'missing classes'):
+                        apk_check.check_apk(path, flavor)
+
+    def test_reference_allows_only_known_native_libraries(self):
+        core = 'lib/arm64-v8a/libreact_codegen_safeareacontext.so'
+        unknown = 'lib/arm64-v8a/libomp.so'
+        self.check('reference', extra=[core])
+        with self.assertRaisesRegex(ValueError, 'unexpected lib/arm64-v8a/libomp.so'):
+            self.check('reference', extra=[unknown])
         for flavor in ('experimental', 'geniex'):
-            with self.subTest(flavor=flavor), tempfile.TemporaryDirectory() as root:
-                path = Path(root) / 'fixture.apk'
-                with ZipFile(path, 'w') as apk:
-                    for name in apk_check.FLAVORS[flavor]['required']:
-                        apk.writestr(name, b'fixture')
-                    apk.writestr('classes.dex', b'dex')
-                with self.assertRaisesRegex(ValueError, 'missing classes'):
-                    apk_check.check_apk(path, flavor)
+            with self.subTest(flavor=flavor):
+                self.check(flavor, extra=[core, unknown])
 
 
 if __name__ == '__main__':
