@@ -219,6 +219,18 @@ export function createSession(
   return record;
 }
 
+/** A run that never reached measurement (aborted configuration or unreadable model). */
+export function unmeasuredSession(
+  adapter: EngineAdapter, config: ReferenceConfig, run: ReferenceRun, identity: SessionIdentity,
+  runOrder: RunOrder | null, stopReason: 'configuration-aborted' | 'setup-failed', note: string,
+): ReferenceSession {
+  const record = createSession(adapter, config, run, {...identity, artifact: null}, runOrder);
+  record.status = 'failed';
+  record.stopReason = stopReason;
+  record.guardNotes = [...record.guardNotes, note];
+  return record;
+}
+
 const message = (failure: unknown) => failure instanceof Error ? failure.message : String(failure);
 
 export async function runSession(

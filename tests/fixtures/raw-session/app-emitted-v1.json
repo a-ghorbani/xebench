@@ -1,0 +1,2028 @@
+{
+  "generatedBy": "xebenchapp/__tests__/rawSessionSchema.test.ts",
+  "records": {
+    "partial": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 4,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 4,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "running",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "complete": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 4,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 4,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "complete",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        },
+        {
+          "runIndex": 1,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 19,
+          "ttftMs": 27,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 190.5,
+          "decodeTps": 31.5,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2687.6640419947507,
+            "promptPerSecond": 190.5,
+            "predictedMs": 4031.746031746032,
+            "predictedPerSecond": 31.5
+          }
+        },
+        {
+          "runIndex": 2,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 18,
+          "ttftMs": 26.25,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 210.75,
+          "decodeTps": 29.25,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2429.4187425860023,
+            "promptPerSecond": 210.75,
+            "predictedMs": 4341.880341880342,
+            "predictedPerSecond": 29.25
+          }
+        },
+        {
+          "runIndex": 3,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 23,
+          "ttftMs": 24,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 205,
+          "decodeTps": 30.75,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2497.560975609756,
+            "promptPerSecond": 205,
+            "predictedMs": 4130.081300813008,
+            "predictedPerSecond": 30.75
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 18.5,
+          "iqr": 2.25,
+          "min": 17,
+          "max": 23,
+          "n": 4
+        },
+        "ttftMs": {
+          "median": 25.875,
+          "iqr": 1.3125,
+          "min": 24,
+          "max": 27,
+          "n": 4
+        },
+        "prefillTps": {
+          "median": 202.625,
+          "iqr": 8.625,
+          "min": 190.5,
+          "max": 210.75,
+          "n": 4
+        },
+        "decodeTps": {
+          "median": 30.4375,
+          "iqr": 1.03125,
+          "min": 29.25,
+          "max": 31.5,
+          "n": 4
+        }
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "failed": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 3,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 3,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "failed",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        },
+        {
+          "runIndex": 1,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "failed",
+          "error": {
+            "phase": "load",
+            "message": "fixture load failure"
+          },
+          "metrics": null
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "cleanupFailed": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 3,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 3,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "failed",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "failed",
+          "error": {
+            "phase": "release",
+            "message": "fixture cleanup failure"
+          },
+          "metrics": {
+            "loadMs": 17,
+            "ttftMs": 25.5,
+            "promptTokens": 512,
+            "decodeTokens": 127,
+            "prefillTps": 200.25,
+            "decodeTps": 30.125,
+            "prefillMethod": "engine-timings",
+            "decodeMethod": "engine-timings",
+            "engineInternal": {
+              "promptMs": 2556.803995006242,
+              "promptPerSecond": 200.25,
+              "predictedMs": 4215.767634854772,
+              "predictedPerSecond": 30.125
+            }
+          },
+          "cleanupError": {
+            "phase": "release",
+            "message": "fixture cleanup failure"
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": null,
+        "ttftMs": null,
+        "prefillTps": null,
+        "decodeTps": null
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "flagged": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 2,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 2,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "complete",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": true,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "fail",
+              "reasons": [
+                "power-saving"
+              ]
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        },
+        {
+          "runIndex": 1,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 19,
+          "ttftMs": 27,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 190.5,
+          "decodeTps": 31.5,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2687.6640419947507,
+            "promptPerSecond": 190.5,
+            "predictedMs": 4031.746031746032,
+            "predictedPerSecond": 31.5
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 18,
+          "iqr": 1,
+          "min": 17,
+          "max": 19,
+          "n": 2
+        },
+        "ttftMs": {
+          "median": 26.25,
+          "iqr": 0.75,
+          "min": 25.5,
+          "max": 27,
+          "n": 2
+        },
+        "prefillTps": {
+          "median": 195.375,
+          "iqr": 4.875,
+          "min": 190.5,
+          "max": 200.25,
+          "n": 2
+        },
+        "decodeTps": {
+          "median": 30.8125,
+          "iqr": 0.6875,
+          "min": 30.125,
+          "max": 31.5,
+          "n": 2
+        }
+      },
+      "guardsPassed": false,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified",
+        "power-saving"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "probeUnavailable": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "complete",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": null,
+              "batteryPct": null,
+              "batteryTempC": null,
+              "charging": null,
+              "powerSaveMode": null,
+              "thermalStatus": null,
+              "screenOn": null,
+              "foreground": null,
+              "keyguardLocked": null,
+              "pssMb": null,
+              "probeStatus": "unavailable",
+              "unavailable": [
+                "timestampMs",
+                "batteryPct",
+                "batteryTempC",
+                "charging",
+                "powerSaveMode",
+                "thermalStatus",
+                "screenOn",
+                "foreground",
+                "keyguardLocked",
+                "pssMb"
+              ]
+            },
+            "after": {
+              "timestampMs": null,
+              "batteryPct": null,
+              "batteryTempC": null,
+              "charging": null,
+              "powerSaveMode": null,
+              "thermalStatus": null,
+              "screenOn": null,
+              "foreground": null,
+              "keyguardLocked": null,
+              "pssMb": null,
+              "probeStatus": "unavailable",
+              "unavailable": [
+                "timestampMs",
+                "batteryPct",
+                "batteryTempC",
+                "charging",
+                "powerSaveMode",
+                "thermalStatus",
+                "screenOn",
+                "foreground",
+                "keyguardLocked",
+                "pssMb"
+              ]
+            },
+            "beforeAssessment": {
+              "status": "unverified",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "unverified",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "inferenceFailed": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "failed",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "failed",
+          "error": {
+            "phase": "inference",
+            "message": "fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure fixture inference failure "
+          },
+          "metrics": null
+        }
+      ],
+      "summary": {
+        "loadMs": null,
+        "ttftMs": null,
+        "prefillTps": null,
+        "decodeTps": null
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "loadAndCleanupFailed": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "failed",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "failed",
+          "error": {
+            "phase": "load",
+            "message": "fixture non-Error load failure"
+          },
+          "metrics": null,
+          "cleanupError": {
+            "phase": "release",
+            "message": "fixture cleanup failure"
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": null,
+        "ttftMs": null,
+        "prefillTps": null,
+        "decodeTps": null
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "nonFiniteMetrics": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "failed",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "failed",
+          "error": {
+            "phase": "inference",
+            "message": "Metrics must be finite and non-negative"
+          },
+          "metrics": null
+        }
+      ],
+      "summary": {
+        "loadMs": null,
+        "ttftMs": null,
+        "prefillTps": null,
+        "decodeTps": null
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "noEngineInternal": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "complete",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            }
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "beforeProbeBusy": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "failed",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": null,
+              "batteryPct": null,
+              "batteryTempC": null,
+              "charging": null,
+              "powerSaveMode": null,
+              "thermalStatus": null,
+              "screenOn": null,
+              "foreground": null,
+              "keyguardLocked": null,
+              "pssMb": null,
+              "probeStatus": "busy",
+              "unavailable": [
+                "timestampMs",
+                "batteryPct",
+                "batteryTempC",
+                "charging",
+                "powerSaveMode",
+                "thermalStatus",
+                "screenOn",
+                "foreground",
+                "keyguardLocked",
+                "pssMb"
+              ]
+            },
+            "after": {
+              "timestampMs": null,
+              "batteryPct": null,
+              "batteryTempC": null,
+              "charging": null,
+              "powerSaveMode": null,
+              "thermalStatus": null,
+              "screenOn": null,
+              "foreground": null,
+              "keyguardLocked": null,
+              "pssMb": null,
+              "probeStatus": "unavailable",
+              "unavailable": [
+                "timestampMs",
+                "batteryPct",
+                "batteryTempC",
+                "charging",
+                "powerSaveMode",
+                "thermalStatus",
+                "screenOn",
+                "foreground",
+                "keyguardLocked",
+                "pssMb"
+              ]
+            },
+            "beforeAssessment": {
+              "status": "unverified",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "unverified",
+              "reasons": []
+            }
+          },
+          "status": "failed",
+          "error": {
+            "phase": "conditions",
+            "message": "Condition probe still running"
+          },
+          "metrics": null
+        }
+      ],
+      "summary": {
+        "loadMs": null,
+        "ttftMs": null,
+        "prefillTps": null,
+        "decodeTps": null
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    },
+    "afterProbeTimeout": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.5-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "protocol": {
+        "version": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache"
+      },
+      "status": "failed",
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "charging": false,
+              "powerSaveMode": false,
+              "thermalStatus": 0,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "pssMb": 412.25,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "after": {
+              "timestampMs": null,
+              "batteryPct": null,
+              "batteryTempC": null,
+              "charging": null,
+              "powerSaveMode": null,
+              "thermalStatus": null,
+              "screenOn": null,
+              "foreground": null,
+              "keyguardLocked": null,
+              "pssMb": null,
+              "probeStatus": "timeout",
+              "unavailable": [
+                "timestampMs",
+                "batteryPct",
+                "batteryTempC",
+                "charging",
+                "powerSaveMode",
+                "thermalStatus",
+                "screenOn",
+                "foreground",
+                "keyguardLocked",
+                "pssMb"
+              ]
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "afterAssessment": {
+              "status": "unverified",
+              "reasons": []
+            }
+          },
+          "status": "failed",
+          "error": {
+            "phase": "conditions",
+            "message": "Condition probe still running"
+          },
+          "metrics": {
+            "loadMs": 17,
+            "ttftMs": 25.5,
+            "promptTokens": 512,
+            "decodeTokens": 127,
+            "prefillTps": 200.25,
+            "decodeTps": 30.125,
+            "prefillMethod": "engine-timings",
+            "decodeMethod": "engine-timings",
+            "engineInternal": {
+              "promptMs": 2556.803995006242,
+              "promptPerSecond": 200.25,
+              "predictedMs": 4215.767634854772,
+              "predictedPerSecond": 30.125
+            }
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": null,
+        "ttftMs": null,
+        "prefillTps": null,
+        "decodeTps": null
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Run conditions and actual backend execution have not been verified"
+      ],
+      "conditionPolicy": {
+        "version": "observed-conditions-v1",
+        "mode": "record-and-flag",
+        "minBatteryPct": 50,
+        "maxThermalStatus": 2,
+        "charging": "record-only",
+        "memory": "snapshots-not-peak",
+        "coverage": "endpoints-not-continuous"
+      }
+    }
+  }
+}

@@ -122,6 +122,25 @@ Repetitions of one run stay contiguous.
 | Cleanup on failure; unmeasured runs recorded | `session.ts`, `reference.ts` | `session.test.ts` failed load/inference/release, monitor stop on failure; `reference.test.ts` cleanup abort, unreadable model |
 | Charging policy affects eligibility only | `conditions.ts` `assessCharging`; `session.ts` `conditionVerdict` | `conditions.test.ts` charging policy; `session.test.ts` identity/charging |
 | Instance/process identity, seeded run order | `session.ts`; [`order.ts`](../xebenchapp/src/harness/order.ts) | `session.test.ts` identity; [`order.test.ts`](../xebenchapp/__tests__/order.test.ts); `reference.test.ts` run order |
+| Records cannot claim what their evidence does not support | [`raw_session.py`](../scripts/raw_session.py) `_semantic_v2` recomputes assessments, readiness, verdict and order | [`test_raw_session.py`](../tests/test_raw_session.py) `ConditionsV2Tests`; [`rawSessionSchema.test.ts`](../xebenchapp/__tests__/rawSessionSchema.test.ts) drift fixture |
+
+Native rules (monitor timing and expiry, single-flight, focus counter) have no
+JVM unit tests. Their device validation is listed in the pull request that
+introduced this policy (#2 work): Pixel 9 and Galaxy S23 runs covering readiness
+waits and timeouts, sampling, interruption detection and recomputed record
+validation.
+
+## Device observations (two devices, not general limits)
+
+On a Pixel 9 (AC power) and a Galaxy S23 (USB power), idle thermal status was 0
+and headroom about 0.44–0.63. One sample cost about 2–5 ms; the first sample was
+up to about 54 ms. Battery temperature rose about 2–3 °C over five or six
+repetitions and did not fall back within the 180 s readiness bound. The 2 °C
+rise rule therefore delayed (up to 101 s) and then skipped a repetition of the
+second run of a two-run, three-repetition configuration on both devices
+(`battery-not-cooled`). This is the intended
+behavior, but it limits configuration length on tethered devices. Whether to keep
+the rule, widen it or allow a longer bound is an owner decision.
 
 ## Limits
 

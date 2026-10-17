@@ -2,101 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/a-ghorbani/xebench/schemas/raw-session-v1.json",
   "title": "xebench raw reference session, schemaVersion 1",
-  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal). Structural rules only; cross-field rules (repetition count, status vs attempts, recomputed summaries, configuration agreement, guard consistency) are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration are intentionally open to additive fields. Records from apps built before condition snapshots (PR #11) omit conditionPolicy and every attempt's conditions; the validator accepts all or none.",
-  "type": "object",
-  "required": [
-    "runId", "timestampIso", "deviceInfo", "artifact", "schema", "schemaVersion",
-    "harnessVersion", "engine", "engineVersion", "backend", "observedBackend", "platform",
-    "model", "quant", "modelFile", "configuration", "configurationRunId", "protocol",
-    "status", "coldRuns", "summary", "guardsPassed", "guardNotes"
-  ],
-  "additionalProperties": false,
-  "properties": {
-    "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,99}$"},
-    "timestampIso": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"},
-    "deviceInfo": {
-      "type": "object",
-      "required": ["model", "androidRelease"],
-      "additionalProperties": false,
-      "properties": {
-        "model": {"type": "string"},
-        "androidRelease": {"type": "string"}
-      }
-    },
-    "artifact": {
-      "type": "object",
-      "required": ["sha256", "sizeBytes"],
-      "additionalProperties": false,
-      "properties": {
-        "sha256": {"$ref": "#/$defs/sha256"},
-        "sizeBytes": {"type": "integer", "minimum": 0}
-      }
-    },
-    "schema": {"const": "xebench-raw"},
-    "schemaVersion": {"const": 1},
-    "harnessVersion": {"const": "xebench-0.5-reference"},
-    "engine": {"$ref": "#/$defs/label"},
-    "engineVersion": {"type": "string", "minLength": 1},
-    "backend": {"const": "cpu"},
-    "observedBackend": {"const": null, "description": "Actual backend execution is not observed; unknown stays null."},
-    "platform": {"const": "android"},
-    "model": {"$ref": "#/$defs/label"},
-    "quant": {"$ref": "#/$defs/label"},
-    "modelFile": {"$ref": "#/$defs/modelFile"},
-    "configuration": {"$ref": "#/$defs/configuration"},
-    "configurationRunId": {"$ref": "#/$defs/label"},
-    "protocol": {
-      "type": "object",
-      "description": "Open to additive fields (run kind, sampling, order) from later protocol work.",
-      "required": ["version", "nColdRuns", "cooldownSec", "promptLabel", "prompt", "maxDecodeTokens", "nThreads", "nCtx", "coldDefinition"],
-      "additionalProperties": true,
-      "properties": {
-        "version": {"const": "cpu-reference-v1"},
-        "nColdRuns": {"type": "integer", "minimum": 1, "maximum": 20},
-        "cooldownSec": {"type": "integer", "minimum": 0, "maximum": 300},
-        "promptLabel": {"type": "string", "minLength": 1},
-        "prompt": {"type": "string", "minLength": 1},
-        "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
-        "nThreads": {"type": "integer", "minimum": 1, "maximum": 32},
-        "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768},
-        "coldDefinition": {"type": "string", "minLength": 1}
-      }
-    },
-    "status": {"enum": ["running", "complete", "failed"]},
-    "coldRuns": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 20,
-      "items": {"oneOf": [{"$ref": "#/$defs/completeAttempt"}, {"$ref": "#/$defs/failedAttempt"}]}
-    },
-    "summary": {
-      "type": "object",
-      "required": ["loadMs", "ttftMs", "prefillTps", "decodeTps"],
-      "additionalProperties": false,
-      "properties": {
-        "loadMs": {"$ref": "#/$defs/optionalAggregate"},
-        "ttftMs": {"$ref": "#/$defs/optionalAggregate"},
-        "prefillTps": {"$ref": "#/$defs/optionalAggregate"},
-        "decodeTps": {"$ref": "#/$defs/optionalAggregate"}
-      }
-    },
-    "guardsPassed": {"enum": [false, null], "description": "Never true in v1: passing endpoint checks is not protocol validation."},
-    "guardNotes": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
-    "conditionPolicy": {
-      "type": "object",
-      "description": "Open to additive fields from condition-enforcement work.",
-      "required": ["version", "mode"],
-      "additionalProperties": true,
-      "properties": {
-        "version": {"type": "string", "minLength": 1},
-        "mode": {"type": "string", "minLength": 1},
-        "minBatteryPct": {"type": "number", "minimum": 0, "maximum": 100},
-        "maxThermalStatus": {"type": "integer", "minimum": 0, "maximum": 6}
-      }
-    }
-  },
+  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal), schemaVersion 1. The protocol version selects a branch: cpu-reference-v1 records (including those from apps built before condition snapshots) keep their original shape; cpu-reference-v2 records carry readiness, sampling, order and verdict evidence. Cross-field rules, including recomputed condition assessments, are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration stay open to additive fields.",
+  "oneOf": [{"$ref": "#/$defs/sessionV1"}, {"$ref": "#/$defs/sessionV2"}],
   "$defs": {
-    "label": {"type": "string", "minLength": 1, "maxLength": 128, "description": "Mirrors config.ts: not blank after JS trim(), no C0 control characters.", "pattern": "^(?=[\\s\\S]*[^\\t\\n\\u000b\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff])[^\\u0000-\\u001f]*$"},
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Mirrors config.ts: not blank after JS trim(), no C0 control characters.",
+      "pattern": "^(?=[\\s\\S]*[^\\t\\n\\u000b\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff])[^\\u0000-\\u001f]*$"
+    },
     "modelFile": {"type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*\\.gguf$"},
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "nonNegative": {"type": "number", "minimum": 0},
@@ -148,7 +63,16 @@
     },
     "metrics": {
       "type": "object",
-      "required": ["loadMs", "ttftMs", "promptTokens", "prefillTps", "prefillMethod", "decodeTokens", "decodeTps", "decodeMethod"],
+      "required": [
+        "loadMs",
+        "ttftMs",
+        "promptTokens",
+        "prefillTps",
+        "prefillMethod",
+        "decodeTokens",
+        "decodeTps",
+        "decodeMethod"
+      ],
       "additionalProperties": false,
       "properties": {
         "loadMs": {"$ref": "#/$defs/nonNegative"},
@@ -165,7 +89,18 @@
     "completeAttempt": {
       "type": "object",
       "description": "A successful repetition: metrics are flattened beside runIndex/conditions/status.",
-      "required": ["runIndex", "status", "loadMs", "ttftMs", "promptTokens", "prefillTps", "prefillMethod", "decodeTokens", "decodeTps", "decodeMethod"],
+      "required": [
+        "runIndex",
+        "status",
+        "loadMs",
+        "ttftMs",
+        "promptTokens",
+        "prefillTps",
+        "prefillMethod",
+        "decodeTokens",
+        "decodeTps",
+        "decodeMethod"
+      ],
       "additionalProperties": false,
       "properties": {
         "runIndex": {"type": "integer", "minimum": 0},
@@ -186,10 +121,7 @@
       "type": "object",
       "required": ["phase", "message"],
       "additionalProperties": false,
-      "properties": {
-        "phase": {"enum": ["conditions", "load", "inference", "release"]},
-        "message": {"type": "string"}
-      }
+      "properties": {"phase": {"enum": ["conditions", "load", "inference", "release"]}, "message": {"type": "string"}}
     },
     "failedAttempt": {
       "type": "object",
@@ -205,10 +137,7 @@
           "type": "object",
           "required": ["phase", "message"],
           "additionalProperties": false,
-          "properties": {
-            "phase": {"const": "release"},
-            "message": {"type": "string"}
-          }
+          "properties": {"phase": {"const": "release"}, "message": {"type": "string"}}
         }
       }
     },
@@ -265,6 +194,494 @@
         "n": {"type": "integer", "minimum": 1}
       }
     },
-    "optionalAggregate": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/aggregate"}]}
+    "optionalAggregate": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/aggregate"}]},
+    "sessionV1": {
+      "type": "object",
+      "required": [
+        "runId",
+        "timestampIso",
+        "deviceInfo",
+        "artifact",
+        "schema",
+        "schemaVersion",
+        "harnessVersion",
+        "engine",
+        "engineVersion",
+        "backend",
+        "observedBackend",
+        "platform",
+        "model",
+        "quant",
+        "modelFile",
+        "configuration",
+        "configurationRunId",
+        "protocol",
+        "status",
+        "coldRuns",
+        "summary",
+        "guardsPassed",
+        "guardNotes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,99}$"},
+        "timestampIso": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+        },
+        "deviceInfo": {
+          "type": "object",
+          "required": ["model", "androidRelease"],
+          "additionalProperties": false,
+          "properties": {"model": {"type": "string"}, "androidRelease": {"type": "string"}}
+        },
+        "artifact": {
+          "type": "object",
+          "required": ["sha256", "sizeBytes"],
+          "additionalProperties": false,
+          "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "sizeBytes": {"type": "integer", "minimum": 0}}
+        },
+        "schema": {"const": "xebench-raw"},
+        "schemaVersion": {"const": 1},
+        "harnessVersion": {"const": "xebench-0.5-reference"},
+        "engine": {"$ref": "#/$defs/label"},
+        "engineVersion": {"type": "string", "minLength": 1},
+        "backend": {"const": "cpu"},
+        "observedBackend": {"const": null, "description": "Actual backend execution is not observed; unknown stays null."},
+        "platform": {"const": "android"},
+        "model": {"$ref": "#/$defs/label"},
+        "quant": {"$ref": "#/$defs/label"},
+        "modelFile": {"$ref": "#/$defs/modelFile"},
+        "configuration": {"$ref": "#/$defs/configuration"},
+        "configurationRunId": {"$ref": "#/$defs/label"},
+        "protocol": {
+          "type": "object",
+          "description": "Open to additive fields (run kind, sampling, order) from later protocol work.",
+          "required": [
+            "version",
+            "nColdRuns",
+            "cooldownSec",
+            "promptLabel",
+            "prompt",
+            "maxDecodeTokens",
+            "nThreads",
+            "nCtx",
+            "coldDefinition"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "version": {"const": "cpu-reference-v1"},
+            "nColdRuns": {"type": "integer", "minimum": 1, "maximum": 20},
+            "cooldownSec": {"type": "integer", "minimum": 0, "maximum": 300},
+            "promptLabel": {"type": "string", "minLength": 1},
+            "prompt": {"type": "string", "minLength": 1},
+            "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+            "nThreads": {"type": "integer", "minimum": 1, "maximum": 32},
+            "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768},
+            "coldDefinition": {"type": "string", "minLength": 1}
+          }
+        },
+        "status": {"enum": ["running", "complete", "failed"]},
+        "coldRuns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {"oneOf": [{"$ref": "#/$defs/completeAttempt"}, {"$ref": "#/$defs/failedAttempt"}]}
+        },
+        "summary": {
+          "type": "object",
+          "required": ["loadMs", "ttftMs", "prefillTps", "decodeTps"],
+          "additionalProperties": false,
+          "properties": {
+            "loadMs": {"$ref": "#/$defs/optionalAggregate"},
+            "ttftMs": {"$ref": "#/$defs/optionalAggregate"},
+            "prefillTps": {"$ref": "#/$defs/optionalAggregate"},
+            "decodeTps": {"$ref": "#/$defs/optionalAggregate"}
+          }
+        },
+        "guardsPassed": {
+          "enum": [false, null],
+          "description": "Never true in v1: passing endpoint checks is not protocol validation."
+        },
+        "guardNotes": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "conditionPolicy": {
+          "type": "object",
+          "description": "Open to additive fields from condition-enforcement work.",
+          "required": ["version", "mode"],
+          "additionalProperties": true,
+          "properties": {
+            "version": {"type": "string", "minLength": 1},
+            "mode": {"type": "string", "minLength": 1},
+            "minBatteryPct": {"type": "number", "minimum": 0, "maximum": 100},
+            "maxThermalStatus": {"type": "integer", "minimum": 0, "maximum": 6}
+          }
+        }
+      },
+      "description": "Protocol cpu-reference-v1 (harness xebench-0.5-reference), unchanged so historical evidence still validates. One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal). Structural rules only; cross-field rules (repetition count, status vs attempts, recomputed summaries, configuration agreement, guard consistency) are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration are intentionally open to additive fields. Records from apps built before condition snapshots (PR #11) omit conditionPolicy and every attempt's conditions; the validator accepts all or none."
+    },
+    "sessionV2": {
+      "type": "object",
+      "required": [
+        "runId",
+        "timestampIso",
+        "deviceInfo",
+        "artifact",
+        "schema",
+        "schemaVersion",
+        "harnessVersion",
+        "engine",
+        "engineVersion",
+        "backend",
+        "observedBackend",
+        "platform",
+        "model",
+        "quant",
+        "modelFile",
+        "configuration",
+        "configurationRunId",
+        "protocol",
+        "status",
+        "coldRuns",
+        "summary",
+        "guardsPassed",
+        "guardNotes",
+        "conditionPolicy",
+        "repetitionsPlanned",
+        "stopReason",
+        "runOrder",
+        "chargingPolicy",
+        "conditionVerdict"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,99}$"},
+        "timestampIso": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+        },
+        "deviceInfo": {
+          "type": "object",
+          "required": ["model", "androidRelease"],
+          "additionalProperties": false,
+          "properties": {"model": {"type": "string"}, "androidRelease": {"type": "string"}}
+        },
+        "artifact": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["sha256", "sizeBytes"],
+              "additionalProperties": false,
+              "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "sizeBytes": {"type": "integer", "minimum": 0}}
+            }
+          ],
+          "description": "null only for runs recorded without measurement (stopReason setup-failed or configuration-aborted)."
+        },
+        "schema": {"const": "xebench-raw"},
+        "schemaVersion": {"const": 1},
+        "harnessVersion": {"const": "xebench-0.6-reference"},
+        "engine": {"$ref": "#/$defs/label"},
+        "engineVersion": {"type": "string", "minLength": 1},
+        "backend": {"const": "cpu"},
+        "observedBackend": {"const": null, "description": "Actual backend execution is not observed; unknown stays null."},
+        "platform": {"const": "android"},
+        "model": {"$ref": "#/$defs/label"},
+        "quant": {"$ref": "#/$defs/label"},
+        "modelFile": {"$ref": "#/$defs/modelFile"},
+        "configuration": {"$ref": "#/$defs/configuration"},
+        "configurationRunId": {"$ref": "#/$defs/label"},
+        "protocol": {
+          "type": "object",
+          "description": "Open to additive fields (run kind, sampling, order) from later protocol work.",
+          "required": [
+            "version",
+            "nColdRuns",
+            "cooldownSec",
+            "promptLabel",
+            "prompt",
+            "maxDecodeTokens",
+            "nThreads",
+            "nCtx",
+            "coldDefinition",
+            "readinessTimeoutSec",
+            "measurementKind",
+            "warmRequests",
+            "processRestartBetweenRepetitions"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "version": {"const": "cpu-reference-v2"},
+            "nColdRuns": {"type": "integer", "minimum": 1, "maximum": 20},
+            "cooldownSec": {"type": "integer", "minimum": 0, "maximum": 300},
+            "promptLabel": {"type": "string", "minLength": 1},
+            "prompt": {"type": "string", "minLength": 1},
+            "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+            "nThreads": {"type": "integer", "minimum": 1, "maximum": 32},
+            "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768},
+            "coldDefinition": {"type": "string", "minLength": 1},
+            "readinessTimeoutSec": {"type": "integer", "minimum": 10, "maximum": 900},
+            "measurementKind": {"const": "fresh-instance-first-request"},
+            "warmRequests": {"const": "not-measured"},
+            "processRestartBetweenRepetitions": {"const": false}
+          }
+        },
+        "status": {"enum": ["running", "complete", "failed"]},
+        "coldRuns": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 20,
+          "items": {
+            "oneOf": [
+              {"$ref": "#/$defs/completeAttemptV2"},
+              {"$ref": "#/$defs/failedAttemptV2"},
+              {"$ref": "#/$defs/skippedAttempt"}
+            ]
+          }
+        },
+        "summary": {
+          "type": "object",
+          "required": ["loadMs", "ttftMs", "prefillTps", "decodeTps"],
+          "additionalProperties": false,
+          "properties": {
+            "loadMs": {"$ref": "#/$defs/optionalAggregate"},
+            "ttftMs": {"$ref": "#/$defs/optionalAggregate"},
+            "prefillTps": {"$ref": "#/$defs/optionalAggregate"},
+            "decodeTps": {"$ref": "#/$defs/optionalAggregate"}
+          }
+        },
+        "guardsPassed": {
+          "enum": [false, null],
+          "description": "Never true: backend execution is unverified even when conditionVerdict passes."
+        },
+        "guardNotes": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "conditionPolicy": {"$ref": "#/$defs/conditionPolicyV2"},
+        "repetitionsPlanned": {"type": "integer", "minimum": 1, "maximum": 20},
+        "stopReason": {
+          "enum": [
+            null,
+            "repetition-failed",
+            "readiness-timeout",
+            "condition-probe-pending",
+            "cleanup-failed",
+            "configuration-aborted",
+            "setup-failed"
+          ]
+        },
+        "runOrder": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/runOrder"}]},
+        "chargingPolicy": {
+          "type": "object",
+          "required": ["version", "publicationRequires", "effect"],
+          "additionalProperties": false,
+          "properties": {
+            "version": {"const": "charging-policy-v1"},
+            "publicationRequires": {"const": "external-power-disconnected"},
+            "effect": {"const": "publication-eligibility-only"}
+          }
+        },
+        "conditionVerdict": {
+          "type": "object",
+          "required": ["status", "reasons", "charging"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {"enum": ["pass", "fail", "unverified"]},
+            "reasons": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+            "charging": {"enum": ["satisfied", "violated", "unknown"]}
+          }
+        }
+      },
+      "description": "Protocol cpu-reference-v2 (harness xebench-0.6-reference): readiness-gated, sampled repetitions under run-conditions-v2 and charging-policy-v1 (docs/RUN-CONDITIONS.md)."
+    },
+    "completeAttemptV2": {
+      "type": "object",
+      "description": "A successful repetition: metrics are flattened beside runIndex/conditions/status.",
+      "required": [
+        "runIndex",
+        "status",
+        "loadMs",
+        "ttftMs",
+        "promptTokens",
+        "prefillTps",
+        "prefillMethod",
+        "decodeTokens",
+        "decodeTps",
+        "decodeMethod",
+        "cooldownMs",
+        "readiness",
+        "instance",
+        "conditions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 0},
+        "conditions": {"$ref": "#/$defs/attemptConditionsV2"},
+        "status": {"const": "complete"},
+        "loadMs": {"$ref": "#/$defs/nonNegative"},
+        "ttftMs": {"$ref": "#/$defs/nonNegative"},
+        "promptTokens": {"$ref": "#/$defs/tokenCount"},
+        "prefillTps": {"$ref": "#/$defs/nonNegative"},
+        "prefillMethod": {"$ref": "#/$defs/measureMethod"},
+        "decodeTokens": {"$ref": "#/$defs/tokenCount"},
+        "decodeTps": {"$ref": "#/$defs/positive"},
+        "decodeMethod": {"$ref": "#/$defs/measureMethod"},
+        "engineInternal": {"$ref": "#/$defs/engineInternal"},
+        "cooldownMs": {"type": "integer", "minimum": 0},
+        "readiness": {"$ref": "#/$defs/readiness"},
+        "instance": {"$ref": "#/$defs/instance"}
+      }
+    },
+    "failedAttemptV2": {
+      "type": "object",
+      "required": ["runIndex", "status", "error", "metrics", "cooldownMs", "readiness", "instance", "conditions"],
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 0},
+        "conditions": {"$ref": "#/$defs/attemptConditionsV2"},
+        "status": {"const": "failed"},
+        "error": {"$ref": "#/$defs/attemptError"},
+        "metrics": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/metrics"}]},
+        "cleanupError": {
+          "type": "object",
+          "required": ["phase", "message"],
+          "additionalProperties": false,
+          "properties": {"phase": {"const": "release"}, "message": {"type": "string"}}
+        },
+        "cooldownMs": {"type": "integer", "minimum": 0},
+        "readiness": {"$ref": "#/$defs/readiness"},
+        "instance": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/instance"}]}
+      }
+    },
+    "skippedAttempt": {
+      "type": "object",
+      "description": "A repetition that never loaded a model because readiness timed out.",
+      "required": ["runIndex", "status", "reason", "cooldownMs", "readiness", "instance", "conditions"],
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 0},
+        "status": {"const": "skipped"},
+        "reason": {"const": "readiness-timeout"},
+        "cooldownMs": {"type": "integer", "minimum": 0},
+        "readiness": {"$ref": "#/$defs/readiness"},
+        "instance": {"const": null},
+        "conditions": {"$ref": "#/$defs/attemptConditionsV2"}
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "required": [
+        "status",
+        "waitedMs",
+        "polls",
+        "timeoutSec",
+        "baselineBatteryTempC",
+        "headroomApplied",
+        "notReady",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"enum": ["ready", "timeout", "probe-pending"]},
+        "waitedMs": {"type": "number", "minimum": 0},
+        "polls": {"type": "integer", "minimum": 1},
+        "timeoutSec": {"type": "integer", "minimum": 10, "maximum": 900},
+        "baselineBatteryTempC": {"type": ["number", "null"]},
+        "headroomApplied": {"type": "boolean"},
+        "notReady": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 1}},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "instance": {
+      "type": "object",
+      "required": ["kind", "request", "processInstanceId", "modelLoadsBeforeInProcess"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"const": "fresh-instance"},
+        "request": {"const": "first-request-on-instance"},
+        "processInstanceId": {"type": "string", "pattern": "^[a-z0-9]{1,16}-[a-z0-9]{1,16}$"},
+        "modelLoadsBeforeInProcess": {"type": "integer", "minimum": 0}
+      }
+    },
+    "runOrder": {
+      "type": "object",
+      "required": ["method", "seed", "seedSource", "order", "position"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {"const": "mulberry32-fisher-yates-v1"},
+        "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "seedSource": {"enum": ["configured", "generated"]},
+        "order": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/label"}},
+        "position": {"type": "integer", "minimum": 0}
+      }
+    },
+    "conditionPolicyV2": {
+      "type": "object",
+      "description": "Thresholds are fixed per version; the validator requires the published values.",
+      "required": ["version", "required", "readiness", "run", "memory"],
+      "additionalProperties": true,
+      "properties": {"version": {"const": "run-conditions-v2"}}
+    },
+    "attemptConditionsV2": {
+      "type": "object",
+      "description": "Readiness endpoint, sampled run and after endpoint. Open to additive fields.",
+      "required": ["before", "beforeAssessment", "during", "duringAssessment", "after", "afterAssessment"],
+      "additionalProperties": true,
+      "properties": {
+        "before": {"$ref": "#/$defs/conditionSnapshot"},
+        "beforeAssessment": {"$ref": "#/$defs/conditionAssessment"},
+        "during": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/monitor"}]},
+        "duringAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]},
+        "after": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionSnapshot"}]},
+        "afterAssessment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/conditionAssessment"}]}
+      }
+    },
+    "monitor": {
+      "type": "object",
+      "required": [
+        "status",
+        "intervalMs",
+        "startedElapsedMs",
+        "stoppedElapsedMs",
+        "ticks",
+        "dropped",
+        "expired",
+        "maxSampleCostMs",
+        "totalSampleCostMs",
+        "summary",
+        "samples"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "status": {"enum": ["complete", "unavailable", "busy", "timeout", "stuck", "error", "not-running"]},
+        "intervalMs": {"type": ["number", "null"], "minimum": 0},
+        "startedElapsedMs": {"type": ["number", "null"], "minimum": 0},
+        "stoppedElapsedMs": {"type": ["number", "null"], "minimum": 0},
+        "ticks": {"type": ["integer", "null"], "minimum": 0},
+        "dropped": {"type": ["integer", "null"], "minimum": 0},
+        "expired": {"type": ["boolean", "null"]},
+        "maxSampleCostMs": {"type": ["number", "null"], "minimum": 0},
+        "totalSampleCostMs": {"type": ["number", "null"], "minimum": 0},
+        "summary": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["samples", "incompleteSamples", "failures", "maxGapMs", "externalPower"],
+          "properties": {
+            "samples": {"type": "integer", "minimum": 0},
+            "incompleteSamples": {"type": "integer", "minimum": 0},
+            "failures": {"type": "array", "items": {"type": "string"}},
+            "maxGapMs": {"type": ["number", "null"], "minimum": 0},
+            "externalPower": {
+              "type": "object",
+              "required": ["connected", "disconnected", "unknown"],
+              "additionalProperties": false,
+              "properties": {
+                "connected": {"type": "integer", "minimum": 0},
+                "disconnected": {"type": "integer", "minimum": 0},
+                "unknown": {"type": "integer", "minimum": 0}
+              }
+            }
+          }
+        },
+        "samples": {"type": "array", "maxItems": 30, "items": {"$ref": "#/$defs/conditionSnapshot"}}
+      }
+    }
   }
 }

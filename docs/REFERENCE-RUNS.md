@@ -93,6 +93,20 @@ Per-attempt conditions, `conditionPolicy`, `protocol` and `configuration` accept
 additional fields. Records from apps built before condition snapshots omit all
 condition evidence and keep `guardsPassed=null`; a mix is rejected.
 
+`protocol.version` selects the schema branch. `cpu-reference-v1` records keep the
+rules above unchanged (frozen fixture `tests/fixtures/raw-session/app-emitted-v1.json`).
+`cpu-reference-v2` records (harness `xebench-0.6-reference`) must also carry
+readiness, sampling, instance, order and verdict evidence. For these, the validator:
+
+- checks `status` against `stopReason`: a skipped repetition ends a
+  `readiness-timeout` session, and unmeasured runs have no attempts and
+  `artifact: null`;
+- requires the published `run-conditions-v2` thresholds;
+- recomputes every endpoint, readiness and sampling assessment, the condition
+  verdict and its charging status from the recorded snapshots and monitor summaries,
+  so unknown evidence cannot be recorded as ready or passing;
+- reproduces the seeded run order.
+
 A rejected payload stays in `invalid-<id>.txt` beside `invalid-<id>.reason.json`
 (reason codes, JSON Pointer paths, messages); the manifest lists `rejections`.
 A retrieved device file is stored as retrieved, with no added newline. Its reason

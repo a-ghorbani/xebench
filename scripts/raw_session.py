@@ -251,15 +251,27 @@ class _Validator:
             return []
         if matches > 1:
             return [reason("schema.one-of", path, "Matches more than one alternative")]
-        # Report the alternative selected by its status/type discriminator when
-        # one exists, so reasons name the real defect instead of every branch.
+        # Report the alternative selected by its const discriminators (attempt
+        # status, session harness version) or type when one exists, so reasons
+        # name the real defect instead of every branch.
+        best, best_score, tied = None, 0, False
         for option, result in zip(options, results):
             target = self.resolve(option["$ref"]) if "$ref" in option else option
-            status = target.get("properties", {}).get("status", {})
-            if "const" in status:
-                if isinstance(value, dict) and value.get("status") == status["const"]:
-                    return result
-            elif isinstance(target.get("type"), str) and target["type"] != "null" and _is_type(value, target["type"]):
+            consts = {key: child["const"] for key, child in target.get("properties", {}).items()
+                      if isinstance(child, dict) and "const" in child}
+            if consts and isinstance(value, dict):
+                score = sum(1 for key, const in consts.items() if key in value and _equal(value[key], const))
+                if score > best_score:
+                    best, best_score, tied = result, score, False
+                elif score and score == best_score:
+                    tied = True
+        if best is not None and not tied:
+            return best
+        for option, result in zip(options, results):
+            target = self.resolve(option["$ref"]) if "$ref" in option else option
+            if any(isinstance(child, dict) and "const" in child for child in target.get("properties", {}).values()):
+                continue
+            if isinstance(target.get("type"), str) and target["type"] != "null" and _is_type(value, target["type"]):
                 return result
         return [reason("schema.one-of", path, "Matches no allowed alternative")]
 
@@ -323,8 +335,11 @@ def _semantic(record):
     if len(attempts) > expected:
         errors.append(reason("attempts.count", "/coldRuns",
                              f"{len(attempts)} attempts exceed the configured {expected}"))
+    v2 = protocol["version"] == "cpu-reference-v2"
     failed = [index for index, attempt in enumerate(attempts) if attempt["status"] == "failed"]
-    if status == "complete" and (failed or len(attempts) != expected):
+    if v2:
+        pass  # Status, stop reason and skipped repetitions: see _semantic_v2.
+    elif status == "complete" and (failed or len(attempts) != expected):
         errors.append(reason("status.attempts", "/status",
                              f"A complete session needs {expected} successful attempts; "
                              f"found {len(attempts) - len(failed)} of {len(attempts)}"))
@@ -353,6 +368,8 @@ def _semantic(record):
                 errors.append(reason("summary.mismatch", f"{where}/{key}",
                                      f"Reported {actual[key]!r}; repetitions give {recomputed[key]!r}"))
 
+    if v2:
+        return errors + _semantic_v2(record)
     # Apps built before condition snapshots (PR #11) omit all condition evidence;
     # a mix of present and missing evidence is never valid.
     observed = ["conditions" in attempt for attempt in attempts] + ["conditionPolicy" in record]
@@ -381,8 +398,302 @@ def _semantic(record):
     return errors
 
 
+# --- cpu-reference-v2 / run-conditions-v2 -------------------------------------
+# These mirror xebenchapp/src/harness/conditions.ts, readiness.ts, session.ts and
+# order.ts. Assessments, readiness decisions, the condition verdict and the run
+# order are recomputed from the recorded evidence, so a record cannot claim a
+# pass (or hide a failure) that its own snapshots do not support.
+
+CONDITION_POLICY_V2 = {
+    "version": "run-conditions-v2",
+    "required": ["batteryPct", "batteryTempC", "powerSaveMode", "thermalStatus", "screenOn", "foreground",
+                 "keyguardLocked", "focusLossCount"],
+    "readiness": {"mode": "wait-then-skip", "pollSec": 5, "maxThermalStatus": 0, "maxBatteryTempC": 40,
+                  "maxBatteryTempRiseC": 2, "maxThermalHeadroom": 0.8, "headroom": "applied-when-measured",
+                  "headroomConfirmMs": 1500},
+    "run": {"mode": "record-and-flag", "minBatteryPct": 50, "maxThermalStatus": 2,
+            "sampling": {"intervalMs": 1000, "maxDurationMs": 900000, "persistedSamples": 30, "maxGapFactor": 2,
+                         "signals": "cheap-native-reads-no-pss"},
+            "interruptions": "focus-loss-count"},
+    "memory": "endpoint-pss-and-sampled-rss-not-peak",
+}
+STOP_REASONS_UNMEASURED = ("configuration-aborted", "setup-failed")
+_M32 = 0xFFFFFFFF
+
+
+def _missing_required(snapshot):
+    return [key for key in CONDITION_POLICY_V2["required"] if snapshot.get(key) is None]
+
+
+def condition_failures(snapshot):
+    run, reasons = CONDITION_POLICY_V2["run"], []
+    battery, thermal = snapshot.get("batteryPct"), snapshot.get("thermalStatus")
+    if battery is not None and battery < run["minBatteryPct"]:
+        reasons.append("low-battery")
+    if thermal is not None and thermal > run["maxThermalStatus"]:
+        reasons.append("severe-thermal-state")
+    for key, bad, name in (("powerSaveMode", True, "power-saving"), ("screenOn", False, "screen-off"),
+                           ("foreground", False, "not-foreground"), ("keyguardLocked", True, "device-locked")):
+        if snapshot.get(key) is bad:
+            reasons.append(name)
+    return reasons
+
+
+def assess_conditions(snapshot):
+    reasons = condition_failures(snapshot)
+    status = "fail" if reasons else (
+        "unverified" if _missing_required(snapshot) or snapshot.get("probeStatus") != "complete" else "pass")
+    return {"status": status, "reasons": reasons}
+
+
+def assess_readiness(snapshot, baseline):
+    policy = CONDITION_POLICY_V2["readiness"]
+    reasons = [] if snapshot.get("probeStatus") == "complete" else ["probe-incomplete"]
+    reasons += [f"unknown-{key}" for key in _missing_required(snapshot)] + condition_failures(snapshot)
+    thermal, temp, headroom = snapshot.get("thermalStatus"), snapshot.get("batteryTempC"), snapshot.get("thermalHeadroom")
+    if thermal is not None and thermal > policy["maxThermalStatus"]:
+        reasons.append("thermal-not-ready")
+    if temp is not None and temp > policy["maxBatteryTempC"]:
+        reasons.append("battery-too-hot")
+    if temp is not None and baseline is not None and temp > baseline + policy["maxBatteryTempRiseC"]:
+        reasons.append("battery-not-cooled")
+    if headroom is not None and headroom > policy["maxThermalHeadroom"]:
+        reasons.append("thermal-headroom-low")
+    return list(dict.fromkeys(reasons))
+
+
+def _pending_probe(snapshot):
+    return snapshot is not None and snapshot.get("probeStatus") in ("timeout", "busy")
+
+
+def _pending_monitor(monitor):
+    return monitor is not None and monitor["status"] in ("busy", "timeout", "stuck", "error")
+
+
+def _sampled_throughout(monitor):
+    interval, start, stop = monitor["intervalMs"], monitor["startedElapsedMs"], monitor["stoppedElapsedMs"]
+    ticks, summary = monitor["ticks"], monitor["summary"]
+    if None in (interval, start, stop, ticks, summary["maxGapMs"]) or summary["samples"] < 1 or stop < start \
+            or not interval:
+        return False
+    factor = CONDITION_POLICY_V2["run"]["sampling"]["maxGapFactor"]
+    return summary["maxGapMs"] <= factor * interval and ticks >= math.floor((stop - start) / interval)
+
+
+def assess_during(monitor, before, after):
+    reasons = list(monitor["summary"]["failures"])
+    lost_before, lost_after = before.get("focusLossCount"), after.get("focusLossCount")
+    if lost_before is not None and lost_after is not None and lost_after > lost_before:
+        reasons.append("interrupted")
+    summary = monitor["summary"]
+    complete = (monitor["status"] == "complete" and monitor["expired"] is False and monitor["dropped"] == 0
+                and monitor["ticks"] == summary["samples"] and summary["incompleteSamples"] == 0
+                and _sampled_throughout(monitor) and lost_before is not None and lost_after is not None)
+    reasons = list(dict.fromkeys(reasons))
+    return {"status": "fail" if reasons else "pass" if complete else "unverified", "reasons": reasons}
+
+
+def condition_verdict(record):
+    reasons, power = {}, {"connected": 0, "disconnected": 0, "unknown": 0}
+    attempts = record["coldRuns"]
+    unverified = len(attempts) < record["repetitionsPlanned"]
+
+    def tally(charging):
+        power["connected" if charging is True else "disconnected" if charging is False else "unknown"] += 1
+
+    for attempt in attempts:
+        readiness, conditions = attempt["readiness"], attempt["conditions"]
+        unknown_only = all(item == "probe-incomplete" or item.startswith("unknown-") for item in readiness["reasons"])
+        if readiness["status"] == "timeout" and not unknown_only:
+            reasons["readiness-timeout"] = None
+        if readiness["status"] == "probe-pending" or _pending_probe(conditions["after"]) \
+                or _pending_monitor(conditions["during"]):
+            reasons["condition-probe-pending"] = None
+        if attempt["status"] != "complete":
+            unverified = True
+        for assessment in (conditions["beforeAssessment"], conditions["duringAssessment"], conditions["afterAssessment"]):
+            if assessment is None or assessment["status"] == "unverified":
+                unverified = True
+            elif assessment["status"] == "fail":
+                reasons.update(dict.fromkeys(assessment["reasons"]))
+        tally(conditions["before"].get("charging"))
+        if conditions["after"] is not None:
+            tally(conditions["after"].get("charging"))
+        if conditions["during"] is not None:
+            for key in power:
+                power[key] += conditions["during"]["summary"]["externalPower"][key]
+        if attempt["status"] != "skipped" and (conditions["during"] or {}).get("status") != "complete":
+            power["unknown"] += 1
+    status = "fail" if reasons else "unverified" if unverified or not attempts else "pass"
+    charging = "violated" if power["connected"] else (
+        "unknown" if power["unknown"] or not power["disconnected"] else "satisfied")
+    return {"status": status, "reasons": list(reasons), "charging": charging}
+
+
+def seeded_order(items, seed):
+    """mulberry32 + Fisher-Yates, bit-exact with xebenchapp/src/harness/order.ts."""
+    state = seed & _M32
+
+    def imul(a, b):
+        return (a * b) & _M32
+
+    def random():
+        nonlocal state
+        state = (state + 0x6D2B79F5) & _M32
+        value = state
+        value = imul(value ^ (value >> 15), value | 1)
+        value ^= (value + imul(value ^ (value >> 7), value | 61)) & _M32
+        return ((value ^ (value >> 14)) & _M32) / 4294967296
+
+    result = list(items)
+    for index in range(len(result) - 1, 0, -1):
+        swap = math.floor(random() * (index + 1))
+        result[index], result[swap] = result[swap], result[index]
+    return result
+
+
+def _semantic_v2(record):
+    errors = []
+    protocol, config, attempts = record["protocol"], record["configuration"], record["coldRuns"]
+    planned, status, stop = record["repetitionsPlanned"], record["status"], record["stopReason"]
+    if planned != protocol["nColdRuns"]:
+        errors.append(reason("protocol.configuration-mismatch", "/repetitionsPlanned",
+                             "repetitionsPlanned must equal protocol.nColdRuns"))
+    if protocol["readinessTimeoutSec"] != config.get("readinessTimeoutSec"):
+        errors.append(reason("protocol.configuration-mismatch", "/protocol/readinessTimeoutSec",
+                             "Protocol readinessTimeoutSec disagrees with the configuration"))
+    if record["conditionPolicy"] != CONDITION_POLICY_V2:
+        errors.append(reason("conditions.policy", "/conditionPolicy",
+                             "conditionPolicy must equal the published run-conditions-v2 values"))
+
+    # Session status, stop reason and the shape of the attempt list.
+    kinds = [attempt["status"] for attempt in attempts]
+    earlier_ok = all(kind == "complete" for kind in kinds[:-1])
+    last = attempts[-1] if attempts else None
+    if status in ("running", "complete"):
+        ok = (stop is None and all(kind == "complete" for kind in kinds) and
+              (len(attempts) == planned if status == "complete" else 0 < len(attempts) < planned))
+    elif stop in STOP_REASONS_UNMEASURED:
+        ok = not attempts
+    elif stop == "readiness-timeout":
+        ok = bool(attempts) and earlier_ok and last["status"] == "skipped"
+    elif stop == "cleanup-failed":
+        ok = bool(attempts) and earlier_ok and last["status"] == "failed" and "cleanupError" in last
+    elif stop == "condition-probe-pending":
+        ok = bool(attempts) and earlier_ok and last["status"] == "failed" and "cleanupError" not in last and (
+            last["readiness"]["status"] == "probe-pending" or _pending_probe(last["conditions"]["after"])
+            or _pending_monitor(last["conditions"]["during"]))
+    elif stop == "repetition-failed":
+        ok = bool(attempts) and earlier_ok and last["status"] == "failed" and "cleanupError" not in last \
+            and last["error"]["phase"] in ("load", "inference")
+    else:
+        ok = False
+    if not ok or (status == "failed") != (stop is not None):
+        errors.append(reason("status.attempts", "/status",
+                             f"Status {status!r} with stopReason {stop!r} disagrees with the attempts {kinds}"))
+    if (record["artifact"] is None) != (stop in STOP_REASONS_UNMEASURED):
+        errors.append(reason("status.artifact", "/artifact",
+                             "artifact is null exactly when the run was recorded without measurement"))
+
+    # Per-attempt evidence, recomputed under the published policy.
+    loads, process_ids = [], set()
+    baseline = None
+    for index, attempt in enumerate(attempts):
+        where, readiness, conditions = f"/coldRuns/{index}", attempt["readiness"], attempt["conditions"]
+        cooldown = protocol["cooldownSec"] * 1000
+        if attempt["cooldownMs"] not in ((cooldown,) if index else (0, cooldown)):
+            errors.append(reason("attempts.cooldown", f"{where}/cooldownMs",
+                                 "Repetitions after the first must follow the configured cooldown"))
+        if readiness["timeoutSec"] != protocol["readinessTimeoutSec"]:
+            errors.append(reason("readiness.inconsistent", f"{where}/readiness/timeoutSec",
+                                 "Readiness timeout disagrees with the protocol"))
+        expected_readiness = {"skipped": ("timeout",), "complete": ("ready",), "failed": ("ready", "probe-pending")}
+        if readiness["status"] not in expected_readiness[attempt["status"]]:
+            errors.append(reason("readiness.inconsistent", f"{where}/readiness/status",
+                                 f"A {attempt['status']} repetition cannot follow readiness {readiness['status']!r}"))
+        # The readiness baseline is the first ready temperature of the invocation; within
+        # one session it may only be set once and never change afterwards.
+        if baseline is not None and readiness["baselineBatteryTempC"] != baseline:
+            errors.append(reason("readiness.inconsistent", f"{where}/readiness/baselineBatteryTempC",
+                                 "The readiness baseline changed within the session"))
+        before = conditions["before"]
+        if readiness["status"] != "probe-pending":
+            recomputed = assess_readiness(before, readiness["baselineBatteryTempC"])
+            if readiness["status"] == "ready" and recomputed:
+                errors.append(reason("readiness.recomputed", f"{where}/readiness/status",
+                                     f"Recorded ready, but the before snapshot is not ready: {recomputed}"))
+            if readiness["status"] == "timeout" and recomputed != readiness["reasons"]:
+                errors.append(reason("readiness.recomputed", f"{where}/readiness/reasons",
+                                     f"Timeout reasons {readiness['reasons']} differ from the snapshot's {recomputed}"))
+            if readiness["status"] == "ready" and readiness["headroomApplied"] != (before.get("thermalHeadroom") is not None):
+                errors.append(reason("readiness.recomputed", f"{where}/readiness/headroomApplied",
+                                     "headroomApplied must reflect whether headroom was measured"))
+        if readiness["status"] == "ready":
+            baseline = readiness["baselineBatteryTempC"] if readiness["baselineBatteryTempC"] is not None \
+                else before.get("batteryTempC")
+        expected = {"beforeAssessment": assess_conditions(before),
+                    "afterAssessment": None if conditions["after"] is None else assess_conditions(conditions["after"]),
+                    "duringAssessment": None if conditions["during"] is None or conditions["after"] is None
+                    else assess_during(conditions["during"], before, conditions["after"])}
+        for key, value in expected.items():
+            if conditions[key] != value:
+                errors.append(reason("conditions.recomputed", f"{where}/conditions/{key}",
+                                     f"Recorded {conditions[key]} but the evidence gives {value}"))
+        monitor = conditions["during"]
+        if monitor is not None:
+            summary = monitor["summary"]
+            if len(monitor["samples"]) > summary["samples"] or summary["incompleteSamples"] > summary["samples"] or \
+                    sum(summary["externalPower"].values()) != summary["samples"]:
+                errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary",
+                                     "Monitor summary disagrees with its sample counts"))
+            missed = {item for sample in monitor["samples"] for item in condition_failures(sample)} - set(summary["failures"])
+            if missed:
+                errors.append(reason("conditions.monitor", f"{where}/conditions/during/summary/failures",
+                                     f"Persisted samples show failures missing from the summary: {sorted(missed)}"))
+        if attempt["status"] == "skipped" and (monitor is not None or conditions["after"] is not None):
+            errors.append(reason("conditions.inconsistent", f"{where}/conditions",
+                                 "A skipped repetition has no run-time or after evidence"))
+        if attempt["instance"] is not None:
+            loads.append((index, attempt["instance"]["modelLoadsBeforeInProcess"]))
+            process_ids.add(attempt["instance"]["processInstanceId"])
+    if len(process_ids) > 1:
+        errors.append(reason("instance.inconsistent", "/coldRuns",
+                             "All repetitions of a session run in one process"))
+    if any(later <= earlier for (_, earlier), (_, later) in zip(loads, loads[1:])):
+        errors.append(reason("instance.inconsistent", "/coldRuns",
+                             "Model loads within a process must increase between repetitions"))
+
+    verdict = condition_verdict(record)
+    if record["conditionVerdict"] != verdict:
+        errors.append(reason("guards.recomputed", "/conditionVerdict",
+                             f"Recorded verdict {record['conditionVerdict']} but the evidence gives {verdict}"))
+    if record["guardsPassed"] is not (False if verdict["status"] == "fail" else None):
+        errors.append(reason("guards.inconsistent", "/guardsPassed",
+                             "guardsPassed must be false exactly when the condition verdict fails"))
+    missing = sorted(set(verdict["reasons"]) - set(record["guardNotes"]))
+    if missing:
+        errors.append(reason("guards.inconsistent", "/guardNotes",
+                             f"Failed condition reasons missing from guardNotes: {missing}"))
+
+    order = record["runOrder"]
+    if order is not None:
+        ids = [run["id"] for run in config["runs"]]
+        if sorted(order["order"]) != sorted(ids) or order["position"] >= len(order["order"]) or \
+                order["order"][order["position"]] != record["configurationRunId"]:
+            errors.append(reason("order.inconsistent", "/runOrder",
+                                 "Run order must be a permutation of the configured runs with this run at position"))
+        elif seeded_order(ids, order["seed"]) != order["order"]:
+            errors.append(reason("order.recomputed", "/runOrder/order",
+                                 "Recorded order is not the seeded shuffle of the configured runs"))
+        if (order["seedSource"] == "configured") != ("orderSeed" in config) or \
+                ("orderSeed" in config and config["orderSeed"] != order["seed"]):
+            errors.append(reason("order.inconsistent", "/runOrder/seedSource",
+                                 "seedSource/seed must match the configuration's orderSeed"))
+    return errors
+
+
 def validate(record):
-    """Return a list of reasons; an empty list means the record is valid v1 evidence."""
+    """Return a list of reasons; an empty list means the record is valid schemaVersion 1 evidence."""
     if not isinstance(record, dict):
         return [reason("json.not-object", "", "A session record must be a JSON object")]
     found = _non_finite(record, "")

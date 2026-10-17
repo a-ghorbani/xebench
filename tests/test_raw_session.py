@@ -14,29 +14,36 @@ SPEC.loader.exec_module(raw_session)
 FIXTURES = ROOT / "tests/fixtures/raw-session"
 # Produced by xebenchapp/__tests__/rawSessionSchema.test.ts through runSession.
 APP = json.loads((FIXTURES / "app-emitted.json").read_text())["records"]
+# Frozen output of the cpu-reference-v1 app (PR #13); historical records must keep validating.
+LEGACY = json.loads((FIXTURES / "app-emitted-v1.json").read_text())["records"]
 
 
 def codes(record):
     return {item["code"] for item in raw_session.validate(record)}
 
 
-def mutate(name, change):
-    record = copy.deepcopy(APP[name])
+def mutate(name, change, source=None):
+    """Mutate a record; the cpu-reference-v1 rule tests below use the legacy fixture."""
+    record = copy.deepcopy((LEGACY if source is None else source)[name])
     change(record)
     return record
 
 
 class AppEmittedRecordTests(unittest.TestCase):
     def test_every_app_emitted_record_is_valid(self):
-        self.assertEqual(set(APP), {"partial", "complete", "failed", "cleanupFailed", "flagged", "probeUnavailable",
-                                    "inferenceFailed", "loadAndCleanupFailed", "nonFiniteMetrics",
-                                    "noEngineInternal", "beforeProbeBusy", "afterProbeTimeout"})
-        self.assertGreater(len(APP["inferenceFailed"]["coldRuns"][0]["error"]["message"]), 4096)
-        self.assertIsNone(APP["nonFiniteMetrics"]["coldRuns"][0]["metrics"])
-        for name, record in APP.items():
-            with self.subTest(name=name):
-                self.assertEqual(raw_session.validate(record), [])
-                self.assertEqual(raw_session.validate_text(json.dumps(record)), [])
+        self.assertEqual(set(LEGACY), {"partial", "complete", "failed", "cleanupFailed", "flagged", "probeUnavailable",
+                                       "inferenceFailed", "loadAndCleanupFailed", "nonFiniteMetrics",
+                                       "noEngineInternal", "beforeProbeBusy", "afterProbeTimeout"})
+        self.assertEqual(set(APP), set(LEGACY) | {
+            "interrupted", "monitorIncomplete", "monitorUnavailable", "monitorStuck", "monitorBusy",
+            "readinessTimeout", "orderedLaterRun", "configurationAborted", "setupFailed"})
+        for records in (APP, LEGACY):
+            self.assertGreater(len(records["inferenceFailed"]["coldRuns"][0]["error"]["message"]), 4096)
+            self.assertIsNone(records["nonFiniteMetrics"]["coldRuns"][0]["metrics"])
+            for name, record in records.items():
+                with self.subTest(name=name, protocol=record["protocol"]["version"]):
+                    self.assertEqual(raw_session.validate(record), [])
+                    self.assertEqual(raw_session.validate_text(json.dumps(record)), [])
 
     def test_valid_partial_checkpoint_and_complete_session(self):
         partial, complete = APP["partial"], APP["complete"]
@@ -172,6 +179,126 @@ class RejectionTests(unittest.TestCase):
         self.assertEqual(len(reasons), raw_session.MAX_REASONS + 1)
         self.assertEqual(reasons[-1]["code"], "reasons.truncated")
         self.assertTrue(all(set(r) == {"code", "path", "message"} for r in reasons))
+
+
+def v2(name, change):
+    return mutate(name, change, APP)
+
+
+class ConditionsV2Tests(unittest.TestCase):
+    """cpu-reference-v2 records: readiness, sampling, verdict and order are recomputed."""
+
+    def assertCodes(self, record, expected):
+        self.assertEqual(codes(record), set(expected), raw_session.validate(record))
+
+    def test_branches_are_selected_by_protocol_and_never_mixed(self):
+        self.assertEqual(APP["complete"]["protocol"]["version"], "cpu-reference-v2")
+        self.assertEqual(LEGACY["complete"]["protocol"]["version"], "cpu-reference-v1")
+        # New evidence fields are not accepted on the legacy branch, and are required on v2.
+        self.assertCodes(mutate("complete", lambda r: r.update(stopReason=None)), {"schema.additional-property"})
+        for field in ("runOrder", "repetitionsPlanned", "stopReason", "chargingPolicy", "conditionVerdict",
+                      "conditionPolicy"):
+            with self.subTest(field=field):
+                self.assertCodes(v2("complete", lambda r: r.pop(field)), {"schema.required"})
+        self.assertCodes(v2("complete", lambda r: r["coldRuns"][0].pop("readiness")), {"schema.required"})
+        # Claiming the legacy harness selects the legacy branch, which rejects the v2 evidence.
+        self.assertIn("schema.additional-property",
+                      codes(v2("complete", lambda r: r.update(harnessVersion="xebench-0.5-reference"))))
+        self.assertCodes(v2("complete", lambda r: r["protocol"].update(version="cpu-reference-v1")), {"schema.const"})
+        self.assertCodes(v2("complete", lambda r: r.update(guardsPassed=True)), {"schema.enum"})
+
+    def test_skipped_repetitions_and_stop_reasons(self):
+        skipped = APP["readinessTimeout"]["coldRuns"][-1]
+        self.assertEqual((skipped["status"], skipped["instance"], skipped["conditions"]["after"]), ("skipped", None, None))
+        self.assertCodes(v2("readinessTimeout", lambda r: r.update(stopReason="repetition-failed")), {"status.attempts"})
+        self.assertCodes(v2("readinessTimeout", lambda r: r.update(status="complete", stopReason=None)),
+                         {"status.attempts"})
+        self.assertCodes(v2("failed", lambda r: r.update(stopReason=None)), {"status.attempts"})
+        self.assertCodes(v2("failed", lambda r: r.update(stopReason="cleanup-failed")), {"status.attempts"})
+        self.assertCodes(v2("cleanupFailed", lambda r: r.update(stopReason="repetition-failed")), {"status.attempts"})
+        self.assertCodes(v2("inferenceFailed", lambda r: r.update(stopReason="condition-probe-pending")),
+                         {"status.attempts"})
+        self.assertCodes(v2("complete", lambda r: r.update(stopReason="readiness-timeout")), {"status.attempts"})
+        self.assertCodes(v2("partial", lambda r: r.update(status="failed")), {"status.attempts"})
+        # A skipped repetition never carries metrics or run-time evidence.
+        self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1].update(loadMs=17)),
+                         {"schema.additional-property"})
+        self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1]["conditions"].update(
+            after=r["coldRuns"][-1]["conditions"]["before"], afterAssessment={"status": "pass", "reasons": []})),
+            {"conditions.inconsistent"})
+        self.assertCodes(v2("readinessTimeout", lambda r: r["coldRuns"][-1].update(reason="other")), {"schema.const"})
+
+    def test_unmeasured_runs_have_no_attempts_or_artifact(self):
+        self.assertEqual(APP["configurationAborted"]["coldRuns"], [])
+        self.assertIsNone(APP["setupFailed"]["artifact"])
+        self.assertCodes(v2("complete", lambda r: r.update(artifact=None)), {"status.artifact"})
+        self.assertCodes(v2("setupFailed", lambda r: r.update(artifact=APP["complete"]["artifact"])), {"status.artifact"})
+        self.assertCodes(v2("complete", lambda r: r.update(coldRuns=[])), {"status.attempts", "summary.mismatch",
+                                                                         "guards.recomputed"})
+
+    def test_unknown_evidence_cannot_be_recorded_as_ready_or_passing(self):
+        def unknown_thermal(record):
+            before = record["coldRuns"][0]["conditions"]["before"]
+            before["thermalStatus"] = None
+            before["unavailable"].append("thermalStatus")
+        self.assertCodes(v2("complete", unknown_thermal), {"readiness.recomputed", "conditions.recomputed"})
+        # Even with assessments rewritten to hide it, the verdict cannot pass.
+        def hidden(record):
+            unknown_thermal(record)
+            record["coldRuns"][0]["readiness"].update(status="ready")
+        self.assertIn("readiness.recomputed", codes(v2("complete", hidden)))
+        self.assertCodes(v2("monitorIncomplete", lambda r: r.update(
+            conditionVerdict=dict(r["conditionVerdict"], status="pass"))), {"guards.recomputed"})
+        self.assertCodes(v2("monitorIncomplete", lambda r: r["coldRuns"][0]["conditions"].update(
+            duringAssessment={"status": "pass", "reasons": []})), {"conditions.recomputed", "guards.recomputed"})
+        self.assertCodes(v2("probeUnavailable", lambda r: r["coldRuns"][0]["readiness"].update(status="ready")),
+                         {"readiness.inconsistent", "readiness.recomputed"})
+        def no_samples(record):
+            during = record["coldRuns"][0]["conditions"]["during"]
+            during.update(samples=[], ticks=0)
+            during["summary"].update(samples=0, maxGapMs=1500,
+                                     externalPower={"connected": 0, "disconnected": 0, "unknown": 0})
+        self.assertCodes(v2("complete", no_samples), {"conditions.recomputed"})
+
+    def test_failures_cannot_be_hidden(self):
+        flagged = APP["flagged"]
+        self.assertEqual(flagged["conditionVerdict"]["reasons"], ["severe-thermal-state", "power-saving"])
+        self.assertCodes(v2("flagged", lambda r: r.update(guardsPassed=None)), {"guards.inconsistent"})
+        self.assertCodes(v2("flagged", lambda r: r.update(guardNotes=r["guardNotes"][:1])), {"guards.inconsistent"})
+        self.assertCodes(v2("flagged", lambda r: r["coldRuns"][0]["conditions"]["during"]["summary"].update(failures=[])),
+                         {"conditions.monitor", "conditions.recomputed"})
+        self.assertCodes(v2("interrupted", lambda r: r["coldRuns"][0]["conditions"]["after"].update(focusLossCount=0)),
+                         {"conditions.recomputed"})
+        self.assertCodes(v2("monitorStuck", lambda r: r.update(conditionVerdict=dict(r["conditionVerdict"],
+                         status="unverified", reasons=[]), guardsPassed=None)), {"guards.recomputed", "guards.inconsistent"})
+        self.assertCodes(v2("complete", lambda r: r["conditionPolicy"]["readiness"].update(maxBatteryTempC=60)),
+                         {"conditions.policy"})
+        self.assertCodes(v2("complete", lambda r: r.update(conditionVerdict=dict(r["conditionVerdict"],
+                                                                                 charging="unknown"))),
+                         {"guards.recomputed"})
+
+    def test_run_order_cooldown_and_instances_are_consistent(self):
+        order = APP["orderedLaterRun"]["runOrder"]
+        self.assertEqual(raw_session.seeded_order(["a", "b", "c", "d", "e"], 42), list("aecbd"))  # order.test.ts
+        self.assertEqual(raw_session.seeded_order([run["id"] for run in APP["orderedLaterRun"]["configuration"]["runs"]],
+                                                  order["seed"]), order["order"])
+        self.assertCodes(v2("orderedLaterRun", lambda r: r["runOrder"].update(seed=order["seed"] + 1)),
+                         {"order.recomputed", "order.inconsistent"})
+        self.assertCodes(v2("orderedLaterRun", lambda r: r["runOrder"].update(position=1 - order["position"])),
+                         {"order.inconsistent"})
+        self.assertCodes(v2("orderedLaterRun", lambda r: r["runOrder"].update(seedSource="generated")),
+                         {"order.inconsistent"})
+        self.assertCodes(v2("complete", lambda r: r["coldRuns"][1].update(cooldownMs=0)), {"attempts.cooldown"})
+        self.assertCodes(v2("complete", lambda r: r["coldRuns"][1]["instance"].update(modelLoadsBeforeInProcess=0)),
+                         {"instance.inconsistent"})
+        self.assertCodes(v2("complete", lambda r: r["coldRuns"][1]["instance"].update(processInstanceId="other-proc")),
+                         {"instance.inconsistent"})
+        self.assertCodes(v2("complete", lambda r: r["coldRuns"][1]["readiness"].update(baselineBatteryTempC=20)),
+                         {"readiness.inconsistent", "readiness.recomputed"})
+        self.assertCodes(v2("complete", lambda r: r.update(repetitionsPlanned=3)),
+                         {"protocol.configuration-mismatch", "status.attempts"})
+        self.assertCodes(v2("complete", lambda r: r["protocol"].update(readinessTimeoutSec=60)),
+                         {"protocol.configuration-mismatch", "readiness.inconsistent"})
 
 
 class SchemaAndCliTests(unittest.TestCase):

@@ -2,7 +2,7 @@ import * as FS from '@dr.pogodin/react-native-fs';
 import {Platform} from 'react-native';
 import bundledConfig from '../../configs/cpu-reference-v1.json';
 import {parseConfig} from './config';
-import {createSession, runSession, ReferenceSession, StopReason} from './session';
+import {runSession, ReferenceSession, unmeasuredSession} from './session';
 import {LlamaRnAdapter} from './adapters/LlamaRnAdapter';
 import {generateSeed, ORDER_METHOD, seededOrder} from './order';
 import type {ReadinessBaseline} from './readiness';
@@ -55,12 +55,8 @@ export async function runReference(log: (message: string) => void) {
     const identity = {runId, timestampIso: new Date().toISOString(), artifact: null,
       deviceInfo: {model: Platform.constants.Model, androidRelease: Platform.constants.Release}};
     // Runs that never reach measurement are still recorded, never silently dropped.
-    const recordUnmeasured = async (stopReason: StopReason, note: string) => {
-      const record = createSession(adapter, config, run, identity, runOrder);
-      record.status = 'failed';
-      record.stopReason = stopReason;
-      record.guardNotes = [...record.guardNotes, note];
-      await persist(record);
+    const recordUnmeasured = async (stopReason: 'configuration-aborted' | 'setup-failed', note: string) => {
+      await persist(unmeasuredSession(adapter, config, run, identity, runOrder, stopReason, note));
       console.log(`XEBENCH_ERROR ${run.id}: ${stopReason}`);
     };
     if (fatal) {
