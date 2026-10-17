@@ -1,5 +1,10 @@
 # ── Model weights & benchmark outputs (large / regenerated — see MODELS.md) ──
 models/
+# …but the committed model manifests (expected digests, no weights) are tracked:
+# only *-models.json directly in configs/models/, never weights or tokenizers staged there.
+!/configs/models/
+/configs/models/*
+!/configs/models/*-models.json
 results/
 *.gguf
 *.litertlm

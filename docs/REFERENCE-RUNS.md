@@ -24,11 +24,25 @@ is not flavor-aware. The application ID stays `com.xebenchapp`.
 
 ## Configure and capture
 
-Stage the GGUF named by the configuration in the app's external files directory
-(see [MODELS.md](../MODELS.md)). To customize a run, copy the bundled JSON, edit its
-model basename, quant label, threads/context, repetition, cooldown, readiness
-timeout (`readinessTimeoutSec`) or battery-rise bound (`maxBatteryTempRiseC`)
-settings, or add `orderSeed` to reproduce a recorded run order, then stage it:
+Install the app first. Then stage the pinned reference GGUF in the
+app's external files directory:
+
+```sh
+python3 scripts/stage_model.py --serial <serial>   # default: models/Llama-3.2-1B-Instruct-Q4_K_M.gguf
+```
+
+The script refuses a file whose name, size or SHA-256 differs from
+[`configs/models/reference-models.json`](../configs/models/reference-models.json).
+It also refuses when the pushed copy fails a `sha256sum` check on the device. It
+never downloads the model. [MODELS.md](../MODELS.md) gives the license terms and the
+download command for the pinned revision.
+
+To customize a run, copy the bundled JSON and edit its model basename, quant
+label, threads/context, repetition, cooldown, readiness timeout
+(`readinessTimeoutSec`) or battery-rise bound (`maxBatteryTempRiseC`) settings, or
+add `orderSeed` to reproduce a recorded run order. `stage_model.py` stages only
+models listed in the manifest. Push any other GGUF with `adb` yourself; runs with
+it are not reference runs. Then stage the configuration:
 
 ```sh
 adb -s <serial> push my-config.json /sdcard/Android/data/com.xebenchapp/files/xebench-config.json
