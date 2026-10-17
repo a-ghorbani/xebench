@@ -134,15 +134,18 @@ own column, never blended into the cold number.
 On 2026-07-18, LiteRT-LM's `Backend.GPU()` failed on **both** a Tensor G4 (Pixel 9)
 and an Adreno 740 (Galaxy S23) with `Can not find OpenCL library on this device`.
 We concluded that a stock, non-rooted Android app cannot load the vendor
-`libOpenCL.so`. **That conclusion was wrong.** An app can load `libOpenCL.so`
-once its manifest declares it with
+`libOpenCL.so`. **That conclusion was wrong** for the devices we re-tested. On
+the Galaxy S23 and POCO F8 Ultra, the app loaded `libOpenCL.so` once its
+manifest declared it with
 `<uses-native-library android:name="libOpenCL.so" android:required="false" />`.
 LiteRT-LM also needs `libvndksupport.so` declared the same way. The LiteRT-LM
-Kotlin guide has required both declarations since at least 0.14.0 (LiteRT-LM#1860).
-Our app did not declare them, so the failure was our bug, not a platform limit.
+Kotlin guide has required both declarations since 0.14.0 (LiteRT-LM#1860).
+Our app did not declare them, so on those devices the failure was our bug, not a
+platform limit.
 In 2026-10-17 spikes, ML Drift GPU ran on the S23 and the F8 Ultra with the
 declarations, and a control build without them failed again. We have not
-re-tested the Pixel 9.
+re-tested the Pixel 9 (Tensor G4), so whether it exposes `libOpenCL.so` to apps
+is still unknown.
 
 What still holds: "GPU support" in an engine's docs depends on app-side
 packaging and manifest requirements that are easy to miss. Check the engine's

@@ -92,7 +92,8 @@ android {
     // NOTE: QNN libs alone are not enough. LiteRT-LM's NPU path also needs Google's
     // published dispatch lib (libLiteRtDispatch_Qualcomm.so, from
     // com.google.ai.edge.litert:litert-npu-runtime-qualcomm or the LiteRT release
-    // zip) whose ABI matches the LiteRT-LM release's LITERT_REF. See ENGINES.md.
+    // zip) whose ABI matches the LiteRT-LM release's LITERT_REF. For the 0.14.0 pinned
+    // below use the LiteRT v2.1.6 release zip; Maven 2.3.0 pairs with 0.18.0. See ENGINES.md.
     packagingOptions {
         exclude "**/librnllama*hexagon*.so"
         jniLibs {
