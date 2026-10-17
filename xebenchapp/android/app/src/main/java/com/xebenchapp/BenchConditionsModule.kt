@@ -16,7 +16,6 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.WritableMap
-import com.facebook.react.common.LifecycleState
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -33,6 +32,8 @@ class BenchConditionsModule(private val context: ReactApplicationContext) :
 
   private class Monitor(val intervalMs: Long, val maxDurationMs: Long, val maxSamples: Int) {
     val samples = ArrayList<WritableMap>()
+    var startedElapsedMs = 0L
+    var stoppedElapsedMs = 0L
     @Volatile var stopped = false
     var expired = false
     var ticks = 0
@@ -64,9 +65,8 @@ class BenchConditionsModule(private val context: ReactApplicationContext) :
     }.getOrNull()
     return Arguments.createMap().apply {
       putDouble("timestampMs", System.currentTimeMillis().toDouble())
-      boolean("foreground") {
-        context.lifecycleState == LifecycleState.RESUMED && MainActivity.windowFocused
-      }
+      putDouble("elapsedMs", SystemClock.elapsedRealtime().toDouble())
+      boolean("foreground") { MainActivity.resumed && MainActivity.windowFocused }
       number("focusLossCount") { MainActivity.focusLosses.get().toDouble() }
       number("processUptimeMs") {
         (SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()).toDouble()
@@ -114,16 +114,28 @@ class BenchConditionsModule(private val context: ReactApplicationContext) :
 
   @ReactMethod
   fun sample(promise: Promise) {
-    // A timed-out JS caller cannot spawn additional workers on a later invocation.
-    if (!sampling.compareAndSet(false, true)) {
+    // A timed-out JS caller cannot spawn additional workers on a later invocation, and
+    // endpoint probes never run beside a registered (possibly stuck) monitor.
+    val acquired = synchronized(monitorLock) { monitor == null && sampling.compareAndSet(false, true) }
+    if (!acquired) {
       promise.resolve(Arguments.createMap().apply { putString("probeStatus", "busy") })
       return
     }
-    // PSS can be slow: keep it off the UI thread and outside measured inference.
-    thread(name = "xebench-conditions") {
-      val result = runCatching { snapshot(includePss = true) }.getOrElse { Arguments.createMap() }
+    try {
+      // PSS can be slow: keep it off the UI thread and outside measured inference.
+      thread(name = "xebench-conditions") {
+        val result = try {
+          snapshot(includePss = true)
+        } catch (_: Throwable) {
+          Arguments.createMap().apply { putString("probeStatus", "unavailable") }
+        } finally {
+          sampling.set(false)
+        }
+        promise.resolve(result)
+      }
+    } catch (_: Throwable) {
       sampling.set(false)
-      promise.resolve(result)
+      promise.resolve(Arguments.createMap().apply { putString("probeStatus", "unavailable") })
     }
   }
 
@@ -143,28 +155,39 @@ class BenchConditionsModule(private val context: ReactApplicationContext) :
       val interval = intervalMs.toLong().coerceIn(250L, 60_000L)
       val duration = maxDurationMs.toLong().coerceIn(interval, 3_600_000L)
       val active = Monitor(interval, duration, (duration / interval + 2).toInt())
+      active.startedElapsedMs = SystemClock.elapsedRealtime()
       active.worker = thread(name = "xebench-monitor", start = false) {
-        val start = SystemClock.elapsedRealtime()
-        while (!active.stopped) {
-          try {
-            Thread.sleep(active.intervalMs)
-          } catch (_: InterruptedException) {
-            break
+        val start = active.startedElapsedMs
+        var first = true
+        try {
+          while (!active.stopped) {
+            // The first sample is immediate, so the start of load is covered.
+            if (!first) {
+              try {
+                Thread.sleep(active.intervalMs)
+              } catch (_: InterruptedException) {
+                break
+              }
+            }
+            first = false
+            if (active.stopped) break
+            if (SystemClock.elapsedRealtime() - start > active.maxDurationMs) {
+              active.expired = true
+              break
+            }
+            val began = System.nanoTime()
+            val sample = runCatching { snapshot(includePss = false) }
+              .getOrElse { Arguments.createMap().apply { putString("probeStatus", "unavailable") } }
+            val cost = System.nanoTime() - began
+            synchronized(active) {
+              active.ticks++
+              active.totalCostNs += cost
+              active.maxCostNs = maxOf(active.maxCostNs, cost)
+              if (active.samples.size < active.maxSamples) active.samples.add(sample) else active.dropped++
+            }
           }
-          if (active.stopped) break
-          if (SystemClock.elapsedRealtime() - start > active.maxDurationMs) {
-            active.expired = true
-            break
-          }
-          val began = System.nanoTime()
-          val sample = runCatching { snapshot(includePss = false) }.getOrElse { Arguments.createMap() }
-          val cost = System.nanoTime() - began
-          synchronized(active) {
-            active.ticks++
-            active.totalCostNs += cost
-            active.maxCostNs = maxOf(active.maxCostNs, cost)
-            if (active.samples.size < active.maxSamples) active.samples.add(sample) else active.dropped++
-          }
+        } finally {
+          synchronized(active) { active.stoppedElapsedMs = SystemClock.elapsedRealtime() }
         }
       }
       monitor = active
@@ -193,6 +216,8 @@ class BenchConditionsModule(private val context: ReactApplicationContext) :
       synchronized(active) {
         result.putString("status", "stopped")
         result.putDouble("intervalMs", active.intervalMs.toDouble())
+        result.putDouble("startedElapsedMs", active.startedElapsedMs.toDouble())
+        result.putDouble("stoppedElapsedMs", active.stoppedElapsedMs.toDouble())
         result.putInt("ticks", active.ticks)
         result.putInt("dropped", active.dropped)
         result.putBoolean("expired", active.expired)

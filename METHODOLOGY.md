@@ -115,8 +115,9 @@ apples-to-apples even where tok/s provenance differs.
   (`load() → benchOnce() → release()`) inside a warm app process — *not* an app
   restart. This is stated on every record (`protocol.coldDefinition`), because
   "cold" is otherwise ambiguous and the difference is real.
-- **30 s cooldown, then bounded thermal readiness, before each later repetition**
-  (and before the first repetition of later runs). Readiness timeout skips the
+- **30 s cooldown, then bounded thermal readiness, before every repetition**
+  (the first repetition of each run cools down after model hashing). Readiness
+  timeout skips the
   repetition; it is never a pass. Each record identifies the measurement as the
   first request on a fresh instance and carries a per-process ID, prior model loads
   in that process and process uptime. Warm requests and per-repetition process
@@ -128,7 +129,8 @@ links to tests are in [RUN-CONDITIONS.md](docs/RUN-CONDITIONS.md#rule-traceabili
 ### 5. Run conditions are gated, sampled and flagged — no laundered numbers
 The current runner enforces [`run-conditions-v2`](docs/RUN-CONDITIONS.md): a
 repetition starts only after measured readiness (thermal status, battery
-temperature, headroom where supported, battery, power saving, screen, focus, lock),
+temperature, headroom when the API returns a value, battery, power saving, screen,
+focus, lock),
 then native samples are taken once per second during load and inference. Endpoint
 or sampled failures and focus interruptions are flagged (`guardsPassed=false`);
 flagged repetitions stay in the summary rather than being gated out.

@@ -15,6 +15,16 @@ class MainActivity : ReactActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
   }
 
+  override fun onResume() {
+    super.onResume()
+    resumed = true
+  }
+
+  override fun onPause() {
+    resumed = false
+    super.onPause()
+  }
+
   override fun onWindowFocusChanged(hasFocus: Boolean) {
     super.onWindowFocusChanged(hasFocus)
     // Counted on the UI thread so interruptions between condition samples remain visible.
@@ -23,6 +33,8 @@ class MainActivity : ReactActivity() {
   }
 
   companion object {
+    // Volatile flags written on the UI thread and read by background condition samplers.
+    @Volatile var resumed = false
     @Volatile var windowFocused = false
     val focusLosses = AtomicInteger(0)
   }

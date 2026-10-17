@@ -4,11 +4,12 @@ import configData from '../configs/cpu-reference-v1.json';
 import type {SingleRunMetrics} from '../src/harness/types';
 import * as conditions from '../src/harness/conditions';
 
-const healthyConditions = {timestampMs: 100, batteryPct: 80, batteryTempC: 30, charging: false,
+const healthyConditions = {timestampMs: 100, elapsedMs: 1000, batteryPct: 80, batteryTempC: 30, charging: false,
   powerSaveMode: false, thermalStatus: 0, thermalHeadroom: 0.3, screenOn: true, foreground: true,
   keyguardLocked: false, focusLossCount: 0, processUptimeMs: 5000, rssMb: 200, pssMb: 100};
 const stoppedMonitor = (samples: object[] = [healthyConditions], extra: object = {}) => conditions.normalizeMonitor({
-  status: 'stopped', intervalMs: 1000, ticks: samples.length, dropped: 0, expired: false,
+  status: 'stopped', intervalMs: 1000, startedElapsedMs: 1000, stoppedElapsedMs: 1500,
+  ticks: samples.length, dropped: 0, expired: false,
   maxSampleCostMs: 1, totalSampleCostMs: 1, samples, ...extra});
 
 // Healthy measured evidence by default; individual tests override specific native responses.
@@ -222,7 +223,9 @@ test('unavailable probes never satisfy readiness, so nothing is measured', async
   expect(engine.load).not.toHaveBeenCalled();
   expect(result.coldRuns[0]).toMatchObject({status: 'skipped', readiness: {status: 'timeout', polls: 37}});
   expect(result.coldRuns[0].conditions.beforeAssessment.status).toBe('unverified');
-  expect(result.conditionVerdict.status).toBe('fail');
+  // Unknown evidence is neither a pass nor an observed failure.
+  expect(result).toMatchObject({status: 'failed', stopReason: 'readiness-timeout', guardsPassed: null,
+    conditionVerdict: {status: 'unverified', reasons: []}});
 });
 
 test('incomplete during-run coverage keeps the verdict unverified, never pass', async () => {
@@ -261,7 +264,8 @@ test.each(['busy', 'timeout'] as const)('a %s monitor start aborts before loadin
   // A late-started monitor gets one bounded stop attempt; a busy one belongs to earlier work.
   expect(conditions.stopMonitor).toHaveBeenCalledTimes(status === 'timeout' ? 1 : 0);
   expect(persist).toHaveBeenCalledTimes(1);
-  expect(persist.mock.calls[0][0]).toMatchObject({status: 'failed', stopReason: 'condition-probe-pending'});
+  expect(persist.mock.calls[0][0]).toMatchObject({status: 'failed', stopReason: 'condition-probe-pending',
+    guardsPassed: false, conditionVerdict: {status: 'fail', reasons: ['condition-probe-pending']}});
 });
 
 test.each(['stuck', 'timeout', 'error'] as const)('a %s monitor stop aborts after release and persistence', async status => {
@@ -272,7 +276,10 @@ test.each(['stuck', 'timeout', 'error'] as const)('a %s monitor stop aborts afte
   expect(engine.load).toHaveBeenCalledTimes(1);
   expect(engine.release).toHaveBeenCalledTimes(1);
   expect(persist.mock.calls[0][0]).toMatchObject({status: 'failed', stopReason: 'condition-probe-pending',
-    coldRuns: [{status: 'failed', error: {phase: 'conditions'}}]});
+    coldRuns: [{status: 'failed', error: {phase: 'conditions'}, conditions: {after: null}}],
+    conditionVerdict: {status: 'fail', reasons: ['condition-probe-pending']}});
+  // No endpoint probe runs beside a monitor that may still be sampling.
+  expect(conditions.readConditions).toHaveBeenCalledTimes(1);
 });
 
 test('records fresh-instance identity, process loads, run order and the charging policy', async () => {
@@ -326,7 +333,8 @@ test.each(['before', 'after'])('a late %s probe aborts measurement and still per
     expect(engine.load).toHaveBeenCalledTimes(endpoint === 'before' ? 0 : 1);
     expect(engine.release).toHaveBeenCalledTimes(1);
     expect(persist).toHaveBeenCalledTimes(1);
-    expect(persist.mock.calls[0][0].status).toBe('failed');
+    expect(persist.mock.calls[0][0]).toMatchObject({status: 'failed',
+      conditionVerdict: {status: 'fail', reasons: ['condition-probe-pending']}});
     expect(await outcome).toMatch(/probe.*abort/i);
     await jest.advanceTimersByTimeAsync(200);
     expect(pending).toBe(false);
@@ -346,4 +354,30 @@ test('a still-busy native sampler blocks a later invocation from loading a model
   expect(persist.mock.calls[0][0]).toMatchObject({stopReason: 'condition-probe-pending',
     coldRuns: [{status: 'failed', readiness: {status: 'probe-pending'}}]});
   expect(engine.release).toHaveBeenCalledTimes(1);
+});
+
+test('a null headroom reading gets one confirmation poll before readiness accepts it', async () => {
+  jest.mocked(conditions.readConditions)
+    .mockResolvedValueOnce(conditions.normalizeConditions({...healthyConditions, thermalHeadroom: null}))
+    .mockResolvedValueOnce(conditions.normalizeConditions({...healthyConditions, thermalHeadroom: null}));
+  const sleep = jest.fn(noSleep);
+  const result = await runSession(adapter(), one, config.runs[0], identity, async () => {}, sleep);
+  expect(sleep.mock.calls).toEqual([[1500]]);
+  expect(result.coldRuns[0].readiness).toMatchObject({status: 'ready', polls: 2, headroomApplied: false});
+});
+
+test('a headroom reading on confirmation is applied to readiness', async () => {
+  jest.mocked(conditions.readConditions)
+    .mockResolvedValueOnce(conditions.normalizeConditions({...healthyConditions, thermalHeadroom: null}))
+    .mockResolvedValueOnce(conditions.normalizeConditions({...healthyConditions, thermalHeadroom: 0.95}))
+    .mockImplementation(async () => conditions.normalizeConditions(healthyConditions));
+  const result = await runSession(adapter(), one, config.runs[0], identity, async () => {}, noSleep);
+  expect(result.coldRuns[0].readiness).toMatchObject({status: 'ready', polls: 3, headroomApplied: true,
+    notReady: {'thermal-headroom-low': 1}});
+});
+
+test('charging cannot be satisfied when the run itself was not sampled', async () => {
+  jest.mocked(conditions.startMonitor).mockResolvedValue('unavailable');
+  const result = await runSession(adapter(), one, config.runs[0], identity, async () => {});
+  expect(result.conditionVerdict.charging).toBe('unknown');
 });

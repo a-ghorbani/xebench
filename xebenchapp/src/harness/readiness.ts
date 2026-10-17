@@ -13,6 +13,8 @@ export interface ReadinessResult {
   polls: number;
   timeoutSec: number;
   baselineBatteryTempC: number | null;
+  /** Whether a measured thermal headroom took part in the ready decision. */
+  headroomApplied: boolean;
   /** Count of polls that reported each not-ready reason. */
   notReady: Record<string, number>;
   /** Reasons from the final poll; empty only when ready. */
@@ -33,14 +35,22 @@ export async function awaitReadiness(
   const started = now();
   const notReady: Record<string, number> = {};
   const baselineBatteryTempC = baseline.batteryTempC;
+  let confirmedHeadroom = false;
   for (let polls = 1; ; polls++) {
     const snapshot = await readConditions();
     const waitedMs = Math.max(0, now() - started);
     const finish = (status: ReadinessResult['status'], reasons: string[]) => ({snapshot, result: {
-      status, waitedMs, polls, timeoutSec, baselineBatteryTempC, notReady, reasons,
+      status, waitedMs, polls, timeoutSec, baselineBatteryTempC,
+      headroomApplied: snapshot.thermalHeadroom !== null, notReady, reasons,
     }});
     if (probePending(snapshot)) return finish('probe-pending', ['probe-pending']);
     const {ready, reasons} = assessReadiness(snapshot, baseline.batteryTempC);
+    if (ready && snapshot.thermalHeadroom === null && !confirmedHeadroom) {
+      // Bounded: at most one extra poll per readiness wait.
+      confirmedHeadroom = true;
+      await sleep(CONDITION_POLICY.readiness.headroomConfirmMs);
+      continue;
+    }
     if (ready) {
       if (baseline.batteryTempC === null) baseline.batteryTempC = snapshot.batteryTempC;
       return finish('ready', []);

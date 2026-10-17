@@ -6,6 +6,7 @@ import {createSession, runSession, ReferenceSession, StopReason} from './session
 import {LlamaRnAdapter} from './adapters/LlamaRnAdapter';
 import {generateSeed, ORDER_METHOD, seededOrder} from './order';
 import type {ReadinessBaseline} from './readiness';
+import {stopMonitor} from './conditions';
 
 let sequence = 0;
 
@@ -25,9 +26,12 @@ export async function runReference(log: (message: string) => void) {
   const runs = seededOrder(config.runs, seed);
   const order = runs.map(run => run.id);
   log(`Configuration ${config.id}: ${runs.length} CPU run(s); order seed ${seed}: ${order.join(', ')}`);
+  // Reclaim a monitor orphaned by an earlier invocation (e.g. a JS reload); a stuck one
+  // stays registered and makes this configuration abort with recorded evidence.
+  const leftover = await stopMonitor();
+  if (leftover.status !== 'not-running') log(`Condition monitor before start: ${leftover.status}`);
   const baseline: ReadinessBaseline = {batteryTempC: null};
   let fatal: Error | null = null;
-  let measured = false;
   for (const [position, run] of runs.entries()) {
     const modelPath = `${root}/${run.modelFile}`;
     const runId = `${Date.now()}-${sequence++}-${Math.random().toString(36).slice(2)}`;
@@ -72,12 +76,17 @@ export async function runReference(log: (message: string) => void) {
       log(`${run.id}: hashing model before measurement…`);
       artifact = {sha256: await FS.hash(modelPath, 'sha256'), sizeBytes: (await FS.stat(modelPath)).size};
     } catch {
-      await recordUnmeasured('setup-failed', 'Model artifact could not be read');
+      try {
+        await recordUnmeasured('setup-failed', 'Model artifact could not be read');
+      } catch (failure) {
+        fatal = failure instanceof Error ? failure : new Error(String(failure));
+      }
       continue;
     }
     try {
       const result = await runSession(adapter, config, run, {...identity, artifact}, persist, undefined, {
-        runOrder, baseline, initialCooldown: measured,
+        // Every run cools down after model hashing, including the first.
+        runOrder, baseline, initialCooldown: true,
       });
       if (result.status === 'failed') {
         console.log(`XEBENCH_ERROR ${run.id}: see session evidence`);
@@ -86,7 +95,6 @@ export async function runReference(log: (message: string) => void) {
       // Cleanup, probe or persistence failures make later native work unsafe or unrecordable.
       fatal = failure instanceof Error ? failure : new Error(String(failure));
     }
-    measured = true;
   }
   if (fatal) {
     throw fatal;

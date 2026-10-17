@@ -7,15 +7,15 @@ backend execution, quality or cross-device comparability.
 
 ## Per-repetition sequence
 
-1. **Cooldown:** a fixed `cooldownSec` sleep before every repetition except the
-   first of a configuration invocation, including the first repetition of later runs.
+1. **Cooldown:** a fixed `cooldownSec` sleep before every repetition, including the
+   first repetition of each run (after its model has been hashed).
 2. **Readiness:** native snapshots are polled every 5 s until ready, for at most
    `readinessTimeoutSec` (default 180 s, configurable from 10 to 900 s). The final
    ready snapshot is the `before` endpoint. On timeout the repetition is recorded
    as `skipped` (`readiness-timeout`), nothing is loaded, and the session stops.
-3. **Sampling:** a native background thread samples once per second from just
-   before `load()` until `benchOnce()` returns. No JS-bridge sampling call happens
-   between the start of load and the end of inference.
+3. **Sampling:** a native background thread samples immediately and then once per
+   second from just before `load()` until `benchOnce()` returns. No JS-bridge
+   sampling call happens between the start of load and the end of inference.
 4. **After endpoint:** sampling stops, then the `after` snapshot (with PSS) is taken
    before the engine is released, and the checkpoint is saved.
 
@@ -28,7 +28,9 @@ Ready requires a complete probe, every required signal measured, no run-time fai
 - battery temperature at most 40 °C, and at most 2 °C above the first ready reading
   of the configuration invocation (the baseline is shared across its runs);
 - thermal headroom at most 0.8 when the API returns a value. Headroom is null when
-  unsupported (API < 30), rate-limited or NaN; null is not used to pass or fail.
+  unsupported (API < 30), rate-limited or NaN (the first call can be NaN). An
+  otherwise-ready poll with null headroom is repeated once after 1.5 s; if headroom
+  is still null it is not used, and `readiness.headroomApplied` records `false`.
 
 Required signals: battery %, battery temperature, power saving, thermal status,
 screen interactive, foreground window focus, keyguard lock and the focus-loss count.
@@ -46,19 +48,24 @@ Sampling reads battery, power, thermal status/headroom, screen, lock, focus and
 `VmRSS`; it skips PSS because its page walk is comparatively expensive. Each
 record stores the native sampling cost (`maxSampleCostMs`, `totalSampleCostMs`),
 a worst-case summary over all samples, and at most 30 evenly spaced samples.
-Monitors expire after 15 minutes. Expiry, dropped or incomplete samples, or a
-missing monitor leave the repetition `unverified`. RSS includes shared mapped
-model pages; neither sampled RSS nor endpoint PSS is peak model memory.
+Coverage passes only with at least one sample, no gap above two intervals between
+monitor start, samples and stop, and at least one tick per elapsed interval.
+Monitors expire after 15 minutes. Expiry, gaps, dropped or incomplete samples, or a
+missing monitor leave the repetition `unverified`. `pssMb` and `rssMb` are MiB.
+RSS includes shared mapped model pages; neither sampled RSS nor endpoint PSS is
+peak model memory.
 
 ## Verdict and guards
 
 `conditionVerdict.status` is:
 
-- `fail` when any readiness timeout, pending probe, endpoint or sampled failure, or
-  interruption was observed (`guardsPassed=false`; reasons copied to `guardNotes`);
+- `fail` when any readiness timeout with an observed not-ready condition, pending
+  probe or monitor, endpoint or sampled failure, or interruption was observed
+  (`guardsPassed=false`; reasons copied to `guardNotes`);
 - `pass` only when every planned repetition completed, was ready, and every
   endpoint and sampling assessment passed with measured evidence;
-- `unverified` otherwise, including failed engine repetitions and incomplete coverage.
+- `unverified` otherwise, including failed engine repetitions, incomplete coverage
+  and readiness timeouts caused only by unknown evidence.
 
 `guardsPassed` is never `true`: actual backend execution is still unverified, so a
 condition pass is necessary but not sufficient.
@@ -70,7 +77,8 @@ eligibility. This is a conservative default chosen pending the owner's decision.
 avoids charging heat and charger/OEM power-path differences. The `charging`
 field means external power is connected, including a full battery on USB.
 `conditionVerdict.charging` is `satisfied` only when every endpoint and sample
-measured disconnected power; any connection is `violated`; otherwise `unknown`. It
+measured disconnected power and every measured repetition was sampled; any
+connection is `violated`; otherwise `unknown`. It
 does not affect run validity. USB-tethered captures are therefore `violated`;
 eligible runs need, for example, wireless debugging.
 
@@ -80,9 +88,11 @@ eligible runs need, for example, wireless debugging.
   stop the session (`stopReason: repetition-failed`).
 - A probe or monitor call that times out, is busy, gets stuck or rejects while
   stopping saves a failed attempt, stops sampling where possible, releases the
-  engine and aborts the configuration (`condition-probe-pending`). Native sampling
-  is single-flight, and a stuck monitor stays registered so later starts report
-  busy instead of overlapping.
+  engine and aborts the configuration (`condition-probe-pending`). Native probes
+  and the monitor exclude each other; a stuck monitor stays registered so later
+  probes and starts report busy instead of overlapping. Each invocation first stops
+  any monitor left by an earlier one. Empty or failed native results are
+  `unavailable`, never complete.
 - Release failure saves both errors and aborts the configuration (`cleanup-failed`).
 - After an abort, each remaining run is saved as a failed session with
   `configuration-aborted`; an unreadable model yields `setup-failed` (artifact

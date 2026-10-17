@@ -12,13 +12,14 @@ jest.mock('@dr.pogodin/react-native-fs', () => ({
 }));
 jest.mock('react-native', () => {
   const sample = {batteryPct: 80, batteryTempC: 30, charging: true, powerSaveMode: false, thermalStatus: 0,
-    thermalHeadroom: null, screenOn: true, foreground: true, keyguardLocked: false, focusLossCount: 0,
-    processUptimeMs: 1000, rssMb: 100, pssMb: 50, timestampMs: 1};
+    thermalHeadroom: 0.3, screenOn: true, foreground: true, keyguardLocked: false, focusLossCount: 0,
+    processUptimeMs: 1000, rssMb: 100, pssMb: 50, timestampMs: 1, elapsedMs: 1000};
   return {
     Platform: {OS: 'android', constants: {Model: 'Fixture', Release: '16'}, Version: 36},
     NativeModules: {BenchConditions: {
       sample: async () => sample, startMonitor: async () => ({status: 'started'}),
-      stopMonitor: async () => ({status: 'stopped', intervalMs: 1000, ticks: 1, dropped: 0, expired: false,
+      stopMonitor: async () => ({status: 'stopped', intervalMs: 1000, startedElapsedMs: 1000,
+        stoppedElapsedMs: 1200, ticks: 1, dropped: 0, expired: false,
         maxSampleCostMs: 1, totalSampleCostMs: 1, samples: [sample]}),
     }},
   };
@@ -123,7 +124,7 @@ test.each([false, true])('cleanup failure aborts later models after saving evide
 });
 
 test('one-token native result without timed decode is saved as failed, not zero throughput', async () => {
-  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, maxDecodeTokens: 1}));
+  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 0, maxDecodeTokens: 1}));
   const release = jest.fn(async () => {});
   jest.mocked(initLlama).mockResolvedValue({
     completion: async (_options: unknown, token: () => void) => {
@@ -178,10 +179,10 @@ test('an unreadable model is recorded as a failed run and later runs still execu
   expect(initLlama).toHaveBeenCalledTimes(1);
 });
 
-test('a later run in the configuration gets the cooldown before its first repetition', async () => {
+test('every run, including the first, cools down after model hashing', async () => {
   files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 1,
     runs: [bundled.runs[0], {...bundled.runs[0], id: 'second-model'}]}));
   await runReference(() => {});
   const records = jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
-  expect(records.map(record => record.coldRuns[0].cooldownMs)).toEqual([0, 1000]);
+  expect(records.map(record => record.coldRuns[0].cooldownMs)).toEqual([1000, 1000]);
 });

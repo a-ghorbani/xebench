@@ -161,8 +161,11 @@ export function conditionVerdict(record: Pick<ReferenceSession, 'coldRuns' | 're
   };
   for (const attempt of record.coldRuns) {
     const {readiness, conditions} = attempt;
-    if (readiness.status === 'timeout') reasons.add('readiness-timeout');
-    if (readiness.status === 'probe-pending') reasons.add('condition-probe-pending');
+    // A timeout caused only by unknown evidence is unverified, not an observed failure.
+    const unknownOnly = readiness.reasons.every(reason => reason === 'probe-incomplete' || reason.startsWith('unknown-'));
+    if (readiness.status === 'timeout' && !unknownOnly) reasons.add('readiness-timeout');
+    if (readiness.status === 'probe-pending' || (conditions.after && probePending(conditions.after)) ||
+        (conditions.during && monitorPending(conditions.during))) reasons.add('condition-probe-pending');
     if (attempt.status !== 'complete') unverified = true;
     for (const assessment of [conditions.beforeAssessment, conditions.duringAssessment, conditions.afterAssessment]) {
       if (!assessment || assessment.status === 'unverified') unverified = true;
@@ -173,6 +176,8 @@ export function conditionVerdict(record: Pick<ReferenceSession, 'coldRuns' | 're
     if (conditions.during) {
       for (const key of ['connected', 'disconnected', 'unknown'] as const) power[key] += conditions.during.summary.externalPower[key];
     }
+    // Charging can only be satisfied when the run itself was sampled.
+    if (attempt.status !== 'skipped' && conditions.during?.status !== 'complete') power.unknown++;
   }
   return {status: reasons.size ? 'fail' : unverified || !record.coldRuns.length ? 'unverified' : 'pass',
     reasons: [...reasons], charging: assessCharging(power)};
@@ -273,7 +278,8 @@ export async function runSession(
       if (monitorStart === 'started' || monitorStart === 'timeout') during = await stopMonitor();
       else if (monitorStart !== null) during = normalizeMonitor(null, monitorStart);
       if (monitorStart === 'timeout' && during && !monitorPending(during)) during = {...during, status: 'timeout'};
-      if (!probePending(before)) after = await readConditions();
+      // Never probe beside a monitor that may still be running natively.
+      if (!probePending(before) && !(during && monitorPending(during))) after = await readConditions();
       if ((after && probePending(after)) || (during && monitorPending(during))) {
         error = error ?? {phase: 'conditions', message: 'Condition probe still running'};
       }

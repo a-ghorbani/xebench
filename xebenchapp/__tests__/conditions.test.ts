@@ -9,9 +9,15 @@ jest.mock('react-native', () => ({NativeModules: {}}));
 
 afterEach(() => jest.restoreAllMocks());
 
-const healthy = {timestampMs: 100, batteryPct: 80, batteryTempC: 30, charging: false,
+const healthy = {timestampMs: 100, elapsedMs: 100, batteryPct: 80, batteryTempC: 30, charging: false,
   powerSaveMode: false, thermalStatus: 0, thermalHeadroom: 0.3, screenOn: true, foreground: true,
   keyguardLocked: false, focusLossCount: 0, processUptimeMs: 5000, rssMb: 200, pssMb: 100};
+
+test('an empty or explicitly failed native result is unavailable, not complete', () => {
+  expect(normalizeConditions({}).probeStatus).toBe('unavailable');
+  expect(normalizeConditions({probeStatus: 'unavailable', batteryPct: 80}).probeStatus).toBe('unavailable');
+  expect(assessConditions(normalizeConditions({...healthy, probeStatus: 'unavailable'})).status).toBe('unverified');
+});
 
 test('normalizes only approved fields and reports missing probes', () => {
   const snapshot = normalizeConditions({...healthy, serial: 'private'});
@@ -82,8 +88,11 @@ test('unresponsive native probe and monitor calls are bounded and reported as pe
   }
 });
 
+// Samples one second apart from an immediate first sample at monitor start.
 const monitorRaw = (samples: object[], extra: object = {}) => ({status: 'stopped', intervalMs: 1000,
-  ticks: samples.length, dropped: 0, expired: false, maxSampleCostMs: 2, totalSampleCostMs: 5, samples, ...extra});
+  startedElapsedMs: 100, stoppedElapsedMs: 100 + samples.length * 1000 - 500,
+  ticks: samples.length, dropped: 0, expired: false, maxSampleCostMs: 2, totalSampleCostMs: 5,
+  samples: samples.map((sample, index) => ({elapsedMs: 100 + index * 1000, ...sample})), ...extra});
 const before = normalizeConditions(healthy);
 
 test('during-run samples pass only with complete coverage', () => {
@@ -91,7 +100,15 @@ test('during-run samples pass only with complete coverage', () => {
   expect(monitor.summary).toMatchObject({samples: 2, maxThermalStatus: 2, incompleteSamples: 0,
     externalPower: {connected: 0, disconnected: 2, unknown: 0}});
   expect(assessDuring(monitor, before, before)).toEqual({status: 'pass', reasons: []});
-  for (const extra of [{expired: true}, {dropped: 1}, {ticks: 3}]) {
+  // Zero samples, a sampling gap, too few ticks for the duration, expiry or drops are incomplete.
+  expect(assessDuring(normalizeMonitor(monitorRaw([])), before, before).status).toBe('unverified');
+  expect(assessDuring(normalizeMonitor(monitorRaw([healthy, {...healthy, elapsedMs: 5000}])), before, before).status)
+    .toBe('unverified');
+  expect(assessDuring(normalizeMonitor(monitorRaw([healthy], {stoppedElapsedMs: 3100})), before, before).status)
+    .toBe('unverified');
+  expect(assessDuring(normalizeMonitor(monitorRaw([healthy], {stoppedElapsedMs: 900})), before, before).status)
+    .toBe('pass');
+  for (const extra of [{expired: true}, {dropped: 1}, {ticks: 3}, {startedElapsedMs: null}]) {
     expect(assessDuring(normalizeMonitor(monitorRaw([healthy], extra)), before, before).status).toBe('unverified');
   }
   expect(assessDuring(normalizeMonitor(monitorRaw([{...healthy, thermalStatus: null}])), before, before).status)

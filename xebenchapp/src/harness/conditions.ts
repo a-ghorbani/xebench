@@ -3,6 +3,8 @@ import {NativeModules} from 'react-native';
 export interface ConditionSnapshot {
   probeStatus: 'complete' | 'unavailable' | 'timeout' | 'busy';
   timestampMs: number | null;
+  /** SystemClock.elapsedRealtime at sampling; used for sample-gap checks. */
+  elapsedMs: number | null;
   batteryPct: number | null;
   batteryTempC: number | null;
   charging: boolean | null;
@@ -16,9 +18,9 @@ export interface ConditionSnapshot {
   /** Process-lifetime count of window-focus losses (interruptions between samples). */
   focusLossCount: number | null;
   processUptimeMs: number | null;
-  /** Sampled VmRSS; includes shared file-backed pages and is not peak memory. */
+  /** Sampled VmRSS in MiB; includes shared file-backed pages and is not peak memory. */
   rssMb: number | null;
-  /** Endpoint PSS only (not sampled during the run); not peak model memory. */
+  /** Endpoint PSS in MiB only (not sampled during the run); not peak model memory. */
   pssMb: number | null;
   unavailable: string[];
 }
@@ -32,7 +34,8 @@ export interface ConditionAssessment {
 export const REQUIRED_SIGNALS = ['batteryPct', 'batteryTempC', 'powerSaveMode', 'thermalStatus',
   'screenOn', 'foreground', 'keyguardLocked', 'focusLossCount'] as const;
 
-export const SAMPLING = {intervalMs: 1000, maxDurationMs: 15 * 60 * 1000, persistedSamples: 30} as const;
+export const SAMPLING = {intervalMs: 1000, maxDurationMs: 15 * 60 * 1000, persistedSamples: 30,
+  maxGapFactor: 2} as const;
 
 export const CONDITION_POLICY = {
   version: 'run-conditions-v2',
@@ -40,6 +43,8 @@ export const CONDITION_POLICY = {
   readiness: {
     mode: 'wait-then-skip', pollSec: 5, maxThermalStatus: 0, maxBatteryTempC: 40,
     maxBatteryTempRiseC: 2, maxThermalHeadroom: 0.8, headroom: 'applied-when-measured',
+    // A first headroom call can be NaN; one confirmation poll retries before accepting null.
+    headroomConfirmMs: 1500,
   },
   run: {
     mode: 'record-and-flag', minBatteryPct: 50, maxThermalStatus: 2,
@@ -58,7 +63,7 @@ export const CHARGING_POLICY = {
 } as const;
 
 const NUMBERS: Record<string, [number, number, boolean?]> = {
-  timestampMs: [0, Number.MAX_SAFE_INTEGER], batteryPct: [0, 100], batteryTempC: [-50, 150],
+  timestampMs: [0, Number.MAX_SAFE_INTEGER], elapsedMs: [0, Number.MAX_SAFE_INTEGER], batteryPct: [0, 100], batteryTempC: [-50, 150],
   thermalStatus: [0, 6, true], thermalHeadroom: [0, 100], focusLossCount: [0, Number.MAX_SAFE_INTEGER, true],
   processUptimeMs: [0, Number.MAX_SAFE_INTEGER], rssMb: [0, Number.MAX_SAFE_INTEGER],
   pssMb: [0, Number.MAX_SAFE_INTEGER],
@@ -76,8 +81,10 @@ export function normalizeConditions(raw: unknown): ConditionSnapshot {
   for (const key of BOOLEANS) {
     values[key] = typeof input[key] === 'boolean' ? input[key] as boolean : null;
   }
+  // An empty or explicitly failed native result is unavailable, never a complete probe.
   const probeStatus = input.probeStatus === 'timeout' || input.probeStatus === 'busy' ? input.probeStatus :
-    raw == null ? 'unavailable' : 'complete';
+    raw == null || input.probeStatus === 'unavailable' || Object.values(values).every(value => value === null) ?
+      'unavailable' : 'complete';
   return {...values as unknown as Omit<ConditionSnapshot, 'probeStatus' | 'unavailable'>, probeStatus,
     unavailable: Object.entries(values).filter(([, value]) => value === null).map(([key]) => key)};
 }
@@ -130,12 +137,16 @@ export interface MonitorSummary {
   maxBatteryTempC: number | null;
   minBatteryPct: number | null;
   maxRssMb: number | null;
+  /** Largest gap between monitor start, consecutive samples and stop; null if any time is unknown. */
+  maxGapMs: number | null;
   externalPower: {connected: number; disconnected: number; unknown: number};
 }
 
 export interface MonitorResult {
   status: 'complete' | 'unavailable' | 'busy' | 'timeout' | 'stuck' | 'error' | 'not-running';
   intervalMs: number | null;
+  startedElapsedMs: number | null;
+  stoppedElapsedMs: number | null;
   ticks: number | null;
   dropped: number | null;
   expired: boolean | null;
@@ -151,17 +162,30 @@ const extreme = (values: (number | null)[], pick: (...items: number[]) => number
   return known.length ? pick(...known) : null;
 };
 
-export function summarizeSamples(samples: ConditionSnapshot[]): MonitorSummary {
+function maxGap(times: (number | null)[]): number | null {
+  if (times.some(time => time === null)) return null;
+  let gap = 0;
+  for (let index = 1; index < times.length; index++) {
+    const step = (times[index] as number) - (times[index - 1] as number);
+    if (step < 0) return null;
+    gap = Math.max(gap, step);
+  }
+  return gap;
+}
+
+export function summarizeSamples(samples: ConditionSnapshot[], startedMs: number | null = null,
+  stoppedMs: number | null = null): MonitorSummary {
   const count = (value: boolean | null) => samples.filter(sample => sample.charging === value).length;
   return {
     samples: samples.length,
-    incompleteSamples: samples.filter(sample => missingRequired(sample).length).length,
+    incompleteSamples: samples.filter(sample => sample.probeStatus !== 'complete' || missingRequired(sample).length).length,
     failures: [...new Set(samples.flatMap(conditionFailures))],
     maxThermalStatus: extreme(samples.map(sample => sample.thermalStatus), Math.max),
     maxThermalHeadroom: extreme(samples.map(sample => sample.thermalHeadroom), Math.max),
     maxBatteryTempC: extreme(samples.map(sample => sample.batteryTempC), Math.max),
     minBatteryPct: extreme(samples.map(sample => sample.batteryPct), Math.min),
     maxRssMb: extreme(samples.map(sample => sample.rssMb), Math.max),
+    maxGapMs: maxGap([startedMs, ...samples.map(sample => sample.elapsedMs), stoppedMs]),
     externalPower: {connected: count(true), disconnected: count(false), unknown: count(null)},
   };
 }
@@ -181,12 +205,28 @@ export function normalizeMonitor(raw: unknown, fallback: MonitorResult['status']
     input.samples.slice(0, 10000).map(normalizeConditions) : [];
   const status = stopped ? 'complete' :
     input.status === 'stuck' || input.status === 'not-running' ? input.status : fallback;
+  const startedElapsedMs = duration(input.startedElapsedMs);
+  const stoppedElapsedMs = duration(input.stoppedElapsedMs);
   return {
-    status, intervalMs: duration(input.intervalMs), ticks: count(input.ticks), dropped: count(input.dropped),
+    status, intervalMs: duration(input.intervalMs), startedElapsedMs, stoppedElapsedMs,
+    ticks: count(input.ticks), dropped: count(input.dropped),
     expired: typeof input.expired === 'boolean' ? input.expired : null,
     maxSampleCostMs: duration(input.maxSampleCostMs), totalSampleCostMs: duration(input.totalSampleCostMs),
-    summary: summarizeSamples(samples), samples: decimate(samples, SAMPLING.persistedSamples),
+    summary: summarizeSamples(samples, startedElapsedMs, stoppedElapsedMs),
+    samples: decimate(samples, SAMPLING.persistedSamples),
   };
+}
+
+/**
+ * Coverage needs at least one sample (taken at start), no gap longer than
+ * GAP_FACTOR intervals between start, samples and stop, and the expected tick count.
+ */
+function sampledThroughout(monitor: MonitorResult): boolean {
+  const {intervalMs, startedElapsedMs, stoppedElapsedMs, ticks, summary} = monitor;
+  if (intervalMs === null || startedElapsedMs === null || stoppedElapsedMs === null || ticks === null ||
+      summary.maxGapMs === null || summary.samples < 1 || stoppedElapsedMs < startedElapsedMs) return false;
+  return summary.maxGapMs <= SAMPLING.maxGapFactor * intervalMs &&
+    ticks >= Math.floor((stoppedElapsedMs - startedElapsedMs) / intervalMs);
 }
 
 /** True when a monitor may still be running natively and could overlap later work. */
@@ -204,7 +244,7 @@ export function assessDuring(monitor: MonitorResult, before: ConditionSnapshot, 
   if (interrupted) reasons.push('interrupted');
   const complete = monitor.status === 'complete' && monitor.expired === false && monitor.dropped === 0 &&
     monitor.ticks === monitor.summary.samples && monitor.summary.incompleteSamples === 0 &&
-    before.focusLossCount !== null && after.focusLossCount !== null;
+    sampledThroughout(monitor) && before.focusLossCount !== null && after.focusLossCount !== null;
   return {status: reasons.length ? 'fail' : complete ? 'pass' : 'unverified', reasons: [...new Set(reasons)]};
 }
 
