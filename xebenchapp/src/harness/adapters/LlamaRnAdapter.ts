@@ -111,7 +111,10 @@ export class LlamaRnAdapter implements EngineAdapter {
       ...(nThreads === null ? {} : {n_threads: nThreads}),
     });
     const loadMs = monotonicNow() - t0;
-    this.lastReport = executionReport(this.ctx);
+    // Compile-time guard: if a llama.rn upgrade renames or drops these context fields,
+    // tsc fails here instead of every report silently becoming null.
+    const reported: Pick<LlamaContext, 'gpu' | 'reasonNoGPU' | 'devices' | 'androidLib' | 'systemInfo'> = this.ctx;
+    this.lastReport = executionReport(reported);
     return loadMs;
   }
 
