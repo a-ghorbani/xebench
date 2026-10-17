@@ -394,10 +394,168 @@ Recorded at build time, before any device run:
 - Installed APK identity on each device is recorded by the capture manifest
   (`appIdentity`, before and after each block).
 
-## Results
+## Results (2026-10-17)
 
-Not yet run.
+**Summary: no pre-registered verdict.** The experiment stopped early. No device
+reached the minimum of 10 pure-label repetitions per condition, so by the
+pre-registered rule every comparison below is **descriptive only**. On the
+Galaxy S23 and Pixel 9, all point estimates for decode and prefill are below 2%.
+No repetition reached a thermal status above `NONE`. The cause of the early stop
+is under "Deviations" (D1): the host's adb server hung for all phones.
+
+### What was run
+
+- APK SHA-256 `c5239553…b283d7`, as in A1.5. Every capture manifest shows the
+  installed base APK with this hash, `matched` before and after each complete
+  block. Model SHA-256 `6f85a640…611df83` on every phone, the pinned reference
+  model (#22).
+- All 8 terminal records and 19 checkpoints are valid under the build's
+  validator (`0a6eaac`). They are also valid under `main`'s validator after #23
+  (`623a3b7`). Every record cooled down before its first repetition
+  (`cooldownMs` 30000 on repetition 0), so #23's repetition-0 cooldown rule
+  accepts them as well.
+- The 8 sessions export to one evidence bundle that verifies:
+  `0f9069eb78f298168fce71410e106e7ad09e08bf55726859028c3054515ca80c`, kept
+  local. The bundle keeps `experimentChargingReadiness: "record-only"` and
+  `readiness: "record-only-experiment"`.
+- Settings used to switch A and B:
+  - S23: `global protect_battery` 0 (A) / 1 (B, "Maximum", 80% limit);
+    original value 3.
+  - Pixel 9: `secure charge_optimization_mode` 0 (A) / 1 (B, limit to 80%);
+    original value 0.
+  - POCO: HyperOS Battery → Battery protection → "Charge fully" (A) /
+    "Battery protection" (B, 80%), selected by UI taps. The secure key
+    `security_pc_secure_protect_mode_key` reads 0 / 2; the original value was 1,
+    "Intelligent charging".
+- No repetition was skipped by readiness. The longest load plus inference was
+  10.3 s, below the 120 s limit of A1.4. No repetition was excluded for
+  incomplete coverage.
+
+### Per-device comparison (descriptive only, n < 10)
+
+Δ = (median B − median A) / median A, with a percentile bootstrap 95% CI
+(10,000 resamples, seed 20261017).
+
+| Device | n A / B | Decode Δ [95% CI] | Prefill Δ [95% CI] | TTFT Δ [95% CI] | Load Δ [95% CI] | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| Galaxy S23 (SM-S911B) | 6 / 6 | −1.05% [−2.80, +1.40] | −1.59% [−2.77, +0.69] | +1.61% [−0.65, +2.85] | −0.61% [−8.58, +1.67] | descriptive only (n < 10) |
+| Pixel 9 | 3 / 4 | +0.57% [0.00, +1.38] | +0.24% [−0.44, +2.09] | −0.16% [−2.06, +0.46] | −0.32% [−37.2, +2.72] | descriptive only (n < 10) |
+| POCO F8 Ultra (25102PCBEG) | 0 / 3 | – | – | – | – | no A observed |
+
+Medians:
+- S23: decode 28.75 tok/s in A and 28.45 in B; prefill 143.3 and 141.0 tok/s.
+- Pixel 9: decode 24.48 and 24.62; prefill 150.9 and 151.3.
+- POCO, B only: decode 48.3 and prefill 206.1 tok/s.
+
+Variance ratio B/A: S23 decode 0.69 [0.12, 3.91], prefill 1.98 [0.05, 12.4];
+Pixel decode 13.2 [0.27, 3004]. These CIs are far too wide to support any
+conclusion.
+
+On the S23 the four CIs for decode, prefill and TTFT happen to lie inside ±3%.
+With 6 repetitions per condition, this is **not** the pre-registered
+"irrelevant" verdict. The S23 also shows a time trend that the pre-registered
+alternation did not fully balance:
+- the block start temperature rose from block to block (26.4 → 29.4 → 30.7 →
+  31.6 °C);
+- decode fell from about 29.4 to about 28.0 tok/s over the session;
+- the order was A, B, A, B, and the stall removed the later blocks, so B is on
+  average later in the session than A.
+
+The small negative B − A for S23 throughput is therefore consistent with time
+or temperature drift. It is not evidence that charging speeds the phone up.
+
+### Battery temperature and thermal state (secondary outcome)
+
+| Device | Start temperature A → B, Δ B−A [95% CI] | Max thermal status A / B | Max headroom median A / B |
+| --- | --- | --- | --- |
+| Galaxy S23 | 29.3 → 30.5 °C, +1.2 [−1.2, +3.6] | 0 / 0 | 0.53 / 0.56 |
+| Pixel 9 | 31.8 → 31.05 °C, −0.75 [−2.2, +3.0] | 0 / 0 | 0.58 / 0.56 |
+
+Under the A1.3 rule, "charging raises battery temperature" is **not
+supported**: neither CI lies below 0. On the S23 the difference follows the
+block order (the time trend above), not the charging state. Thermal status was
+`NONE` at every endpoint and every sample. Headroom differed by at most 0.03.
+
+### What the raw current shows (diagnostic only)
+
+Under LLM load, both phones discharged in **both** conditions. The S23
+(raw `currentNowUa`, which looks like mA) read about −1150 to −1475 while its
+status was `CHARGING`, and −1200 to −1600 while `NOT_CHARGING`. The Pixel 9 (µA,
+on AC) read about −0.37 to −0.89 A while `CHARGING` and −0.43 to −0.79 A while
+`NOT_CHARGING`. The `CHARGING` status therefore meant that some charge current
+offset part of the load, not that the battery gained charge. The charging state
+changed the physical conditions only a little, which fits the small throughput
+differences above.
+
+### Recommendation on legacy rows (pre-registered rule)
+
+The pre-registered rule applies its third branch, because there is no verdict:
+**no comparability claim at 3% resolution.**
+
+- Label legacy rows "charging state unknown, effect not ruled out".
+- Do not rank them against charging-policy-v3 rows where the difference is
+  below about 3%.
+- Descriptively, these limited data show no sign of an effect of 3% or more on
+  the S23 or Pixel 9 for this model and configuration. The POCO could not be
+  tested in A.
+
+A verdict needs a follow-up run with at least 10 repetitions per condition,
+using the hardened driver (D1). The phones should start below their charge
+limit so that A can be reached: S23 below 100% with protection 0, Pixel below
+80% (see D3).
+
+### Limitations observed
+
+- Small n. The block order was confounded with time on the S23 (see above).
+- A only exists below a charge ceiling. All three phones were at 100% by the
+  end, partly because of the stall (D1), so A was unreachable for the rest of
+  the lease.
+- On the Pixel, A repetitions happened only while the battery climbed from 78%
+  to 80%. Several repetitions changed status mid-run, which makes them "mixed"
+  (2 excluded).
 
 ## Deviations
 
-None yet.
+- **D1 — adb stall, early stop, late restore.** At about 16:39 UTC every
+  adb call on the host timed out for all three phones at once. As a result:
+  - the Pixel block 3 capture timed out;
+  - the S23 and Pixel block 4 captures ended `cleanup-failed` with 0 records;
+  - each driver's `finally` block tried to restore the setting, failed on adb,
+    then crashed on an adb timeout while logging the final battery state.
+
+  The cause is not known. It was host-wide, not specific to one phone. For
+  about 2.5 h this left the S23 with `protect_battery=0` and the POCO with
+  "Charge fully" (the Pixel's value already equalled its original). In that
+  time all three charged to 100%.
+
+  I restored by hand at about 19:15 UTC and checked each value by reading it
+  back: S23 3, Pixel 0, POCO 1 ("Intelligent charging" selected again in the
+  UI). I also force-stopped com.xebenchapp and removed the staged experiment
+  configuration from all three phones; none had one before. The repetitions
+  measured before the stall are unaffected.
+
+  The driver now restores first and retries for up to 15 min, and it never
+  crashes before writing the restore record.
+- **D2 — driver change during the lease.** The POCO switch needs a UI sequence,
+  so the driver was changed to pass each device command as one shell string.
+  The S23 and Pixel drivers had already started with the earlier version, where
+  their single commands behave the same. The POCO driver used the new version.
+- **D3 — Pixel setting semantics.** Before the run, the Pixel was at 77% with
+  `NOT_CHARGING`, Android charging state 4 ("long life") and mode 0. Probing
+  showed:
+  - mode 1 is "limit to 80%" (charging policy 4);
+  - mode 0 is the default policy.
+
+  The phone's earlier stop at 77% was its own long-life state, probably the
+  battery defender for phones that stay plugged in. It was reset by the first
+  change of the setting, and the setting cannot put it back. The Pixel reached A
+  only below 80% and reported B at 79–80% under both modes.
+- **D4 — probing before the run.** Before the drivers started, each setting was
+  switched briefly (≤ 3 min per phone, no measurements) to learn its values:
+  S23 0 → 3 → 1 → 3; Pixel 1 → 0; POCO 2 → 0 → 1 by UI. Each was back at its
+  original value before its driver started.
+- **D5 — POCO.** HyperOS has no documented adb switch for the charge limit, so
+  the UI was used (approved). The secure key above reflects the choice made in
+  the UI. Writing the key directly was not tested as a switch.
+  At 100% on AC, B gave `FULL` and A ("Charge fully") stayed `FULL`, so A could
+  not be reached. Only one B block was measured before D1.

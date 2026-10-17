@@ -46,6 +46,7 @@ MIN_PER_CONDITION, TARGET_PER_CONDITION, MAX_PAIRS = 10, 15, 8
 STATE_POLL_S, STATE_CONFIRM_POLLS, STATE_TIMEOUT_S = 10, 3, 600
 # Amendment 1: a 3-repetition block can wait up to 3 x 300 s for readiness.
 CAPTURE_TIMEOUT_S, BLOCK_RESERVE_S, MIN_BATTERY_PCT = 1500, 12 * 60, 55
+RESTORE_RETRY_S = 15 * 60
 
 
 def utc():
@@ -193,25 +194,36 @@ def main(argv=None):
         log(f"stopped: {stop}")
         write("stop", reason=stop, counts=counts(captures), elapsedMin=(time.monotonic() - started) / 60)
     finally:
+        # Restoring the device comes first and is retried: a hung adb server (seen on
+        # 2026-10-17) must not leave a charge setting changed or crash before restoring.
         restore = args.restore.replace("{original}", original)
+        after, config_restored = None, False
+        deadline = time.monotonic() + RESTORE_RETRY_S
+        while True:
+            try:
+                if after != original:
+                    device.shell(restore)
+                    after = device.shell(args.read)
+                if not config_restored:
+                    if backup is not None:
+                        temp = out / "config-restore.json"
+                        temp.write_text(backup, encoding="utf-8")
+                        device.adb("push", str(temp), f"{APP_DIR}/xebench-config.json")
+                        temp.unlink()
+                    else:
+                        device.adb("shell", "rm", "-f", f"{APP_DIR}/xebench-config.json")
+                    config_restored = True
+            except (subprocess.SubprocessError, OSError) as error:
+                log(f"restore attempt failed: {type(error).__name__}; retrying")
+            if (after == original and config_restored) or time.monotonic() > deadline:
+                break
+            time.sleep(30)
         try:
-            device.shell(restore)
-            after = device.shell(args.read)
-        except (subprocess.SubprocessError, OSError) as error:
-            after = f"restore failed: {type(error).__name__}"
-        try:
-            if backup is not None:
-                temp = out / "config-restore.json"
-                temp.write_text(backup, encoding="utf-8")
-                device.adb("push", str(temp), f"{APP_DIR}/xebench-config.json")
-                temp.unlink()
-            else:
-                device.adb("shell", "rm", "-f", f"{APP_DIR}/xebench-config.json")
-            config_restored = True
+            battery = device.battery()
         except (subprocess.SubprocessError, OSError):
-            config_restored = False
+            battery = None
         write("restore", settingOriginal=original, settingAfterRestore=after, restored=after == original,
-              configRestored=config_restored, battery=device.battery())
+              configRestored=config_restored, battery=battery)
         log(f"restored setting: {after!r} (original {original!r}); config restored: {config_restored}")
     return 0
 
