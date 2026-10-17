@@ -28,7 +28,11 @@ def mutate(name, change):
 
 class AppEmittedRecordTests(unittest.TestCase):
     def test_every_app_emitted_record_is_valid(self):
-        self.assertEqual(set(APP), {"partial", "complete", "failed", "cleanupFailed", "flagged", "probeUnavailable"})
+        self.assertEqual(set(APP), {"partial", "complete", "failed", "cleanupFailed", "flagged", "probeUnavailable",
+                                    "inferenceFailed", "loadAndCleanupFailed", "nonFiniteMetrics",
+                                    "noEngineInternal", "beforeProbeBusy", "afterProbeTimeout"})
+        self.assertGreater(len(APP["inferenceFailed"]["coldRuns"][0]["error"]["message"]), 4096)
+        self.assertIsNone(APP["nonFiniteMetrics"]["coldRuns"][0]["metrics"])
         for name, record in APP.items():
             with self.subTest(name=name):
                 self.assertEqual(raw_session.validate(record), [])
@@ -175,9 +179,48 @@ class SchemaAndCliTests(unittest.TestCase):
         raw_session.load_schema()
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / "schema.json"
-            path.write_text(json.dumps({"type": "object", "properties": {"a": {"format": "date-time"}}}))
-            with self.assertRaises(ValueError):
-                raw_session.load_schema(path)
+            for bad in ({"type": "object", "properties": {"a": {"format": "date-time"}}},
+                        {"properties": {"properties": {"format": "date-time"}}},
+                        {"type": "decimal"},
+                        {"$defs": {"a": {"type": "string"}}, "$ref": "#/$defs/a", "minLength": 1}):
+                with self.subTest(schema=bad):
+                    path.write_text(json.dumps(bad))
+                    with self.assertRaises(ValueError):
+                        raw_session.load_schema(path)
+
+    def test_pre_condition_snapshot_records_remain_valid_but_never_mixed(self):
+        def strip(record):
+            record.pop("conditionPolicy")
+            for attempt in record["coldRuns"]:
+                attempt.pop("conditions")
+        for name in ("complete", "failed", "partial"):
+            with self.subTest(name=name):
+                self.assertEqual(raw_session.validate(mutate(name, strip)), [])
+        self.assertEqual(codes(mutate("complete", lambda r: r.pop("conditionPolicy"))), {"conditions.inconsistent"})
+        self.assertEqual(codes(mutate("complete", lambda r: r["coldRuns"][1].pop("conditions"))),
+                         {"conditions.inconsistent"})
+        def strip_flagged(record):
+            strip(record)
+            record["guardNotes"] = record["guardNotes"][:1]
+        self.assertEqual(codes(mutate("flagged", strip_flagged)), {"guards.inconsistent"})
+
+    def test_patterns_are_anchored_like_ecma_regexes(self):
+        for change in (lambda r: r.update(runId=r["runId"] + "\n"),
+                       lambda r: r["artifact"].update(sha256="a" * 64 + "\n"),
+                       lambda r: r.update(timestampIso=r["timestampIso"] + "\n")):
+            self.assertEqual(codes(mutate("complete", change)), {"schema.pattern"})
+
+    def test_hostile_json_is_rejected_not_raised(self):
+        # Deep nesting either fails to parse or is scanned iteratively; huge
+        # integers exceed Python's digit limit. None may escape as an exception.
+        cases = {"[" * 100000 + "]" * 100000: {"json.parse", "json.not-object"},
+                 '{"a": ' + "1" * 5000 + "}": {"json.parse"},
+                 '{"a": [' * 1800 + "1" + "]}" * 1800: {"json.parse", "record.schema"}}
+        for text, allowed in cases.items():
+            with self.subTest(size=len(text)):
+                reasons = raw_session.validate_text(text)
+                self.assertEqual(len(reasons), 1)
+                self.assertIn(reasons[0]["code"], allowed)
 
     def test_cli_reports_each_record(self):
         out = io.StringIO()

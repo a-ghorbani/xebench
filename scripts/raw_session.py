@@ -38,9 +38,10 @@ _KEYWORDS = _ANNOTATIONS | {
 class Invalid(ValueError):
     """Raised by callers that need to abort with machine-readable reasons."""
 
-    def __init__(self, reasons):
+    def __init__(self, reasons, payload=None):
         super().__init__("; ".join(f"{r['code']} at {r['path'] or '/'}" for r in reasons))
         self.reasons = reasons
+        self.payload = payload
 
 
 def reason(code, path, message):
@@ -70,6 +71,11 @@ def parse(text):
         raise Invalid([reason("json.parse", "", f"Malformed or truncated JSON: {error.msg} at char {error.pos}")])
     except RecursionError:
         raise Invalid([reason("json.parse", "", "JSON nesting too deep")])
+    except Invalid:
+        raise
+    except ValueError as error:
+        # e.g. integers beyond Python's digit limit.
+        raise Invalid([reason("json.parse", "", f"Unsupported JSON value: {error}")])
     found = _non_finite(value, "")
     if found is not None:
         raise Invalid([reason("json.non-finite", found, "Number overflows to a non-finite value")])
@@ -77,14 +83,22 @@ def parse(text):
 
 
 def _non_finite(value, path):
-    if isinstance(value, float) and not math.isfinite(value):
-        return path
-    children = value.items() if isinstance(value, dict) else enumerate(value) if isinstance(value, list) else ()
-    for key, child in children:
-        found = _non_finite(child, _pointer(path, key))
-        if found is not None:
-            return found
+    """First non-finite number's JSON Pointer; iterative so deep input cannot overflow."""
+    stack = [(value, path)]
+    while stack:
+        node, where = stack.pop()
+        if isinstance(node, float) and not math.isfinite(node):
+            return where
+        children = node.items() if isinstance(node, dict) else enumerate(node) if isinstance(node, list) else ()
+        stack.extend((child, _pointer(where, key)) for key, child in reversed(list(children)))
     return None
+
+
+def _pattern(pattern):
+    """ECMA-262 '$' never matches before a trailing newline; Python's does."""
+    if pattern.endswith("$") and not pattern.endswith("\\$"):
+        pattern = pattern[:-1] + r"\Z"
+    return re.compile(pattern)
 
 
 def load_schema(path=SCHEMA_PATH):
@@ -93,17 +107,30 @@ def load_schema(path=SCHEMA_PATH):
     return schema
 
 
+_TYPES = {"null", "boolean", "object", "array", "string", "number", "integer"}
+
+
 def _check_keywords(node, where):
-    if isinstance(node, dict):
-        unknown = set(node) - _KEYWORDS
-        if unknown and not where.endswith(("/properties", "/$defs")):
-            raise ValueError(f"Unsupported JSON Schema keyword(s) {sorted(unknown)} at {where}")
-        for key, child in node.items():
-            if key not in ("const", "enum", "examples", "default"):
-                _check_keywords(child, f"{where}/{key}")
-    elif isinstance(node, list):
-        for index, child in enumerate(node):
-            _check_keywords(child, f"{where}/{index}")
+    """Fail loudly on schema features this interpreter would otherwise ignore."""
+    if not isinstance(node, dict):
+        raise ValueError(f"Schema must be an object at {where}")
+    unknown = set(node) - _KEYWORDS
+    if unknown:
+        raise ValueError(f"Unsupported JSON Schema keyword(s) {sorted(unknown)} at {where}")
+    if "$ref" in node and set(node) - _ANNOTATIONS - {"$ref"}:
+        raise ValueError(f"Keywords beside $ref are not supported at {where}")
+    if "type" in node:
+        names = node["type"] if isinstance(node["type"], list) else [node["type"]]
+        if not names or set(names) - _TYPES:
+            raise ValueError(f"Unsupported type {node['type']!r} at {where}")
+    for key in ("properties", "$defs"):
+        for name, child in node.get(key, {}).items():
+            _check_keywords(child, f"{where}/{key}/{name}")
+    for key in ("items", "additionalProperties"):
+        if isinstance(node.get(key), dict):
+            _check_keywords(node[key], f"{where}/{key}")
+    for index, child in enumerate(node.get("oneOf", [])):
+        _check_keywords(child, f"{where}/oneOf/{index}")
 
 
 def _is_type(value, name):
@@ -167,7 +194,7 @@ class _Validator:
                 errors.append(reason("schema.min-length", path, f"Shorter than {schema['minLength']}"))
             if "maxLength" in schema and len(value) > schema["maxLength"]:
                 errors.append(reason("schema.max-length", path, f"Longer than {schema['maxLength']}"))
-            if "pattern" in schema and not re.search(schema["pattern"], value):
+            if "pattern" in schema and not _pattern(schema["pattern"]).search(value):
                 errors.append(reason("schema.pattern", path, "Does not match the required pattern"))
         if isinstance(value, list):
             if "minItems" in schema and len(value) < schema["minItems"]:
@@ -301,7 +328,17 @@ def _semantic(record):
                 errors.append(reason("summary.mismatch", f"{where}/{key}",
                                      f"Reported {actual[key]!r}; repetitions give {recomputed[key]!r}"))
 
-    flagged = [assessment for attempt in attempts for assessment in
+    # Apps built before condition snapshots (PR #11) omit all condition evidence;
+    # a mix of present and missing evidence is never valid.
+    observed = ["conditions" in attempt for attempt in attempts] + ["conditionPolicy" in record]
+    if any(observed) and not all(observed):
+        errors.append(reason("conditions.inconsistent", "/conditionPolicy",
+                             "conditionPolicy and every attempt's conditions must be present together"))
+        return errors
+    if not any(observed) and record["guardsPassed"] is not None:
+        errors.append(reason("guards.inconsistent", "/guardsPassed",
+                             "Without condition evidence guardsPassed must stay null"))
+    flagged = [assessment for attempt in attempts if "conditions" in attempt for assessment in
                (attempt["conditions"]["beforeAssessment"], attempt["conditions"]["afterAssessment"])
                if assessment["status"] == "fail"]
     if flagged and record["guardsPassed"] is not False:

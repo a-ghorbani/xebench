@@ -124,8 +124,8 @@ class Capture:
 
     def read_reference(self, payload, read_file):
         """Resolve a bounded logcat file reference to the exact checksummed bytes."""
-        def fail(code, message):
-            raise raw_session.Invalid([raw_session.reason(code, "", message)])
+        def fail(code, message, content=None):
+            raise raw_session.Invalid([raw_session.reason(code, "", message)], payload=content)
         try:
             reference = strict_json(payload)
         except ValueError:
@@ -137,17 +137,20 @@ class Capture:
             fail("transport.reference", "Unsafe file reference")
         if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or read_file is None:
             fail("transport.reference", "Missing file checksum or reader")
-        content = read_file(name)
+        try:
+            content = read_file(name)
+        except UnicodeDecodeError:
+            fail("transport.encoding", "Record is not valid UTF-8")
         raw = content.encode("utf-8")
+        # Keep the retrieved bytes as the rejected payload for diagnosis.
         if len(raw) > MAX_RECORD_BYTES:
-            fail("transport.size", f"Record exceeds {MAX_RECORD_BYTES} bytes")
+            fail("transport.size", f"Record exceeds {MAX_RECORD_BYTES} bytes", content)
         if hashlib.sha256(raw).hexdigest() != digest:
-            fail("transport.checksum", "Record checksum mismatch")
+            fail("transport.checksum", "Record checksum mismatch", content)
         return content, name
 
     def reject(self, marker, payload, source_file, reasons):
         """Keep the rejected payload and, beside it, why it was rejected."""
-        self.invalid += 1
         stem = f"invalid-{uuid.uuid4()}"
         with (self.directory / f"{stem}.txt").open("x", encoding="utf-8") as out:
             out.write(payload + "\n")
@@ -156,6 +159,8 @@ class Capture:
         with (self.directory / f"{stem}.reason.json").open("x", encoding="utf-8") as out:
             json.dump(rejection, out, indent=2, allow_nan=False)
             out.write("\n")
+        # Count only after both files exist so invalidRecords matches rejections.
+        self.invalid += 1
         self.rejections.append({"file": f"{stem}.txt", "reasonFile": f"{stem}.reason.json",
                                 "codes": sorted({item["code"] for item in reasons})})
 
@@ -188,7 +193,14 @@ class Capture:
                     if reasons:
                         raise raw_session.Invalid(reasons)
                 except raw_session.Invalid as error:
+                    if error.payload is not None:
+                        payload = error.payload
                     self.reject(marker, payload, source_file, error.reasons)
+                    continue
+                except (ValueError, TypeError, RecursionError) as error:
+                    # Unexpected content must still be preserved, never crash capture.
+                    self.reject(marker, payload, source_file,
+                                [raw_session.reason("ingest.error", "", type(error).__name__)])
                     continue
                 legacy = validation == "legacy-unvalidated"
                 if legacy:

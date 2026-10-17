@@ -88,8 +88,41 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
 
   // Without the native module, every condition reading is unknown.
   jest.restoreAllMocks();
-  records.probeUnavailable = (await capture(persist => runSession(adapter(), {...config, nColdRuns: 1},
-    config.runs[0], identity, persist))).pop()!;
+  const one = {...config, nColdRuns: 1};
+  const single = async (engine: ReturnType<typeof adapter>) =>
+    (await capture(persist => runSession(engine, one, config.runs[0], identity, persist))).pop()!;
+  records.probeUnavailable = await single(adapter());
+
+  jest.spyOn(conditions, 'readConditions').mockResolvedValue(conditions.normalizeConditions(healthy));
+  const inference = adapter();
+  // Native messages are unbounded; a long one must remain valid evidence.
+  inference.benchOnce.mockRejectedValueOnce(new Error('fixture inference failure '.repeat(200)));
+  records.inferenceFailed = await single(inference);
+
+  const both = adapter();
+  both.load.mockRejectedValueOnce('fixture non-Error load failure');
+  both.release.mockRejectedValueOnce(new Error('fixture cleanup failure'));
+  records.loadAndCleanupFailed = await single(both);
+
+  const invalid = adapter();
+  const metrics = await invalid.benchOnce();
+  const withoutInternal = {...metrics};
+  delete withoutInternal.engineInternal;
+  invalid.benchOnce.mockResolvedValueOnce({...withoutInternal, decodeTps: NaN});
+  records.nonFiniteMetrics = await single(invalid);
+
+  const plain = adapter();
+  plain.benchOnce.mockResolvedValueOnce(withoutInternal);
+  records.noEngineInternal = await single(plain);
+
+  jest.restoreAllMocks();
+  jest.spyOn(conditions, 'readConditions').mockResolvedValue(conditions.normalizeConditions({probeStatus: 'busy'}));
+  records.beforeProbeBusy = await single(adapter());
+
+  jest.restoreAllMocks();
+  jest.spyOn(conditions, 'readConditions').mockResolvedValueOnce(conditions.normalizeConditions(healthy))
+    .mockResolvedValue(conditions.normalizeConditions({probeStatus: 'timeout'}));
+  records.afterProbeTimeout = await single(adapter());
   return records;
 }
 
@@ -97,7 +130,9 @@ test('runSession records match the committed fixture validated by the host schem
   const records = await emitted();
   expect(Object.fromEntries(Object.entries(records).map(([key, value]) => [key, value.status]))).toEqual({
     partial: 'running', complete: 'complete', failed: 'failed', cleanupFailed: 'failed',
-    flagged: 'complete', probeUnavailable: 'complete'});
+    flagged: 'complete', probeUnavailable: 'complete', inferenceFailed: 'failed',
+    loadAndCleanupFailed: 'failed', nonFiniteMetrics: 'failed', noEngineInternal: 'complete',
+    beforeProbeBusy: 'failed', afterProbeTimeout: 'failed'});
   for (const record of Object.values(records)) {
     const keys = Object.keys(record);
     expect(keys.filter(key => !(key in SCHEMA.properties))).toEqual([]);

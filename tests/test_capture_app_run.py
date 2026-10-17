@@ -117,6 +117,25 @@ class CaptureTests(unittest.TestCase):
                 expected = 'transport.size' if len(payload) > capture.MAX_RECORD_BYTES else \
                     'transport.checksum' if should_read else 'transport.reference'
                 self.assertEqual(session.rejections[0]['codes'], [expected])
+                stored = (session.directory / session.rejections[0]['file']).read_text()
+                self.assertEqual(stored, (payload if should_read else json.dumps(reference)) + '\n')
+
+    def test_hostile_inline_payloads_are_rejected_not_fatal(self):
+        with tempfile.TemporaryDirectory() as root:
+            session = capture.Capture(root, {})
+            for index, payload in enumerate(['{"a": [' * 2000 + '1' + ']}' * 2000, '{"a": ' + '1' * 5000 + '}']):
+                session.ingest(f'{index} I ReactNativeJS: XEBENCH_RESULT {payload}')
+            self.assertEqual(session.invalid, 2)
+            self.assertFalse(session.records)
+
+    def test_undecodable_reference_is_rejected_not_fatal(self):
+        def read_file(_name):
+            raise UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid start byte')
+        with tempfile.TemporaryDirectory() as root:
+            session = capture.Capture(root, {})
+            reference = {'name': 'fixture.json', 'sha256': 'a' * 64}
+            session.ingest('1 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference), read_file)
+            self.assertEqual(session.rejections[0]['codes'], ['transport.encoding'])
 
     def test_failed_session_cannot_be_successful_without_error_marker(self):
         payload = json.dumps(APP_RECORDS['failed'])

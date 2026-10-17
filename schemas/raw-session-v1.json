@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/a-ghorbani/xebench/schemas/raw-session-v1.json",
   "title": "xebench raw reference session, schemaVersion 1",
-  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal). Structural rules only; cross-field rules (repetition count, status vs attempts, recomputed summaries, configuration agreement, guard consistency) are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration are intentionally open to additive fields.",
+  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal). Structural rules only; cross-field rules (repetition count, status vs attempts, recomputed summaries, configuration agreement, guard consistency) are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration are intentionally open to additive fields. Records from apps built before condition snapshots (PR #11) omit conditionPolicy and every attempt's conditions; the validator accepts all or none.",
   "type": "object",
   "required": [
     "runId", "timestampIso", "deviceInfo", "artifact", "schema", "schemaVersion",
     "harnessVersion", "engine", "engineVersion", "backend", "observedBackend", "platform",
     "model", "quant", "modelFile", "configuration", "configurationRunId", "protocol",
-    "status", "coldRuns", "summary", "guardsPassed", "guardNotes", "conditionPolicy"
+    "status", "coldRuns", "summary", "guardsPassed", "guardNotes"
   ],
   "additionalProperties": false,
   "properties": {
@@ -19,8 +19,8 @@
       "required": ["model", "androidRelease"],
       "additionalProperties": false,
       "properties": {
-        "model": {"type": "string", "maxLength": 256},
-        "androidRelease": {"type": "string", "maxLength": 64}
+        "model": {"type": "string"},
+        "androidRelease": {"type": "string"}
       }
     },
     "artifact": {
@@ -29,14 +29,14 @@
       "additionalProperties": false,
       "properties": {
         "sha256": {"$ref": "#/$defs/sha256"},
-        "sizeBytes": {"type": "integer", "minimum": 1}
+        "sizeBytes": {"type": "integer", "minimum": 0}
       }
     },
     "schema": {"const": "xebench-raw"},
     "schemaVersion": {"const": 1},
     "harnessVersion": {"const": "xebench-0.5-reference"},
     "engine": {"$ref": "#/$defs/label"},
-    "engineVersion": {"$ref": "#/$defs/label"},
+    "engineVersion": {"type": "string", "minLength": 1},
     "backend": {"const": "cpu"},
     "observedBackend": {"const": null, "description": "Actual backend execution is not observed; unknown stays null."},
     "platform": {"const": "android"},
@@ -81,7 +81,7 @@
       }
     },
     "guardsPassed": {"enum": [false, null], "description": "Never true in v1: passing endpoint checks is not protocol validation."},
-    "guardNotes": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 512}},
+    "guardNotes": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
     "conditionPolicy": {
       "type": "object",
       "description": "Open to additive fields from condition-enforcement work.",
@@ -96,7 +96,7 @@
     }
   },
   "$defs": {
-    "label": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^(?=[\\s\\S]*\\S)[^\\u0000-\\u001f]*$"},
+    "label": {"type": "string", "minLength": 1, "maxLength": 128, "description": "Mirrors config.ts: not blank after JS trim(), no C0 control characters.", "pattern": "^(?=[\\s\\S]*[^\\t\\n\\u000b\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff])[^\\u0000-\\u001f]*$"},
     "modelFile": {"type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*\\.gguf$"},
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "nonNegative": {"type": "number", "minimum": 0},
@@ -165,7 +165,7 @@
     "completeAttempt": {
       "type": "object",
       "description": "A successful repetition: metrics are flattened beside runIndex/conditions/status.",
-      "required": ["runIndex", "conditions", "status", "loadMs", "ttftMs", "promptTokens", "prefillTps", "prefillMethod", "decodeTokens", "decodeTps", "decodeMethod"],
+      "required": ["runIndex", "status", "loadMs", "ttftMs", "promptTokens", "prefillTps", "prefillMethod", "decodeTokens", "decodeTps", "decodeMethod"],
       "additionalProperties": false,
       "properties": {
         "runIndex": {"type": "integer", "minimum": 0},
@@ -188,12 +188,12 @@
       "additionalProperties": false,
       "properties": {
         "phase": {"enum": ["conditions", "load", "inference", "release"]},
-        "message": {"type": "string", "maxLength": 4096}
+        "message": {"type": "string"}
       }
     },
     "failedAttempt": {
       "type": "object",
-      "required": ["runIndex", "conditions", "status", "error", "metrics"],
+      "required": ["runIndex", "status", "error", "metrics"],
       "additionalProperties": false,
       "properties": {
         "runIndex": {"type": "integer", "minimum": 0},
@@ -207,7 +207,7 @@
           "additionalProperties": false,
           "properties": {
             "phase": {"const": "release"},
-            "message": {"type": "string", "maxLength": 4096}
+            "message": {"type": "string"}
           }
         }
       }

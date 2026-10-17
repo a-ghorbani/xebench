@@ -74,14 +74,16 @@ fewer than the configured attempts, all successful; `complete` has all of them;
 repetitions with the interpolation above. The record must also agree with its
 configured run, and failed condition checks require `guardsPassed=false`.
 Per-attempt conditions, `conditionPolicy`, `protocol` and `configuration` accept
-additional fields.
+additional fields. Records from apps built before condition snapshots omit all
+condition evidence and keep `guardsPassed=null`; a mix is rejected.
 
 A rejected payload stays in `invalid-<id>.txt` beside `invalid-<id>.reason.json`
 (reason codes, JSON Pointer paths, messages); the manifest lists `rejections`.
-Any rejection makes the capture `partial`. Exit codes: 0 complete, 2 setup,
-startup, capture or cleanup failure, 3 timeout, 4 partial or app-changed, 130/143
-interrupted. Manifest entries carry `validation`: `raw-session-v1`, or
-`legacy-unvalidated` for inline records without `schemaVersion`. Validation is not
+A rejection prevents a `complete` capture: after `XEBENCH_DONE` it is `partial`.
+Exit codes: 0 complete, 2 setup, startup, capture or cleanup failure, 3 timeout,
+4 partial or app-changed, 130/143 interrupted. Manifest entries carry `validation`:
+`raw-session-v1`, or `legacy-unvalidated` for inline records without
+`schemaVersion`; file references must be v1. Validation is not
 comparison eligibility; `publicationReady` stays false. To check files offline, run
 `python3 scripts/raw_session.py <file>...`. After an intended record change, run
 `XEBENCH_UPDATE_FIXTURES=1 npx jest __tests__/rawSessionSchema.test.ts` in
