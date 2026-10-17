@@ -12,8 +12,12 @@ from pathlib import Path
 import re
 import signal
 import subprocess
+import sys
 import time
 import uuid
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import raw_session  # noqa: E402
 
 APP = "com.xebenchapp"
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +52,18 @@ def strict_json(text):
     def reject_constant(value):
         raise ValueError(f"Non-finite JSON constant: {value}")
     return json.loads(text, parse_constant=reject_constant)
+
+
+def legacy_reasons(record):
+    """Minimal transport checks kept for pre-v1 inline records (no schemaVersion)."""
+    if record.get("schema") != "xebench-raw":
+        return [raw_session.reason("record.schema", "/schema", "Expected schema xebench-raw")]
+    reasons = [raw_session.reason("schema.required", f"/{field}", f"Missing {field}")
+               for field in ("engine", "backend", "model", "quant")
+               if not isinstance(record.get(field), str) or not record[field]]
+    if not isinstance(record.get("deviceInfo", {}), dict):
+        reasons.append(raw_session.reason("schema.type", "/deviceInfo", "Invalid deviceInfo"))
+    return reasons
 
 
 def installed_apks(command):
@@ -102,8 +118,46 @@ class Capture:
         self.failed_records = 0
         self.errors = 0
         self.invalid = 0
+        self.rejections = []
         self.done = False
         self.app_identity = {'packageName': APP, 'before': None, 'after': None, 'consistency': 'unverified'}
+
+    def read_reference(self, payload, read_file):
+        """Resolve a bounded logcat file reference to the exact checksummed bytes."""
+        def fail(code, message):
+            raise raw_session.Invalid([raw_session.reason(code, "", message)])
+        try:
+            reference = strict_json(payload)
+        except ValueError:
+            fail("transport.reference", "Malformed file reference")
+        if not isinstance(reference, dict) or set(reference) != {"name", "sha256"}:
+            fail("transport.reference", "Invalid file reference")
+        name, digest = reference["name"], reference["sha256"]
+        if not isinstance(name, str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,120}\.json", name):
+            fail("transport.reference", "Unsafe file reference")
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or read_file is None:
+            fail("transport.reference", "Missing file checksum or reader")
+        content = read_file(name)
+        raw = content.encode("utf-8")
+        if len(raw) > MAX_RECORD_BYTES:
+            fail("transport.size", f"Record exceeds {MAX_RECORD_BYTES} bytes")
+        if hashlib.sha256(raw).hexdigest() != digest:
+            fail("transport.checksum", "Record checksum mismatch")
+        return content, name
+
+    def reject(self, marker, payload, source_file, reasons):
+        """Keep the rejected payload and, beside it, why it was rejected."""
+        self.invalid += 1
+        stem = f"invalid-{uuid.uuid4()}"
+        with (self.directory / f"{stem}.txt").open("x", encoding="utf-8") as out:
+            out.write(payload + "\n")
+        rejection = {"schema": "xebench-ingest-rejection", "schemaVersion": 1, "payloadFile": f"{stem}.txt",
+                     "marker": marker, "sourceFile": source_file, "reasons": reasons}
+        with (self.directory / f"{stem}.reason.json").open("x", encoding="utf-8") as out:
+            json.dump(rejection, out, indent=2, allow_nan=False)
+            out.write("\n")
+        self.rejections.append({"file": f"{stem}.txt", "reasonFile": f"{stem}.reason.json",
+                                "codes": sorted({item["code"] for item in reasons})})
 
     def ingest(self, snapshot, read_file=None):
         for line in snapshot.splitlines():
@@ -119,42 +173,25 @@ class Capture:
                 with (self.directory / f"error-{uuid.uuid4()}.txt").open("x", encoding="utf-8") as out:
                     out.write(message + "\n")
             elif message.startswith(("XEBENCH_RESULT ", "XEBENCH_RESULT_FILE ")):
-                payload = message.split(" ", 1)[1].strip()
+                marker, _, payload = message.partition(" ")
+                payload = payload.strip()
                 source_file = None
                 try:
-                    if message.startswith("XEBENCH_RESULT_FILE "):
-                        reference = strict_json(payload)
-                        if not isinstance(reference, dict) or set(reference) != {"name", "sha256"}:
-                            raise ValueError("Invalid file reference")
-                        name, digest = reference["name"], reference["sha256"]
-                        if not isinstance(name, str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,120}\.json", name):
-                            raise ValueError("Unsafe file reference")
-                        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or read_file is None:
-                            raise ValueError("Missing file checksum or reader")
-                        payload = read_file(name)
-                        raw = payload.encode("utf-8")
-                        if len(raw) > MAX_RECORD_BYTES or hashlib.sha256(raw).hexdigest() != digest:
-                            raise ValueError("Record exceeds limit or checksum mismatch")
-                        source_file = name
-                    record = strict_json(payload)
-                    # JSON exponents can overflow even without literal NaN/Infinity.
-                    json.dumps(record, allow_nan=False)
-                    if not isinstance(record, dict) or record.get("schema") != "xebench-raw":
-                        raise ValueError("Unexpected schema")
-                    for field in ("engine", "backend", "model", "quant"):
-                        if not isinstance(record.get(field), str) or not record[field]:
-                            raise ValueError(f"Missing {field}")
-                    if not isinstance(record.get("deviceInfo", {}), dict):
-                        raise ValueError("Invalid deviceInfo")
-                    if "schemaVersion" in record and (record["schemaVersion"] != 1 or
-                            record.get("status") not in ("running", "complete", "failed")):
-                        raise ValueError("Unsupported version or session status")
-                except (ValueError, TypeError):
-                    self.invalid += 1
-                    with (self.directory / f"invalid-{uuid.uuid4()}.txt").open("x", encoding="utf-8") as out:
-                        out.write(payload + "\n")
+                    if marker == "XEBENCH_RESULT_FILE":
+                        payload, source_file = self.read_reference(payload, read_file)
+                    record = raw_session.parse(payload)
+                    if isinstance(record, dict) and "schemaVersion" not in record and source_file is None:
+                        # Pre-v1 inline records are preserved but never deep-validated.
+                        reasons, validation = legacy_reasons(record), "legacy-unvalidated"
+                    else:
+                        reasons, validation = raw_session.validate(record), raw_session.VALIDATION
+                    if reasons:
+                        raise raw_session.Invalid(reasons)
+                except raw_session.Invalid as error:
+                    self.reject(marker, payload, source_file, error.reasons)
                     continue
-                if source_file is None:
+                legacy = validation == "legacy-unvalidated"
+                if legacy:
                     device = record.setdefault("deviceInfo", {})
                     for key, value in self.device_info.items():
                         if not device.get(key):
@@ -162,14 +199,18 @@ class Capture:
                 is_checkpoint = record.get("status") == "running"
                 prefix = "checkpoint" if is_checkpoint else "raw"
                 name = f"{prefix}-{uuid.uuid4()}.jsonl"
-                # File references preserve the exact on-device bytes/checksum.
-                # Host device facts live in the manifest; legacy inline records
-                # retain their existing enrichment behavior.
-                data = (payload if source_file else json.dumps(record, allow_nan=False) + "\n").encode("utf-8")
+                # Validated v1 records keep their exact bytes (file references keep
+                # the on-device checksum); host device facts live in the manifest.
+                # Only legacy inline records retain their existing enrichment.
+                if legacy:
+                    data = json.dumps(record, allow_nan=False) + "\n"
+                else:
+                    data = payload if source_file else payload + "\n"
+                data = data.encode("utf-8")
                 with (self.directory / name).open("xb") as out:
                     out.write(data)
                 entries = self.checkpoints if is_checkpoint else self.records
-                entry = {"file": name, "sha256": hashlib.sha256(data).hexdigest()}
+                entry = {"file": name, "sha256": hashlib.sha256(data).hexdigest(), "validation": validation}
                 if source_file is not None:
                     entry["sourceFile"] = source_file
                 entries.append(entry)
@@ -181,7 +222,7 @@ class Capture:
             "schema": "xebench-local-capture", "schemaVersion": 1,
             "captureId": self.capture_id, "startedAt": self.started_at,
             "finishedAt": utc_now(), "status": status, "doneObserved": self.done,
-            "engineErrors": self.errors, "invalidRecords": self.invalid,
+            "engineErrors": self.errors, "invalidRecords": self.invalid, "rejections": self.rejections,
             "records": self.records, "checkpoints": self.checkpoints,
             "failedRecords": self.failed_records, "deviceInfo": self.device_info,
             "appIdentity": self.app_identity,
