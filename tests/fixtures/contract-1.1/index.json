@@ -1,0 +1,13 @@
+{
+  "contract": "1.1",
+  "description": "Consumer fixtures for the xebench benchmarks contract 1.1 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md). Each file is a complete envelope. expect=accept files must load and render; expect=reject files must be refused as a whole, keeping the consumer's compatible fallback. tests/test_contract_publication.py checks every entry against scripts/validate_data.mjs.",
+  "fixtures": [
+    { "file": "legacy.json", "expect": "accept", "validation": "legacy", "notes": "migrated lab row; no dispersion or evidence" },
+    { "file": "verified.json", "expect": "accept", "validation": "verified", "notes": "synthetic; every 1.1 field present; evidence URL does not resolve" },
+    { "file": "failed-condition.json", "expect": "accept", "validation": "failed", "notes": "synthetic; guardsPassed false; dispersion without evidence" },
+    { "file": "unverified.json", "expect": "accept", "validation": "unverified", "notes": "synthetic; guardsPassed null" },
+    { "file": "vendor.json", "expect": "accept", "validation": null, "notes": "vendor claim; carries no 1.1 fields" },
+    { "file": "v1.0-date-only.json", "expect": "accept", "validation": null, "notes": "pre-migration 1.0 file; date-only generatedAt; treat measured rows without validation as legacy" },
+    { "file": "unsupported-major.json", "expect": "reject", "validation": "legacy", "notes": "schemaVersion 2.0; reject on the major alone" }
+  ]
+}

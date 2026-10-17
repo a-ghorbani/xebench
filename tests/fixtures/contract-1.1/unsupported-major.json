@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "2.0",
+  "generatedAt": "2026-10-17T12:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract consumer fixture: an unsupported major version. Its rows are otherwise 1.1-valid; a consumer must reject the whole file on the major alone and keep its compatible fallback.",
+  "rowCount": 1,
+  "rows": [
+    {
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Google Pixel 9",
+      "soc": "Tensor G4",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "ppTps": 144,
+      "tgTps": 24.1,
+      "ttftMs": 3282,
+      "memoryMb": null,
+      "provenance": "measured",
+      "sourceName": "PocketPal R&D lab (xebench)",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sampleCount": 3,
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
+    }
+  ]
+}

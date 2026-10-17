@@ -449,16 +449,19 @@ class DataValidationTests(unittest.TestCase):
     def test_unsupported_schema_keywords_fail_closed(self):
         result = self.run_node(
             "import {validateSchema} from './scripts/lib/publication.mjs';"
-            "validateSchema('x', {type: 'string', pattern: '^y$'});")
+            "validateSchema('x', {type: 'string', maxLength: 3});")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('unsupported schema keyword pattern', result.stderr)
+        self.assertIn('unsupported schema keyword maxLength', result.stderr)
 
     def test_schema_is_checked_eagerly(self):
         for name, schema, message in [
             ('unreached-def', "{type: 'string', $defs: {x: {type: 'integer', exclusiveMinimum: 1}}}",
              'unsupported schema keyword exclusiveMinimum at #/$defs/x'),
-            ('unreached-property', "{type: 'object', properties: {x: {pattern: 'a'}}}",
-             'unsupported schema keyword pattern at #/properties/x'),
+            ('unreached-property', "{type: 'object', properties: {x: {oneOf: [true]}}}",
+             'unsupported schema keyword oneOf at #/properties/x'),
+            ('unreached-if-branch', "{if: true, then: {type: 'string', uniqueItems: true}}",
+             'unsupported schema keyword uniqueItems at #/then'),
+            ('unreached-allOf', "{allOf: [{not: {}}]}", 'unsupported schema keyword not at #/allOf/0'),
             ('bogus-type', "{type: ['number', 'bogus']}", 'unsupported schema type \"bogus\"'),
             ('enum-not-array', "{enum: 'x'}", 'enum at # must be an array'),
         ]:
