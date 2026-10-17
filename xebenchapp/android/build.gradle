@@ -13,6 +13,10 @@ buildscript {
         google()
         mavenCentral()
     }
+    // Lock the build's own plugin classpath too (buildscript-gradle.lockfile).
+    configurations.classpath {
+        resolutionStrategy.activateDependencyLocking()
+    }
     dependencies {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")

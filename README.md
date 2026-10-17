@@ -111,16 +111,52 @@ keep the application ID `com.xebenchapp`, so installing one replaces another.
 | `geniex` | `assembleGeniexRelease` | llama.rn CPU + GENIE-X (`geniex-android`, which bundles its own QNN and llama.cpp Hexagon runtime) | For the NPU path: Genie context binaries (model files) |
 
 Prerequisites for a clean-checkout reference build (other flavors add only the
-files in the table):
+files in the table). This list is the single source; CI
+([`android-build.yml`](.github/workflows/android-build.yml)) installs exactly these:
 
-- Node 20+ and `npm ci` in `xebenchapp` **with install scripts enabled**; llama.rn
-  downloads checksum-verified native libraries then. After `npm ci --ignore-scripts`,
-  run `npm rebuild llama.rn --foreground-scripts` before building an APK.
-- JDK 17+, Android SDK platform 36, build-tools 36.0.0, SDK CMake 3.22.1, NDK
-  27.1.12297006 (the app's pin) and 27.0.12077973 (AGP's default, used by
-  react-native-executorch); set `sdk.dir` in `android/local.properties` or
-  `ANDROID_HOME`.
-- Network access to Maven Central and Google Maven for Gradle dependencies.
+| Input | Version | Notes |
+|---|---|---|
+| Node | 20+ (CI: 22) | `npm ci` in `xebenchapp` **with install scripts enabled**: llama.rn downloads checksum-verified native libraries then. After `npm ci --ignore-scripts`, run `npm rebuild llama.rn --foreground-scripts` before building an APK. |
+| JDK | 17+ (CI: Temurin 21) | Byte-identical APKs need the same JDK major version. |
+| Gradle | 9.0.0 | Pinned by the wrapper, with `distributionSha256Sum`; use `./gradlew`. |
+| Android SDK | platform `android-36`, build-tools `36.0.0`, CMake `3.22.1` | Set `sdk.dir` in `android/local.properties` or `ANDROID_HOME`. |
+| Android NDK | `27.1.12297006` and `27.0.12077973` | The app's pin, and AGP's default (used by react-native-executorch). |
+| Network | Maven Central, Google Maven, npm | Gradle and npm dependencies. |
+
+`sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;27.1.12297006" "ndk;27.0.12077973"`
+installs the SDK parts.
+
+**Pinned build inputs.** npm packages are pinned by `xebenchapp/package-lock.json`.
+Gradle uses no dynamic versions: `jscFlavor` is pinned to `2026004.0.1`. Every
+resolved Maven dependency is locked in `android/app/gradle.lockfile` (strict mode:
+an unlocked configuration fails), `android/buildscript-gradle.lockfile` and
+`android/settings-gradle.lockfile`.
+[Dependency verification](https://docs.gradle.org/current/userguide/dependency_verification.html)
+checks every downloaded artifact against the SHA-256 in
+`android/gradle/verification-metadata.xml`. A build that resolves a different version
+or different bytes fails. After an intended dependency change (for example a
+`package.json` or `build.gradle` bump), regenerate both from `xebenchapp/android`,
+then review and commit the diff:
+
+```sh
+./gradlew --write-locks :app:dependencies            # all flavors' configurations
+./gradlew --write-verification-metadata sha256 help assembleReferenceRelease
+```
+
+The metadata is generated on Linux. AGP's `aapt2` is a per-OS artifact; the macOS
+and Windows jars of the pinned version are listed by hand from Google Maven. Keep
+them when regenerating, or add the new version's.
+
+Dependencies of React Native libraries in `node_modules` reach the app through its
+locked runtime classpath; their own compile classpaths are pinned only by
+`package-lock.json`.
+
+**Build identity.** Every APK embeds its git commit, a dirty flag (tracked or
+untracked, non-ignored changes at build time), its flavor, build type and
+`versionName` in `BuildConfig`, plus the SHA-256 of the bundled configuration.
+Each session records these with the SHA-256 of the APK signing certificate (see
+[reference runs](docs/REFERENCE-RUNS.md#build-identity-and-reproducibility)).
+Outside a git checkout the commit and dirty flag are recorded as unknown.
 
 `./gradlew assembleRelease` builds every flavor. Each APK lands in
 `app/build/outputs/apk/<flavor>/release/app-<flavor>-release.apk`. A successful

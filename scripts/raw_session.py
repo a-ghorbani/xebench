@@ -360,7 +360,8 @@ def _semantic(record):
     if len(attempts) > expected:
         errors.append(reason("attempts.count", "/coldRuns",
                              f"{len(attempts)} attempts exceed the configured {expected}"))
-    v2 = protocol["version"] == "cpu-reference-v2"
+    # cpu-reference-v3 keeps the v2 measurement procedure and adds identity evidence.
+    v2 = protocol["version"] in ("cpu-reference-v2", "cpu-reference-v3")
     failed = [index for index, attempt in enumerate(attempts) if attempt["status"] == "failed"]
     if v2:
         pass  # Status, stop reason and skipped repetitions: see _semantic_v2.
@@ -394,7 +395,8 @@ def _semantic(record):
                                      f"Reported {actual[key]!r}; repetitions give {recomputed[key]!r}"))
 
     if v2:
-        return errors + _semantic_v2(record)
+        errors += _semantic_v2(record)
+        return errors + (_semantic_v3(record) if protocol["version"] == "cpu-reference-v3" else [])
     # Apps built before condition snapshots (PR #11) omit all condition evidence;
     # a mix of present and missing evidence is never valid.
     observed = ["conditions" in attempt for attempt in attempts] + ["conditionPolicy" in record]
@@ -454,11 +456,14 @@ CHARGING_POLICY_V2 = {key: value for key, value in CHARGING_POLICY_V3.items()
                       if key not in ("dischargingStatus", "onBattery")}
 CHARGING_POLICY_V2["version"] = "charging-policy-v2"
 CHARGING_POLICIES = {policy["version"]: policy for policy in (CHARGING_POLICY_V2, CHARGING_POLICY_V3)}
-STOP_REASONS_UNMEASURED = ("configuration-aborted", "setup-failed")
+STOP_REASONS_UNMEASURED = ("configuration-aborted", "setup-failed", "model-hash-mismatch")
+# Unmeasured runs recorded before the model was hashed; a hash mismatch keeps its artifact.
+STOP_REASONS_UNHASHED = ("configuration-aborted", "setup-failed")
 BACKEND_NOTE = "Actual backend execution has not been verified"
 UNVERIFIED_NOTE = "Run conditions not fully verified"
 UNMEASURED_NOTES = {"configuration-aborted": "Not run: an earlier run aborted the configuration",
-                    "setup-failed": "Not run: the model artifact could not be read"}
+                    "setup-failed": "Not run: the model artifact could not be read",
+                    "model-hash-mismatch": "Not run: the model artifact does not match the configured SHA-256"}
 _M32 = 0xFFFFFFFF
 
 
@@ -749,9 +754,9 @@ def _semantic_v2(record):
     if not ok or (status == "failed") != (stop is not None):
         errors.append(reason("status.attempts", "/status",
                              f"Status {status!r} with stopReason {stop!r} disagrees with the attempts {kinds}"))
-    if (record["artifact"] is None) != (stop in STOP_REASONS_UNMEASURED):
+    if (record["artifact"] is None) != (stop in STOP_REASONS_UNHASHED):
         errors.append(reason("status.artifact", "/artifact",
-                             "artifact is null exactly when the run was recorded without measurement"))
+                             "artifact is null exactly when the run was recorded before its model was hashed"))
 
     # Per-attempt evidence, recomputed under the published policy.
     loads, process_ids = [], set()
@@ -879,6 +884,70 @@ def _semantic_v2(record):
                 ("orderSeed" in config and config["orderSeed"] != order["seed"]):
             errors.append(reason("order.inconsistent", "/runOrder/seedSource",
                                  "seedSource/seed must match the configuration's orderSeed"))
+    return errors
+
+
+# --- cpu-reference-v3: build, configuration and execution identity ----------
+
+def _semantic_v3(record):
+    """Identity evidence: configured model hash, effective settings and per-load engine reports."""
+    errors = []
+    protocol, config, attempts = record["protocol"], record["configuration"], record["coldRuns"]
+    runs = [run for run in config["runs"] if run["id"] == record["configurationRunId"]]
+    expected = runs[0].get("modelSha256") if runs else None
+    artifact, stop = record["artifact"], record["stopReason"]
+    if artifact is not None:
+        if artifact["expectedSha256"] != expected:
+            errors.append(reason("artifact.expected", "/artifact/expectedSha256",
+                                 "expectedSha256 must be the configured run's modelSha256 (or null if none)"))
+        mismatch = expected is not None and artifact["sha256"] != expected
+        if mismatch != (stop == "model-hash-mismatch"):
+            errors.append(reason("artifact.expected", "/stopReason",
+                                 "stopReason is model-hash-mismatch exactly when the hashed model differs from "
+                                 "the configured modelSha256"))
+
+    settings = record["effectiveSettings"]
+    for key, actual, wanted in (("init/n_ctx", settings["init"]["n_ctx"], protocol["nCtx"]),
+                                ("init/n_threads", settings["init"]["n_threads"], protocol["nThreads"]),
+                                ("completion/n_predict", settings["completion"]["n_predict"],
+                                 protocol["maxDecodeTokens"])):
+        if actual != wanted:
+            errors.append(reason("settings.protocol-mismatch", f"/effectiveSettings/{key}",
+                                 "Effective engine setting disagrees with the protocol"))
+
+    source = record["configurationSource"]
+    if source["kind"] == "staged" and source["sha256"] is None:
+        errors.append(reason("configuration.source", "/configurationSource/sha256",
+                             "A staged configuration is always hashed as read"))
+    build = record["build"]
+    if build["status"] == "unavailable" and any(value is not None for key, value in build.items() if key != "status"):
+        errors.append(reason("build.inconsistent", "/build", "An unavailable build reports no other field"))
+    if build["status"] == "reported" and build["gitCommit"] is None and build["gitDirty"] is not None:
+        errors.append(reason("build.inconsistent", "/build/gitDirty", "gitDirty requires a known commit"))
+    if source["kind"] == "bundled" and source["sha256"] is not None and (
+            build["status"] == "unavailable" or build["buildType"] == "debug"):
+        # The bundled hash is a build constant, and a debug build's JS comes from Metro.
+        errors.append(reason("configuration.source", "/configurationSource/sha256",
+                             "A bundled configuration hash requires a reported release build"))
+    suffix = build["versionName"].rpartition("-")[2] if build["versionName"] and "-" in build["versionName"] else None
+    if suffix in ("reference", "experimental", "geniex") and build["flavor"] is not None and suffix != build["flavor"]:
+        errors.append(reason("build.inconsistent", "/build/versionName",
+                             "The versionName flavor suffix disagrees with the flavor"))
+
+    # One report per successful model load, in load order, never for a load that did not happen.
+    reports = record["executionReports"]
+    indices = [item["runIndex"] for item in reports]
+    # A load-phase failure has an instance (the load was attempted) but no loaded context.
+    loaded = {index for index, attempt in enumerate(attempts) if attempt["instance"] is not None and not (
+        attempt["status"] == "failed" and attempt["error"]["phase"] == "load")}
+    succeeded = {index for index, attempt in enumerate(attempts) if attempt["status"] == "complete" or (
+        attempt["status"] == "failed" and attempt["error"]["phase"] in ("inference", "release"))}
+    if indices != sorted(set(indices)) or not set(indices) <= loaded or not succeeded <= set(indices):
+        errors.append(reason("execution.inconsistent", "/executionReports",
+                             "Each successful model load has exactly one report, in repetition order"))
+    # A report of GPU devices (e.g. a reference run in the experimental flavor, where llama.rn
+    # registers OpenCL even with n_gpu_layers 0) is kept as evidence, not rejected: it is what
+    # the engine said, and execution itself stays unverified (observedBackend null).
     return errors
 
 

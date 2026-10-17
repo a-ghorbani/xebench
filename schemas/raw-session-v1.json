@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/a-ghorbani/xebench/schemas/raw-session-v1.json",
   "title": "xebench raw reference session, schemaVersion 1",
-  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal), schemaVersion 1. The protocol version selects a branch: cpu-reference-v1 records (including those from apps built before condition snapshots) keep their original shape; cpu-reference-v2 records carry readiness, sampling, order and verdict evidence. Cross-field rules, including recomputed condition assessments, are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration stay open to additive fields.",
-  "oneOf": [{"$ref": "#/$defs/sessionV1"}, {"$ref": "#/$defs/sessionV2"}],
+  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal), schemaVersion 1. The protocol version selects a branch: cpu-reference-v1 records (including those from apps built before condition snapshots) keep their original shape; cpu-reference-v2 records carry readiness, sampling, order and verdict evidence; cpu-reference-v3 records add build identity, configuration source and hash, effective engine settings, per-load engine reports and the configured model hash. Cross-field rules, including recomputed condition assessments, are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration stay open to additive fields.",
+  "oneOf": [{"$ref": "#/$defs/sessionV1"}, {"$ref": "#/$defs/sessionV2"}, {"$ref": "#/$defs/sessionV3"}],
   "$defs": {
     "label": {
       "type": "string",
@@ -44,7 +44,8 @@
               "modelFile": {"$ref": "#/$defs/modelFile"},
               "quant": {"$ref": "#/$defs/label"},
               "nThreads": {"type": "integer", "minimum": 1, "maximum": 32},
-              "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768}
+              "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768},
+              "modelSha256": {"$ref": "#/$defs/sha256"}
             }
           }
         }
@@ -485,6 +486,281 @@
         }
       },
       "description": "Protocol cpu-reference-v2 (harness xebench-0.6-reference): readiness-gated, sampled repetitions under run-conditions-v2 and charging-policy-v2 (docs/RUN-CONDITIONS.md)."
+    },
+    "sessionV3": {
+      "type": "object",
+      "required": [
+        "runId",
+        "timestampIso",
+        "deviceInfo",
+        "artifact",
+        "schema",
+        "schemaVersion",
+        "harnessVersion",
+        "engine",
+        "engineVersion",
+        "backend",
+        "observedBackend",
+        "platform",
+        "model",
+        "quant",
+        "modelFile",
+        "configuration",
+        "configurationRunId",
+        "protocol",
+        "status",
+        "coldRuns",
+        "summary",
+        "guardsPassed",
+        "guardNotes",
+        "conditionPolicy",
+        "repetitionsPlanned",
+        "stopReason",
+        "runOrder",
+        "chargingPolicy",
+        "conditionVerdict",
+        "build",
+        "configurationSource",
+        "effectiveSettings",
+        "executionReports"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,99}$"},
+        "timestampIso": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+        },
+        "deviceInfo": {
+          "type": "object",
+          "required": ["model", "androidRelease"],
+          "additionalProperties": false,
+          "properties": {"model": {"type": "string"}, "androidRelease": {"type": "string"}}
+        },
+        "artifact": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["sha256", "sizeBytes", "expectedSha256"],
+              "additionalProperties": false,
+              "properties": {
+                "sha256": {"$ref": "#/$defs/sha256"},
+                "sizeBytes": {"type": "integer", "minimum": 0},
+                "expectedSha256": {
+                  "oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}],
+                  "description": "The configured run's modelSha256, or null when the configuration names none."
+                }
+              }
+            }
+          ],
+          "description": "Bytes hashed before measurement. null only for runs recorded before hashing (stopReason setup-failed or configuration-aborted); a model-hash-mismatch run keeps both hashes."
+        },
+        "schema": {"const": "xebench-raw"},
+        "schemaVersion": {"const": 1},
+        "harnessVersion": {"const": "xebench-0.7-reference"},
+        "engine": {"$ref": "#/$defs/label"},
+        "engineVersion": {"type": "string", "minLength": 1},
+        "backend": {"const": "cpu"},
+        "observedBackend": {"const": null, "description": "Actual backend execution is not observed; unknown stays null."},
+        "platform": {"const": "android"},
+        "model": {"$ref": "#/$defs/label"},
+        "quant": {"$ref": "#/$defs/label"},
+        "modelFile": {"$ref": "#/$defs/modelFile"},
+        "configuration": {"$ref": "#/$defs/configuration"},
+        "configurationRunId": {"$ref": "#/$defs/label"},
+        "protocol": {
+          "type": "object",
+          "description": "Open to additive fields (run kind, sampling, order) from later protocol work.",
+          "required": [
+            "version",
+            "nColdRuns",
+            "cooldownSec",
+            "promptLabel",
+            "prompt",
+            "maxDecodeTokens",
+            "nThreads",
+            "nCtx",
+            "coldDefinition",
+            "readinessTimeoutSec",
+            "measurementKind",
+            "warmRequests",
+            "processRestartBetweenRepetitions",
+            "maxBatteryTempRiseC"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "version": {"const": "cpu-reference-v3"},
+            "nColdRuns": {"type": "integer", "minimum": 1, "maximum": 20},
+            "cooldownSec": {"type": "integer", "minimum": 0, "maximum": 300},
+            "promptLabel": {"type": "string", "minLength": 1},
+            "prompt": {"type": "string", "minLength": 1},
+            "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+            "nThreads": {"type": "integer", "minimum": 1, "maximum": 32},
+            "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768},
+            "coldDefinition": {"type": "string", "minLength": 1},
+            "readinessTimeoutSec": {"type": "integer", "minimum": 10, "maximum": 900},
+            "measurementKind": {"const": "fresh-instance-first-request"},
+            "warmRequests": {"const": "not-measured"},
+            "processRestartBetweenRepetitions": {"const": false},
+            "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10}
+          }
+        },
+        "status": {"enum": ["running", "complete", "failed"]},
+        "coldRuns": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 20,
+          "items": {
+            "oneOf": [
+              {"$ref": "#/$defs/completeAttemptV2"},
+              {"$ref": "#/$defs/failedAttemptV2"},
+              {"$ref": "#/$defs/skippedAttempt"}
+            ]
+          }
+        },
+        "summary": {
+          "type": "object",
+          "required": ["loadMs", "ttftMs", "prefillTps", "decodeTps"],
+          "additionalProperties": false,
+          "properties": {
+            "loadMs": {"$ref": "#/$defs/optionalAggregate"},
+            "ttftMs": {"$ref": "#/$defs/optionalAggregate"},
+            "prefillTps": {"$ref": "#/$defs/optionalAggregate"},
+            "decodeTps": {"$ref": "#/$defs/optionalAggregate"}
+          }
+        },
+        "guardsPassed": {
+          "enum": [false, null],
+          "description": "Never true: backend execution is unverified even when conditionVerdict passes."
+        },
+        "guardNotes": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "conditionPolicy": {"$ref": "#/$defs/conditionPolicyV2"},
+        "repetitionsPlanned": {"type": "integer", "minimum": 1, "maximum": 20},
+        "stopReason": {
+          "enum": [
+            null,
+            "repetition-failed",
+            "readiness-timeout",
+            "condition-probe-pending",
+            "cleanup-failed",
+            "configuration-aborted",
+            "setup-failed",
+            "model-hash-mismatch"
+          ]
+        },
+        "runOrder": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/runOrder"}]},
+        "chargingPolicy": {"oneOf": [{"$ref": "#/$defs/chargingPolicyV2"}, {"$ref": "#/$defs/chargingPolicyV3"}]},
+        "conditionVerdict": {
+          "type": "object",
+          "required": ["status", "reasons", "charging"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {"enum": ["pass", "fail", "unverified"]},
+            "reasons": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+            "charging": {"enum": ["satisfied", "violated", "on-battery", "unknown"]}
+          }
+        },
+        "build": {"$ref": "#/$defs/buildIdentity"},
+        "configurationSource": {"$ref": "#/$defs/configurationSource"},
+        "effectiveSettings": {"$ref": "#/$defs/effectiveSettingsLlamaRn"},
+        "executionReports": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/executionReport"},
+          "description": "One engine report per successful model load, in load order. Reports are what the engine said, not verified execution; observedBackend stays null."
+        }
+      },
+      "description": "Protocol cpu-reference-v3 (harness xebench-0.7-reference): the cpu-reference-v2 measurement procedure plus build identity, configuration source and hash, the engine's effective settings, per-load engine reports and the configured model hash (docs/REFERENCE-RUNS.md)."
+    },
+    "buildIdentity": {
+      "type": "object",
+      "description": "Embedded at build time (BuildConfig) and read through the BuildInfo native module. status unavailable means the module was missing and every other field is null; a reported field the build could not determine is null.",
+      "required": ["status", "gitCommit", "gitDirty", "flavor", "buildType", "versionName", "versionCode", "signingCertSha256"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"enum": ["reported", "unavailable"]},
+        "gitCommit": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{40}$"}]},
+        "gitDirty": {"type": ["boolean", "null"]},
+        "flavor": {"enum": [null, "reference", "experimental", "geniex"]},
+        "buildType": {"enum": [null, "release", "debug"]},
+        "versionName": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"}]},
+        "versionCode": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 0, "maximum": 2100000000}]},
+        "signingCertSha256": {
+          "oneOf": [{"type": "null"}, {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/sha256"}}]
+        }
+      }
+    },
+    "configurationSource": {
+      "type": "object",
+      "description": "bundled: the APK's configs/cpu-reference-v1.json, hashed at build time (null if the build did not report it). staged: xebench-config.json, hashed as read.",
+      "required": ["kind", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"enum": ["bundled", "staged"]},
+        "sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}
+      }
+    },
+    "effectiveSettingsLlamaRn": {
+      "type": "object",
+      "description": "Every parameter the harness passes to llama.rn initLlama() (besides the model path) and completion() (besides the prompt). Unlisted parameters are the binding's defaults for engineVersion.",
+      "required": ["binding", "init", "completion", "unlisted"],
+      "additionalProperties": false,
+      "properties": {
+        "binding": {"const": "llama.rn"},
+        "init": {
+          "type": "object",
+          "required": ["n_ctx", "n_batch", "n_ubatch", "n_threads", "n_gpu_layers", "use_mmap", "use_mlock",
+            "flash_attn_type", "cache_type_k", "cache_type_v"],
+          "additionalProperties": false,
+          "properties": {
+            "n_ctx": {"type": "integer", "minimum": 1024, "maximum": 32768},
+            "n_batch": {"type": "integer", "minimum": 1, "maximum": 8192},
+            "n_ubatch": {"type": "integer", "minimum": 1, "maximum": 8192},
+            "n_threads": {"type": "integer", "minimum": 1, "maximum": 32},
+            "n_gpu_layers": {"const": 0},
+            "use_mmap": {"type": "boolean"},
+            "use_mlock": {"type": "boolean"},
+            "flash_attn_type": {"enum": ["auto", "on", "off"]},
+            "cache_type_k": {"const": "f16"},
+            "cache_type_v": {"const": "f16"}
+          }
+        },
+        "completion": {
+          "type": "object",
+          "required": ["n_predict", "temperature", "seed"],
+          "additionalProperties": false,
+          "properties": {
+            "n_predict": {"type": "integer", "minimum": 1, "maximum": 512},
+            "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+            "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295}
+          }
+        },
+        "unlisted": {"const": "binding-defaults"}
+      }
+    },
+    "executionReport": {
+      "type": "object",
+      "description": "What llama.rn reported about the context created by one load: GPU placement and why not, devices used, the native library variant and llama.cpp's system_info line. Unreported or malformed values are null.",
+      "required": ["runIndex", "gpu", "reasonNoGPU", "devices", "androidLib", "systemInfo"],
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 0, "maximum": 19},
+        "gpu": {"type": ["boolean", "null"]},
+        "reasonNoGPU": {"oneOf": [{"type": "null"}, {"type": "string", "maxLength": 256, "pattern": "^[ -~]*$"}]},
+        "devices": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "maxItems": 16,
+              "items": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[ -~]*$"}
+            }
+          ]
+        },
+        "androidLib": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-z0-9_]{1,64}$"}]},
+        "systemInfo": {"oneOf": [{"type": "null"}, {"type": "string", "maxLength": 2048, "pattern": "^[ -~]*$"}]}
+      }
     },
     "completeAttemptV2": {
       "type": "object",

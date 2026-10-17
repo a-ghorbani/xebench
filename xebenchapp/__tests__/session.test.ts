@@ -23,14 +23,24 @@ afterEach(() => jest.restoreAllMocks());
 
 // No cooldown by default so tests do not wait; cooldown tests set cooldownSec explicitly.
 const config = {...parseConfig(configData), cooldownSec: 0};
+const build = {status: 'reported' as const, gitCommit: 'c'.repeat(40), gitDirty: false, flavor: 'reference' as const,
+  buildType: 'release' as const, versionName: '1.0-reference', versionCode: 1, signingCertSha256: ['d'.repeat(64)]};
 const identity = {runId: 'fixture-run', timestampIso: '2026-01-01T00:00:00Z',
-  deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: {sha256: 'a'.repeat(64), sizeBytes: 100}};
+  deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: {sha256: config.runs[0].modelSha256!, sizeBytes: 100},
+  build, configurationSource: {kind: 'bundled' as const, sha256: 'b'.repeat(64)}};
+const effective = ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
+  init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: true, use_mlock: false,
+    flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const, cache_type_v: 'f16' as const},
+  completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const});
+const report = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices: [],
+  androidLib: 'rnllama_jni_v8_2_dotprod_i8mm', systemInfo: 'system_info: n_threads = 4 / 8 | CPU : NEON = 1 | '};
 
 function adapter() {
   return {
     engine: 'llama.cpp' as const, backend: 'cpu' as const, modelLabel: 'Llama 3.2 1B',
     quantLabel: 'Q4_K_M', modelFile: config.runs[0].modelFile,
     engineVersion: () => 'fixture-version', settings: () => ({nThreads: 4, nCtx: 2048}),
+    effectiveSettings: effective, executionReport: jest.fn(() => report),
     load: jest.fn(async () => 17), release: jest.fn(async () => {}),
     benchOnce: jest.fn(async (): Promise<SingleRunMetrics> => ({loadMs: 0, ttftMs: 25,
       promptTokens: 512, decodeTokens: 128, prefillTps: 200, decodeTps: 30,

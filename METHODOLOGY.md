@@ -3,7 +3,10 @@
 Implementation status: the current [CPU reference runner](docs/REFERENCE-RUNS.md)
 retains repetitions and enforces the [run-condition policy](docs/RUN-CONDITIONS.md):
 cooldown, bounded thermal readiness, sampled conditions, cleanup and a seeded run
-order. It does not yet enforce the full fairness contract below: backend execution,
+order. Each record also identifies the build (commit, flavor, signing certificate),
+the configuration file and its hash, every engine parameter passed, and what the
+engine reported about each loaded context; a model whose SHA-256 differs from the
+configuration is never measured. It does not yet enforce the full fairness contract below: backend execution,
 workload compatibility and quality remain unverified, so guards never pass. Records
 cannot update published data. The remaining rules are tracked in #1 and #3–#6.
 
