@@ -79,9 +79,9 @@ These files are **local diagnostics**, not sanitized public evidence. UUID
 filenames omit the ADB serial, but arbitrary payload fields may still contain
 private information. Keep `results/` ignored and review before sharing.
 `publicationReady: false` in the capture manifest is intentional: successful
-transport does not establish benchmark validity. Aggregation still accepts legacy
-raw records and does not yet enforce manifest status; inspect the manifest and
-protocol evidence before explicitly using `--update`. The captured xebench app
+transport does not establish benchmark validity. Aggregation does not yet
+enforce manifest status; inspect the manifest and protocol evidence before
+publishing. The captured xebench app
 is stopped on completion, timeout or interruption, with up to five additional
 seconds allowed for cleanup. A cleanup failure returns exit code 2.
 Cancellation finishes any record write and waits for the current ADB call
@@ -117,7 +117,7 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 
 ```bash
 git switch -c results/reviewed-measurements
-node scripts/aggregate.mjs results/<reviewed-capture-id>/raw-*.jsonl --update
+node scripts/aggregate.mjs results/<reviewed-capture-id>/raw-*.jsonl --update --allow-legacy
 git add data/benchmarks.json
 git commit -m "results: add reviewed measurements"
 git push -u origin results/reviewed-measurements
@@ -125,6 +125,17 @@ git push -u origin results/reviewed-measurements
 ```
 
 `--update` reads `data/benchmarks.json`, upserts the freshly-measured rows (keyed by engine·backend·platform·device·model·quant·provenance, so re-runs overwrite in place), re-stamps `generatedAt`, and writes it back. Existing rows (other devices, vendor citations) are preserved.
+
+Publication fails closed: on any error it exits 1 and leaves `data/benchmarks.json` byte-identical.
+
+- The existing file and the result must match the schema, with unique row keys and a correct `rowCount`. The file is replaced atomically (temp file + rename).
+- Every input line must be a finite, complete `xebench-raw` record. Malformed, truncated or non-finite lines, unknown schema/protocol versions and empty input reject the whole run (also in preview).
+- Legacy records (no `schemaVersion`) are published only with the explicit `--allow-legacy` flag and are logged as `LEGACY`. `schemaVersion` 1 reference sessions remain preview-only.
+- Failed or unverified guards and incomplete sessions are rejected. `sampleCount` is the summary `n`, checked against the successful repetitions in the record (llama-bench records carry only a self-reported `n`, which is logged).
+- Two input records with the same row key are rejected rather than picking one implicitly; a single input row replacing an existing row is logged.
+- Rows are ordered by platform, device, model, engine, backend, quant and provenance (codepoint order), independent of input order and locale.
+
+`node scripts/validate_data.mjs` checks the checked-in `data/*.json` against their schemas; CI runs it with `tests/test_publication.py`.
 
 **Consumers load this file dynamically** — the pocketpal.dev leaderboard fetches it from the repo (raw URL / CDN) with periodic revalidation and overlays live crowd data, so a commit here surfaces on the board with no redeploy or dashboard-dev work. The stable interface is the schema; bump `schemaVersion` on any breaking change. (`--pretty` without `--update` still just prints `EngineBenchmarkRow[]` to stdout for ad-hoc use.)
 
