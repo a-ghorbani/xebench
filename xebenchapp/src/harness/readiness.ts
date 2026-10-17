@@ -29,7 +29,7 @@ export interface ReadinessResult {
 export async function awaitReadiness(
   timeoutSec: number, baseline: ReadinessBaseline,
   sleep: (ms: number) => Promise<void>, now: () => number = Date.now,
-  maxRiseC: number = CONDITION_POLICY.readiness.maxBatteryTempRiseC,
+  maxRiseC: number = CONDITION_POLICY.readiness.maxBatteryTempRiseC, waitWhileCharging = true,
 ): Promise<{result: ReadinessResult; snapshot: ConditionSnapshot}> {
   const pollMs = CONDITION_POLICY.readiness.pollSec * 1000;
   const maxPolls = Math.floor(timeoutSec * 1000 / pollMs) + 1;
@@ -45,7 +45,7 @@ export async function awaitReadiness(
       headroomApplied: snapshot.thermalHeadroom !== null, notReady, reasons,
     }});
     if (probePending(snapshot)) return finish('probe-pending', ['probe-pending']);
-    const {ready, reasons} = assessReadiness(snapshot, baseline.batteryTempC, maxRiseC);
+    const {ready, reasons} = assessReadiness(snapshot, baseline.batteryTempC, maxRiseC, waitWhileCharging);
     if (ready && snapshot.thermalHeadroom === null && !confirmedHeadroom) {
       // Bounded: at most one extra poll per readiness wait.
       confirmedHeadroom = true;

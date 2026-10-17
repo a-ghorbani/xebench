@@ -75,6 +75,13 @@ export const CHARGING_POLICY = {
   readiness: 'wait-while-charging', unknown: 'never-eligible', effect: 'publication-eligibility-only',
 } as const;
 
+/**
+ * EXPERIMENT ONLY (docs/experiments/charging-ab.md): the same classification, but readiness
+ * records charging instead of waiting for it to stop. Never a publication policy.
+ */
+export const EXPERIMENT_CHARGING_POLICY = {...CHARGING_POLICY, readiness: 'record-only-experiment'} as const;
+export type ChargingPolicy = typeof CHARGING_POLICY | typeof EXPERIMENT_CHARGING_POLICY;
+
 const NUMBERS: Record<string, [number, number, boolean?]> = {
   timestampMs: [0, Number.MAX_SAFE_INTEGER], elapsedMs: [0, Number.MAX_SAFE_INTEGER], batteryPct: [0, 100], batteryTempC: [-50, 150],
   batteryStatus: [1, 5, true], plugged: [0, 255, true], currentNowUa: [-1e9, 1e9, true],
@@ -131,7 +138,7 @@ export function assessConditions(snapshot: ConditionSnapshot): ConditionAssessme
 
 /** Readiness before loading: stricter thermal limits; unknown required evidence is never ready. */
 export function assessReadiness(snapshot: ConditionSnapshot, baselineTempC: number | null,
-  maxRiseC: number = CONDITION_POLICY.readiness.maxBatteryTempRiseC) {
+  maxRiseC: number = CONDITION_POLICY.readiness.maxBatteryTempRiseC, waitWhileCharging = true) {
   const {readiness} = CONDITION_POLICY;
   const reasons = snapshot.probeStatus === 'complete' ? [] : ['probe-incomplete'];
   reasons.push(...missingRequired(snapshot).map(key => `unknown-${key}`), ...conditionFailures(snapshot));
@@ -141,7 +148,8 @@ export function assessReadiness(snapshot: ConditionSnapshot, baselineTempC: numb
       snapshot.batteryTempC > baselineTempC + maxRiseC) reasons.push('battery-not-cooled');
   if (snapshot.thermalHeadroom !== null && snapshot.thermalHeadroom > readiness.maxThermalHeadroom) reasons.push('thermal-headroom-low');
   // Eligibility, not validity: wait for active charging to stop, but never for an unknown state.
-  if (chargingState(snapshot) === 'charging') reasons.push('charging');
+  // The experiment-only record-only policy observes charging without waiting for it.
+  if (waitWhileCharging && chargingState(snapshot) === 'charging') reasons.push('charging');
   return {ready: reasons.length === 0, reasons: [...new Set(reasons)]};
 }
 

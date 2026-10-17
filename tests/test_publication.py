@@ -437,6 +437,32 @@ class PublicationTests(unittest.TestCase):
         result = self.assert_rejected(self.write(ref), '--update', '--allow-legacy')
         self.assertIn('preview-only', result.stderr)
 
+    def test_experiment_only_records_are_never_published(self):
+        """docs/experiments/charging-ab.md: record-only-experiment readiness is never publication evidence."""
+        app = json.loads((ROOT / 'tests/fixtures/raw-session/app-emitted.json').read_text())['records']
+        experiment = app['chargingRecordOnly']
+        self.assertEqual(experiment['chargingPolicy']['readiness'], 'record-only-experiment')
+        # Also with a protocol aggregate.mjs would otherwise accept, and with either marker alone.
+        as_reference = {**reference_record(), 'configuration': experiment['configuration'],
+                        'chargingPolicy': experiment['chargingPolicy']}
+        only_policy = {**reference_record(), 'chargingPolicy': experiment['chargingPolicy']}
+        only_flag = {**reference_record(), 'configuration': {**reference_record()['configuration'],
+                                                             'experimentChargingReadiness': 'record-only'}}
+        for name, record in {'app': experiment, 'reference': as_reference, 'policy': only_policy,
+                             'flag': only_flag}.items():
+            with self.subTest(case=name):
+                self.assert_rejected(self.write(record), reason='never publishable')
+                self.assert_rejected(self.write(record), '--update', '--allow-legacy', reason='never publishable')
+
+    def test_experiment_configurations_are_never_published(self):
+        """A record from an experiment-* configuration is refused even with its markers stripped."""
+        stripped = {**reference_record(), 'configuration': {'id': 'experiment-charging-ab-v1'}}
+        for args in ((), ('--update', '--allow-legacy')):
+            with self.subTest(args=args):
+                self.assert_rejected(self.write(stripped), *args, reason='experiment configuration')
+        # Only the prefix counts: other ids are unaffected.
+        self.preview(self.write({**reference_record(), 'configuration': {'id': 'cpu-reference-v1-experimental'}}))
+
 
 class DataValidationTests(unittest.TestCase):
     def run_node(self, script):

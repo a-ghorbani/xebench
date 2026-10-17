@@ -7484,6 +7484,338 @@
         "Actual backend execution has not been verified"
       ]
     },
+    "chargingRecordOnly": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sizeBytes": 770000000
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.6-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ],
+        "experimentChargingReadiness": "record-only"
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "runOrder": null,
+      "protocol": {
+        "version": "cpu-reference-v2",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false
+      },
+      "status": "complete",
+      "repetitionsPlanned": 1,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 30000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 180,
+            "baselineBatteryTempC": null,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 22
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 2,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 0,
+                  "charging": 2,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 2,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 2,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 2,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "violated"
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "record-only-experiment",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "violated"
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Actual backend execution has not been verified"
+      ]
+    },
     "riseOverride": {
       "runId": "1767225600000-0-fixture",
       "timestampIso": "2026-01-01T00:00:00.000Z",
@@ -7775,7 +8107,7 @@
             "kind": "fresh-instance",
             "request": "first-request-on-instance",
             "processInstanceId": "fixture-process",
-            "modelLoadsBeforeInProcess": 22
+            "modelLoadsBeforeInProcess": 23
           },
           "conditions": {
             "before": {
@@ -7948,7 +8280,7 @@
             "kind": "fresh-instance",
             "request": "first-request-on-instance",
             "processInstanceId": "fixture-process",
-            "modelLoadsBeforeInProcess": 23
+            "modelLoadsBeforeInProcess": 24
           },
           "conditions": {
             "before": {
@@ -8430,7 +8762,7 @@
             "kind": "fresh-instance",
             "request": "first-request-on-instance",
             "processInstanceId": "fixture-process",
-            "modelLoadsBeforeInProcess": 24
+            "modelLoadsBeforeInProcess": 25
           },
           "conditions": {
             "before": {
@@ -9019,7 +9351,7 @@
             "kind": "fresh-instance",
             "request": "first-request-on-instance",
             "processInstanceId": "fixture-process",
-            "modelLoadsBeforeInProcess": 25
+            "modelLoadsBeforeInProcess": 26
           },
           "conditions": {
             "before": {
@@ -9358,7 +9690,7 @@
             "kind": "fresh-instance",
             "request": "first-request-on-instance",
             "processInstanceId": "fixture-process",
-            "modelLoadsBeforeInProcess": 26
+            "modelLoadsBeforeInProcess": 27
           },
           "conditions": {
             "before": {
@@ -9746,7 +10078,7 @@
             "kind": "fresh-instance",
             "request": "first-request-on-instance",
             "processInstanceId": "fixture-process",
-            "modelLoadsBeforeInProcess": 27
+            "modelLoadsBeforeInProcess": 28
           },
           "conditions": {
             "before": {
@@ -10081,7 +10413,7 @@
             "kind": "fresh-instance",
             "request": "first-request-on-instance",
             "processInstanceId": "fixture-process",
-            "modelLoadsBeforeInProcess": 28
+            "modelLoadsBeforeInProcess": 29
           },
           "conditions": {
             "before": {
@@ -10325,7 +10657,7 @@
             "kind": "fresh-instance",
             "request": "first-request-on-instance",
             "processInstanceId": "fixture-process",
-            "modelLoadsBeforeInProcess": 29
+            "modelLoadsBeforeInProcess": 30
           },
           "conditions": {
             "before": {

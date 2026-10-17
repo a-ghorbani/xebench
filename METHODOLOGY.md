@@ -142,7 +142,9 @@ snapshot and sample. `current_now` is recorded only as a diagnostic. Charging is
 `violated`, running on battery (`DISCHARGING`) is a known but ineligible
 `on-battery` state in the tethered lab, and unknown is never eligible. Readiness
 waits, within the bound, for charging to stop. The activity keeps the screen on
-while visible. Historical records are not retroactively certified.
+while visible. Historical records are not retroactively certified: legacy rows are
+"charging state unknown, effect not ruled out at 3%" and are not ranked against v3
+rows where differences are below about 3% plus the observed CI ([charging A/B decision](docs/experiments/charging-ab.md#decision-2026-10-17)).
 → `xebenchapp/src/harness/conditions.ts`, `readiness.ts`, `session.ts`;
 `BenchConditionsModule.kt`; tests listed in
 [rule traceability](docs/RUN-CONDITIONS.md#rule-traceability).

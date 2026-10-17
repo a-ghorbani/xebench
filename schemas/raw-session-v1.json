@@ -814,7 +814,7 @@
         "externalPower": {"const": "allowed"},
         "notChargingStatuses": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": [4, 5]}},
         "chargingStatus": {"const": 2},
-        "readiness": {"const": "wait-while-charging"},
+        "readiness": {"enum": ["wait-while-charging", "record-only-experiment"], "description": "record-only-experiment only with configuration.experimentChargingReadiness (experiment only, never publication evidence)."},
         "unknown": {"const": "never-eligible"},
         "effect": {"const": "publication-eligibility-only"},
         "currentNow": {"const": "diagnostic-only"},

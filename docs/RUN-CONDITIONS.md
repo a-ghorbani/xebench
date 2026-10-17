@@ -195,8 +195,9 @@ rise rule therefore delayed (up to 101 s) and then skipped a repetition of the
 second run of a two-run, three-repetition configuration on both devices
 (`battery-not-cooled`). This is the intended
 behavior, but it limits configuration length on tethered devices. The owner kept the
-2 °C default. The bound is now configurable per configuration, and the charging
-A/B experiment will set the final value.
+2 °C default. The bound is now configurable per configuration. The 2 °C default
+stays for reference runs; the charging A/B experiment's 10 °C override was
+experiment-only ([decision](experiments/charging-ab.md#decision-2026-10-17)).
 
 With the status-only charging policy, the S23 reported `FULL` on USB throughout a measured
 three-repetition run (`satisfied`). Its `current_now` values (about −900 to −2000
