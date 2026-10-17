@@ -25,7 +25,10 @@ def load(name, path):
 capture = load("capture_app_run", ROOT / "scripts/capture_app_run.py")
 evidence = load("export_evidence", SCRIPT)
 raw_session = evidence.raw_session
-APP = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted.json").read_text())["records"]
+# The privacy/determinism tests below were written against cpu-reference-v1 records
+# (frozen fixture); cpu-reference-v2 app output is covered by ConditionsV2ExportTests.
+APP = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted-v1.json").read_text())["records"]
+APP_V2 = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted.json").read_text())["records"]
 
 # Planted private values. None of them may appear anywhere in a bundle.
 SERIAL = "R5CX21PLANTED7"
@@ -662,6 +665,65 @@ class BranchRecordTests(unittest.TestCase):
         errors = []
         evidence._check_statistics(out, "", errors)
         self.assertEqual(errors, [])
+
+
+class ConditionsV2ExportTests(unittest.TestCase):
+    """End to end: conditions-enforcement app records -> capture -> raw_session -> export -> verify."""
+
+    def records(self):
+        terminal = [name for name, record in APP_V2.items() if record["status"] != "running"]
+        result = []
+        for index, name in enumerate(sorted(terminal)):
+            record = copy.deepcopy(APP_V2[name])
+            record["runId"] = f"1767225600000-{index}-v2"
+            self.assertEqual(raw_session.validate(record), [], name)
+            result.append((name, record))
+        return result
+
+    def test_every_app_record_exports_without_loss_and_verifies(self):
+        named = self.records()
+        with tempfile.TemporaryDirectory() as root:
+            checkpoint = dict(APP_V2["partial"], runId="1767225600000-99-v2")
+            directory = make_capture(Path(root) / "results", [record for _, record in named],
+                                     checkpoints=[checkpoint])
+            manifest = json.loads((directory / "manifest.json").read_text())
+            self.assertEqual(manifest["invalidRecords"], 0)
+            self.assertTrue(all(entry["validation"] == raw_session.VALIDATION for entry in manifest["records"]))
+            report = evidence.export([directory], Path(root) / "out")
+            # Only the prompt text and free-text error messages are withheld; no app field is
+            # dropped as unknown or reduced to "unrecognized".
+            # (The capture-level drops are the planted host device facts of HOST_DEVICE.)
+            record_drops = [item for item in report["dropped"] if "/raw-" in item["source"]]
+            self.assertEqual({item["kind"] for item in record_drops}, {"excluded"}, record_drops)
+            self.assertEqual({item["path"].rsplit("/", 1)[-1] for item in record_drops}, {"prompt", "message"})
+            result = evidence.verify(report["bundle"], report["evidence"]["bundleSha256"])
+            self.assertTrue(result["valid"], result["errors"])
+            bundle = Path(report["bundle"])
+            for name, record in named:
+                exported = json.loads((bundle / f"sessions/{record['runId']}.json").read_text())["record"]
+                with self.subTest(name=name):
+                    for key in ("runOrder", "repetitionsPlanned", "stopReason", "chargingPolicy", "conditionVerdict",
+                                "conditionPolicy", "guardNotes", "artifact"):
+                        self.assertEqual(exported[key], record[key])
+                    for raw, out in zip(record["coldRuns"], exported["coldRuns"]):
+                        self.assertEqual(out["conditions"], raw["conditions"])
+                        self.assertEqual(out["readiness"], raw["readiness"])
+                        self.assertEqual(out.get("reason"), raw.get("reason"))
+                    self.assertEqual(evidence.privacy_findings(exported), [])
+            self.assertEqual(len(result["sessions"]), len(named))
+
+    def test_new_charging_fields_reach_the_bundle(self):
+        record = dict(copy.deepcopy(APP_V2["chargingDuringRun"]), runId="1767225600000-0-charge")
+        before = record["coldRuns"][0]["conditions"]["before"]
+        self.assertEqual((before["batteryStatus"], before["plugged"], before["currentNowUa"]), (4, 2, -1500))
+        ctx = evidence.Context()
+        record.pop("deviceInfo", None)
+        out = evidence.RECORD.apply(record, "", ctx)
+        self.assertEqual(out["coldRuns"][0]["conditions"]["before"]["currentNowUa"], -1500)
+        self.assertEqual(out["coldRuns"][0]["conditions"]["during"]["summary"]["chargingStates"],
+                         record["coldRuns"][0]["conditions"]["during"]["summary"]["chargingStates"])
+        self.assertEqual(out["coldRuns"][0]["conditions"]["charging"], "violated")
+        self.assertEqual({item["kind"] for item in ctx.dropped}, {"excluded"})
 
 
 class CommandLineTests(unittest.TestCase):

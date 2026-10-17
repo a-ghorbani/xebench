@@ -1,10 +1,11 @@
 # xebench Methodology (v1)
 
 Implementation status: the current [CPU reference runner](docs/REFERENCE-RUNS.md)
-retains repetitions and implements cooldown, but does not yet enforce the full
-fairness contract below. [Endpoint condition checks](docs/RUN-CONDITIONS.md) flag
-observed failures; otherwise overall guards stay unverified. Records cannot update
-published data. The remaining rules are tracked in #1–#6.
+retains repetitions and enforces the [run-condition policy](docs/RUN-CONDITIONS.md):
+cooldown, bounded thermal readiness, sampled conditions, cleanup and a seeded run
+order. It does not yet enforce the full fairness contract below: backend execution,
+workload compatibility and quality remain unverified, so guards never pass. Records
+cannot update published data. The remaining rules are tracked in #1 and #3–#6.
 
 The fairness rules for cross-engine on-device LLM benchmarks. This is the
 document a partner (Hugging Face, an engine team, a reviewer) should read first.
@@ -31,8 +32,10 @@ device capability, and noisy (±50). The device is non-rooted, so the process
 **cannot** be moved to `top-app` (all cpuset writes denied) and **`taskset`
 cannot override** the cgroup's CPU confinement.
 
-Consequence: **a pure adb-shell binary cannot produce a representative
-performance number on a non-rooted phone.** A foreground, installed app is
+Consequence: **on that device, a pure adb-shell binary could not produce a
+representative performance number.** Cpuset policy is vendor-specific and was not
+measured on other devices, so xebench does not rely on shell placement anywhere.
+On that device, a foreground, installed app was
 placed in the **`top-app`** cpuset (CPUs 0–7 + boost) and gets real clocks — so
 the harness must be an **installed app running in the foreground**, screen on.
 This is why xebench is an app, not a CLI. Many casually-published on-device
@@ -57,6 +60,14 @@ foreground-app vs background-binary.)
 - **Metrics:** TTFT, prefill tok/s, decode tok/s, peak/delta RAM, model load
   time; plus an optional 5-minute sustained-load phase with per-iteration decode
   tok/s and thermal state.
+
+**Implemented today (reference runner):** llama.cpp on CPU only; the configuration
+parser rejects other engines and GPU/NPU offload, and the actual backend is not
+verified (`observedBackend: null`). It measures load time, TTFT and prefill/decode
+throughput. It does not measure peak or delta RAM (only endpoint PSS and sampled
+RSS) or the sustained phase. The ExecuTorch, LiteRT and GENIE-X adapters, and
+GPU/NPU options in the llama.cpp adapter, are experimental and outside the
+reference protocol.
 
 ## The five fairness rules
 
@@ -104,21 +115,37 @@ apples-to-apples even where tok/s provenance differs.
   (`load() → benchOnce() → release()`) inside a warm app process — *not* an app
   restart. This is stated on every record (`protocol.coldDefinition`), because
   "cold" is otherwise ambiguous and the difference is real.
-- **30 s cooldown + GC hint between runs**; process-reuse is recorded
-  (`processReused`) because it contaminates lifetime VmHWM (PSS-delta stays
-  valid).
-→ `src/harness/protocol.ts`.
+- **30 s cooldown, then bounded thermal readiness, before every repetition**
+  (the first repetition of each run cools down after model hashing). Readiness
+  timeout skips the
+  repetition; it is never a pass. Each record identifies the measurement as the
+  first request on a fresh instance and carries a per-process ID, prior model loads
+  in that process and process uptime. Warm requests and per-repetition process
+  restarts are not measured. No GC hint is issued.
+- **Run order** is a seeded shuffle; the seed and resulting order are recorded.
+→ `xebenchapp/src/harness/session.ts`, `readiness.ts`, `order.ts`; rule-by-rule
+links to tests are in [RUN-CONDITIONS.md](docs/RUN-CONDITIONS.md#rule-traceability).
 
-### 5. Run conditions are recorded and flagged — no laundered numbers
-The current runner records [native condition endpoints](docs/RUN-CONDITIONS.md)
-around each repetition. Low battery, power saving, severe thermal state, screen,
-foreground and lock failures are flagged (`guardsPassed=false`); flagged
-repetitions stay in the summary rather than being gated out. Missing evidence
-cannot pass; healthy endpoints do not establish full protocol compliance. The
-activity keeps the screen on while visible. Headroom, continuous monitoring and
-bounded thermal-readiness enforcement remain planned; historical records are not
-retroactively certified.
-→ `xebenchapp/src/harness/conditions.ts`; `BenchConditionsModule.kt`.
+### 5. Run conditions are gated, sampled and flagged — no laundered numbers
+The current runner enforces [`run-conditions-v2`](docs/RUN-CONDITIONS.md): a
+repetition starts only after measured readiness (thermal status, battery
+temperature, headroom when the API returns a value, battery, power saving, screen,
+focus, lock),
+then native samples are taken once per second during load and inference. Endpoint
+or sampled failures and focus interruptions are flagged (`guardsPassed=false`);
+flagged repetitions stay in the summary rather than being gated out.
+Unknown evidence cannot pass; a condition pass does not establish backend execution,
+so guards stay unverified. Charging is a separate publication-eligibility policy,
+`charging-policy-v3`: USB tethering is allowed, but a repetition is eligible only if
+the battery status was `FULL` or `NOT_CHARGING` (e.g. at a charge limit) at every
+snapshot and sample. `current_now` is recorded only as a diagnostic. Charging is
+`violated`, running on battery (`DISCHARGING`) is a known but ineligible
+`on-battery` state in the tethered lab, and unknown is never eligible. Readiness
+waits, within the bound, for charging to stop. The activity keeps the screen on
+while visible. Historical records are not retroactively certified.
+→ `xebenchapp/src/harness/conditions.ts`, `readiness.ts`, `session.ts`;
+`BenchConditionsModule.kt`; tests listed in
+[rule traceability](docs/RUN-CONDITIONS.md#rule-traceability).
 
 ## Cold-start is not the whole story (why the sustained phase exists)
 A single cold `pp512/tg128` number materially misrepresents sustained use:
@@ -127,7 +154,8 @@ within two continuous iterations, and Android devices hitting OS-enforced GPU
 frequency floors (arXiv:2603.23640). The optional sustained phase loops decode
 for 5 minutes and reports first-minute vs last-minute median decode tok/s and a
 degradation %, with thermal state per iteration. When present it is shown as its
-own column, never blended into the cold number.
+own column, never blended into the cold number. The reference runner does not
+implement this phase yet.
 
 ## GPU backend reality on stock Android (measured 2026-07-18, corrected 2026-10-17)
 
@@ -158,7 +186,8 @@ exact failure per device rather than assuming GPU works. v1 remains CPU-only (se
 Android energy is **best-effort** via `BatteryManager` and is labeled as such;
 some OEMs misreport under load. iOS on-device energy is **not reliably
 measurable without external hardware** and is not published as authoritative.
-v1 does not gate any ranking on energy.
+v1 does not gate any ranking on energy. The reference runner records battery
+percentage only as a condition, not energy use.
 
 ## Reproducibility contract
 - The harness is open; every published row links back to its raw JSONL record.

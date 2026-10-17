@@ -235,19 +235,25 @@ REJECTION_CODES = Vocab((
     "schema.min-items", "schema.min-length", "schema.one-of", "schema.pattern", "schema.required", "schema.type",
     "status.attempts", "summary.count", "summary.mismatch", "transport.checksum", "transport.encoding",
     "transport.reference", "transport.size", "version.missing", "version.unsupported",
+    # cpu-reference-v2 cross-field checks (raw_session._semantic_v2).
+    "attempts.cooldown", "conditions.monitor", "conditions.policy", "conditions.recomputed", "guards.recomputed",
+    "instance.inconsistent", "order.inconsistent", "order.recomputed", "readiness.inconsistent",
+    "readiness.recomputed", "record.unprocessable", "status.artifact",
 ))
 
 # Condition signals and reason codes emitted by the app (xebenchapp/src/harness),
 # including the conditions-enforcement additions.
-SIGNALS = ("timestampMs", "elapsedMs", "batteryPct", "batteryTempC", "charging", "powerSaveMode", "thermalStatus",
+SIGNALS = ("timestampMs", "elapsedMs", "batteryPct", "batteryTempC", "charging", "batteryStatus", "plugged",
+           "currentNowUa", "powerSaveMode", "thermalStatus",
            "thermalHeadroom", "screenOn", "foreground", "keyguardLocked", "focusLossCount", "processUptimeMs",
            "rssMb", "pssMb")
 REASONS = ("low-battery", "severe-thermal-state", "power-saving", "screen-off", "not-foreground", "device-locked",
            "probe-incomplete", "probe-pending", "thermal-not-ready", "battery-too-hot", "battery-not-cooled",
-           "thermal-headroom-low", "interrupted", "readiness-timeout", "condition-probe-pending",
+           "thermal-headroom-low", "interrupted", "readiness-timeout", "condition-probe-pending", "charging",
            *(f"unknown-{signal}" for signal in SIGNALS))
 GUARD_NOTES = ("Run conditions and actual backend execution have not been verified",
-               "Actual backend execution has not been verified", "Run conditions not fully verified", *REASONS)
+               "Actual backend execution has not been verified", "Run conditions not fully verified",
+               *raw_session.UNMEASURED_NOTES.values(), *REASONS)
 SIGNAL, REASON, NOTE = Vocab(SIGNALS), Vocab(REASONS), Vocab(GUARD_NOTES)
 
 # Every lowercase word the app (xebenchapp/src/harness, main and the
@@ -258,7 +264,7 @@ SIGNAL, REASON, NOTE = Vocab(SIGNALS), Vocab(REASONS), Vocab(GUARD_NOTES)
 ENUM_WORDS = (
     "after", "allowed", "android", "ane", "applied-when-measured", "battery-not-cooled", "battery-too-hot",
     "before", "busy", "callback-derived", "changed", "charging", "cheap-native-reads-no-pss", "cleanup-failed",
-    "community", "complete", "condition-probe-pending", "conditions", "configuration-aborted", "configured", "cpu",
+    "community", "complete", "diagnostic-only", "not-eligible", "on-battery", "condition-probe-pending", "conditions", "configuration-aborted", "configured", "cpu",
     "device-locked", "during", "endpoint-pss-and-sampled-rss-not-peak", "endpoints-not-continuous", "engine",
     "engine-timings", "error", "external-power-disconnected", "executorch", "fail", "failed", "first-request-on-instance", "focus-loss-count",
     "foreground", "fresh-instance", "fresh-instance-first-request", "generated", "genie-x", "gpu", "inference",
@@ -292,6 +298,9 @@ REASON_LIST, SIGNAL_LIST = Arr(REASON, max_items=256), Arr(SIGNAL, max_items=64)
 SNAPSHOT = Obj({
     "probeStatus": ENUM, "timestampMs": N_NONNEG, "elapsedMs": N_NONNEG,
     "batteryPct": Nullable(_number(0, 100)), "batteryTempC": N_NUM, "charging": N_BOOL,
+    # charging-policy-v2 raw BatteryManager values (status code, plug bitmask, current_now).
+    "batteryStatus": Nullable(_number(1, 5, integer=True)), "plugged": Nullable(_number(0, 255, integer=True)),
+    "currentNowUa": Nullable(_number(-1e9, 1e9, integer=True)),
     "powerSaveMode": N_BOOL, "thermalStatus": Nullable(_number(0, 6, integer=True)),
     "thermalHeadroom": N_NONNEG, "screenOn": N_BOOL, "foreground": N_BOOL, "keyguardLocked": N_BOOL,
     "focusLossCount": N_COUNT, "processUptimeMs": N_NONNEG, "rssMb": N_NONNEG, "pssMb": N_NONNEG,
@@ -307,13 +316,14 @@ MONITOR = Obj({
         "maxThermalHeadroom": N_NUM, "maxBatteryTempC": N_NUM, "minBatteryPct": N_NUM, "maxRssMb": N_NUM,
         "maxGapMs": N_NONNEG,
         "externalPower": Obj({"connected": COUNT, "disconnected": COUNT, "unknown": COUNT}),
+        "chargingStates": Obj({"notCharging": COUNT, "charging": COUNT, "onBattery": COUNT, "unknown": COUNT}),
     }),
     "samples": Arr(SNAPSHOT, max_items=1000),
 })
 CONDITIONS = Obj({
     "before": Nullable(SNAPSHOT), "after": Nullable(SNAPSHOT),
     "beforeAssessment": Nullable(ASSESSMENT), "afterAssessment": Nullable(ASSESSMENT),
-    "during": Nullable(MONITOR), "duringAssessment": Nullable(ASSESSMENT),
+    "during": Nullable(MONITOR), "duringAssessment": Nullable(ASSESSMENT), "charging": ENUM,
 })
 READINESS = Obj({
     "status": ENUM, "waitedMs": NONNEG, "polls": COUNT, "timeoutSec": NONNEG,
@@ -351,7 +361,13 @@ CONDITION_POLICY = Obj({
                 "sampling": Obj({"intervalMs": NONNEG, "maxDurationMs": NONNEG, "persistedSamples": COUNT,
                                  "maxGapFactor": NONNEG, "signals": ENUM})}),
 })
-CHARGING_POLICY = Obj({"version": VERSION, "publicationRequires": ENUM, "effect": ENUM})
+CHARGING_POLICY = Obj({
+    "version": VERSION, "publicationRequires": ENUM, "effect": ENUM,
+    # charging-policy-v2 (tethered, not charging).
+    "name": ENUM, "externalPower": ENUM, "notChargingStatuses": Arr(_number(1, 5, integer=True), max_items=8),
+    "chargingStatus": _number(1, 5, integer=True), "dischargingStatus": _number(1, 5, integer=True),
+    "onBattery": ENUM, "currentNow": ENUM, "readiness": ENUM, "unknown": ENUM,
+})
 CONDITION_VERDICT = Obj({"status": ENUM, "reasons": REASON_LIST, "charging": ENUM})
 RUN_ORDER = Obj({"method": VERSION, "seed": _number(0, 2 ** 32 - 1, integer=True), "seedSource": ENUM,
                  "order": Arr(LABEL, max_items=64), "position": COUNT})
@@ -366,14 +382,15 @@ def _prompt_digest(protocol):
 
 PROTOCOL = Obj({
     "version": VERSION, "nColdRuns": COUNT, "cooldownSec": NONNEG, "readinessTimeoutSec": NONNEG,
-    "promptLabel": LABEL, "promptSha256": HEX64, "maxDecodeTokens": COUNT, "nThreads": COUNT, "nCtx": COUNT,
+    "maxBatteryTempRiseC": NONNEG, "promptLabel": LABEL, "promptSha256": HEX64, "maxDecodeTokens": COUNT, "nThreads": COUNT, "nCtx": COUNT,
     "coldDefinition": COLD_DEFINITION, "measurementKind": ENUM, "warmRequests": ENUM,
     "processRestartBetweenRepetitions": BOOL,
 }, required=("version", "nColdRuns", "promptLabel", "promptSha256", "maxDecodeTokens", "nThreads", "nCtx"),
     excluded=("prompt",), derive=_prompt_digest)
 CONFIGURATION = Obj({
     "schemaVersion": INT, "id": LABEL, "nColdRuns": COUNT, "cooldownSec": NONNEG,
-    "readinessTimeoutSec": NONNEG, "maxDecodeTokens": COUNT, "orderSeed": _number(0, 2 ** 32 - 1, integer=True),
+    "readinessTimeoutSec": NONNEG, "maxBatteryTempRiseC": NONNEG, "maxDecodeTokens": COUNT,
+    "orderSeed": _number(0, 2 ** 32 - 1, integer=True),
     "runs": Arr(Obj({"id": LABEL, "engine": LABEL, "model": LABEL, "modelFile": MODEL_FILE, "quant": LABEL,
                      "nThreads": COUNT, "nCtx": COUNT}, required=("id",)), max_items=64),
 }, required=("id", "runs"))
@@ -753,9 +770,11 @@ def _check_record(record, where, errors):
     statuses = [attempt.get("status") for attempt in runs]
     if record["status"] == "complete":
         ok = len(runs) == planned and all(status == "complete" for status in statuses)
+    elif record["status"] == "failed" and not runs:
+        # A run recorded without measurement (cpu-reference-v2): no attempts, no artifact.
+        ok = record.get("stopReason") in raw_session.STOP_REASONS_UNMEASURED and record.get("artifact") is None
     elif record["status"] == "failed":
-        ok = bool(runs) and statuses[-1] in ("failed", "skipped") and \
-            all(status == "complete" for status in statuses[:-1])
+        ok = statuses[-1] in ("failed", "skipped") and all(status == "complete" for status in statuses[:-1])
     else:
         ok = False
     if not ok:
