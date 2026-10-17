@@ -26,7 +26,9 @@ is not flavor-aware. The application ID stays `com.xebenchapp`.
 
 Stage the GGUF named by the configuration in the app's external files directory
 (see [MODELS.md](../MODELS.md)). To customize a run, copy the bundled JSON, edit its
-model basename, quant label, threads/context or repetition settings, then stage it:
+model basename, quant label, threads/context, repetition, cooldown or readiness
+timeout (`readinessTimeoutSec`) settings, or add `orderSeed` to reproduce a recorded
+run order, then stage it:
 
 ```sh
 adb -s <serial> push my-config.json /sdcard/Android/data/com.xebenchapp/files/xebench-config.json
@@ -35,8 +37,9 @@ scripts/capture_app_run.sh <serial> 900
 
 The staged configuration persists across launches; if absent, the app uses the
 bundled default. Unknown fields, unsupported engines, paths/URLs and invalid
-limits fail before model loading. [Condition snapshots](RUN-CONDITIONS.md) flag
-observed problems; overall guards remain **unverified** unless a failure is known.
+limits fail before model loading. Each repetition waits for measured
+[readiness](RUN-CONDITIONS.md) and is sampled while it runs; overall guards stay
+**unverified** unless a failure is known, because backend execution is unverified.
 Model hashes identify the bytes; model/quant labels remain operator-supplied.
 
 ## Evidence
@@ -49,6 +52,9 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
 - A checkpoint is saved after each repetition and before cooldown. Failures
   retain completed repetitions and release the engine before stopping the session.
   Cleanup failure aborts the whole configuration after saving both errors, if any.
+  Readiness timeouts are saved as `skipped` repetitions. Runs that are not measured
+  after an abort, or whose model cannot be read, are saved as failed sessions with
+  a `stopReason`. The executed run order and its seed are recorded.
 - Runs without positive timed decode work are failed, not reported as zero speed.
   A one-token limit can hit this case because the first token comes from prefill.
   Decode counters describe timed evaluations, not the total generated output.
@@ -63,8 +69,9 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
   identify installed bytes, not source provenance or continuous runtime attestation.
 
 “Cold” means a fresh engine instance in a warm process. Hashing the model before
-measurement warms the OS file cache. Actual backend execution, continuous thermal
-conditions, peak memory, quality, and full native build identity remain unverified.
+measurement warms the OS file cache. Actual backend execution, peak memory, quality,
+and full native build identity remain unverified. Condition sampling is 1 Hz, not
+continuous.
 
 Completed sessions can be previewed with `aggregate.mjs --pretty`; `--update`
 rejects these new records until publication validation and consumer migration are

@@ -2,6 +2,7 @@ import * as FS from '@dr.pogodin/react-native-fs';
 import {initLlama, LlamaContext} from 'llama.rn';
 import {runReference} from '../src/harness/reference';
 import bundled from '../configs/cpu-reference-v1.json';
+import {seededOrder} from '../src/harness/order';
 
 const {createHash} = require('crypto');
 
@@ -9,9 +10,19 @@ jest.mock('@dr.pogodin/react-native-fs', () => ({
   ExternalDirectoryPath: '/fixture', exists: jest.fn(), stat: jest.fn(),
   readFile: jest.fn(), writeFile: jest.fn(), hash: jest.fn(), mkdir: jest.fn(),
 }));
-jest.mock('react-native', () => ({Platform: {
-  OS: 'android', constants: {Model: 'Fixture', Release: '16'}, Version: 36,
-}}));
+jest.mock('react-native', () => {
+  const sample = {batteryPct: 80, batteryTempC: 30, charging: true, powerSaveMode: false, thermalStatus: 0,
+    thermalHeadroom: null, screenOn: true, foreground: true, keyguardLocked: false, focusLossCount: 0,
+    processUptimeMs: 1000, rssMb: 100, pssMb: 50, timestampMs: 1};
+  return {
+    Platform: {OS: 'android', constants: {Model: 'Fixture', Release: '16'}, Version: 36},
+    NativeModules: {BenchConditions: {
+      sample: async () => sample, startMonitor: async () => ({status: 'started'}),
+      stopMonitor: async () => ({status: 'stopped', intervalMs: 1000, ticks: 1, dropped: 0, expired: false,
+        maxSampleCostMs: 1, totalSampleCostMs: 1, samples: [sample]}),
+    }},
+  };
+});
 jest.mock('llama.rn', () => ({initLlama: jest.fn()}));
 
 let files: Map<string, string>;
@@ -96,8 +107,12 @@ test.each([false, true])('cleanup failure aborts later models after saving evide
   await expect(runReference(() => {})).rejects.toThrow('cleanup');
   expect(initLlama).toHaveBeenCalledTimes(1);
   expect(context.release).toHaveBeenCalledTimes(1);
-  expect(FS.writeFile).toHaveBeenCalledTimes(1);
-  const record = JSON.parse(jest.mocked(FS.writeFile).mock.calls[0][1]);
+  expect(FS.writeFile).toHaveBeenCalledTimes(2);
+  const records = jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
+  // The later model is recorded as explicitly not run rather than silently dropped.
+  expect(records[1]).toMatchObject({status: 'failed', stopReason: 'configuration-aborted', coldRuns: [],
+    artifact: null, configurationRunId: records[0].runOrder.order[1]});
+  const record = records[0];
   expect(record.status).toBe('failed');
   expect(record.coldRuns[0]).toMatchObject({
     error: {phase: inferenceFails ? 'inference' : 'release'},
@@ -125,4 +140,48 @@ test('one-token native result without timed decode is saved as failed, not zero 
   expect(record.summary.decodeTps).toBeNull();
   expect(release).toHaveBeenCalledTimes(1);
   expect(output.mock.calls.some(([line]) => line.startsWith('XEBENCH_ERROR '))).toBe(true);
+});
+
+test('run order is shuffled by a recorded seed and reproducible from a configured seed', async () => {
+  const runs = ['a', 'b', 'c', 'd'].map(id => ({...bundled.runs[0], id}));
+  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 0, runs, orderSeed: 12345}));
+  await runReference(() => {});
+  const records = jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
+  const order = seededOrder(runs.map(run => run.id), 12345);
+  expect(order).not.toEqual(['a', 'b', 'c', 'd']);
+  expect(records.map(record => record.configurationRunId)).toEqual(order);
+  expect(records.map(record => record.runOrder.position)).toEqual([0, 1, 2, 3]);
+  expect(records[0].runOrder).toMatchObject({method: 'mulberry32-fisher-yates-v1', seed: 12345,
+    seedSource: 'configured', order});
+  expect(records.every(record => record.conditionVerdict.charging === 'violated')).toBe(true);
+});
+
+test('a generated order seed is recorded', async () => {
+  await runReference(() => {});
+  const record = JSON.parse(jest.mocked(FS.writeFile).mock.calls[0][1]);
+  expect(record.runOrder).toMatchObject({seedSource: 'generated', seed: expect.any(Number), position: 0});
+});
+
+test('an unreadable model is recorded as a failed run and later runs still execute', async () => {
+  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 0, orderSeed: 1,
+    runs: [bundled.runs[0], {...bundled.runs[0], id: 'missing', modelFile: 'missing.gguf'}]}));
+  jest.mocked(FS.hash).mockImplementation(async path => {
+    if (path.endsWith('missing.gguf')) throw new Error('/private/path/missing.gguf not found');
+    return path.endsWith('.gguf') ? 'a'.repeat(64) : createHash('sha256').update(files.get(path)!).digest('hex');
+  });
+  await runReference(() => {});
+  const records = jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
+  const missing = records.find(record => record.configurationRunId === 'missing');
+  expect(missing).toMatchObject({status: 'failed', stopReason: 'setup-failed', artifact: null, coldRuns: []});
+  expect(JSON.stringify(missing)).not.toContain('/private');
+  expect(records.find(record => record.configurationRunId !== 'missing').status).toBe('complete');
+  expect(initLlama).toHaveBeenCalledTimes(1);
+});
+
+test('a later run in the configuration gets the cooldown before its first repetition', async () => {
+  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 1,
+    runs: [bundled.runs[0], {...bundled.runs[0], id: 'second-model'}]}));
+  await runReference(() => {});
+  const records = jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
+  expect(records.map(record => record.coldRuns[0].cooldownMs)).toEqual([0, 1000]);
 });

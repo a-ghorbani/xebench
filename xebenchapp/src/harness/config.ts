@@ -13,7 +13,11 @@ export interface ReferenceConfig {
   id: string;
   nColdRuns: number;
   cooldownSec: number;
+  /** Bound on waiting for readiness before each repetition; a timeout skips it. */
+  readinessTimeoutSec: number;
   maxDecodeTokens: number;
+  /** Optional fixed run-order seed; otherwise a seed is generated and recorded. */
+  orderSeed?: number;
   runs: ReferenceRun[];
 }
 
@@ -46,7 +50,8 @@ function label(value: unknown): string {
 
 export function parseConfig(input: unknown): ReferenceConfig {
   const value = object(input);
-  fields(value, ['schemaVersion', 'id', 'nColdRuns', 'cooldownSec', 'maxDecodeTokens', 'runs']);
+  fields(value, ['schemaVersion', 'id', 'nColdRuns', 'cooldownSec', 'readinessTimeoutSec',
+    'maxDecodeTokens', 'orderSeed', 'runs']);
   if (value.schemaVersion !== 1) {
     throw new Error('Unsupported configuration version');
   }
@@ -75,6 +80,8 @@ export function parseConfig(input: unknown): ReferenceConfig {
   return {
     schemaVersion: 1, id: label(value.id), nColdRuns: integer(value.nColdRuns, 1, 20),
     cooldownSec: integer(value.cooldownSec, 0, 300),
-    maxDecodeTokens: integer(value.maxDecodeTokens, 1, 512), runs,
+    readinessTimeoutSec: value.readinessTimeoutSec === undefined ? 180 : integer(value.readinessTimeoutSec, 10, 900),
+    maxDecodeTokens: integer(value.maxDecodeTokens, 1, 512),
+    ...(value.orderSeed === undefined ? {} : {orderSeed: integer(value.orderSeed, 0, 0xffffffff)}), runs,
   };
 }
