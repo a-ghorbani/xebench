@@ -27,7 +27,8 @@ scripts/capture_app_run.sh <serial> 900
 
 The staged configuration persists across launches; if absent, the app uses the
 bundled default. Unknown fields, unsupported engines, paths/URLs and invalid
-limits fail before model loading. Run conditions are **unverified**, not passed.
+limits fail before model loading. [Condition snapshots](RUN-CONDITIONS.md) flag
+observed problems; overall guards remain **unverified** unless a failure is known.
 Model hashes identify the bytes; model/quant labels remain operator-supplied.
 
 ## Evidence
@@ -47,10 +48,15 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
   carries short filename/checksum references; host capture verifies and retrieves
   them without changing their bytes. Local manifests distinguish checkpoints from
   terminal records and carry host-collected device facts separately.
+- Capture fingerprints installed base/split APKs before launch and after completion.
+  The manifest's `appIdentity` reports matched, changed or unverified snapshots;
+  paths are omitted. A changed APK returns exit 4 while preserving evidence.
+  Missing probes and interrupted runs cannot establish a match. Matching snapshots
+  identify installed bytes, not source provenance or continuous runtime attestation.
 
 “Cold” means a fresh engine instance in a warm process. Hashing the model before
-measurement warms the OS file cache. Actual backend execution, thermal conditions,
-memory, quality, and full native build identity are not yet verified here.
+measurement warms the OS file cache. Actual backend execution, continuous thermal
+conditions, peak memory, quality, and full native build identity remain unverified.
 
 Completed sessions can be previewed with `aggregate.mjs --pretty`; `--update`
 rejects these new records until publication validation and consumer migration are

@@ -2,13 +2,18 @@ import type {EngineAdapter} from './adapters/EngineAdapter';
 import type {Aggregate, SingleRunMetrics} from './types';
 import type {ReferenceConfig, ReferenceRun} from './config';
 import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
+import {assessConditions, CONDITION_POLICY, normalizeConditions, probePending, readConditions} from './conditions';
+import type {ConditionSnapshot} from './conditions';
 
-type Phase = 'load' | 'inference' | 'release';
+type Phase = 'conditions' | 'load' | 'inference' | 'release';
 type CleanupError = {phase: 'release'; message: string};
 type Attempt = ({status: 'complete'} & SingleRunMetrics | {
   status: 'failed'; error: {phase: Phase; message: string}; metrics: SingleRunMetrics | null;
   cleanupError?: CleanupError;
-}) & {runIndex: number};
+}) & {runIndex: number; conditions: {
+  before: ConditionSnapshot; after: ConditionSnapshot;
+  beforeAssessment: ReturnType<typeof assessConditions>; afterAssessment: ReturnType<typeof assessConditions>;
+}};
 
 export interface SessionIdentity {
   runId: string;
@@ -39,7 +44,8 @@ export interface ReferenceSession extends SessionIdentity {
   status: 'running' | 'complete' | 'failed';
   coldRuns: Attempt[];
   summary: Record<'loadMs' | 'ttftMs' | 'prefillTps' | 'decodeTps', Aggregate | null>;
-  guardsPassed: null;
+  conditionPolicy: typeof CONDITION_POLICY;
+  guardsPassed: false | null;
   guardNotes: string[];
 }
 
@@ -103,13 +109,18 @@ export async function runSession(
     },
     status: 'running', coldRuns: [], summary: {loadMs: null, ttftMs: null, prefillTps: null, decodeTps: null},
     guardsPassed: null, guardNotes: ['Run conditions and actual backend execution have not been verified'],
+    conditionPolicy: CONDITION_POLICY,
   };
   for (let runIndex = 0; runIndex < config.nColdRuns; runIndex++) {
-    let phase: Phase = 'load';
+    const before = await readConditions();
+    let after = normalizeConditions(null);
+    let phase: Phase = 'conditions';
     let metrics: SingleRunMetrics | null = null;
     let error: {phase: Phase; message: string} | null = null;
     let cleanupError: CleanupError | null = null;
     try {
+      if (probePending(before)) throw new Error('Condition probe still running');
+      phase = 'load';
       const loadMs = await adapter.load();
       phase = 'inference';
       metrics = {...await adapter.benchOnce({prompt: STANDARD_PROMPT, maxDecodeTokens: config.maxDecodeTokens}), loadMs};
@@ -119,6 +130,9 @@ export async function runSession(
       // Never serialize NaN/Infinity as misleading JSON null metrics.
       metrics = null;
     } finally {
+      // Observe the loaded model before release; this is not a peak-memory sample.
+      if (!probePending(before)) after = await readConditions();
+      if (probePending(after)) error = error ?? {phase: 'conditions', message: 'Condition probe still running'};
       try {
         await adapter.release();
       } catch (failure) {
@@ -126,9 +140,16 @@ export async function runSession(
         error = error ?? cleanupError;
       }
     }
-    record.coldRuns.push(error ? {runIndex, status: 'failed', error, metrics,
+    const conditions = {before, after, beforeAssessment: assessConditions(before), afterAssessment: assessConditions(after)};
+    for (const assessment of [conditions.beforeAssessment, conditions.afterAssessment]) {
+      if (assessment.status === 'fail') {
+        record.guardsPassed = false;
+        record.guardNotes = [...new Set([...record.guardNotes, ...assessment.reasons])];
+      }
+    }
+    record.coldRuns.push(error ? {runIndex, conditions, status: 'failed', error, metrics,
       ...(cleanupError ? {cleanupError} : {})} :
-      {runIndex, status: 'complete', ...metrics!});
+      {runIndex, conditions, status: 'complete', ...metrics!});
     const complete = record.coldRuns.filter((item): item is Attempt & SingleRunMetrics => item.status === 'complete');
     for (const metric of ['loadMs', 'ttftMs', 'prefillTps', 'decodeTps'] as const) {
       record.summary[metric] = aggregate(complete.map(item => item[metric]));
@@ -140,6 +161,9 @@ export async function runSession(
       // A resident context can contaminate every later model in the configuration.
       // Keep both errors in evidence before propagating this fatal cleanup failure.
       throw new Error(`Engine cleanup failed: ${cleanupError.message}`);
+    }
+    if (probePending(before) || probePending(after)) {
+      throw new Error('Condition probe did not finish; configuration aborted');
     }
     if (error) {
       break;
