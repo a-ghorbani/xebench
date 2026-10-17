@@ -140,7 +140,8 @@ then review and commit the diff:
 
 ```sh
 ./gradlew --write-locks :app:dependencies            # all flavors' configurations
-./gradlew --write-verification-metadata sha256 help assembleReferenceRelease
+# an empty Gradle home, so artifacts a fresh machine downloads are all listed
+GRADLE_USER_HOME="$(mktemp -d)" ./gradlew --write-verification-metadata sha256 help assembleReferenceRelease
 ```
 
 The metadata is generated on Linux. AGP's `aapt2` is a per-OS artifact; the macOS
