@@ -117,8 +117,9 @@ and JSON location, never by value. A complete capture must have no errors,
 rejections or failures.
 
 Only allowlisted fields are copied. Unknown fields are dropped and listed in the
-report on stdout, which stays local. Reason codes, rejection codes, signal names
-and guard notes come from a closed vocabulary. Other values become `unrecognized`.
+report on stdout, which stays local. Reason codes, rejection codes, signal names,
+guard notes, enumerated values (statuses, methods, phases, modes) and the cold-run
+definition come from a closed app/host vocabulary. Other values become `unrecognized`.
 
 - **Exported:** session and configuration identity, protocol with `promptSha256`
   in place of the prompt text, engine and version, model SHA-256, every repetition
@@ -154,7 +155,7 @@ With `--session ID`, it also checks that a row's sessions are in the bundle. A
 malformed bundle produces errors and exit 1, never a crash. `verify` does not
 re-run the full raw-schema validation, because the raw record is not exported.
 
-Approved labels (model, quant, configuration and run IDs) and device properties
-are copied verbatim once they pass the form checks and the screen. A serial typed
+Approved labels (model, quant, engine version, prompt label, policy versions,
+configuration and run IDs) and device properties are copied verbatim once they pass the form checks and the screen. A serial typed
 into a label cannot be detected. Exporting a session does not make it eligible
 for publication.

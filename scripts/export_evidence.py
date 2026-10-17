@@ -210,8 +210,8 @@ class Variant:
 
 
 # Enumerated values (statuses, methods, phases, modes) are lowercase words: no
-# digits, so serials and hex identifiers cannot pass. Versions may hold digits.
-ENUM = _text(r"[a-z][a-z-]{0,63}", "lowercase enumerated value")
+# digits, so serials and hex identifiers are refused. Versions may hold digits.
+ENUM_FORM = _text(r"[a-z][a-z-]{0,63}", "lowercase enumerated value")
 VERSION = _text(r"[A-Za-z][A-Za-z0-9._-]{0,63}", "version identifier")
 LABEL = _text(r"[A-Za-z0-9][A-Za-z0-9 ._+()-]{0,127}", "label")
 PROSE = _text(r"[A-Za-z0-9][A-Za-z0-9 ,.;:()'_-]{0,199}", "short plain-text constant")
@@ -249,6 +249,40 @@ REASONS = ("low-battery", "severe-thermal-state", "power-saving", "screen-off", 
 GUARD_NOTES = ("Run conditions and actual backend execution have not been verified",
                "Actual backend execution has not been verified", "Run conditions not fully verified", *REASONS)
 SIGNAL, REASON, NOTE = Vocab(SIGNALS), Vocab(REASONS), Vocab(GUARD_NOTES)
+
+# Every lowercase word the app (xebenchapp/src/harness, main and the
+# conditions-enforcement branch) or the capture host writes into an enumerated
+# field. A lowercase word is still free text (a username, a hostname), so the
+# form check alone is not enough: other words become "unrecognized" and are
+# reported, like the vocabularies above.
+ENUM_WORDS = (
+    "after", "allowed", "android", "ane", "applied-when-measured", "battery-not-cooled", "battery-too-hot",
+    "before", "busy", "callback-derived", "changed", "charging", "cheap-native-reads-no-pss", "cleanup-failed",
+    "community", "complete", "condition-probe-pending", "conditions", "configuration-aborted", "configured", "cpu",
+    "device-locked", "during", "endpoint-pss-and-sampled-rss-not-peak", "endpoints-not-continuous", "engine",
+    "engine-timings", "error", "external-power-disconnected", "executorch", "fail", "failed", "first-request-on-instance", "focus-loss-count",
+    "foreground", "fresh-instance", "fresh-instance-first-request", "generated", "genie-x", "gpu", "inference",
+    "interrupted", "ios", "litert-lm", "load", "low-battery", "macos", "matched", "measured", "never-eligible",
+    "not-foreground", "not-measured", "not-running", "npu", "pass", "power-saving", "probe-incomplete",
+    "probe-pending", "publication-eligibility-only", "readiness-timeout", "ready", "record-and-flag", "record-only",
+    "recorded", "release", "repetition-failed", "running", "satisfied", "screen-off", "setup-failed",
+    "severe-thermal-state", "skipped", "snapshots-not-peak", "started", "stopped", "stuck", "tethered-not-charging",
+    "thermal-headroom-low", "thermal-not-ready", "timeout", "total-time-derived", "ttft-derived", "unavailable",
+    "unknown", "unverified", "vendor", "violated", "wait-then-skip", "wait-while-charging",
+)
+
+
+class Enum(Vocab):
+    """A lowercase enumerated value: refused if not word-shaped, "unrecognized" if not an app word."""
+
+    def apply(self, value, path, ctx):
+        ENUM_FORM.apply(value, path, ctx)
+        return super().apply(value, path, ctx)
+
+
+ENUM = Enum(ENUM_WORDS)
+# protocol.coldDefinition is an app constant (session.ts), not operator text.
+COLD_DEFINITION = Vocab(("fresh engine instance in warm app process; artifact hashing warms OS file cache",))
 
 BOOL = Scalar(lambda v: isinstance(v, bool), "boolean")
 NUM, NONNEG, INT, COUNT = _number(), _number(0), _number(integer=True), _number(0, integer=True)
@@ -333,7 +367,7 @@ def _prompt_digest(protocol):
 PROTOCOL = Obj({
     "version": VERSION, "nColdRuns": COUNT, "cooldownSec": NONNEG, "readinessTimeoutSec": NONNEG,
     "promptLabel": LABEL, "promptSha256": HEX64, "maxDecodeTokens": COUNT, "nThreads": COUNT, "nCtx": COUNT,
-    "coldDefinition": PROSE, "measurementKind": ENUM, "warmRequests": ENUM,
+    "coldDefinition": COLD_DEFINITION, "measurementKind": ENUM, "warmRequests": ENUM,
     "processRestartBetweenRepetitions": BOOL,
 }, required=("version", "nColdRuns", "promptLabel", "promptSha256", "maxDecodeTokens", "nThreads", "nCtx"),
     excluded=("prompt",), derive=_prompt_digest)

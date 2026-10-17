@@ -307,6 +307,44 @@ class FailClosedTests(unittest.TestCase):
         self.assertGreater(len(literals), 30)
         self.assertEqual(literals - evidence.REJECTION_CODES.values, set())
 
+    def test_lowercase_words_in_enumerated_fields_are_a_closed_vocabulary(self):
+        # A lowercase word passes the enum form check but can still be a username
+        # or hostname; only app/host words may pass through.
+        user = "aghorbaniplanted"
+        prose = "operator aghorbaniplanted at home office, call 555 0100"
+        with tempfile.TemporaryDirectory() as root:
+            record = fixture("complete", "1767225600000-0-fixture")
+            attempt = record["coldRuns"][0]
+            attempt["conditions"]["before"]["probeStatus"] = user
+            attempt["conditions"]["beforeAssessment"]["status"] = user
+            record["conditionPolicy"]["mode"] = user
+            record["protocol"]["coldDefinition"] = prose
+            self.assertEqual(raw_session.validate(record), [])
+            report = evidence.export([make_capture(Path(root), [record])], Path(root) / "out")
+            data = b"".join(bundle_bytes(report["bundle"]).values())
+            self.assertNotIn(user.encode(), data)
+            self.assertNotIn(b"555 0100", data)
+            exported = json.loads((Path(report["bundle"]) / "sessions/1767225600000-0-fixture.json").read_text())
+            self.assertEqual(exported["record"]["conditionPolicy"]["mode"], "unrecognized")
+            self.assertEqual(exported["record"]["protocol"]["coldDefinition"], "unrecognized")
+            dropped = {(item["path"], item["kind"]) for item in report["dropped"]}
+            for path in ("/coldRuns/0/conditions/before/probeStatus", "/coldRuns/0/conditions/beforeAssessment/status",
+                         "/conditionPolicy/mode", "/protocol/coldDefinition"):
+                self.assertIn((path, "unrecognized-value"), dropped)
+            self.assertTrue(evidence.verify(report["bundle"])["valid"])
+
+    def test_enum_vocabulary_covers_every_app_word(self):
+        source = "".join(path.read_text() for path in (ROOT / "xebenchapp/src/harness").rglob("*.ts"))
+        literals = {word for word in re.findall(r"['`]([a-z][a-z-]{0,63})['`]", source) if not word.endswith("-")}
+        # Field names and typeof checks are not enumerated values.
+        literals -= {"id", "model", "quant", "runs", "status", "order", "string", "number", "boolean", "object",
+                     "react-native", "react-native-executorch", "xebench-raw"}
+        self.assertGreater(len(literals), 30)
+        self.assertEqual(literals - evidence.ENUM.values - evidence.REASON.values, set())
+        self.assertIn("fresh engine instance in warm app process; artifact hashing warms OS file cache",
+                      evidence.COLD_DEFINITION.values)
+        self.assertIn(re.search(r"coldDefinition: '([^']+)'", source)[1], evidence.COLD_DEFINITION.values)
+
     def test_refusal_messages_do_not_echo_directory_names_or_run_ids(self):
         with tempfile.TemporaryDirectory() as root:
             run_id = f"1767225600000-0-{ANDROID_ID}"
