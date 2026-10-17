@@ -27,7 +27,8 @@ scripts/capture_app_run.sh <serial> 900
 
 The staged configuration persists across launches; if absent, the app uses the
 bundled default. Unknown fields, unsupported engines, paths/URLs and invalid
-limits fail before model loading. Run conditions are **unverified**, not passed.
+limits fail before model loading. [Condition snapshots](RUN-CONDITIONS.md) flag
+observed problems; overall guards remain **unverified** unless a failure is known.
 Model hashes identify the bytes; model/quant labels remain operator-supplied.
 
 ## Evidence
@@ -54,8 +55,8 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
   identify installed bytes, not source provenance or continuous runtime attestation.
 
 “Cold” means a fresh engine instance in a warm process. Hashing the model before
-measurement warms the OS file cache. Actual backend execution, thermal conditions,
-memory, quality, and full native build identity are not yet verified here.
+measurement warms the OS file cache. Actual backend execution, continuous thermal
+conditions, peak memory, quality, and full native build identity remain unverified.
 
 Completed sessions can be previewed with `aggregate.mjs --pretty`; `--update`
 rejects these new records until publication validation and consumer migration are
