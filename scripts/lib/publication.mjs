@@ -54,8 +54,50 @@ const resolveRef = (root, ref) => {
   return node;
 };
 
+const TYPES = new Set(['null', 'boolean', 'string', 'number', 'integer', 'array', 'object']);
+const SUBSCHEMA_MAPS = ['$defs', 'properties'];
+
+/** Eagerly reject keywords, types and shapes this validator does not implement, anywhere in the schema. */
+export function checkSchema(schema, path = '#') {
+  if (typeof schema === 'boolean') return;
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+    throw new PublicationError(`schema at ${path} must be an object or boolean`);
+  }
+  for (const keyword of Object.keys(schema)) {
+    if (!ANNOTATIONS.has(keyword) && !ASSERTIONS.has(keyword)) {
+      throw new PublicationError(`unsupported schema keyword ${keyword} at ${path}`);
+    }
+  }
+  if (schema.type !== undefined) {
+    const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+    for (const type of types) {
+      if (!TYPES.has(type)) throw new PublicationError(`unsupported schema type ${JSON.stringify(type)} at ${path}`);
+    }
+  }
+  if (schema.enum !== undefined && !Array.isArray(schema.enum)) throw new PublicationError(`enum at ${path} must be an array`);
+  if (schema.required !== undefined && !Array.isArray(schema.required)) {
+    throw new PublicationError(`required at ${path} must be an array`);
+  }
+  if (schema.minimum !== undefined && typeof schema.minimum !== 'number') {
+    throw new PublicationError(`minimum at ${path} must be a number`);
+  }
+  if (schema.format !== undefined && schema.format !== 'uri') {
+    throw new PublicationError(`unsupported format ${schema.format} at ${path}`);
+  }
+  if (schema.$ref !== undefined && (typeof schema.$ref !== 'string' || !schema.$ref.startsWith('#/'))) {
+    throw new PublicationError(`unsupported $ref ${schema.$ref} at ${path}`);
+  }
+  for (const map of SUBSCHEMA_MAPS) {
+    for (const [key, sub] of Object.entries(schema[map] ?? {})) checkSchema(sub, `${path}/${map}/${key}`);
+  }
+  for (const key of ['items', 'additionalProperties']) {
+    if (schema[key] !== undefined) checkSchema(schema[key], `${path}/${key}`);
+  }
+}
+
 /** Returns a list of "path: message" errors; empty when `value` conforms. */
 export function validateSchema(value, schema, root = schema, path = '$', errors = []) {
+  if (path === '$') checkSchema(root);
   if (typeof schema === 'boolean') {
     if (!schema) errors.push(`${path}: not allowed`);
     return errors;

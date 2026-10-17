@@ -16,7 +16,9 @@
  *
  * It does NOT invent numbers: every field comes from the on-device record.
  */
-import { closeSync, fsyncSync, openSync, readFileSync, renameSync, unlinkSync, writeSync } from 'node:fs';
+import {
+  chmodSync, closeSync, fsyncSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -49,6 +51,13 @@ const SCHEMA = fileURLToPath(new URL('../data/benchmarks.schema.json', import.me
 const SOURCE_NAME = 'PocketPal R&D lab (xebench)';
 const SOURCE_URL = 'https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md';
 const SUPPORTED_PROTOCOLS = new Set(['cpu-reference-v1']); // schemaVersion 1 sessions
+// Legacy producers that exported medians but not per-repetition values. Their
+// summary n cannot be checked against repetitions; any other legacy record must
+// carry its repetitions.
+const SELF_REPORTED_N = new Map([
+  ['xebench-0.4-app', 'legacy app record: n is the configured run count; repetitions not exported'],
+  ['xebench-0.2-native', 'llama-bench record: n is self-reported; repetitions not exported'],
+]);
 
 const round1 = (n) => (n == null ? null : Math.round(n * 10) / 10);
 
@@ -101,6 +110,8 @@ function readRecords(paths) {
     } catch (error) {
       throw new PublicationError(`cannot read ${file}: ${error.message}`);
     }
+    if (text.startsWith('\uFEFF')) text = text.slice(1);
+    const before = records.length;
     text.split('\n').forEach((line, index) => {
       if (!line.trim()) return;
       const where = `${file}:${index + 1}`;
@@ -117,6 +128,7 @@ function readRecords(paths) {
       }
       records.push({ rec, where });
     });
+    if (records.length === before) throw new PublicationError(`${file}: no records (empty or truncated file)`);
   }
   return records;
 }
@@ -140,10 +152,16 @@ function sampleCount(rec, where, metrics, legacy, warnings) {
   const [n] = counts;
   const runs = rec.coldRuns;
   if (!Array.isArray(runs)) throw new PublicationError(`${where}: coldRuns must be an array`);
-  const llamaBench = legacy && /llama-bench/.test(rec.protocol.coldDefinition || '');
-  if (llamaBench) {
-    // llama-bench reports mean/stddev only; its repetitions are not in the record.
-    warnings.push(`${where}: llama-bench record; n=${n} is self-reported (repetitions not present)`);
+  const published = metrics.filter(([, agg]) => agg != null && agg.median != null).map(([name]) => name);
+  const carriesRepetitions = runs.some((run) => isObject(run) && published.some((name) => name in run));
+  if (legacy && !carriesRepetitions) {
+    if (!SELF_REPORTED_N.has(rec.harnessVersion)) {
+      throw new PublicationError(
+        `${where}: legacy record without per-repetition values from unknown harnessVersion ` +
+          `${JSON.stringify(rec.harnessVersion)}; n=${n} cannot be verified`,
+      );
+    }
+    warnings.push(`${where}: ${SELF_REPORTED_N.get(rec.harnessVersion)} (n=${n})`);
   } else {
     const successful = legacy ? runs : runs.filter((run) => isObject(run) && run.status === 'complete');
     for (const [name, agg] of metrics) {
@@ -197,7 +215,8 @@ function toRow({ rec, where }, warnings) {
   if (!isObject(rec.deviceInfo) || !nonEmpty(rec.deviceInfo.model)) {
     throw new PublicationError(`${where}: deviceInfo.model is required`);
   }
-  if (typeof rec.timestampIso !== 'string' || !/^\d{4}-\d{2}/.test(rec.timestampIso)) {
+  // Legacy app records (xebench-0.4-app) carry no timestamp: sourceDate stays unknown.
+  if (rec.timestampIso !== undefined && (typeof rec.timestampIso !== 'string' || !/^\d{4}-\d{2}/.test(rec.timestampIso))) {
     throw new PublicationError(`${where}: timestampIso must be an ISO date`);
   }
   const p = rec.protocol;
@@ -252,7 +271,7 @@ function toRow({ rec, where }, warnings) {
     provenance: 'measured',
     sourceName: SOURCE_NAME,
     sourceUrl: SOURCE_URL,
-    sourceDate: rec.timestampIso.slice(0, 7),
+    sourceDate: rec.timestampIso?.slice(0, 7),
     sampleCount: n,
     asStated: asStated(rec, n),
   };
@@ -264,14 +283,23 @@ function writeAtomic(target, text, expectedBefore) {
   let fd;
   try {
     fd = openSync(tmp, 'wx', 0o644);
-    writeSync(fd, text);
+    writeFileSync(fd, text); // loops until every byte is written; throws on EFBIG/ENOSPC
     fsyncSync(fd);
     closeSync(fd);
     fd = undefined;
+    chmodSync(tmp, statSync(target).mode & 0o777);
+    if (readFileSync(tmp, 'utf8') !== text) throw new PublicationError('temporary file does not match the output');
     if (readFileSync(target, 'utf8') !== expectedBefore) {
       throw new PublicationError('data/benchmarks.json changed during aggregation; re-run');
     }
     renameSync(tmp, target);
+    try {
+      const dir = openSync(dirname(target), 'r');
+      fsyncSync(dir); // persist the rename; best-effort where directories cannot be fsynced
+      closeSync(dir);
+    } catch {
+      // not supported on this platform
+    }
   } catch (error) {
     if (fd !== undefined) closeSync(fd);
     try {
@@ -355,8 +383,7 @@ function main() {
 try {
   main();
 } catch (error) {
-  if (!(error instanceof PublicationError)) throw error;
-  console.error(`error: ${error.message}`);
+  console.error(error instanceof PublicationError ? `error: ${error.message}` : error);
   console.error(update ? 'data/benchmarks.json was not modified.' : 'no rows were emitted.');
   process.exit(1);
 }

@@ -48,6 +48,39 @@ def legacy_record(model='Test Model 1B', quant='Q4_0', runs=3, n_cold_runs=None,
     return record
 
 
+def legacy_app_record(**overrides):
+    """The real shape emitted by the pre-schemaVersion app (harness xebench-0.4-app):
+    no timestamp, a stub coldRuns entry, and summary n fixed to the run count."""
+    record = {
+        'schema': 'xebench-raw', 'harnessVersion': 'xebench-0.4-app', 'engine': 'llama.cpp',
+        'engineVersion': 'llama.rn', 'backend': 'cpu', 'platform': 'android',
+        'deviceInfo': {'model': 'Pixel 9', 'soc': '', 'androidRelease': '15'},
+        'model': 'Legacy App Model', 'quant': 'Q4_0', 'modelFile': 'm.gguf',
+        'protocol': {'nColdRuns': 3, 'promptLabel': 'std-pp512-v1', 'maxDecodeTokens': 128,
+                     'coldDefinition': 'fresh engine instance, warm foreground app process (top-app cpuset)'},
+        'coldRuns': [{'runIndex': 0, 'prefillMethod': 'engine-timings', 'decodeMethod': 'engine-timings'}],
+        'summary': {'prefillTps': {'median': 101.23, 'n': 3, 'min': 100, 'max': 102},
+                    'decodeTps': {'median': 20.55, 'n': 3, 'min': 20, 'max': 21},
+                    'ttftMs': {'median': 900, 'n': 3}, 'loadMs': {'median': 500, 'n': 3}},
+        'guardsPassed': True, 'guardNotes': [],
+    }
+    record.update(overrides)
+    return record
+
+
+def llama_bench_record(**overrides):
+    """The shape written by scripts/bench_llamacpp.py (harness xebench-0.2-native)."""
+    agg = lambda v: {'median': v, 'mean': v, 'stddev': None, 'iqr': None, 'min': v, 'max': v, 'n': 3}
+    record = legacy_record(model='Bench Model', harnessVersion='xebench-0.2-native',
+                           coldRuns=[{'runIndex': 0, 'prefillMethod': 'engine-timings',
+                                      'decodeMethod': 'engine-timings'}])
+    record['protocol']['coldDefinition'] = 'llama-bench internal warmup + reps (not app cold-start)'
+    record['summary'] = {'ttftMs': agg(None), 'prefillTps': agg(871.42), 'decodeTps': agg(43.18),
+                         'peakPssMb': agg(None), 'deltaPssMb': agg(None), 'loadMs': agg(None)}
+    record.update(overrides)
+    return record
+
+
 def reference_record(runs=3, **overrides):
     """A schemaVersion 1 CPU reference session (xebenchapp/src/harness/session.ts)."""
     cold = [{'runIndex': i, 'status': 'complete', 'loadMs': 800 + i, 'ttftMs': 900 + i, 'promptTokens': 512,
@@ -103,10 +136,12 @@ class PublicationTests(unittest.TestCase):
     def published(self):
         return json.loads(self.canonical.read_text(encoding='utf-8'))
 
-    def assert_rejected(self, *args, code=1):
+    def assert_rejected(self, *args, code=1, reason=None):
         before = self.digest()
         result = self.run_aggregate(*args)
         self.assertEqual(result.returncode, code, result.stderr)
+        if reason is not None:
+            self.assertIn(reason, result.stderr)
         self.assertEqual(result.stdout, '')
         self.assertEqual(before, self.digest(), 'canonical data changed on a rejected run')
         self.assertEqual(sorted(p.name for p in self.canonical.parent.iterdir()),
@@ -172,12 +207,23 @@ class PublicationTests(unittest.TestCase):
                                                              'decodeTps': aggregate([0, 0, 0])})) + '\n',
             'no-summary': json.dumps(legacy_record(runs=0, n_cold_runs=3)) + '\n',
         }
+        reasons = {
+            'truncated': 'not valid JSON', 'garbage': 'not valid JSON', 'not-object': 'not a JSON object',
+            'overflow': 'non-finite', 'nan-literal': 'not valid JSON', 'wrong-schema': 'unexpected schema',
+            'no-records': 'no records', 'missing-engine': 'missing engine', 'unknown-engine': 'is not one of',
+            'zero-decode': 'not a valid measurement', 'no-summary': 'summary is missing',
+        }
         for name, text in cases.items():
             path = self.write(raw=text)
             with self.subTest(case=name, mode='preview'):
-                self.assert_rejected(path)
+                self.assert_rejected(path, reason=reasons[name])
             with self.subTest(case=name, mode='update'):
-                self.assert_rejected(path, '--update', '--allow-legacy')
+                self.assert_rejected(path, '--update', '--allow-legacy', reason=reasons[name])
+        with self.subTest(case='empty-file-among-others'):
+            self.assert_rejected(self.write(raw=''), self.write(legacy_record()), reason='no records')
+        with self.subTest(case='byte-order-mark-is-accepted'):
+            rows, _ = self.preview(self.write(raw='\ufeff' + good + '\n'))
+            self.assertEqual(len(rows), 1)
         with self.subTest(case='unreadable-file'):
             self.assert_rejected(self.inputs / 'missing.jsonl', '--update', '--allow-legacy')
         with self.subTest(case='unknown-flag'):
@@ -204,6 +250,29 @@ class PublicationTests(unittest.TestCase):
         check = subprocess.run(['node', str(self.root / 'scripts/validate_data.mjs')], capture_output=True, text=True)
         self.assertEqual(check.returncode, 0, check.stderr)
 
+    def test_update_replaces_the_file_atomically(self):
+        self.canonical.chmod(0o664)
+        inode = self.canonical.stat().st_ino
+        result = self.run_aggregate(self.write(legacy_record()), '--update', '--allow-legacy')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        stat = self.canonical.stat()
+        self.assertNotEqual(stat.st_ino, inode, 'canonical file was rewritten in place, not renamed over')
+        self.assertEqual(stat.st_mode & 0o777, 0o664)
+        self.assertEqual(sorted(p.name for p in self.canonical.parent.iterdir()),
+                         sorted(p.name for p in (ROOT / 'data').iterdir()))
+
+    def test_short_write_leaves_canonical_unchanged(self):
+        before = self.digest()
+        path = self.write(legacy_record())
+        # A 20 KiB file-size limit makes the temp-file write fail part-way (EFBIG).
+        result = subprocess.run(['bash', '-c', 'ulimit -f 20; exec node "$0" "$1" --update --allow-legacy',
+                                 str(self.root / 'scripts/aggregate.mjs'), str(path)],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(before, self.digest())
+        self.assertEqual(sorted(p.name for p in self.canonical.parent.iterdir()),
+                         sorted(p.name for p in (ROOT / 'data').iterdir()), 'temporary files left behind')
+
     # 4. sampleCount is the verified number of successful repetitions
     def test_sample_count_comes_from_successful_repetitions(self):
         rows, stderr = self.preview(self.write(legacy_record(runs=2, n_cold_runs=5)))
@@ -217,19 +286,50 @@ class PublicationTests(unittest.TestCase):
 
         mismatched = legacy_record()
         mismatched['summary']['decodeTps']['n'] = 4
-        self.assert_rejected(self.write(mismatched))
+        self.assert_rejected(self.write(mismatched), reason='disagree on n')
+        mismatched['summary'] = {k: {**v, 'n': 4} for k, v in mismatched['summary'].items()}
+        mismatched['protocol']['nColdRuns'] = 4
+        self.assert_rejected(self.write(mismatched), reason='successful repetitions')
         missing_run = legacy_record()
         missing_run['coldRuns'].pop()
-        self.assert_rejected(self.write(missing_run))
+        self.assert_rejected(self.write(missing_run), reason='successful repetitions')
+        missing_metric = legacy_record()
+        del missing_metric['coldRuns'][1]['decodeTps']
+        self.assert_rejected(self.write(missing_metric), reason='2 of 3 successful repetitions with decodeTps')
         disagree = legacy_record()
         disagree['summary']['prefillTps']['n'] = 2
-        self.assert_rejected(self.write(disagree))
+        self.assert_rejected(self.write(disagree), reason='disagree on n')
         overcount = legacy_record(runs=3, n_cold_runs=2)
-        self.assert_rejected(self.write(overcount))
+        self.assert_rejected(self.write(overcount), reason='exceeds protocol.nColdRuns')
         failed_rep = reference_record()
         failed_rep['coldRuns'][1] = {'runIndex': 1, 'status': 'failed', 'metrics': None,
                                      'error': {'phase': 'inference', 'message': 'x'}}
-        self.assert_rejected(self.write(failed_rep))
+        self.assert_rejected(self.write(failed_rep), reason='successful repetitions')
+
+    def test_legacy_producers_without_repetitions(self):
+        rows, stderr = self.preview(self.write(legacy_app_record(), llama_bench_record()))
+        by_model = {row['model']: row for row in rows}
+        app = by_model['Legacy App Model']
+        self.assertEqual((app['sampleCount'], app['ppTps'], app['tgTps'], app['ttftMs'], app['memoryMb']),
+                         (3, 101.2, 20.6, 900, None))
+        self.assertNotIn('sourceDate', app)
+        self.assertNotIn('soc', app)
+        self.assertEqual(app['asStated'], 'n=3 cold-run median; prompt std-pp512-v1; decode 128 tok')
+        self.assertEqual(by_model['Bench Model']['asStated'],
+                         'n=3 reps (llama-bench mean); prompt std-pp512-v1; decode 128 tok')
+        self.assertIn('legacy app record: n is the configured run count', stderr)
+        self.assertIn('llama-bench record: n is self-reported', stderr)
+        result = self.run_aggregate(self.write(legacy_app_record(), llama_bench_record()), '--update', '--allow-legacy')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.published()['rowCount'], 43)
+        # Only known producers may omit repetitions; a self-declared llama-bench label is not enough.
+        for name, record in {
+            'unknown-harness': legacy_app_record(harnessVersion='xebench-9.9'),
+            'claimed-llama-bench': llama_bench_record(harnessVersion='xebench-0.1', coldRuns=[]),
+        }.items():
+            with self.subTest(case=name):
+                self.assert_rejected(self.write(record), reason='cannot be verified')
+        self.assert_rejected(self.write(legacy_app_record(timestampIso='yesterday')), reason='timestampIso')
 
     # 5. output order does not depend on input order or locale
     def test_order_is_deterministic(self):
@@ -257,8 +357,7 @@ class PublicationTests(unittest.TestCase):
     # 6. row-key collisions are explicit
     def test_row_key_collisions(self):
         twice = self.write(legacy_record(), legacy_record(runId='other'))
-        result = self.assert_rejected(twice, '--update', '--allow-legacy')
-        self.assertIn('2 input records map to row key', result.stderr)
+        self.assert_rejected(twice, '--update', '--allow-legacy', reason='2 input records map to row key')
         rows, stderr = self.preview(twice)
         self.assertEqual(len(rows), 2)
         self.assertIn('map to row key', stderr)
@@ -289,13 +388,16 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('guards did not pass', result.stderr)
         rows, _ = self.preview(self.write(failed))
         self.assertIn('GUARDS FAILED', rows[0]['asStated'])
-        self.assert_rejected(self.write(legacy_record(guardsPassed=None)), '--update', '--allow-legacy')
-        self.assert_rejected(self.write(legacy_record(runs=0, n_cold_runs=3)), '--update', '--allow-legacy')
+        self.assert_rejected(self.write(legacy_record(guardsPassed=None)), '--update', '--allow-legacy',
+                             reason='guardsPassed must be a boolean')
+        self.assert_rejected(self.write(legacy_record(runs=0, n_cold_runs=3)), '--update', '--allow-legacy',
+                             reason='summary is missing')
         for status in ('running', 'failed'):
             with self.subTest(status=status):
-                self.assert_rejected(self.write(reference_record(status=status)))
+                self.assert_rejected(self.write(reference_record(status=status)), reason='Only complete')
         # a whole batch is rejected when one record is unpublishable
-        self.assert_rejected(self.write(legacy_record(model='Fine'), failed), '--update', '--allow-legacy')
+        self.assert_rejected(self.write(legacy_record(model='Fine'), failed), '--update', '--allow-legacy',
+                             reason='guards did not pass')
 
     # 8. unsupported schema/protocol versions are rejected
     def test_incompatible_versions_are_rejected(self):
@@ -309,10 +411,13 @@ class PublicationTests(unittest.TestCase):
             'legacy-with-protocol-version': legacy_record(protocol={**legacy_record()['protocol'],
                                                                    'version': 'cpu-reference-v1'}),
         }
+        reasons = {'schema-v2': 'Only complete', 'schema-string': 'Only complete', 'schema-null': 'Only complete',
+                   'protocol-v2': 'unsupported protocol version', 'protocol-missing': 'unsupported protocol version',
+                   'legacy-with-protocol-version': 'declares protocol.version'}
         for name, record in cases.items():
             with self.subTest(case=name):
-                self.assert_rejected(self.write(record))
-                self.assert_rejected(self.write(record), '--update', '--allow-legacy')
+                self.assert_rejected(self.write(record), reason=reasons[name])
+                self.assert_rejected(self.write(record), '--update', '--allow-legacy', reason=reasons[name])
         # schemaVersion 1 sessions stay preview-only until consumer migration
         self.preview(self.write(ref))
         result = self.assert_rejected(self.write(ref), '--update', '--allow-legacy')
@@ -333,6 +438,21 @@ class DataValidationTests(unittest.TestCase):
             "validateSchema('x', {type: 'string', pattern: '^y$'});")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('unsupported schema keyword pattern', result.stderr)
+
+    def test_schema_is_checked_eagerly(self):
+        for name, schema, message in [
+            ('unreached-def', "{type: 'string', $defs: {x: {type: 'integer', exclusiveMinimum: 1}}}",
+             'unsupported schema keyword exclusiveMinimum at #/$defs/x'),
+            ('unreached-property', "{type: 'object', properties: {x: {pattern: 'a'}}}",
+             'unsupported schema keyword pattern at #/properties/x'),
+            ('bogus-type', "{type: ['number', 'bogus']}", 'unsupported schema type \"bogus\"'),
+            ('enum-not-array', "{enum: 'x'}", 'enum at # must be an array'),
+        ]:
+            with self.subTest(case=name):
+                result = self.run_node("import {validateSchema} from './scripts/lib/publication.mjs';"
+                                       f"validateSchema(1, {schema});")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
 
     def test_validator_reports_errors(self):
         result = self.run_node(
