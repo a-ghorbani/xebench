@@ -20,6 +20,13 @@ export interface ReferenceConfig {
   maxDecodeTokens: number;
   /** Optional fixed run-order seed; otherwise a seed is generated and recorded. */
   orderSeed?: number;
+  /**
+   * EXPERIMENT ONLY (docs/experiments/charging-ab.md): `record-only` keeps recording the
+   * charging state but no longer waits for charging to stop before a repetition, so a
+   * charging condition can be measured. Records then carry a distinct charging policy
+   * (`readiness: record-only-experiment`) and must never be published.
+   */
+  experimentChargingReadiness?: 'record-only';
   runs: ReferenceRun[];
 }
 
@@ -60,7 +67,7 @@ function label(value: unknown): string {
 export function parseConfig(input: unknown): ReferenceConfig {
   const value = object(input);
   fields(value, ['schemaVersion', 'id', 'nColdRuns', 'cooldownSec', 'readinessTimeoutSec', 'maxBatteryTempRiseC',
-    'maxDecodeTokens', 'orderSeed', 'runs']);
+    'maxDecodeTokens', 'orderSeed', 'experimentChargingReadiness', 'runs']);
   if (value.schemaVersion !== 1) {
     throw new Error('Unsupported configuration version');
   }
@@ -86,12 +93,17 @@ export function parseConfig(input: unknown): ReferenceConfig {
   if (new Set(runs.map(run => run.id)).size !== runs.length) {
     throw new Error('Run IDs must be unique');
   }
+  if (value.experimentChargingReadiness !== undefined && value.experimentChargingReadiness !== 'record-only') {
+    throw new Error('experimentChargingReadiness only supports record-only');
+  }
   return {
     schemaVersion: 1, id: label(value.id), nColdRuns: integer(value.nColdRuns, 1, 20),
     cooldownSec: integer(value.cooldownSec, 0, 300),
     readinessTimeoutSec: value.readinessTimeoutSec === undefined ? 180 : integer(value.readinessTimeoutSec, 10, 900),
     maxBatteryTempRiseC: value.maxBatteryTempRiseC === undefined ? 2 : decimal(value.maxBatteryTempRiseC, 0.5, 10),
     maxDecodeTokens: integer(value.maxDecodeTokens, 1, 512),
-    ...(value.orderSeed === undefined ? {} : {orderSeed: integer(value.orderSeed, 0, 0xffffffff)}), runs,
+    ...(value.orderSeed === undefined ? {} : {orderSeed: integer(value.orderSeed, 0, 0xffffffff)}),
+    ...(value.experimentChargingReadiness === undefined ? {} : {experimentChargingReadiness: 'record-only' as const}),
+    runs,
   };
 }

@@ -4,10 +4,10 @@ import type {ReferenceConfig, ReferenceRun} from './config';
 import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
 import {
   assessCharging, assessConditions, assessDuring, CHARGING_POLICY, chargingState, CONDITION_POLICY,
-  emptyChargingCounts, monitorCovered, monitorPending,
+  emptyChargingCounts, EXPERIMENT_CHARGING_POLICY, monitorCovered, monitorPending,
   normalizeMonitor, probePending, readConditions, startMonitor, stopMonitor,
 } from './conditions';
-import type {ChargingCounts, ChargingStatus, ConditionAssessment, ConditionSnapshot, MonitorResult} from './conditions';
+import type {ChargingCounts, ChargingPolicy, ChargingStatus, ConditionAssessment, ConditionSnapshot, MonitorResult} from './conditions';
 import {awaitReadiness} from './readiness';
 import type {ReadinessBaseline, ReadinessResult} from './readiness';
 import type {RunOrder} from './order';
@@ -111,7 +111,8 @@ export interface ReferenceSession extends SessionIdentity {
   coldRuns: Attempt[];
   summary: Record<'loadMs' | 'ttftMs' | 'prefillTps' | 'decodeTps', Aggregate | null>;
   conditionPolicy: typeof CONDITION_POLICY;
-  chargingPolicy: typeof CHARGING_POLICY;
+  /** EXPERIMENT_CHARGING_POLICY only for an experiment-only record-only configuration. */
+  chargingPolicy: ChargingPolicy;
   conditionVerdict: ConditionVerdict;
   guardsPassed: false | null;
   guardNotes: string[];
@@ -223,7 +224,8 @@ export function createSession(
     },
     status: 'running', repetitionsPlanned: config.nColdRuns, stopReason: null, coldRuns: [],
     summary: {loadMs: null, ttftMs: null, prefillTps: null, decodeTps: null},
-    conditionPolicy: CONDITION_POLICY, chargingPolicy: CHARGING_POLICY,
+    conditionPolicy: CONDITION_POLICY,
+    chargingPolicy: config.experimentChargingReadiness === 'record-only' ? EXPERIMENT_CHARGING_POLICY : CHARGING_POLICY,
     conditionVerdict: {status: 'unverified', reasons: [], charging: 'unknown'},
     guardsPassed: null, guardNotes: [],
   };
@@ -267,7 +269,7 @@ export async function runSession(
     const cooldownMs = runIndex > 0 || context.initialCooldown ? config.cooldownSec * 1000 : 0;
     if (cooldownMs) await sleep(cooldownMs);
     const {result: readiness, snapshot: before} = await awaitReadiness(config.readinessTimeoutSec, baseline, sleep, context.now,
-      config.maxBatteryTempRiseC);
+      config.maxBatteryTempRiseC, record.chargingPolicy.readiness === 'wait-while-charging');
     const beforeAssessment = assessConditions(before);
     const base = {runIndex, cooldownMs, readiness, instance: null as InstanceIdentity | null};
     if (readiness.status === 'timeout') {

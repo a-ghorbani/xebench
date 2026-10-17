@@ -176,6 +176,13 @@ describe('charging-policy-v3 (tethered, not charging)', () => {
       .toBe(true);
   });
 
+  test('the experiment-only record-only mode does not wait for charging, but other rules still apply', () => {
+    expect(assessReadiness(normalizeConditions({...healthy, batteryStatus: 2}), null, 2, false))
+      .toEqual({ready: true, reasons: []});
+    expect(assessReadiness(normalizeConditions({...healthy, batteryStatus: 2, thermalStatus: 1}), null, 2, false).reasons)
+      .toEqual(['thermal-not-ready']);
+  });
+
   test('monitor summaries count the charging state of every sample', () => {
     const summary = normalizeMonitor(monitorRaw([healthy, {...healthy, batteryStatus: 2},
       {...healthy, batteryStatus: null, currentNowUa: null}])).summary;

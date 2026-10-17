@@ -1,5 +1,6 @@
 import {parseConfig} from '../src/harness/config';
 import bundled from '../configs/cpu-reference-v1.json';
+import experiment from '../configs/experiment-charging-ab-v1.json';
 
 test('bundled CPU reference configuration is valid', () => {
   expect(parseConfig(bundled)).toEqual(bundled);
@@ -10,6 +11,7 @@ test.each([
   {maxDecodeTokens: 0}, {runs: []}, {nGpuLayers: 99}, {readinessTimeoutSec: 5},
   {readinessTimeoutSec: 901}, {maxBatteryTempRiseC: 0.1}, {maxBatteryTempRiseC: 11}, {maxBatteryTempRiseC: '2'},
   {orderSeed: -1}, {orderSeed: 2 ** 32}, {orderSeed: 1.5},
+  {experimentChargingReadiness: 'skip'}, {experimentChargingReadiness: true},
 ])('rejects invalid configuration %j', change => {
   expect(() => parseConfig({...bundled, ...change})).toThrow();
 });
@@ -34,4 +36,11 @@ test('readiness timeout defaults to the protocol bound and a configured order se
   expect(parseConfig({...bundled, maxBatteryTempRiseC: 3.5}).maxBatteryTempRiseC).toBe(3.5);
   expect(parseConfig(legacy)).not.toHaveProperty('orderSeed');
   expect(parseConfig({...bundled, orderSeed: 0}).orderSeed).toBe(0);
+});
+
+test('the experiment-only charging readiness flag is kept only when set', () => {
+  expect(parseConfig(experiment)).toEqual(experiment);
+  expect(parseConfig(bundled)).not.toHaveProperty('experimentChargingReadiness');
+  expect(parseConfig({...bundled, experimentChargingReadiness: 'record-only'}).experimentChargingReadiness)
+    .toBe('record-only');
 });

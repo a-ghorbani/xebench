@@ -454,6 +454,10 @@ CHARGING_POLICY_V2 = {key: value for key, value in CHARGING_POLICY_V3.items()
                       if key not in ("dischargingStatus", "onBattery")}
 CHARGING_POLICY_V2["version"] = "charging-policy-v2"
 CHARGING_POLICIES = {policy["version"]: policy for policy in (CHARGING_POLICY_V2, CHARGING_POLICY_V3)}
+# EXPERIMENT ONLY (docs/experiments/charging-ab.md): configuration experimentChargingReadiness
+# "record-only" records charging without waiting for it. Such records carry this policy (v3
+# classification, record-only readiness) and are never publication evidence.
+EXPERIMENT_CHARGING_POLICY_V3 = {**CHARGING_POLICY_V3, "readiness": "record-only-experiment"}
 STOP_REASONS_UNMEASURED = ("configuration-aborted", "setup-failed")
 BACKEND_NOTE = "Actual backend execution has not been verified"
 UNVERIFIED_NOTE = "Run conditions not fully verified"
@@ -487,7 +491,7 @@ def assess_conditions(snapshot):
     return {"status": status, "reasons": reasons}
 
 
-def assess_readiness(snapshot, baseline, max_rise=None):
+def assess_readiness(snapshot, baseline, max_rise=None, wait_while_charging=True):
     policy = CONDITION_POLICY_V2["readiness"]
     reasons = [] if snapshot.get("probeStatus") == "complete" else ["probe-incomplete"]
     reasons += [f"unknown-{key}" for key in _missing_required(snapshot)] + condition_failures(snapshot)
@@ -501,7 +505,7 @@ def assess_readiness(snapshot, baseline, max_rise=None):
         reasons.append("battery-not-cooled")
     if headroom is not None and headroom > policy["maxThermalHeadroom"]:
         reasons.append("thermal-headroom-low")
-    if charging_state(snapshot) == "charging":
+    if wait_while_charging and charging_state(snapshot) == "charging":
         reasons.append("charging")
     return list(dict.fromkeys(reasons))
 
@@ -716,9 +720,18 @@ def _semantic_v2(record):
         errors.append(reason("protocol.configuration-mismatch", "/protocol/readinessTimeoutSec",
                              "Protocol readinessTimeoutSec disagrees with the configuration"))
     charging_policy = CHARGING_POLICIES.get(record["chargingPolicy"]["version"], CHARGING_POLICY_V3)
+    experiment = config.get("experimentChargingReadiness")
+    if experiment is not None and experiment != "record-only":
+        errors.append(reason("protocol.configuration-mismatch", "/configuration/experimentChargingReadiness",
+                             "experimentChargingReadiness only supports record-only"))
+    if experiment is not None:
+        # Accepted only with the flag, and only with the current (v3) classification.
+        charging_policy = EXPERIMENT_CHARGING_POLICY_V3
     if not _deep_equal(record["chargingPolicy"], charging_policy):
         errors.append(reason("conditions.policy", "/chargingPolicy",
-                             "chargingPolicy must equal the published charging-policy-v2 values"))
+                             "chargingPolicy must equal the published charging policy values"
+                             + (" with record-only-experiment readiness" if experiment is not None else "")))
+    wait_while_charging = record["chargingPolicy"].get("readiness") != "record-only-experiment"
     if not _deep_equal(record["conditionPolicy"], CONDITION_POLICY_V2):
         errors.append(reason("conditions.policy", "/conditionPolicy",
                              "conditionPolicy must equal the published run-conditions-v2 values"))
@@ -788,7 +801,7 @@ def _semantic_v2(record):
         if readiness["status"] != "probe-pending":
             # The configuration may override the rise bound; records before the override use the default.
             recomputed = assess_readiness(before, readiness["baselineBatteryTempC"],
-                                          protocol.get("maxBatteryTempRiseC"))
+                                          protocol.get("maxBatteryTempRiseC"), wait_while_charging)
             if readiness["status"] == "ready" and recomputed:
                 errors.append(reason("readiness.recomputed", f"{where}/readiness/status",
                                      f"Recorded ready, but the before snapshot is not ready: {recomputed}"))
