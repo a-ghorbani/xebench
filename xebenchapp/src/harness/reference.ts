@@ -2,11 +2,13 @@ import * as FS from '@dr.pogodin/react-native-fs';
 import {Platform} from 'react-native';
 import bundledConfig from '../../configs/cpu-reference-v1.json';
 import {parseConfig} from './config';
-import {runSession, ReferenceSession, UNMEASURED_NOTES, unmeasuredSession} from './session';
+import {runSession, UNMEASURED_NOTES, unmeasuredSession} from './session';
+import type {ConfigurationSource, ReferenceSession, SessionIdentity} from './session';
 import {LlamaRnAdapter} from './adapters/LlamaRnAdapter';
 import {generateSeed, ORDER_METHOD, seededOrder} from './order';
 import type {ReadinessBaseline} from './readiness';
 import {stopMonitor} from './conditions';
+import {readBuildInfo} from './build';
 
 let sequence = 0;
 
@@ -16,16 +18,37 @@ export async function runReference(log: (message: string) => void) {
   }
   const root = FS.ExternalDirectoryPath;
   const configFile = `${root}/xebench-config.json`;
-  if (await FS.exists(configFile) && (await FS.stat(configFile)).size > 65536) {
-    throw new Error('Configuration exceeds 64 KiB');
+  const buildInfo = await readBuildInfo();
+  const staged = await FS.exists(configFile);
+  let input: unknown = bundledConfig;
+  // A debug build loads its JS, including the bundled configuration, from Metro: the
+  // build-time hash would describe a file the running code may not have used.
+  let configurationSource: ConfigurationSource = {kind: 'bundled',
+    sha256: buildInfo.identity.buildType === 'release' ? buildInfo.bundledConfigSha256 : null};
+  if (staged) {
+    if ((await FS.stat(configFile)).size > 65536) {
+      throw new Error('Configuration exceeds 64 KiB');
+    }
+    // Hash, read, hash again: the recorded hash is of exactly the bytes that were parsed.
+    const sha256 = await FS.hash(configFile, 'sha256');
+    const text = await FS.readFile(configFile, 'utf8');
+    if (await FS.hash(configFile, 'sha256') !== sha256) {
+      throw new Error('Configuration changed while it was read');
+    }
+    input = JSON.parse(text);
+    configurationSource = {kind: 'staged', sha256};
   }
-  const config = parseConfig(await FS.exists(configFile) ? JSON.parse(await FS.readFile(configFile, 'utf8')) : bundledConfig);
+  const config = parseConfig(input);
   const directory = `${root}/xebench-results`;
   await FS.mkdir(directory);
   const seed = config.orderSeed ?? generateSeed();
   const runs = seededOrder(config.runs, seed);
   const order = runs.map(run => run.id);
-  log(`Configuration ${config.id}: ${runs.length} CPU run(s); order seed ${seed}: ${order.join(', ')}`);
+  log(`Configuration ${config.id} (${configurationSource.kind}): ${runs.length} CPU run(s); ` +
+    `order seed ${seed}: ${order.join(', ')}`);
+  const build = buildInfo.identity;
+  log(`Build ${build.flavor ?? 'unknown'} ${build.gitCommit?.slice(0, 12) ?? 'unknown'}` +
+    (build.gitDirty ? ' (dirty)' : ''));
   // Reclaim a monitor orphaned by an earlier invocation (e.g. a JS reload); a stuck one
   // stays registered and makes this configuration abort with recorded evidence.
   const leftover = await stopMonitor();
@@ -52,11 +75,13 @@ export async function runReference(log: (message: string) => void) {
       log(`${run.id}: ${record.coldRuns.length}/${config.nColdRuns} ${record.status}` +
         (record.stopReason ? ` (${record.stopReason})` : ''));
     };
-    const identity = {runId, timestampIso: new Date().toISOString(), artifact: null,
-      deviceInfo: {model: Platform.constants.Model, androidRelease: Platform.constants.Release}};
+    const identity: SessionIdentity = {runId, timestampIso: new Date().toISOString(), artifact: null,
+      deviceInfo: {model: Platform.constants.Model, androidRelease: Platform.constants.Release},
+      build, configurationSource};
     // Runs that never reach measurement are still recorded, never silently dropped.
-    const recordUnmeasured = async (stopReason: keyof typeof UNMEASURED_NOTES) => {
-      await persist(unmeasuredSession(adapter, config, run, identity, runOrder, stopReason));
+    const recordUnmeasured = async (stopReason: keyof typeof UNMEASURED_NOTES,
+      artifact: SessionIdentity['artifact'] = null) => {
+      await persist(unmeasuredSession(adapter, config, run, {...identity, artifact}, runOrder, stopReason));
       console.log(`XEBENCH_ERROR ${run.id}: ${stopReason}`);
     };
     if (fatal) {
@@ -75,6 +100,16 @@ export async function runReference(log: (message: string) => void) {
     } catch {
       try {
         await recordUnmeasured('setup-failed');
+      } catch (failure) {
+        fatal = failure instanceof Error ? failure : new Error(String(failure));
+      }
+      continue;
+    }
+    if (run.modelSha256 !== undefined && artifact.sha256 !== run.modelSha256) {
+      // The wrong bytes are staged: record both hashes, measure nothing, abort the rest.
+      fatal = new Error(`${run.id}: model SHA-256 does not match the configuration`);
+      try {
+        await recordUnmeasured('model-hash-mismatch', artifact);
       } catch (failure) {
         fatal = failure instanceof Error ? failure : new Error(String(failure));
       }

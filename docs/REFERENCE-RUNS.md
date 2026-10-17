@@ -22,6 +22,44 @@ or if the APK carries a native library outside React Native core and llama.rn CP
 LiteRT-LM/GENIE-X engine bridge. ExecuTorch's Java glue remains because autolinking
 is not flavor-aware. The application ID stays `com.xebenchapp`.
 
+## Build identity and reproducibility
+
+The APK embeds its git commit, a dirty flag, its flavor, build type, `versionName`
+and the SHA-256 of the bundled configuration (`BuildConfig`). Every session records
+them, plus the SHA-256 of each certificate that signed the installed APK (see
+[Evidence](#evidence)). A dirty build cannot be rebuilt from its commit, so treat
+`gitDirty: true` as unreproducible.
+
+CI ([`android-build.yml`](../.github/workflows/android-build.yml)) builds
+`assembleReferenceRelease` (arm64-v8a) for the pull-request head commit, runs the
+APK check and uploads the APK with its SHA-256, the signing certificate and the
+embedded build identity. To compare a local build, check out that commit with a
+clean tree, build with the same JDK major version, and compare SHA-256s.
+
+**The APK SHA-256 depends on the signing key.** The `release` build type is signed
+with the checked-in `android/app/debug.keystore` (certificate SHA-256
+`fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c`), so anyone can
+reproduce the signed bytes. An APK signed with any other key has a different SHA-256
+even when its contents are identical. Compare unsigned contents in that case, for
+example with `apksigner verify --print-certs` plus a diff of the unzipped entries
+other than `META-INF/`. The capture manifest's `appIdentity` records the installed
+APK hashes, and the session's `build.signingCertSha256` says which key signed them.
+Bit-for-bit reproducibility is measured, not guaranteed: the build is not
+hermetic (host NDK/SDK, JDK), so a mismatch is informative, not a failure.
+
+Measured on PR #24 (CI on x86-64 Ubuntu with Temurin 21, against a local aarch64
+Linux host with OpenJDK 21, same commit and both clean): the APK SHA-256s differ.
+The dex files, the Hermes bundle, `resources.arsc` and every other asset are
+identical. The difference is confined to the eight libraries compiled by CMake during
+the build (`libappmodules.so`, `libreact_codegen_safeareacontext.so` and llama.rn's
+`librnllama_jni*.so`). Seven differ only in their 20-byte GNU build ID, which hashes
+host-specific build paths. `libreact_codegen_safeareacontext.so` also embeds the
+absolute path of a React Native header in the Gradle cache, which includes the
+build user's home directory. Do not distribute an APK built under a home directory
+you do not want to disclose. Release builds set React Native's dev-server IP
+resource to `localhost`, so the build host's address is not in the APK. Removing
+the path dependence from native builds is a follow-up.
+
 ## Configure and capture
 
 Install the app first. Then stage the pinned reference GGUF in the
@@ -40,9 +78,11 @@ download command for the pinned revision.
 To customize a run, copy the bundled JSON and edit its model basename, quant
 label, threads/context, repetition, cooldown, readiness timeout
 (`readinessTimeoutSec`) or battery-rise bound (`maxBatteryTempRiseC`) settings, or
-add `orderSeed` to reproduce a recorded run order. `stage_model.py` stages only
-models listed in the manifest. Push any other GGUF with `adb` yourself; runs with
-it are not reference runs. Then stage the configuration:
+add `orderSeed` to reproduce a recorded run order. A run may pin `modelSha256`
+(64 lowercase hex); the bundled configuration pins the reference GGUF from the
+manifest. `stage_model.py` stages only models listed in the manifest. Push any other
+GGUF with `adb` yourself, and remove or replace its `modelSha256`; runs with it are
+not reference runs. Then stage the configuration:
 
 ```sh
 adb -s <serial> push my-config.json /sdcard/Android/data/com.xebenchapp/files/xebench-config.json
@@ -51,8 +91,11 @@ scripts/capture_app_run.sh <serial> 900
 
 The staged configuration persists across launches; if absent, the app uses the
 bundled default. Unknown fields, unsupported engines, paths/URLs and invalid
-limits fail before model loading. Each repetition waits for measured
-[readiness](RUN-CONDITIONS.md) and is sampled while it runs; overall guards stay
+limits fail before model loading. A model whose SHA-256 differs from the run's
+`modelSha256` is never loaded: the run is saved as a failed `model-hash-mismatch`
+session with both hashes, and every later run is saved as `configuration-aborted`.
+Each repetition waits for measured [readiness](RUN-CONDITIONS.md) and is sampled
+while it runs; overall guards stay
 **unverified** unless a failure is known, because backend execution is unverified.
 Model hashes identify the bytes; model/quant labels remain operator-supplied.
 
@@ -72,6 +115,29 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
 - Runs without positive timed decode work are failed, not reported as zero speed.
   A one-token limit can hit this case because the first token comes from prefill.
   Decode counters describe timed evaluations, not the total generated output.
+- Records of protocol `cpu-reference-v3` (harness `xebench-0.7-reference`) also
+  identify the binary, the configuration and what the engine was given:
+  - `build`: commit SHA and dirty flag, flavor, build type, `versionName`/`versionCode`
+    and the SHA-256 of each APK signing certificate, embedded at build time and
+    read through the `BuildInfo` native module. Without the module it is
+    `status: "unavailable"` with every field null; unknown values are never guessed.
+  - `configurationSource`: `bundled` or `staged`, with the SHA-256 of the file's
+    bytes. A staged file is hashed before and after it is read and must not change;
+    the bundled file is hashed at build time. A debug build loads its JavaScript,
+    including the bundled configuration, from Metro, so its bundled hash is null and
+    its `build` describes only the native binary.
+  - `effectiveSettings`: every llama.rn `initLlama` parameter (except the model
+    path) and `completion` parameter (except the prompt) the harness passes, for
+    example `n_batch`, `n_ubatch`, `use_mmap`, `flash_attn_type`, the KV cache types,
+    `temperature` and `seed`. Values equal to llama.rn 0.12.4 defaults are still passed
+    explicitly; anything unlisted is the binding default of `engineVersion`.
+  - `executionReports`: one per successful model load, with what llama.rn reported
+    about that context: `gpu`, `reasonNoGPU`, `devices`, the loaded native library
+    variant (`androidLib`) and llama.cpp's `systemInfo` line (threads in use and
+    compiled CPU features). Values that are missing or out of bounds are null.
+    These are engine statements, not verified execution, so `observedBackend`
+    stays null.
+  - `artifact.expectedSha256`: the run's configured `modelSha256`, or null.
 - Files live under `xebench-results/` in the app's external directory. Logcat
   carries short filename/checksum references; host capture verifies and retrieves
   them without changing their bytes. Local manifests distinguish checkpoints from
@@ -83,9 +149,9 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
   identify installed bytes, not source provenance or continuous runtime attestation.
 
 “Cold” means a fresh engine instance in a warm process. Hashing the model before
-measurement warms the OS file cache. Actual backend execution, peak memory, quality,
-and full native build identity remain unverified. Condition sampling is 1 Hz, not
-continuous.
+measurement warms the OS file cache. Actual backend execution, peak memory and
+quality remain unverified; engine reports and build identity are recorded as
+reported, not attested. Condition sampling is 1 Hz, not continuous.
 
 Completed sessions can be previewed with `aggregate.mjs --pretty`; `--update`
 rejects these new records until publication validation and consumer migration are
@@ -126,6 +192,25 @@ readiness, sampling, instance, order and verdict evidence. For these, the valida
   verdict and its charging status from the recorded snapshots and monitor summaries,
   so unknown evidence cannot be recorded as ready or passing;
 - reproduces the seeded run order.
+
+`cpu-reference-v3` records (harness `xebench-0.7-reference`; earlier v2 output is
+frozen in `tests/fixtures/raw-session/app-emitted-v2.json`) follow every v2 rule
+and also require `build`, `configurationSource`, `effectiveSettings`,
+`executionReports` and `artifact.expectedSha256`, each with a closed shape. The
+validator also checks that:
+
+- `expectedSha256` equals the configured `modelSha256` (or is null without one),
+  and that `stopReason` is `model-hash-mismatch` exactly when the hashed model
+  differs. Such a run has no attempts but keeps its artifact;
+- the effective `n_ctx`, `n_threads` and `n_predict` agree with the protocol, and
+  `n_gpu_layers` is 0;
+- every successful load has exactly one execution report, in repetition order, and
+  a failed load has none. A report of GPU devices is kept as evidence, not
+  rejected: in the `experimental` flavor llama.rn registers OpenCL even with
+  `n_gpu_layers` 0;
+- a staged configuration carries its hash, a bundled hash comes only from a
+  reported release build, an unavailable build reports no other field, and a
+  `versionName` flavor suffix matches `flavor`.
 
 A rejected payload stays in `invalid-<id>.txt` beside `invalid-<id>.reason.json`
 (reason codes, JSON Pointer paths, messages); the manifest lists `rejections`.
@@ -171,14 +256,22 @@ guard notes, enumerated values (statuses, methods, phases, modes) and the cold-r
 definition come from a closed app/host vocabulary. Other values become `unrecognized`.
 
 - **Exported:** session and configuration identity, protocol with `promptSha256`
-  in place of the prompt text, engine and version, model SHA-256, every repetition
+  in place of the prompt text, engine and version, model SHA-256 and the configured
+  expectation, the configuration source and its hash, the effective engine settings,
+  build identity (commit, which links bundles built from one unpublished commit;
+  dirty flag, flavor, build type, a version name of the
+  form `1.0-reference`, version code, and `signingKey`: `repository-debug-key` or
+  `other`), execution reports (GPU flag, and llama.rn's no-GPU reason, device names
+  and library variant from closed lists; `systemInfo` only as parsed thread counts
+  and known feature flags), every repetition
   (metrics, token counts, methods, failure phase), condition snapshots including
   battery temperature, policies, verdicts and summaries. Device identity is
   limited to manufacturer, model, SoC and Android release. A capture contributes
   its status, counts, rejection reason-code counts, and APK names with their SHA-256.
 - **Never exported:** serials, ANDROID_ID, the `ro.product.device` codename,
   install and host paths, usernames, logcat, error logs, error and cleanup
-  messages, invalid payloads and their reason files, and `publicationReady`.
+  messages, invalid payloads and their reason files, signing-certificate
+  fingerprints, the raw `systemInfo` line, and `publicationReady`.
 
 The bundle `<bundleSha256>/` holds `manifest.json`, `captures/<captureId>.json` and
 `sessions/<runId>.json`. Every file is canonical JSON: sorted keys, `,`/`:`

@@ -239,6 +239,9 @@ REJECTION_CODES = Vocab((
     "attempts.cooldown", "conditions.monitor", "conditions.policy", "conditions.recomputed", "guards.recomputed",
     "instance.inconsistent", "order.inconsistent", "order.recomputed", "readiness.inconsistent",
     "readiness.recomputed", "record.unprocessable", "status.artifact",
+    # cpu-reference-v3 identity checks (raw_session._semantic_v3).
+    "artifact.expected", "build.inconsistent", "configuration.source", "execution.inconsistent",
+    "settings.protocol-mismatch",
 ))
 
 # Condition signals and reason codes emitted by the app (xebenchapp/src/harness),
@@ -275,6 +278,9 @@ ENUM_WORDS = (
     "severe-thermal-state", "skipped", "snapshots-not-peak", "started", "stopped", "stuck", "tethered-not-charging",
     "thermal-headroom-low", "thermal-not-ready", "timeout", "total-time-derived", "ttft-derived", "unavailable",
     "unknown", "unverified", "vendor", "violated", "wait-then-skip", "wait-while-charging",
+    # cpu-reference-v3 identity: model hash check, configuration source, build identity and settings.
+    "model-hash-mismatch", "bundled", "staged", "reported", "reference", "experimental", "geniex", "debug",
+    "binding-defaults", "auto", "on", "off",
 )
 
 
@@ -369,6 +375,128 @@ CHARGING_POLICY = Obj({
     "onBattery": ENUM, "currentNow": ENUM, "readiness": ENUM, "unknown": ENUM,
 })
 CONDITION_VERDICT = Obj({"status": ENUM, "reasons": REASON_LIST, "charging": ENUM})
+# ── cpu-reference-v3 identity ──────────────────────────────────────────────
+HEX40 = _text(r"[0-9a-f]{40}", "lowercase commit hash")
+# build.gradle versionName plus the flavor suffix; anything else (an operator's own text) is refused.
+VERSION_NAME = _text(r"[0-9]{1,4}(\.[0-9]{1,4}){0,3}(-(reference|experimental|geniex))?", "app version name")
+# Certificate of the checked-in android/app/debug.keystore. Other signing keys are reported only as
+# "other": a private key's fingerprint would identify its owner across bundles.
+REPOSITORY_DEBUG_CERT_SHA256 = "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+SIGNING_KEY = Vocab(("repository-debug-key", "other"))
+
+
+def _signing_key(build):
+    if "signingKey" in build:
+        return {}
+    certs = build.get("signingCertSha256")
+    if not isinstance(certs, list):
+        return {"signingKey": None}
+    return {"signingKey": "repository-debug-key" if certs == [REPOSITORY_DEBUG_CERT_SHA256] else "other"}
+
+
+BUILD = Obj({
+    "status": ENUM, "gitCommit": Nullable(HEX40), "gitDirty": N_BOOL, "flavor": Nullable(ENUM),
+    "buildType": Nullable(ENUM), "versionName": Nullable(VERSION_NAME), "versionCode": N_COUNT,
+    "signingKey": Nullable(SIGNING_KEY),
+}, required=("status", "gitCommit", "gitDirty", "flavor", "buildType", "versionName", "versionCode", "signingKey"),
+    excluded=("signingCertSha256",), derive=_signing_key)
+CONFIGURATION_SOURCE = Obj({"kind": ENUM, "sha256": Nullable(HEX64)}, required=("kind", "sha256"))
+CACHE_TYPE = Vocab(("f16", "f32", "bf16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_0", "q5_1"))
+EFFECTIVE_SETTINGS = Obj({
+    "binding": Vocab(("llama.rn",)), "unlisted": ENUM,
+    "init": Obj({"n_ctx": COUNT, "n_batch": COUNT, "n_ubatch": COUNT, "n_threads": N_COUNT, "n_gpu_layers": INT,
+                 "use_mmap": BOOL, "use_mlock": BOOL, "flash_attn_type": ENUM, "cache_type_k": CACHE_TYPE,
+                 "cache_type_v": CACHE_TYPE}, required=("n_ctx", "n_batch", "n_threads", "n_gpu_layers")),
+    "completion": Obj({"n_predict": COUNT, "temperature": NONNEG, "seed": COUNT},
+                      required=("n_predict", "temperature", "seed")),
+}, required=("binding", "init", "completion", "unlisted"))
+# Exact llama.rn 0.12 (RNLlamaJSI.cpp) strings; other text becomes "unrecognized".
+REASON_NO_GPU = Vocab(("", "GPU devices disabled by user", "GPU backend is available but was not selected",
+                       "GPU backend is not available"))
+ENGINE_DEVICE = Vocab(("CPU", "GPUOpenCL", "HTP0", "HTP1", "HTP2", "HTP3", "Metal", "BLAS"))
+ANDROID_LIB = Vocab(("rnllama", "rnllama_jni", "rnllama_jni_v8", "rnllama_jni_v8_2", "rnllama_jni_v8_2_dotprod",
+                     "rnllama_jni_v8_2_i8mm", "rnllama_jni_v8_2_dotprod_i8mm",
+                     "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl", "rnllama_jni_x86_64"))
+# ggml backend names and the feature names ggml-cpu reports (ggml_backend_cpu_get_features).
+ENGINE_BACKEND = Vocab(("CPU", "OpenCL", "Hexagon", "HTP", "Metal", "BLAS"))
+ENGINE_FEATURES = frozenset((
+    "SSE3", "SSSE3", "AVX", "AVX_VNNI", "AVX2", "F16C", "FMA", "BMI2", "AVX512", "AVX512_VBMI", "AVX512_VNNI",
+    "AVX512_BF16", "AMX_INT8", "NEON", "ARM_FMA", "FP16_VA", "MATMUL_INT8", "SVE", "DOTPROD", "SVE_CNT", "SME",
+    "RISCV_V", "RVV_VLEN", "VSX", "VXE", "WASM_SIMD", "LLAMAFILE", "ACCELERATE", "CPU_HBM", "OPENMP", "KLEIDIAI",
+    "REPACK"))
+_SYSTEM_INFO = re.compile(r"system_info: n_threads = ([0-9]{1,4})(?: \(n_threads_batch = (-?[0-9]{1,4})\))?"
+                          r" / ([0-9]{1,4}) \| (.*)")
+_SYSTEM_BACKEND = re.compile(r"([A-Za-z][A-Za-z0-9_]{0,31}) : ")
+_SYSTEM_FEATURE = re.compile(r"([A-Z][A-Z0-9_]{0,31}) = ([0-9]{1,6}) \| ")
+
+
+def parse_system_info(text):
+    """llama.cpp's system_info line as threads plus per-backend features; None if it is not that line."""
+    match = _SYSTEM_INFO.fullmatch(text)
+    if not match:
+        return None
+    threads, batch, concurrency, rest = match.groups()
+    backends, position = [], 0
+    while position < len(rest):
+        name = _SYSTEM_BACKEND.match(rest, position)
+        if not name:
+            return None
+        position, features = name.end(), {}
+        while position < len(rest):
+            feature = _SYSTEM_FEATURE.match(rest, position)
+            if not feature:
+                break
+            features[feature.group(1)] = int(feature.group(2))
+            position = feature.end()
+        backends.append({"name": name.group(1), "features": features})
+    return {"nThreads": int(threads), "nThreadsBatch": None if batch is None else int(batch),
+            "hardwareConcurrency": int(concurrency), "backends": backends}
+
+
+class FeatureFlags:
+    """Feature name -> integer value; names outside ggml's list are counted under "unrecognized"."""
+
+    def apply(self, value, path, ctx):
+        if not isinstance(value, dict) or len(value) > 64:
+            raise Refused(path, "Approved field is not a bounded object")
+        out = {}
+        for key, child in value.items():
+            number = _number(0, 999999, integer=True).apply(child, _pointer(path, key), ctx)
+            if key in ENGINE_FEATURES:
+                out[key] = number
+                continue
+            if key != UNRECOGNIZED:
+                ctx.drop(_pointer(path, key), "unrecognized-key")
+                number = 1
+            out[UNRECOGNIZED] = out.get(UNRECOGNIZED, 0) + number
+        return out
+
+
+SYSTEM_INFO = Obj({"nThreads": COUNT, "nThreadsBatch": Nullable(INT), "hardwareConcurrency": COUNT,
+                   "backends": Arr(Obj({"name": ENGINE_BACKEND, "features": FeatureFlags()},
+                                       required=("name", "features")), max_items=16)},
+                  required=("nThreads", "nThreadsBatch", "hardwareConcurrency", "backends"))
+
+
+class SystemInfo:
+    """The raw line is free text that could carry anything; only its parsed, closed form is exported."""
+
+    def apply(self, value, path, ctx):
+        if isinstance(value, str):
+            parsed = parse_system_info(value)
+            if parsed is None:
+                ctx.drop(path, "unparsed-value")
+                return None
+            value = parsed
+        return SYSTEM_INFO.apply(value, path, ctx)
+
+
+EXECUTION_REPORT = Obj({
+    "runIndex": COUNT, "gpu": N_BOOL, "reasonNoGPU": Nullable(REASON_NO_GPU),
+    "devices": Nullable(Arr(ENGINE_DEVICE, max_items=16)), "androidLib": Nullable(ANDROID_LIB),
+    "systemInfo": Nullable(SystemInfo()),
+}, required=("runIndex", "gpu", "reasonNoGPU", "devices", "androidLib", "systemInfo"))
+
 RUN_ORDER = Obj({"method": VERSION, "seed": _number(0, 2 ** 32 - 1, integer=True), "seedSource": ENUM,
                  "order": Arr(LABEL, max_items=64), "position": COUNT})
 
@@ -394,11 +522,12 @@ CONFIGURATION = Obj({
     # EXPERIMENT ONLY (docs/experiments/charging-ab.md): kept so a bundle shows the marker.
     "experimentChargingReadiness": ENUM,
     "runs": Arr(Obj({"id": LABEL, "engine": LABEL, "model": LABEL, "modelFile": MODEL_FILE, "quant": LABEL,
-                     "nThreads": COUNT, "nCtx": COUNT}, required=("id",)), max_items=64),
+                     "nThreads": COUNT, "nCtx": COUNT, "modelSha256": HEX64}, required=("id",)), max_items=64),
 }, required=("id", "runs"))
 RECORD = Obj({
     "runId": RUN_ID, "timestampIso": UTC, "schema": VERSION, "schemaVersion": INT,
-    "artifact": Nullable(Obj({"sha256": HEX64, "sizeBytes": COUNT}, required=("sha256", "sizeBytes"))),
+    "artifact": Nullable(Obj({"sha256": HEX64, "sizeBytes": COUNT, "expectedSha256": Nullable(HEX64)},
+                             required=("sha256", "sizeBytes"))),
     "harnessVersion": LABEL, "engine": LABEL, "engineVersion": LABEL, "backend": ENUM,
     "observedBackend": Nullable(ENUM), "platform": ENUM, "model": LABEL, "quant": LABEL,
     "modelFile": MODEL_FILE, "configuration": CONFIGURATION, "configurationRunId": LABEL, "protocol": PROTOCOL,
@@ -409,6 +538,9 @@ RECORD = Obj({
     # Fields added by the conditions-enforcement work; optional so either record generation exports.
     "runOrder": Nullable(RUN_ORDER), "repetitionsPlanned": COUNT, "stopReason": Nullable(ENUM),
     "chargingPolicy": CHARGING_POLICY, "conditionVerdict": CONDITION_VERDICT,
+    # cpu-reference-v3 build, configuration and execution identity.
+    "build": BUILD, "configurationSource": CONFIGURATION_SOURCE, "effectiveSettings": EFFECTIVE_SETTINGS,
+    "executionReports": Arr(EXECUTION_REPORT, max_items=64),
 }, required=("runId", "timestampIso", "schema", "schemaVersion", "artifact", "engine", "model", "quant",
              "modelFile", "configuration", "configurationRunId", "protocol", "status", "coldRuns", "summary"))
 DEVICE = Obj({"manufacturer": Nullable(DEVICE_TEXT), "model": Nullable(DEVICE_TEXT), "soc": Nullable(DEVICE_TEXT),
@@ -773,8 +905,11 @@ def _check_record(record, where, errors):
     if record["status"] == "complete":
         ok = len(runs) == planned and all(status == "complete" for status in statuses)
     elif record["status"] == "failed" and not runs:
-        # A run recorded without measurement (cpu-reference-v2): no attempts, no artifact.
-        ok = record.get("stopReason") in raw_session.STOP_REASONS_UNMEASURED and record.get("artifact") is None
+        # A run recorded without measurement (cpu-reference-v2+): no attempts, and no artifact
+        # unless it was hashed and found to differ from the configured hash.
+        stop = record.get("stopReason")
+        ok = stop in raw_session.STOP_REASONS_UNMEASURED and \
+            (record.get("artifact") is None) == (stop in raw_session.STOP_REASONS_UNHASHED)
     elif record["status"] == "failed":
         ok = statuses[-1] in ("failed", "skipped") and all(status == "complete" for status in statuses[:-1])
     else:

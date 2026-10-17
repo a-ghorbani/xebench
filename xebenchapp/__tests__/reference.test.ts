@@ -3,6 +3,7 @@ import {initLlama, LlamaContext} from 'llama.rn';
 import {runReference} from '../src/harness/reference';
 import bundled from '../configs/cpu-reference-v1.json';
 import {seededOrder} from '../src/harness/order';
+import {NativeModules} from 'react-native';
 
 const {createHash} = require('crypto');
 
@@ -22,13 +23,24 @@ jest.mock('react-native', () => {
       stopMonitor: async () => ({status: 'stopped', intervalMs: 1000, startedElapsedMs: 1000,
         stoppedElapsedMs: 1200, ticks: 1, dropped: 0, expired: false,
         maxSampleCostMs: 1, totalSampleCostMs: 1, samples: [sample]}),
-    }},
+    }, BuildInfo: {identity: jest.fn()}},
   };
 });
 jest.mock('llama.rn', () => ({initLlama: jest.fn()}));
 
 let files: Map<string, string>;
 let output: jest.SpyInstance;
+// The bundled configuration pins the reference GGUF; the mocked model has exactly those bytes.
+const MODEL_SHA = bundled.runs[0].modelSha256;
+const DEBUG_CERT = 'fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c';
+const BUILD = {gitCommit: '0123456789abcdef0123456789abcdef01234567', gitDirty: false, flavor: 'reference',
+  buildType: 'release', versionName: '1.0-reference', versionCode: 1, signingCertSha256: [DEBUG_CERT],
+  bundledConfigSha256: 'b'.repeat(64)};
+// Fields llama.rn 0.12.4 sets on the LlamaContext returned by initLlama().
+const CONTEXT = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices: [],
+  androidLib: 'rnllama_jni_v8_2_dotprod_i8mm',
+  systemInfo: 'system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | DOTPROD = 1 | '};
+const saved = () => jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -37,9 +49,10 @@ beforeEach(() => {
   jest.mocked(FS.stat).mockResolvedValue({size: 100} as FS.StatResultT);
   jest.mocked(FS.readFile).mockImplementation(async path => files.get(path)!);
   jest.mocked(FS.writeFile).mockImplementation(async (path, text) => {files.set(path, text);});
-  jest.mocked(FS.hash).mockImplementation(async path => path.endsWith('.gguf') ? 'a'.repeat(64) :
+  jest.mocked(FS.hash).mockImplementation(async path => path.endsWith('.gguf') ? MODEL_SHA :
     createHash('sha256').update(files.get(path)!).digest('hex'));
   jest.mocked(initLlama).mockResolvedValue({
+    ...CONTEXT,
     completion: async (_options: unknown, token: () => void) => {
       token();
       return {timings: {prompt_n: 512, predicted_n: 128, prompt_ms: 10, predicted_ms: 20,
@@ -47,6 +60,7 @@ beforeEach(() => {
     },
     release: jest.fn(async () => {}),
   } as unknown as LlamaContext);
+  jest.mocked(NativeModules.BuildInfo.identity).mockResolvedValue(BUILD);
   output = jest.spyOn(console, 'log').mockImplementation(() => {});
 });
 
@@ -62,16 +76,16 @@ test('configuration reaches CPU engine and checksummed evidence file', async () 
   expect(reference.sha256).toBe(createHash('sha256').update(data).digest('hex'));
   const record = JSON.parse(data);
   expect(record.status).toBe('complete');
-  expect(record.artifact).toEqual({sha256: 'a'.repeat(64), sizeBytes: 100});
+  expect(record.artifact).toEqual({sha256: MODEL_SHA, sizeBytes: 100, expectedSha256: MODEL_SHA});
   expect(record.coldRuns[0]).toMatchObject({promptTokens: 512, decodeTokens: 128, status: 'complete'});
   expect(record.engineVersion).toContain('llama.rn');
   expect(record.configuration.nColdRuns).toBe(1);
 });
 
-test('invalid staged configuration fails before hashing or native loading', async () => {
+test('invalid staged configuration fails before model hashing or native loading', async () => {
   files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 0}));
   await expect(runReference(() => {})).rejects.toThrow();
-  expect(FS.hash).not.toHaveBeenCalled();
+  expect(jest.mocked(FS.hash).mock.calls.filter(([path]) => path.endsWith('.gguf'))).toEqual([]);
   expect(initLlama).not.toHaveBeenCalled();
 });
 
@@ -169,7 +183,7 @@ test('an unreadable model is recorded as a failed run and later runs still execu
     runs: [bundled.runs[0], {...bundled.runs[0], id: 'missing', modelFile: 'missing.gguf'}]}));
   jest.mocked(FS.hash).mockImplementation(async path => {
     if (path.endsWith('missing.gguf')) throw new Error('/private/path/missing.gguf not found');
-    return path.endsWith('.gguf') ? 'a'.repeat(64) : createHash('sha256').update(files.get(path)!).digest('hex');
+    return path.endsWith('.gguf') ? MODEL_SHA : createHash('sha256').update(files.get(path)!).digest('hex');
   });
   await runReference(() => {});
   const records = jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
@@ -186,4 +200,116 @@ test('every run, including the first, cools down after model hashing', async () 
   await runReference(() => {});
   const records = jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
   expect(records.map(record => record.coldRuns[0].cooldownMs)).toEqual([1000, 1000]);
+});
+
+test('records the engine settings actually passed and what the loaded context reported', async () => {
+  await runReference(() => {});
+  const [record] = saved();
+  const passed = jest.mocked(initLlama).mock.calls[0][0] as unknown as Record<string, unknown>;
+  // Exactly the recorded init settings plus the (unrecorded, private) model path.
+  expect(passed).toEqual({model: '/fixture/Llama-3.2-1B-Instruct-Q4_K_M.gguf', ...record.effectiveSettings.init});
+  expect(record.effectiveSettings).toEqual({binding: 'llama.rn', unlisted: 'binding-defaults',
+    init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: true, use_mlock: false,
+      flash_attn_type: 'auto', cache_type_k: 'f16', cache_type_v: 'f16'},
+    completion: {n_predict: 128, temperature: 0, seed: 42}});
+  expect(record.executionReports).toEqual([{runIndex: 0, ...CONTEXT}]);
+  // Engine reports are evidence, not verified execution: the observed backend stays unknown.
+  expect(record.observedBackend).toBeNull();
+  expect(record.protocol.version).toBe('cpu-reference-v3');
+});
+
+test('unreported or malformed context fields stay unknown', async () => {
+  const context = await jest.mocked(initLlama)({} as never);
+  jest.mocked(initLlama).mockResolvedValue({...context, gpu: 'no', reasonNoGPU: 'x'.repeat(300),
+    devices: ['CPU', '\u0000'], androidLib: '../librnllama.so', systemInfo: undefined} as unknown as LlamaContext);
+  await runReference(() => {});
+  expect(saved()[0].executionReports).toEqual([
+    {runIndex: 0, gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null}]);
+});
+
+// The bundled configuration has a 30 s cooldown; an unreadable model records without waiting.
+const missingModel = () => jest.mocked(FS.hash).mockImplementation(async path => {
+  if (path.endsWith('.gguf')) throw new Error('missing');
+  return createHash('sha256').update(files.get(path)!).digest('hex');
+});
+
+test('records build identity and the bundled configuration hash from the build', async () => {
+  files.delete('/fixture/xebench-config.json');
+  missingModel();
+  await runReference(() => {});
+  const record = saved()[0];
+  const {bundledConfigSha256, ...identity} = BUILD;
+  expect(record.build).toEqual({status: 'reported', ...identity});
+  expect(record.configurationSource).toEqual({kind: 'bundled', sha256: bundledConfigSha256});
+  expect(record).toMatchObject({configuration: bundled, stopReason: 'setup-failed', artifact: null});
+});
+
+test('a staged configuration is identified by the SHA-256 of the bytes read', async () => {
+  await runReference(() => {});
+  const text = files.get('/fixture/xebench-config.json')!;
+  expect(saved()[0].configurationSource).toEqual({kind: 'staged',
+    sha256: createHash('sha256').update(text).digest('hex')});
+});
+
+test('a configuration that changes while it is read is refused before any run', async () => {
+  let reads = 0;
+  jest.mocked(FS.hash).mockImplementation(async () => (reads++ ? 'e' : 'f').repeat(64));
+  await expect(runReference(() => {})).rejects.toThrow('changed');
+  expect(initLlama).not.toHaveBeenCalled();
+  expect(FS.writeFile).not.toHaveBeenCalled();
+});
+
+test('without the BuildInfo module the build is recorded as unavailable, never guessed', async () => {
+  files.delete('/fixture/xebench-config.json');
+  jest.mocked(NativeModules.BuildInfo.identity).mockRejectedValue(new Error('no module'));
+  missingModel();
+  await runReference(() => {});
+  const record = saved()[0];
+  expect(record.build).toEqual({status: 'unavailable', gitCommit: null, gitDirty: null, flavor: null,
+    buildType: null, versionName: null, versionCode: null, signingCertSha256: null});
+  expect(record.configurationSource).toEqual({kind: 'bundled', sha256: null});
+});
+
+test('malformed build values are dropped individually', async () => {
+  jest.mocked(NativeModules.BuildInfo.identity).mockResolvedValue({...BUILD, gitCommit: 'HEAD', gitDirty: 'yes',
+    flavor: 'custom', versionName: '/sdcard/x', versionCode: -1, signingCertSha256: ['AB']});
+  await runReference(() => {});
+  expect(saved()[0].build).toEqual({status: 'reported', gitCommit: null, gitDirty: null, flavor: null,
+    buildType: 'release', versionName: null, versionCode: null, signingCertSha256: null});
+});
+
+test('without a configured model hash the expectation is recorded as null', async () => {
+  const {modelSha256, ...run} = bundled.runs[0];
+  expect(modelSha256).toMatch(/^[0-9a-f]{64}$/);
+  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 0, runs: [run]}));
+  await runReference(() => {});
+  expect(saved()[0]).toMatchObject({status: 'complete',
+    artifact: {sha256: MODEL_SHA, sizeBytes: 100, expectedSha256: null}});
+});
+
+test('a model hash mismatch is a failed record and aborts the configuration', async () => {
+  const runs = [{...bundled.runs[0], modelSha256: 'c'.repeat(64)}, {...bundled.runs[0], id: 'second-model'}];
+  // A seed that executes the mismatching run first.
+  const orderSeed = [1, 2, 3, 4, 5].find(seed => seededOrder(runs.map(run => run.id), seed)[0] === runs[0].id);
+  files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 0, orderSeed, runs}));
+  await expect(runReference(() => {})).rejects.toThrow('does not match');
+  expect(initLlama).not.toHaveBeenCalled();
+  const written = saved();
+  expect(written.map(record => [record.configurationRunId, record.status, record.stopReason])).toEqual([
+    [runs[0].id, 'failed', 'model-hash-mismatch'], ['second-model', 'failed', 'configuration-aborted']]);
+  expect(written[1].artifact).toBeNull();
+  const mismatch = written[0];
+  expect(mismatch).toMatchObject({status: 'failed', coldRuns: [],
+    artifact: {sha256: MODEL_SHA, sizeBytes: 100, expectedSha256: 'c'.repeat(64)}});
+  expect(mismatch.guardNotes).toContain('Not run: the model artifact does not match the configured SHA-256');
+  expect(output.mock.calls.some(([line]) => line === 'XEBENCH_ERROR llama32-q4km-cpu: model-hash-mismatch')).toBe(true);
+});
+
+test('a debug build loads JS from Metro, so its bundled configuration hash is unknown', async () => {
+  files.delete('/fixture/xebench-config.json');
+  missingModel();
+  jest.mocked(NativeModules.BuildInfo.identity).mockResolvedValue({...BUILD, buildType: 'debug'});
+  await runReference(() => {});
+  expect(saved()[0].configurationSource).toEqual({kind: 'bundled', sha256: null});
+  expect(saved()[0].build.buildType).toBe('debug');
 });

@@ -1,4 +1,5 @@
-import type {EngineAdapter} from './adapters/EngineAdapter';
+import type {EngineAdapter, ExecutionReport, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
+import type {BuildIdentity} from './build';
 import type {Aggregate, SingleRunMetrics} from './types';
 import type {ReferenceConfig, ReferenceRun} from './config';
 import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
@@ -55,7 +56,15 @@ export type Attempt = AttemptBase & ({status: 'complete'} & SingleRunMetrics | {
 } | {status: 'skipped'; reason: 'readiness-timeout' | 'charging'});
 
 export type StopReason = 'repetition-failed' | 'readiness-timeout' | 'condition-probe-pending' |
-  'cleanup-failed' | 'configuration-aborted' | 'setup-failed';
+  'cleanup-failed' | 'configuration-aborted' | 'setup-failed' | 'model-hash-mismatch';
+
+/** Where the parsed configuration came from, and the SHA-256 of that file's bytes. */
+export interface ConfigurationSource {
+  /** bundled: configs/cpu-reference-v1.json in the APK; staged: xebench-config.json in the app's files dir. */
+  kind: 'bundled' | 'staged';
+  /** Staged: hash of the bytes read. Bundled: hash computed at build time; null if the build did not report it. */
+  sha256: string | null;
+}
 
 export interface SessionIdentity {
   runId: string;
@@ -63,7 +72,16 @@ export interface SessionIdentity {
   deviceInfo: {model: string; androidRelease: string};
   /** null only for runs recorded as skipped or failed before the model was hashed. */
   artifact: {sha256: string; sizeBytes: number} | null;
+  build: BuildIdentity;
+  configurationSource: ConfigurationSource;
 }
+
+/** One engine report per model load, keyed by the repetition that loaded it. */
+export interface ExecutionLoadReport extends ExecutionReport {
+  runIndex: number;
+}
+
+const UNREPORTED: ExecutionReport = {gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null};
 
 export interface ConditionVerdict {
   /** pass: every planned repetition was ready and every endpoint/sample check passed with measured evidence. */
@@ -79,14 +97,21 @@ export interface SessionContext {
   now?: () => number;
 }
 
-export interface ReferenceSession extends SessionIdentity {
+export interface ReferenceSession extends Omit<SessionIdentity, 'artifact'> {
   schema: 'xebench-raw';
   schemaVersion: 1;
-  harnessVersion: 'xebench-0.6-reference';
+  harnessVersion: 'xebench-0.7-reference';
+  /** Actual bytes hashed before measurement, and the configured expectation (null if none). */
+  artifact: {sha256: string; sizeBytes: number; expectedSha256: string | null} | null;
   engine: string;
   engineVersion: string;
   backend: 'cpu';
+  /** The requested backend is the backend field; execution is not verified, so this stays null (unknown). */
   observedBackend: null;
+  /** Every parameter passed to the engine (an adapter that cannot state them cannot run this protocol). */
+  effectiveSettings: LlamaRnEffectiveSettings;
+  /** As reported by the engine after each successful load; reports are not verified execution. */
+  executionReports: ExecutionLoadReport[];
   platform: 'android';
   model: string;
   quant: string;
@@ -95,7 +120,7 @@ export interface ReferenceSession extends SessionIdentity {
   configurationRunId: string;
   runOrder: RunOrder | null;
   protocol: {
-    version: 'cpu-reference-v2'; nColdRuns: number; cooldownSec: number; readinessTimeoutSec: number;
+    version: 'cpu-reference-v3'; nColdRuns: number; cooldownSec: number; readinessTimeoutSec: number;
     /** Effective readiness rise bound (configuration override of the policy default). */
     maxBatteryTempRiseC: number;
     promptLabel: string; prompt: string; maxDecodeTokens: number;
@@ -206,13 +231,19 @@ export function createSession(
   adapter: EngineAdapter, config: ReferenceConfig, run: ReferenceRun, identity: SessionIdentity,
   runOrder: RunOrder | null = null,
 ): ReferenceSession {
+  if (!adapter.effectiveSettings) {
+    throw new Error('Adapter cannot state its effective engine settings');
+  }
   const record: ReferenceSession = {
-    ...identity, schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.6-reference',
+    ...identity,
+    artifact: identity.artifact && {...identity.artifact, expectedSha256: run.modelSha256 ?? null},
+    schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.7-reference',
     engine: adapter.engine, engineVersion: adapter.engineVersion(), backend: 'cpu', observedBackend: null,
+    effectiveSettings: adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens}), executionReports: [],
     platform: 'android', model: run.model, quant: run.quant, modelFile: run.modelFile,
     configuration: config, configurationRunId: run.id, runOrder,
     protocol: {
-      version: 'cpu-reference-v2', nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec,
+      version: 'cpu-reference-v3', nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec,
       readinessTimeoutSec: config.readinessTimeoutSec, maxBatteryTempRiseC: config.maxBatteryTempRiseC,
       promptLabel: STANDARD_PROMPT_LABEL, prompt: STANDARD_PROMPT, maxDecodeTokens: config.maxDecodeTokens,
       nThreads: run.nThreads, nCtx: run.nCtx,
@@ -234,14 +265,19 @@ export function createSession(
 export const UNMEASURED_NOTES = {
   'configuration-aborted': 'Not run: an earlier run aborted the configuration',
   'setup-failed': 'Not run: the model artifact could not be read',
+  'model-hash-mismatch': 'Not run: the model artifact does not match the configured SHA-256',
 } as const;
 
-/** A run that never reached measurement (aborted configuration or unreadable model). */
+/**
+ * A run that never reached measurement (aborted configuration, unreadable model, or a
+ * model whose bytes differ from the configured hash; only the last keeps its artifact).
+ */
 export function unmeasuredSession(
   adapter: EngineAdapter, config: ReferenceConfig, run: ReferenceRun, identity: SessionIdentity,
   runOrder: RunOrder | null, stopReason: keyof typeof UNMEASURED_NOTES,
 ): ReferenceSession {
-  const record = createSession(adapter, config, run, {...identity, artifact: null}, runOrder);
+  const record = createSession(adapter, config, run,
+    {...identity, artifact: stopReason === 'model-hash-mismatch' ? identity.artifact : null}, runOrder);
   record.status = 'failed';
   record.stopReason = stopReason;
   record.guardNotes = [...record.guardNotes, UNMEASURED_NOTES[stopReason]];
@@ -298,6 +334,7 @@ export async function runSession(
       base.instance = {kind: 'fresh-instance', request: 'first-request-on-instance',
         processInstanceId: PROCESS_INSTANCE_ID, modelLoadsBeforeInProcess: modelLoadsInProcess++};
       const loadMs = await adapter.load();
+      record.executionReports.push({runIndex, ...(adapter.executionReport?.() ?? UNREPORTED)});
       phase = 'inference';
       metrics = {...await adapter.benchOnce({prompt: STANDARD_PROMPT, maxDecodeTokens: config.maxDecodeTokens}), loadMs};
       validateMetrics(metrics);

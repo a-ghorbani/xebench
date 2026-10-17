@@ -4,8 +4,8 @@
  * tests/test_raw_session.py validates with the host validator. After an intended
  * record change, regenerate with XEBENCH_UPDATE_FIXTURES=1 and update the schema.
  * XEBENCH_RAW_SESSION_OUT=<file> also writes the live records for CI validation.
- * tests/fixtures/raw-session/app-emitted-v1.json is the frozen output of the
- * earlier cpu-reference-v1 app and must keep validating unchanged.
+ * tests/fixtures/raw-session/app-emitted-v1.json and app-emitted-v2.json are the frozen
+ * output of the earlier cpu-reference-v1 and -v2 apps and must keep validating unchanged.
  */
 import {ReferenceSession, runSession, SessionContext, unmeasuredSession} from '../src/harness/session';
 import {parseConfig} from '../src/harness/config';
@@ -13,6 +13,7 @@ import configData from '../configs/cpu-reference-v1.json';
 import type {SingleRunMetrics} from '../src/harness/types';
 import * as conditions from '../src/harness/conditions';
 import {ORDER_METHOD, seededOrder} from '../src/harness/order';
+import {UNAVAILABLE_BUILD} from '../src/harness/build';
 
 // Node globals for this Jest-only file; the app's tsconfig has no Node types.
 declare const __dirname: string;
@@ -23,13 +24,27 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '../..');
 const FIXTURE = path.join(ROOT, 'tests/fixtures/raw-session/app-emitted.json');
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, 'schemas/raw-session-v1.json'), 'utf8'));
-const SESSION = SCHEMA.$defs.sessionV2;
+const SESSION = SCHEMA.$defs.sessionV3;
 
 afterEach(() => jest.restoreAllMocks());
 
 const config = parseConfig(configData);
+// The pinned reference GGUF (configs/models/reference-models.json): matches the configured hash.
+const MODEL = {sha256: config.runs[0].modelSha256!, sizeBytes: 807694464};
+const build = {status: 'reported' as const, gitCommit: '0123456789abcdef0123456789abcdef01234567', gitDirty: false,
+  flavor: 'reference' as const, buildType: 'release' as const, versionName: '1.0-reference', versionCode: 1,
+  signingCertSha256: ['fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c']};
 const identity = {runId: '1767225600000-0-fixture', timestampIso: '2026-01-01T00:00:00.000Z',
-  deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: {sha256: 'a'.repeat(64), sizeBytes: 770000000}};
+  deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: MODEL,
+  build, configurationSource: {kind: 'bundled' as const, sha256: 'b'.repeat(64)}};
+// What llama.rn 0.12.4 reports for a CPU-only context in the reference flavor.
+const report = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices: [],
+  androidLib: 'rnllama_jni_v8_2_dotprod_i8mm', systemInfo: 'system_info: n_threads = 4 (n_threads_batch = 4) / 8 | ' +
+    'CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | '};
+const effective = ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
+  init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: true, use_mlock: false,
+    flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const, cache_type_v: 'f16' as const},
+  completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const});
 // USB-tethered at a charge limit (charging-policy-v3 eligible).
 const healthy = {timestampMs: 1767225600000, elapsedMs: 5000, batteryPct: 80, batteryTempC: 30.5, charging: true,
   batteryStatus: 4, plugged: 2, currentNowUa: -1500,
@@ -55,6 +70,7 @@ function adapter() {
     engine: 'llama.cpp' as const, backend: 'cpu' as const, modelLabel: config.runs[0].model,
     quantLabel: config.runs[0].quant, modelFile: config.runs[0].modelFile,
     engineVersion: () => 'llama.rn 0.0.0-fixture', settings: () => ({nThreads: 4, nCtx: 2048}),
+    effectiveSettings: effective, executionReport: jest.fn(() => report),
     load: jest.fn(async () => samples[call % samples.length].loadMs),
     release: jest.fn(async () => {}),
     benchOnce: jest.fn(async (): Promise<SingleRunMetrics> => {
@@ -228,6 +244,24 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
   native(healthy, monitor(many, {stoppedElapsedMs: 49500}));
   records.decimatedSamples = await single(adapter());
   records.setupFailed = unmeasuredSession(adapter(), one, config.runs[0], identity, null, 'setup-failed');
+
+  // Identity evidence: configured model hashes, a staged configuration, a build without the
+  // BuildInfo module, and an engine that reports nothing about its context.
+  native();
+  const expected = (sha256: string) => ({...one, runs: [{...config.runs[0], modelSha256: sha256}]});
+  const unpinned = {...config.runs[0]};
+  delete unpinned.modelSha256;
+  records.noExpectedHash = await single(adapter(), {...one, runs: [unpinned]}, {}, unpinned);
+  records.modelHashMismatch = unmeasuredSession(adapter(), expected('c'.repeat(64)), expected('c'.repeat(64)).runs[0],
+    identity, null, 'model-hash-mismatch');
+  records.stagedConfiguration = (await capture(persist => runSession(adapter(), one, config.runs[0],
+    {...identity, configurationSource: {kind: 'staged', sha256: 'e'.repeat(64)}}, persist, noSleep, context()))).pop()!;
+  records.buildUnavailable = (await capture(persist => runSession(adapter(), one, config.runs[0],
+    {...identity, build: UNAVAILABLE_BUILD, configurationSource: {kind: 'bundled', sha256: null}}, persist, noSleep,
+    context()))).pop()!;
+  const silent: Partial<ReturnType<typeof adapter>> = adapter();
+  delete silent.executionReport;
+  records.executionUnreported = await single(silent as ReturnType<typeof adapter>);
   // The per-process ID is random by design; pin it so the fixture is reproducible.
   for (const record of Object.values(records)) {
     for (const attempt of record.coldRuns) {
@@ -256,7 +290,14 @@ test('runSession records match the committed fixture validated by the host schem
     monitorStartTimeout: 'failed/condition-probe-pending/fail', cleanupFailedProbePending: 'failed/cleanup-failed/fail',
     laterReadinessTimeout: 'failed/readiness-timeout/fail', headroomUnavailable: 'complete/null/pass',
     monitorStopError: 'failed/condition-probe-pending/fail', decimatedSamples: 'complete/null/pass',
-    chargingRecordOnly: 'complete/null/pass'});
+    noExpectedHash: 'complete/null/pass', modelHashMismatch: 'failed/model-hash-mismatch/unverified',
+    stagedConfiguration: 'complete/null/pass', buildUnavailable: 'complete/null/pass',
+    executionUnreported: 'complete/null/pass', chargingRecordOnly: 'complete/null/pass'});
+  expect(records.modelHashMismatch.artifact).toEqual({...MODEL, expectedSha256: 'c'.repeat(64)});
+  expect(records.complete.artifact).toEqual({...MODEL, expectedSha256: MODEL.sha256});
+  expect(records.noExpectedHash.artifact).toEqual({...MODEL, expectedSha256: null});
+  expect(records.executionUnreported.executionReports).toEqual([
+    {runIndex: 0, gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null}]);
   expect(records.chargingRecordOnly.conditionVerdict.charging).toBe('violated');
   expect(records.chargingRecordOnly.chargingPolicy.readiness).toBe('record-only-experiment');
   expect(records.complete.chargingPolicy.readiness).toBe('wait-while-charging');

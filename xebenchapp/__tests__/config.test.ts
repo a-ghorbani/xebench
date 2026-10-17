@@ -19,6 +19,7 @@ test.each([
 test.each([
   {engine: 'litert-lm'}, {modelFile: '../model.gguf'}, {modelFile: '/tmp/model.gguf'},
   {modelFile: 'https://example.test/model.gguf'}, {nThreads: 0}, {nCtx: 512}, {backend: 'gpu'},
+  {modelSha256: 'A'.repeat(64)}, {modelSha256: 'a'.repeat(63)}, {modelSha256: null}, {modelSha256: 1},
 ])('rejects unsafe or unsupported run %j', change => {
   expect(() => parseConfig({...bundled, runs: [{...bundled.runs[0], ...change}]})).toThrow();
 });
@@ -36,6 +37,14 @@ test('readiness timeout defaults to the protocol bound and a configured order se
   expect(parseConfig({...bundled, maxBatteryTempRiseC: 3.5}).maxBatteryTempRiseC).toBe(3.5);
   expect(parseConfig(legacy)).not.toHaveProperty('orderSeed');
   expect(parseConfig({...bundled, orderSeed: 0}).orderSeed).toBe(0);
+});
+
+test('an expected model SHA-256 is optional and kept exactly', () => {
+  const sha = '0123456789abcdef'.repeat(4);
+  expect(parseConfig({...bundled, runs: [{...bundled.runs[0], modelSha256: sha}]}).runs[0].modelSha256).toBe(sha);
+  const {modelSha256, ...unpinned} = bundled.runs[0];
+  expect(modelSha256).toMatch(/^[0-9a-f]{64}$/);
+  expect(parseConfig({...bundled, runs: [unpinned]}).runs[0]).not.toHaveProperty('modelSha256');
 });
 
 test('the experiment-only charging readiness flag is kept only when set', () => {

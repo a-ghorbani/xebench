@@ -28,7 +28,9 @@ raw_session = evidence.raw_session
 # The privacy/determinism tests below were written against cpu-reference-v1 records
 # (frozen fixture); cpu-reference-v2 app output is covered by ConditionsV2ExportTests.
 APP = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted-v1.json").read_text())["records"]
+# Current app output (cpu-reference-v3) and the frozen cpu-reference-v2 output it extends.
 APP_V2 = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted.json").read_text())["records"]
+FROZEN_V2 = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted-v2.json").read_text())["records"]
 
 # Planted private values. None of them may appear anywhere in a bundle.
 SERIAL = "R5CX21PLANTED7"
@@ -341,7 +343,8 @@ class FailClosedTests(unittest.TestCase):
         literals = {word for word in re.findall(r"['`]([a-z][a-z-]{0,63})['`]", source) if not word.endswith("-")}
         # Field names and typeof checks are not enumerated values.
         literals -= {"id", "model", "quant", "runs", "status", "order", "string", "number", "boolean", "object",
-                     "react-native", "react-native-executorch", "xebench-raw"}
+                     "react-native", "react-native-executorch", "xebench-raw", "artifact", "init",
+                     "gpu", "devices"}  # LlamaContext field names in the Pick<> guard
         self.assertGreater(len(literals), 30)
         self.assertEqual(literals - evidence.ENUM.values - evidence.REASON.values, set())
         self.assertIn("fresh engine instance in warm app process; artifact hashing warms OS file cache",
@@ -695,7 +698,8 @@ class ConditionsV2ExportTests(unittest.TestCase):
             # (The capture-level drops are the planted host device facts of HOST_DEVICE.)
             record_drops = [item for item in report["dropped"] if "/raw-" in item["source"]]
             self.assertEqual({item["kind"] for item in record_drops}, {"excluded"}, record_drops)
-            self.assertEqual({item["path"].rsplit("/", 1)[-1] for item in record_drops}, {"prompt", "message"})
+            self.assertEqual({item["path"].rsplit("/", 1)[-1] for item in record_drops},
+                             {"prompt", "message", "signingCertSha256"})
             result = evidence.verify(report["bundle"], report["evidence"]["bundleSha256"])
             self.assertTrue(result["valid"], result["errors"])
             bundle = Path(report["bundle"])
@@ -735,6 +739,116 @@ class ConditionsV2ExportTests(unittest.TestCase):
             self.assertEqual(exported["record"]["chargingPolicy"]["readiness"], "record-only-experiment")
             self.assertNotIn("unrecognized-value", {item["kind"] for item in report["dropped"]})
             self.assertTrue(evidence.verify(report["bundle"])["valid"])
+
+
+class IdentityV3ExportTests(unittest.TestCase):
+    """Build, configuration and execution identity: strict shapes and closed vocabularies only."""
+
+    def export_one(self, record, root):
+        directory = make_capture(Path(root) / "results", [record])
+        report = evidence.export([directory], Path(root) / "out")
+        bundle = Path(report["bundle"])
+        result = evidence.verify(bundle, report["evidence"]["bundleSha256"])
+        self.assertTrue(result["valid"], result["errors"])
+        exported = json.loads((bundle / f"sessions/{record['runId']}.json").read_text())["record"]
+        return report, exported, b"".join(bundle_bytes(bundle).values())
+
+    def test_identity_fields_reach_the_bundle_in_closed_form(self):
+        record = dict(copy.deepcopy(APP_V2["complete"]), runId="1767225600000-0-identity")
+        with tempfile.TemporaryDirectory() as root:
+            report, out, data = self.export_one(record, root)
+        build = dict(record["build"])
+        self.assertEqual(build.pop("signingCertSha256"), [evidence.REPOSITORY_DEBUG_CERT_SHA256])
+        self.assertEqual(out["build"], {**build, "signingKey": "repository-debug-key"})
+        self.assertNotIn(evidence.REPOSITORY_DEBUG_CERT_SHA256.encode(), data)
+        self.assertEqual(out["configurationSource"], record["configurationSource"])
+        self.assertEqual(out["effectiveSettings"], record["effectiveSettings"])
+        self.assertEqual(out["artifact"], record["artifact"])
+        self.assertEqual(out["configuration"]["runs"][0]["modelSha256"], record["artifact"]["expectedSha256"])
+        report0 = out["executionReports"][0]
+        self.assertEqual({key: report0[key] for key in ("runIndex", "gpu", "reasonNoGPU", "devices", "androidLib")},
+                         {key: record["executionReports"][0][key] for key in
+                          ("runIndex", "gpu", "reasonNoGPU", "devices", "androidLib")})
+        # The free-text system_info line is never exported; only its parsed, closed form is.
+        self.assertEqual(report0["systemInfo"], {"nThreads": 4, "nThreadsBatch": 4, "hardwareConcurrency": 8,
+                                                 "backends": [{"name": "CPU", "features": {
+                                                     "NEON": 1, "ARM_FMA": 1, "FP16_VA": 1, "MATMUL_INT8": 1,
+                                                     "DOTPROD": 1, "OPENMP": 1, "REPACK": 1}}]})
+        self.assertNotIn(b"system_info", data)
+        self.assertEqual(evidence.privacy_findings(out), [])
+        drops = {item["path"] for item in report["dropped"] if "/raw-" in item["source"]}
+        self.assertIn("/build/signingCertSha256", drops)
+
+    def test_mismatch_and_unavailable_records_export(self):
+        for index, name in enumerate(("modelHashMismatch", "buildUnavailable", "executionUnreported",
+                                      "stagedConfiguration", "noExpectedHash", "setupFailed")):
+            record = dict(copy.deepcopy(APP_V2[name]), runId=f"1767225600000-{index}-identity")
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as root:
+                _, out, _ = self.export_one(record, root)
+                self.assertEqual(out["stopReason"], record["stopReason"])
+                self.assertEqual(out["artifact"], record["artifact"])
+                self.assertEqual(out["configurationSource"], record["configurationSource"])
+        self.assertEqual(evidence.BUILD.apply(APP_V2["buildUnavailable"]["build"], "", evidence.Context()),
+                         {**{key: None for key in APP_V2["buildUnavailable"]["build"] if key != "signingCertSha256"},
+                          "status": "unavailable", "signingKey": None})
+
+    def test_planted_values_in_identity_fields_never_reach_the_bundle(self):
+        record = dict(copy.deepcopy(APP_V2["complete"]), runId="1767225600000-0-planted")
+        planted_info = (f"system_info: n_threads = 4 / 8 | CPU : NEON = 1 | {SERIAL} = 1 | "
+                        f"PLANTEDBACKEND : DOTPROD = 1 | ")
+        for item in record["executionReports"]:
+            item.update(reasonNoGPU=f"{LOG_TEXT} {SERIAL}", systemInfo=planted_info)
+        record["executionReports"][1]["systemInfo"] = f"{HOST_PATH} {EMAIL} {TOKEN}"[:2048]
+        record["build"]["signingCertSha256"] = ["e" * 64]
+        self.assertEqual(raw_session.validate(record), [])
+        with tempfile.TemporaryDirectory() as root:
+            report, out, data = self.export_one(record, root)
+        for needle in (SERIAL, LOG_TEXT, "alice", "PLANTEDBACKEND", "/home/", "example.com", "ghp_", "e" * 64):
+            self.assertNotIn(needle.encode(), data, needle)
+        first = out["executionReports"][0]
+        self.assertEqual(first["reasonNoGPU"], "unrecognized")
+        # Device names are a closed vocabulary too (a CPU reference record never lists any).
+        devices = evidence.EXECUTION_REPORT.apply({**record["executionReports"][0], "devices": ["HTP0", SERIAL]},
+                                                  "", evidence.Context())["devices"]
+        self.assertEqual(devices, ["HTP0", "unrecognized"])
+        self.assertEqual(first["systemInfo"]["backends"], [
+            {"name": "CPU", "features": {"NEON": 1, "unrecognized": 1}},
+            {"name": "unrecognized", "features": {"DOTPROD": 1}}])
+        self.assertIsNone(out["executionReports"][1]["systemInfo"])
+        self.assertEqual(out["build"]["signingKey"], "other")
+        kinds = {(item["path"], item["kind"]) for item in report["dropped"] if "/raw-" in item["source"]}
+        self.assertIn(("/executionReports/1/systemInfo", "unparsed-value"), kinds)
+        self.assertIn(("/executionReports/0/reasonNoGPU", "unrecognized-value"), kinds)
+
+    def test_free_text_in_strict_identity_fields_refuses_the_export(self):
+        # The raw schema accepts any short version name; export accepts only the app's own form.
+        for change in (lambda r: r["build"].update(versionName="alice-laptop"),
+                       lambda r: r["build"].update(versionName="1.0-alice")):
+            record = dict(copy.deepcopy(APP_V2["complete"]), runId="1767225600000-0-refused")
+            change(record)
+            self.assertEqual(raw_session.validate(record), [])
+            with self.subTest(), tempfile.TemporaryDirectory() as root:
+                directory = make_capture(Path(root) / "results", [record])
+                with self.assertRaises(evidence.Refused) as caught:
+                    evidence.export([directory], Path(root) / "out")
+                self.assertNotIn("alice", str(caught.exception))
+                self.assertFalse((Path(root) / "out").exists() and any((Path(root) / "out").iterdir()))
+
+    def test_system_info_parser(self):
+        parse = evidence.parse_system_info
+        self.assertEqual(parse("system_info: n_threads = 6 / 8 | CPU : NEON = 1 | SVE_CNT = 16 | "),
+                         {"nThreads": 6, "nThreadsBatch": None, "hardwareConcurrency": 8,
+                          "backends": [{"name": "CPU", "features": {"NEON": 1, "SVE_CNT": 16}}]})
+        for text in ("", "n_threads = 4", "system_info: n_threads = 4 / 8 | /data/local : X = 1 | ",
+                     "system_info: n_threads = 4 / 8 | CPU : NEON = yes | "):
+            self.assertIsNone(parse(text), text)
+
+    def test_frozen_v2_records_still_export(self):
+        record = dict(copy.deepcopy(FROZEN_V2["complete"]), runId="1767225600000-0-frozen")
+        with tempfile.TemporaryDirectory() as root:
+            _, out, _ = self.export_one(record, root)
+        self.assertEqual(out["protocol"]["version"], "cpu-reference-v2")
+        self.assertNotIn("build", out)
 
 
 class CommandLineTests(unittest.TestCase):

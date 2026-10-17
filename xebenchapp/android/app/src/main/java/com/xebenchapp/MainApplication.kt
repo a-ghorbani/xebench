@@ -18,6 +18,7 @@ class MainApplication : Application(), ReactApplication {
           // (src/<flavor>/java/com/xebenchapp/FlavorPackages.kt).
           addAll(flavorPackages())
           add(BenchConditionsPackage())
+          add(BuildInfoPackage())
         },
     )
   }

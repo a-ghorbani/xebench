@@ -1,6 +1,8 @@
 import { initLlama, LlamaContext } from 'llama.rn';
 import type { BackendId, SingleRunMetrics } from '../types';
-import type { BenchOnceConfig, EngineAdapter } from './EngineAdapter';
+import type {
+  BenchOnceConfig, EngineAdapter, ExecutionReport, LlamaRnEffectiveSettings,
+} from './EngineAdapter';
 import {monotonicNow} from '../clock';
 
 import {version as LLAMA_RN_VERSION} from 'llama.rn/package.json';
@@ -18,6 +20,28 @@ export interface LlamaRnAdapterOptions {
   devices?: string[];
 }
 
+/** Greedy decoding: deterministic and free of sampling-cost skew. */
+const COMPLETION = {temperature: 0, seed: 42} as const;
+
+/** Printable ASCII of at most max characters; anything else stays unknown (null). */
+function bounded(value: unknown, max: number): string | null {
+  return typeof value === 'string' && value.length <= max && /^[\x20-\x7e]*$/.test(value) ? value : null;
+}
+
+/** Bounded copy of the context fields llama.rn 0.12 reports after initLlama(). */
+export function executionReport(ctx: Partial<Record<keyof ExecutionReport, unknown>>): ExecutionReport {
+  const devices = Array.isArray(ctx.devices) && ctx.devices.length <= 16 &&
+    ctx.devices.every(device => bounded(device, 64) !== null && device !== '') ? [...ctx.devices] as string[] : null;
+  const lib = bounded(ctx.androidLib, 64);
+  return {
+    gpu: typeof ctx.gpu === 'boolean' ? ctx.gpu : null,
+    reasonNoGPU: bounded(ctx.reasonNoGPU, 256),
+    devices,
+    androidLib: lib !== null && /^[a-z0-9_]+$/.test(lib) ? lib : null,
+    systemInfo: bounded(ctx.systemInfo, 2048),
+  };
+}
+
 export class LlamaRnAdapter implements EngineAdapter {
   readonly engine = 'llama.cpp' as const;
   readonly backend: BackendId;
@@ -26,6 +50,9 @@ export class LlamaRnAdapter implements EngineAdapter {
   readonly modelFile: string;
   private opts: LlamaRnAdapterOptions;
   private ctx: LlamaContext | null = null;
+  private lastReport: ExecutionReport | null = null;
+  /** Passed verbatim to initLlama (with the model path) and recorded as effective settings. */
+  private readonly init: LlamaRnEffectiveSettings['init'];
 
   constructor(opts: LlamaRnAdapterOptions) {
     this.opts = opts;
@@ -34,6 +61,22 @@ export class LlamaRnAdapter implements EngineAdapter {
     this.quantLabel = opts.quantLabel;
     this.modelLabel = opts.modelLabel;
     this.modelFile = opts.modelPath.split('/').pop() ?? opts.modelPath;
+    // Every setting is passed explicitly, including those equal to llama.rn 0.12.4 defaults
+    // (n_ubatch, use_mmap, use_mlock, flash_attn_type, cache types), so the record states them.
+    // n_batch 512 is the harness's choice (llama.cpp's default is 2048).
+    this.init = {
+      n_ctx: opts.nCtx ?? 2048,
+      n_batch: 512,
+      n_ubatch: 512,
+      n_threads: opts.nThreads ?? null, // null: llama.rn's own default (perf cores heuristic)
+      n_gpu_layers: opts.nGpuLayers ?? 0, // >0 => GPU/NPU offload
+      use_mmap: true,
+      use_mlock: false,
+      flash_attn_type: 'auto',
+      cache_type_k: 'f16',
+      cache_type_v: 'f16',
+      ...(opts.devices ? {devices: [...opts.devices]} : {}), // ['HTP0'] => Hexagon NPU
+    };
   }
 
   engineVersion(): string {
@@ -48,17 +91,31 @@ export class LlamaRnAdapter implements EngineAdapter {
     };
   }
 
+  effectiveSettings(request: Pick<BenchOnceConfig, 'maxDecodeTokens'>): LlamaRnEffectiveSettings {
+    return {binding: 'llama.rn', init: {...this.init, ...(this.init.devices ? {devices: [...this.init.devices]} : {})},
+      completion: {n_predict: request.maxDecodeTokens, ...COMPLETION}, unlisted: 'binding-defaults'};
+  }
+
+  executionReport(): ExecutionReport {
+    if (!this.lastReport) throw new Error('llama.rn: load() first');
+    return this.lastReport;
+  }
+
   async load(): Promise<number> {
+    this.lastReport = null;
+    const {n_threads: nThreads, ...init} = this.init;
     const t0 = monotonicNow();
     this.ctx = await initLlama({
       model: this.opts.modelPath,
-      n_ctx: this.opts.nCtx ?? 2048,
-      n_batch: 512,
-      n_gpu_layers: this.opts.nGpuLayers ?? 0, // >0 => GPU/NPU offload
-      ...(this.opts.devices ? { devices: this.opts.devices } : {}), // ['HTP0'] => Hexagon NPU
-      ...(this.opts.nThreads ? { n_threads: this.opts.nThreads } : {}),
+      ...init,
+      ...(nThreads === null ? {} : {n_threads: nThreads}),
     });
-    return monotonicNow() - t0;
+    const loadMs = monotonicNow() - t0;
+    // Compile-time guard: if a llama.rn upgrade renames or drops these context fields,
+    // tsc fails here instead of every report silently becoming null.
+    const reported: Pick<LlamaContext, 'gpu' | 'reasonNoGPU' | 'devices' | 'androidLib' | 'systemInfo'> = this.ctx;
+    this.lastReport = executionReport(reported);
+    return loadMs;
   }
 
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {
@@ -69,9 +126,7 @@ export class LlamaRnAdapter implements EngineAdapter {
     const result = await this.ctx.completion(
       {
         prompt: cfg.prompt, // raw, pre-templated — no chat wrapper
-        n_predict: cfg.maxDecodeTokens,
-        temperature: 0, // greedy: deterministic + no sampling-cost skew
-        seed: 42,
+        ...this.effectiveSettings(cfg).completion,
       },
       () => {
         if (tFirstToken === null) tFirstToken = monotonicNow();

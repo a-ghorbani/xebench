@@ -9,16 +9,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -39,7 +87,8 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
@@ -54,7 +103,7 @@
         "position": 0
       },
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 4,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -349,16 +398,88 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        },
+        {
+          "runIndex": 1,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        },
+        {
+          "runIndex": 2,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        },
+        {
+          "runIndex": 3,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -379,7 +500,8 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
@@ -394,7 +516,7 @@
         "position": 0
       },
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 4,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -1207,16 +1329,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -1237,14 +1407,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 3,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -1703,16 +1874,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -1733,14 +1952,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 3,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -2021,16 +2241,72 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        },
+        {
+          "runIndex": 1,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -2051,14 +2327,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -2536,16 +2813,72 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        },
+        {
+          "runIndex": 1,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -2566,14 +2899,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -3045,16 +3379,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -3075,14 +3457,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -3355,16 +3738,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -3385,14 +3816,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -3642,16 +4074,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -3672,14 +4152,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -3886,16 +4367,55 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -3916,14 +4436,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -4110,16 +4631,55 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -4140,14 +4700,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 3,
         "cooldownSec": 30,
         "readinessTimeoutSec": 10,
@@ -4301,16 +4862,55 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -4331,14 +4931,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 10,
@@ -4525,16 +5126,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -4555,14 +5204,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -4824,16 +5474,55 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -4854,14 +5543,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -5127,16 +5817,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -5157,14 +5895,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -5426,16 +6165,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -5456,14 +6243,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -5751,16 +6539,55 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -5781,14 +6608,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -5963,16 +6791,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -5993,14 +6869,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -6298,16 +7175,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -6328,14 +7253,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -6629,16 +7555,55 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -6659,14 +7624,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 10,
@@ -6818,16 +7784,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -6848,14 +7862,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -7161,16 +8176,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -7191,14 +8254,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -7492,16 +8556,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -7522,7 +8634,8 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ],
         "experimentChargingReadiness": "record-only"
@@ -7530,7 +8643,7 @@
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -7824,16 +8937,55 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -7854,14 +9006,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 10,
@@ -8015,16 +9168,72 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        },
+        {
+          "runIndex": 1,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -8045,7 +9254,8 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           },
           {
             "id": "second-run",
@@ -8054,7 +9264,8 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ],
         "orderSeed": 12345
@@ -8071,7 +9282,7 @@
         "position": 1
       },
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -8538,13 +9749,51 @@
         "androidRelease": "16"
       },
       "artifact": null,
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -8565,7 +9814,8 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           },
           {
             "id": "second-run",
@@ -8574,7 +9824,8 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ],
         "orderSeed": 12345
@@ -8591,7 +9842,7 @@
         "position": 1
       },
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -8689,16 +9940,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -8719,14 +10018,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -9009,16 +10309,55 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -9039,14 +10378,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -9278,16 +10618,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -9308,14 +10696,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -9617,16 +11006,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -9647,14 +11084,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 3,
         "cooldownSec": 30,
         "readinessTimeoutSec": 10,
@@ -10005,16 +11443,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -10035,14 +11521,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -10340,16 +11827,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -10370,14 +11905,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -10584,16 +12120,64 @@
         "androidRelease": "16"
       },
       "artifact": {
-        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "sizeBytes": 770000000
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -10614,14 +12198,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -11531,13 +13116,51 @@
         "androidRelease": "16"
       },
       "artifact": null,
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.6-reference",
+      "harnessVersion": "xebench-0.7-reference",
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -11558,14 +13181,15 @@
             "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
             "quant": "Q4_K_M",
             "nThreads": 4,
-            "nCtx": 2048
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
           }
         ]
       },
       "configurationRunId": "llama32-q4km-cpu",
       "runOrder": null,
       "protocol": {
-        "version": "cpu-reference-v2",
+        "version": "cpu-reference-v3",
         "nColdRuns": 1,
         "cooldownSec": 30,
         "readinessTimeoutSec": 180,
@@ -11653,6 +13277,1698 @@
         "Actual backend execution has not been verified",
         "Run conditions not fully verified",
         "Not run: the model artifact could not be read"
+      ]
+    },
+    "noExpectedHash": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.7-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "runOrder": null,
+      "protocol": {
+        "version": "cpu-reference-v3",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false
+      },
+      "status": "complete",
+      "repetitionsPlanned": 1,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 30000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 180,
+            "baselineBatteryTempC": null,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 31
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "satisfied"
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Actual backend execution has not been verified"
+      ]
+    },
+    "modelHashMismatch": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.7-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [],
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "modelSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "runOrder": null,
+      "protocol": {
+        "version": "cpu-reference-v3",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false
+      },
+      "status": "failed",
+      "repetitionsPlanned": 1,
+      "stopReason": "model-hash-mismatch",
+      "coldRuns": [],
+      "summary": {
+        "loadMs": null,
+        "ttftMs": null,
+        "prefillTps": null,
+        "decodeTps": null
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "unverified",
+        "reasons": [],
+        "charging": "unknown"
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Actual backend execution has not been verified",
+        "Run conditions not fully verified",
+        "Not run: the model artifact does not match the configured SHA-256"
+      ]
+    },
+    "stagedConfiguration": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.7-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "runOrder": null,
+      "protocol": {
+        "version": "cpu-reference-v3",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false
+      },
+      "status": "complete",
+      "repetitionsPlanned": 1,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 30000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 180,
+            "baselineBatteryTempC": null,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 32
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "satisfied"
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Actual backend execution has not been verified"
+      ]
+    },
+    "buildUnavailable": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "unavailable",
+        "gitCommit": null,
+        "gitDirty": null,
+        "flavor": null,
+        "buildType": null,
+        "versionName": null,
+        "versionCode": null,
+        "signingCertSha256": null
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": null
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.7-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is not available",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+        }
+      ],
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "runOrder": null,
+      "protocol": {
+        "version": "cpu-reference-v3",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false
+      },
+      "status": "complete",
+      "repetitionsPlanned": 1,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 30000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 180,
+            "baselineBatteryTempC": null,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 33
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "satisfied"
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Actual backend execution has not been verified"
+      ]
+    },
+    "executionUnreported": {
+      "runId": "1767225600000-0-fixture",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 807694464,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "reference",
+        "buildType": "release",
+        "versionName": "1.0-reference",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "bundled",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.7-reference",
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": null,
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults"
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": null,
+          "reasonNoGPU": null,
+          "devices": null,
+          "androidLib": null,
+          "systemInfo": null
+        }
+      ],
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "configuration": {
+        "schemaVersion": 1,
+        "id": "cpu-reference-v1",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "runOrder": null,
+      "protocol": {
+        "version": "cpu-reference-v3",
+        "nColdRuns": 1,
+        "cooldownSec": 30,
+        "readinessTimeoutSec": 180,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "maxDecodeTokens": 128,
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing warms OS file cache",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false
+      },
+      "status": "complete",
+      "repetitionsPlanned": 1,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 30000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 180,
+            "baselineBatteryTempC": null,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 34
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "status": "complete",
+          "loadMs": 17,
+          "ttftMs": 25.5,
+          "promptTokens": 512,
+          "decodeTokens": 127,
+          "prefillTps": 200.25,
+          "decodeTps": 30.125,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings",
+          "engineInternal": {
+            "promptMs": 2556.803995006242,
+            "promptPerSecond": 200.25,
+            "predictedMs": 4215.767634854772,
+            "predictedPerSecond": 30.125
+          }
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 17,
+          "iqr": 0,
+          "min": 17,
+          "max": 17,
+          "n": 1
+        },
+        "ttftMs": {
+          "median": 25.5,
+          "iqr": 0,
+          "min": 25.5,
+          "max": 25.5,
+          "n": 1
+        },
+        "prefillTps": {
+          "median": 200.25,
+          "iqr": 0,
+          "min": 200.25,
+          "max": 200.25,
+          "n": 1
+        },
+        "decodeTps": {
+          "median": 30.125,
+          "iqr": 0,
+          "min": 30.125,
+          "max": 30.125,
+          "n": 1
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "satisfied"
+      },
+      "guardsPassed": null,
+      "guardNotes": [
+        "Actual backend execution has not been verified"
       ]
     }
   }

@@ -16,6 +16,8 @@ FIXTURES = ROOT / "tests/fixtures/raw-session"
 APP = json.loads((FIXTURES / "app-emitted.json").read_text())["records"]
 # Frozen output of the cpu-reference-v1 app (PR #13); historical records must keep validating.
 LEGACY = json.loads((FIXTURES / "app-emitted-v1.json").read_text())["records"]
+# Frozen output of the cpu-reference-v2 app (PR #20), before build and execution identity.
+V2_FROZEN = json.loads((FIXTURES / "app-emitted-v2.json").read_text())["records"]
 
 
 def codes(record):
@@ -39,8 +41,13 @@ class AppEmittedRecordTests(unittest.TestCase):
             "readinessTimeout", "orderedLaterRun", "configurationAborted", "setupFailed", "chargingDuringRun",
             "chargingTimeout", "chargingUnknown", "inferenceFailedThenProbePending", "monitorStartTimeout",
             "cleanupFailedProbePending", "laterReadinessTimeout", "headroomUnavailable", "monitorStopError",
-            "decimatedSamples", "onBattery", "riseOverride", "chargingRecordOnly"})
-        for records in (APP, LEGACY):
+            "decimatedSamples", "onBattery", "riseOverride", "chargingRecordOnly", "noExpectedHash", "modelHashMismatch",
+            "stagedConfiguration", "buildUnavailable", "executionUnreported"})
+        self.assertEqual(set(V2_FROZEN), set(APP) - {"noExpectedHash", "modelHashMismatch", "stagedConfiguration",
+                                                     "buildUnavailable", "executionUnreported"})
+        self.assertEqual({r["protocol"]["version"] for r in V2_FROZEN.values()}, {"cpu-reference-v2"})
+        self.assertEqual({r["protocol"]["version"] for r in APP.values()}, {"cpu-reference-v3"})
+        for records in (APP, LEGACY, V2_FROZEN):
             self.assertGreater(len(records["inferenceFailed"]["coldRuns"][0]["error"]["message"]), 4096)
             self.assertIsNone(records["nonFiniteMetrics"]["coldRuns"][0]["metrics"])
             for name, record in records.items():
@@ -195,7 +202,8 @@ class ConditionsV2Tests(unittest.TestCase):
         self.assertEqual(codes(record), set(expected), raw_session.validate(record))
 
     def test_branches_are_selected_by_protocol_and_never_mixed(self):
-        self.assertEqual(APP["complete"]["protocol"]["version"], "cpu-reference-v2")
+        self.assertEqual(APP["complete"]["protocol"]["version"], "cpu-reference-v3")
+        self.assertEqual(V2_FROZEN["complete"]["protocol"]["version"], "cpu-reference-v2")
         self.assertEqual(LEGACY["complete"]["protocol"]["version"], "cpu-reference-v1")
         # New evidence fields are not accepted on the legacy branch, and are required on v2.
         self.assertCodes(mutate("complete", lambda r: r.update(stopReason=None)), {"schema.additional-property"})
@@ -246,7 +254,8 @@ class ConditionsV2Tests(unittest.TestCase):
         self.assertCodes(v2("complete", lambda r: r.update(artifact=None)), {"status.artifact"})
         self.assertCodes(v2("setupFailed", lambda r: r.update(artifact=APP["complete"]["artifact"])), {"status.artifact"})
         self.assertCodes(v2("complete", lambda r: r.update(coldRuns=[])), {"status.attempts", "summary.mismatch",
-                                                                         "guards.recomputed", "guards.inconsistent"})
+                                                                         "guards.recomputed", "guards.inconsistent",
+                                                                         "execution.inconsistent"})
 
     def test_unknown_evidence_cannot_be_recorded_as_ready_or_passing(self):
         def unknown_thermal(record):
@@ -459,6 +468,129 @@ class ConditionsV2Tests(unittest.TestCase):
                          {"protocol.configuration-mismatch", "readiness.inconsistent"})
 
 
+def v3(name, change):
+    return mutate(name, change, APP)
+
+
+class IdentityV3Tests(unittest.TestCase):
+    """cpu-reference-v3 records: build, configuration, settings and execution identity."""
+
+    def assertCodes(self, record, expected):
+        self.assertEqual(codes(record), set(expected), raw_session.validate(record))
+
+    def test_identity_fields_are_required_on_v3_and_rejected_on_v2(self):
+        for field in ("build", "configurationSource", "effectiveSettings", "executionReports"):
+            with self.subTest(field=field):
+                self.assertCodes(v3("complete", lambda r: r.pop(field)), {"schema.required"})
+                frozen = copy.deepcopy(V2_FROZEN["complete"])
+                frozen[field] = APP["complete"][field]
+                self.assertCodes(frozen, {"schema.additional-property"})
+        self.assertCodes(v3("complete", lambda r: r["artifact"].pop("expectedSha256")), {"schema.required"})
+        # Earlier records keep validating with their own branch.
+        self.assertEqual(raw_session.validate(V2_FROZEN["complete"]), [])
+        # model-hash-mismatch exists only from v3 on.
+        frozen = copy.deepcopy(V2_FROZEN["setupFailed"])
+        frozen["stopReason"] = "model-hash-mismatch"
+        self.assertIn("schema.enum", codes(frozen))
+        self.assertCodes(v3("complete", lambda r: r["protocol"].update(version="cpu-reference-v2")), {"schema.const"})
+
+    def test_model_hash_expectation_and_mismatch(self):
+        mismatch = APP["modelHashMismatch"]
+        self.assertEqual((mismatch["status"], mismatch["stopReason"], mismatch["coldRuns"]),
+                         ("failed", "model-hash-mismatch", []))
+        self.assertNotEqual(mismatch["artifact"]["sha256"], mismatch["artifact"]["expectedSha256"])
+        self.assertIn(raw_session.UNMEASURED_NOTES["model-hash-mismatch"], mismatch["guardNotes"])
+        expected = APP["complete"]["configuration"]["runs"][0]["modelSha256"]
+        self.assertEqual(APP["complete"]["artifact"]["expectedSha256"], expected)
+        self.assertIsNone(APP["noExpectedHash"]["artifact"]["expectedSha256"])
+        # The expectation is the configured value, never a copy of the actual hash.
+        self.assertCodes(v3("noExpectedHash", lambda r: r["artifact"].update(expectedSha256=r["artifact"]["sha256"])),
+                         {"artifact.expected"})
+        self.assertCodes(v3("complete", lambda r: r["artifact"].update(expectedSha256=None)), {"artifact.expected"})
+        # Measured bytes that differ from the configuration cannot be a measured session.
+        self.assertCodes(v3("complete", lambda r: r["artifact"].update(sha256="c" * 64)), {"artifact.expected"})
+        # A mismatch keeps its artifact, and names a real mismatch.
+        self.assertCodes(v3("modelHashMismatch", lambda r: r.update(artifact=None)), {"status.artifact"})
+        self.assertCodes(v3("modelHashMismatch", lambda r: r["artifact"].update(sha256="c" * 64)),
+                         {"artifact.expected"})
+        self.assertCodes(v3("modelHashMismatch", lambda r: r.update(
+            stopReason="setup-failed", guardNotes=[*r["guardNotes"][:-1], raw_session.UNMEASURED_NOTES["setup-failed"]])),
+            {"status.artifact", "artifact.expected"})
+        self.assertCodes(v3("modelHashMismatch", lambda r: r["configuration"]["runs"][0].update(modelSha256="A" * 64)),
+                         {"schema.pattern"})
+
+    def test_effective_settings_are_strict_and_agree_with_the_protocol(self):
+        settings = APP["complete"]["effectiveSettings"]
+        self.assertEqual(settings["init"]["n_gpu_layers"], 0)
+        self.assertEqual(settings["completion"], {"n_predict": 128, "temperature": 0, "seed": 42})
+        self.assertCodes(v3("complete", lambda r: r["effectiveSettings"]["init"].update(n_threads=8)),
+                         {"settings.protocol-mismatch"})
+        self.assertCodes(v3("complete", lambda r: r["effectiveSettings"]["init"].update(n_ctx=4096)),
+                         {"settings.protocol-mismatch"})
+        self.assertCodes(v3("complete", lambda r: r["effectiveSettings"]["completion"].update(n_predict=64)),
+                         {"settings.protocol-mismatch"})
+        self.assertCodes(v3("complete", lambda r: r["effectiveSettings"]["init"].update(n_gpu_layers=99)),
+                         {"schema.const"})
+        self.assertCodes(v3("complete", lambda r: r["effectiveSettings"]["init"].update(devices=["HTP0"])),
+                         {"schema.additional-property"})
+        self.assertCodes(v3("complete", lambda r: r["effectiveSettings"]["init"].pop("use_mmap")), {"schema.required"})
+
+    def test_build_and_configuration_source(self):
+        self.assertEqual(APP["complete"]["build"]["status"], "reported")
+        self.assertEqual(APP["buildUnavailable"]["build"]["status"], "unavailable")
+        self.assertEqual(APP["stagedConfiguration"]["configurationSource"]["kind"], "staged")
+        self.assertCodes(v3("buildUnavailable", lambda r: r["build"].update(gitCommit="0" * 40)),
+                         {"build.inconsistent"})
+        self.assertCodes(v3("complete", lambda r: r["build"].update(gitCommit=None)), {"build.inconsistent"})
+        self.assertCodes(v3("complete", lambda r: r["build"].update(flavor="experimental")), {"build.inconsistent"})
+        # The bundled hash is a build constant: never without a reported release build.
+        self.assertCodes(v3("buildUnavailable", lambda r: r["configurationSource"].update(sha256="b" * 64)),
+                         {"configuration.source"})
+        self.assertCodes(v3("complete", lambda r: r["build"].update(buildType="debug")), {"configuration.source"})
+        self.assertEqual(raw_session.validate(v3("stagedConfiguration", lambda r: r["build"].update(
+            buildType="debug"))), [])
+        self.assertCodes(v3("complete", lambda r: r["build"].update(gitCommit="HEAD")), {"schema.pattern"})
+        self.assertCodes(v3("complete", lambda r: r["build"].update(flavor="custom")), {"schema.enum"})
+        self.assertCodes(v3("complete", lambda r: r["build"].update(serial="R5CT")), {"schema.additional-property"})
+        self.assertCodes(v3("stagedConfiguration", lambda r: r["configurationSource"].update(sha256=None)),
+                         {"configuration.source"})
+        self.assertCodes(v3("complete", lambda r: r["configurationSource"].update(kind="downloaded")),
+                         {"schema.enum"})
+        self.assertCodes(v3("complete", lambda r: r["configurationSource"].update(path="/sdcard/x.json")),
+                         {"schema.additional-property"})
+
+    def test_execution_reports_follow_successful_loads(self):
+        complete = APP["complete"]
+        self.assertEqual([item["runIndex"] for item in complete["executionReports"]], [0, 1, 2, 3])
+        later = APP["laterReadinessTimeout"]
+        self.assertEqual([attempt["status"] for attempt in later["coldRuns"]], ["complete", "skipped"])
+        self.assertEqual([item["runIndex"] for item in later["executionReports"]], [0])
+        self.assertEqual(APP["failed"]["coldRuns"][-1]["error"]["phase"], "load")
+        self.assertEqual(len(APP["failed"]["executionReports"]), len(APP["failed"]["coldRuns"]) - 1)
+        self.assertEqual(APP["setupFailed"]["executionReports"], [])
+        self.assertCodes(v3("complete", lambda r: r["executionReports"].pop()), {"execution.inconsistent"})
+        self.assertCodes(v3("complete", lambda r: r["executionReports"].reverse()), {"execution.inconsistent"})
+        self.assertCodes(v3("complete", lambda r: r["executionReports"].append(r["executionReports"][0])),
+                         {"execution.inconsistent"})
+        self.assertCodes(v3("setupFailed", lambda r: r["executionReports"].append(
+            APP["complete"]["executionReports"][0])), {"execution.inconsistent"})
+        # A load that failed has no context to report on.
+        failed = APP["failed"]
+        self.assertCodes(v3("failed", lambda r: r["executionReports"].append(
+            {**r["executionReports"][0], "runIndex": len(failed["coldRuns"]) - 1})), {"execution.inconsistent"})
+        # A GPU device report (e.g. the experimental flavor registers OpenCL even with
+        # n_gpu_layers 0) is kept as evidence, not rejected; unknown stays allowed.
+        self.assertEqual(raw_session.validate(v3("complete", lambda r: r["executionReports"][0].update(
+            gpu=True, devices=["GPUOpenCL"], reasonNoGPU=""))), [])
+        self.assertEqual(raw_session.validate(APP["executionUnreported"]), [])
+        self.assertCodes(v3("complete", lambda r: r["executionReports"][0].update(systemInfo="x\ny")),
+                         {"schema.pattern"})
+        self.assertCodes(v3("complete", lambda r: r["executionReports"][0].update(androidLib="../lib.so")),
+                         {"schema.pattern"})
+        # The observed backend stays unknown even when the engine reports CPU-only placement.
+        self.assertCodes(v3("complete", lambda r: r.update(observedBackend="cpu")), {"schema.const"})
+
+
 class SchemaAndCliTests(unittest.TestCase):
     def test_schema_uses_only_supported_keywords(self):
         raw_session.load_schema()
@@ -519,7 +651,7 @@ class SchemaAndCliTests(unittest.TestCase):
         huge = "1" + "0" * 400
         for name, needle, path in (("partial", '"median": 17', "/summary/loadMs/median"),
                                    ("complete", '"loadMs": 17', "/coldRuns/0/loadMs"),
-                                   ("complete", '"sizeBytes": 770000000', "/artifact/sizeBytes")):
+                                   ("complete", '"sizeBytes": 807694464', "/artifact/sizeBytes")):
             with self.subTest(path=path):
                 text = json.dumps(APP[name]).replace(needle, needle.split(":")[0] + ": -" + huge, 1)
                 self.assertEqual([(r["code"], r["path"]) for r in raw_session.validate_text(text)],

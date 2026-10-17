@@ -1,0 +1,71 @@
+name: Android reference build
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  reference-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # Build the PR head commit, not GitHub's merge commit, so the APK's embedded commit
+      # (BuildConfig.XEBENCH_GIT_COMMIT) is one a local checkout can rebuild and compare.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: xebenchapp/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Android SDK components (README "Build flavors and prerequisites")
+        run: |
+          (yes || true) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" \
+            "ndk;27.1.12297006" "ndk;27.0.12077973" > /dev/null
+      # Install scripts must run: llama.rn downloads its checksum-verified native libraries then.
+      - run: npm ci
+        working-directory: xebenchapp
+      # Dependency locks (gradle.lockfile) and verification metadata
+      # (gradle/verification-metadata.xml) are enforced by Gradle on every resolution.
+      - name: assembleReferenceRelease (arm64-v8a)
+        run: ./gradlew --no-daemon --console=plain assembleReferenceRelease
+        working-directory: xebenchapp/android
+      - name: Check packaged runtimes
+        run: python3 scripts/check_reference_apk.py --flavor reference
+          xebenchapp/android/app/build/outputs/apk/reference/release/app-reference-release.apk
+      - name: Record APK identity
+        run: |
+          apk=xebenchapp/android/app/build/outputs/apk/reference/release/app-reference-release.apk
+          out="$RUNNER_TEMP/reference-apk"
+          mkdir -p "$out"
+          cp "$apk" "$out/"
+          (cd "$out" && sha256sum app-reference-release.apk > app-reference-release.apk.sha256)
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk" \
+            | grep -E 'certificate (DN|SHA-256 digest)' > "$out/signing-cert.txt"
+          config=xebenchapp/android/app/build/generated/source/buildConfig/reference/release/com/xebenchapp/BuildConfig.java
+          grep -E 'XEBENCH_|VERSION_NAME|FLAVOR|BUILD_TYPE' "$config" > "$out/build-identity.txt"
+          { echo "commit: $(git rev-parse HEAD)"; java -version 2>&1 | head -1; node --version; } >> "$out/build-identity.txt"
+          cat "$out"/*.sha256 "$out/signing-cert.txt" "$out/build-identity.txt"
+          {
+            echo "### Reference APK"
+            echo '```'
+            cat "$out"/*.sha256 "$out/signing-cert.txt" "$out/build-identity.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-reference-release-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/reference-apk/
+          if-no-files-found: error
+          retention-days: 30

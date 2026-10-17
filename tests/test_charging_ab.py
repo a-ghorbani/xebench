@@ -98,7 +98,10 @@ class StatisticsTests(unittest.TestCase):
     def test_experiment_configuration_is_the_reference_run_with_record_only(self):
         reference = json.loads((ROOT / "xebenchapp/configs/cpu-reference-v1.json").read_text())
         self.assertEqual(CONFIG["experimentChargingReadiness"], "record-only")
-        self.assertEqual(CONFIG["runs"], reference["runs"])
+        # The reference configuration later pinned the GGUF's SHA-256 (modelSha256); the
+        # pre-registered experiment configuration stays byte-identical and names the same run.
+        self.assertEqual(CONFIG["runs"], [{k: v for k, v in run.items() if k != "modelSha256"}
+                                          for run in reference["runs"]])
         self.assertEqual({k: CONFIG[k] for k in ("cooldownSec", "maxDecodeTokens", "nColdRuns")},
                          {"cooldownSec": reference["cooldownSec"], "maxDecodeTokens": reference["maxDecodeTokens"],
                           "nColdRuns": 3})

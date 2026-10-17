@@ -6,6 +6,8 @@ export interface ReferenceRun {
   quant: string;
   nThreads: number;
   nCtx: number;
+  /** Expected SHA-256 of the GGUF bytes; a mismatch fails the run and aborts the configuration. */
+  modelSha256?: string;
 }
 
 export interface ReferenceConfig {
@@ -76,7 +78,7 @@ export function parseConfig(input: unknown): ReferenceConfig {
   }
   const runs = value.runs.map(item => {
     const run = object(item);
-    fields(run, ['id', 'engine', 'model', 'modelFile', 'quant', 'nThreads', 'nCtx']);
+    fields(run, ['id', 'engine', 'model', 'modelFile', 'quant', 'nThreads', 'nCtx', 'modelSha256']);
     if (run.engine !== 'llama.cpp') {
       throw new Error('This reference protocol supports llama.cpp CPU only');
     }
@@ -84,10 +86,14 @@ export function parseConfig(input: unknown): ReferenceConfig {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.gguf$/.test(modelFile)) {
       throw new Error('modelFile must be a GGUF basename, not a path or URL');
     }
+    if (run.modelSha256 !== undefined && (typeof run.modelSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(run.modelSha256))) {
+      throw new Error('modelSha256 must be 64 lowercase hex characters');
+    }
     return {
       id: label(run.id), engine: 'llama.cpp' as const, model: label(run.model),
       modelFile, quant: label(run.quant), nThreads: integer(run.nThreads, 1, 32),
       nCtx: integer(run.nCtx, 1024, 32768),
+      ...(run.modelSha256 === undefined ? {} : {modelSha256: run.modelSha256 as string}),
     };
   });
   if (new Set(runs.map(run => run.id)).size !== runs.length) {
