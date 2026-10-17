@@ -195,6 +195,11 @@ def stage(path, model, adb, out=print):
             pass  # keep the original error; the .partial name is never loaded by the app
         raise
     final = adb.sha256(target)
+    if final is not None and final != model['sha256']:
+        # A definite mismatch must not stay under the name the app loads.
+        adb.shell('rm', '-f', target, check=False)
+        raise StageError(f'device-side sha256 of {target} is {final} after the rename, expected '
+                         f'{model["sha256"]}; removed it')
     if final != model['sha256']:
         raise StageError(f'device-side sha256 of {target} is {final or "unavailable"} after the rename, '
                          f'expected {model["sha256"]}')

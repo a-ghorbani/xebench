@@ -72,6 +72,9 @@ elif cmd[0] == 'sha256sum':
     print(hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + cmd[1])
 elif cmd[:2] == ['mv', '-f']:
     os.replace(device(cmd[2]), device(cmd[3]))
+    if os.environ.get('FAKE_ADB_CORRUPT_AFTER_MV'):
+        with open(device(cmd[3]), 'ab') as handle:
+            handle.write(b'!')
 elif cmd[:2] == ['rm', '-f']:
     device(cmd[2]).unlink(missing_ok=True)
 else:
@@ -127,6 +130,20 @@ class StageModelTests(unittest.TestCase):
 
     def staged(self, suffix=''):
         return self.device / stage_model.DEVICE_DIR.lstrip('/') / (FILE + suffix)
+
+    def test_shell_words_are_quoted_for_the_device_shell(self):
+        adb = stage_model.Adb(SERIAL, str(self.adb))
+        adb.shell('sha256sum', "/sdcard/a b;rm -rf $HOME'x", check=False)
+        [call] = self.adb_calls()
+        self.assertEqual(call[2:], ['shell', "sha256sum '/sdcard/a b;rm -rf $HOME'\"'\"'x'"])
+
+    def test_mismatch_after_rename_does_not_leave_the_file_under_its_final_name(self):
+        with mock.patch.dict(os.environ, {'FAKE_ADB_CORRUPT_AFTER_MV': '1'}):
+            code, _, err = self.run_main()
+        self.assertEqual(code, 1, err)
+        self.assertIn('after the rename', err)
+        self.assertFalse(self.staged().exists())
+        self.assertFalse(self.staged('.partial').exists())
 
     def test_stages_verified_file_in_app_external_files_dir(self):
         code, out, err = self.run_main()
