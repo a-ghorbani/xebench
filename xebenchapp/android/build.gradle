@@ -28,3 +28,26 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// Native code compiled here (the app's codegen libraries, llama.rn's JNI libraries) embeds
+// absolute paths in __FILE__ strings and debug info, and the GNU build ID hashes them. Map the
+// host-specific roots (checkout, Gradle home, Android SDK) to fixed names, so a user name or
+// checkout location never reaches the APK and the bytes do not depend on where it was built.
+def xebenchPrefixMaps = [
+    "-ffile-prefix-map=${rootDir.parentFile.canonicalPath}=/xebenchapp",
+    "-ffile-prefix-map=${gradle.gradleUserHomeDir.canonicalPath}=/gradle-user-home",
+]
+def androidSdkDir = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+if (androidSdkDir) {
+    xebenchPrefixMaps += "-ffile-prefix-map=${new File(androidSdkDir).canonicalPath}=/android-sdk"
+}
+subprojects {
+    ["com.android.application", "com.android.library"].each { pluginId ->
+        plugins.withId(pluginId) {
+            android.defaultConfig.externalNativeBuild.cmake {
+                cFlags(*xebenchPrefixMaps)
+                cppFlags(*xebenchPrefixMaps)
+            }
+        }
+    }
+}

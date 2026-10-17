@@ -177,6 +177,10 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            // The React Native plugin bakes the build host's IP address into every variant for
+            // the Metro dev server. Release builds never use it, and a host address in the APK
+            // is both private and a source of non-reproducible bytes.
+            resValue "string", "react_native_dev_server_ip", "localhost"
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.debug
