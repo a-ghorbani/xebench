@@ -45,7 +45,8 @@ FORBIDDEN = re.compile(r"\b(reboot|uninstall|pm\s+clear|unplug|battery\s+(set|re
 # Pre-registered stopping rules.
 MIN_PER_CONDITION, TARGET_PER_CONDITION, MAX_PAIRS = 10, 15, 8
 STATE_POLL_S, STATE_CONFIRM_POLLS, STATE_TIMEOUT_S = 10, 3, 600
-CAPTURE_TIMEOUT_S, BLOCK_RESERVE_S, MIN_BATTERY_PCT = 900, 6 * 60, 55
+# Amendment 1: a 3-repetition block can wait up to 3 x 300 s for readiness.
+CAPTURE_TIMEOUT_S, BLOCK_RESERVE_S, MIN_BATTERY_PCT = 1500, 12 * 60, 55
 
 
 def utc():

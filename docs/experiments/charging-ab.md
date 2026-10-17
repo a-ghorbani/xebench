@@ -227,6 +227,10 @@ The results cover only the tested phones, this model and this configuration.
 
 ## Build identity
 
+**Superseded by Amendment 1.** The build below was never installed on a device.
+The branch was moved onto the final #20 code (status-only `charging-policy-v3`)
+before any data was collected. The new build identity is given in Amendment 1.
+
 Recorded at build time, before any device run:
 
 - Base: `origin/feat/conditions-enforcement` at
@@ -247,6 +251,108 @@ Recorded at build time, before any device run:
   this change did not add (`__tests__/config.test.ts` `_omitted`).
 - Installed APK identity on each device is recorded by the capture manifest
   (`appIdentity`: base APK SHA-256 before and after each block).
+
+## Amendment 1 (2026-10-17, before any data)
+
+No device had been leased and no experiment repetition existed when this
+amendment was written. The plan above stays valid except where this amendment
+changes it.
+
+### A1.1 Base code: final #20, charging-policy-v3
+
+The experiment now builds on `feat/conditions-enforcement` at
+`a113ee924a225aa3cd0737dd4eda3c75240d8882` (PR #20, rebased onto main with the
+#19 build flavors). With this change, experiment records validate under the
+final schema and validator, and their evidence bundles verify. That version
+uses **`charging-policy-v3`**:
+
+- the charging decision uses only the status: `FULL`/`NOT_CHARGING` are
+  eligible and `CHARGING` is violated;
+- `DISCHARGING` is an explicit `on-battery` state, which is not eligible;
+- an unknown state is never eligible;
+- `currentNowUa` is diagnostic only.
+
+The record-only flag was ported to v3. Records now carry the v3 policy with
+`readiness: "record-only-experiment"`. The validator accepts that value only
+together with `experimentChargingReadiness: "record-only"`, and only with the v3
+classification. The evidence export keeps both values, so a bundle never hides
+the experiment marker.
+
+Effect on the label rules: none. A is still `CHARGING` at every observation, and
+B is still `FULL`/`NOT_CHARGING` at every observation. v3 counts every sample by
+its exact status, including samples that are not persisted (`notCharging` is
+exactly {4, 5}, and `DISCHARGING` is counted separately). The earlier caveat no
+longer applies: an unpersisted `DISCHARGING` sample can now always be told apart.
+
+### A1.2 Readiness overrides for this experiment
+
+The experiment configuration
+([`experiment-charging-ab-v1.json`](../../xebenchapp/configs/experiment-charging-ab-v1.json))
+now sets:
+
+| Setting | Reference default | Experiment |
+| --- | --- | --- |
+| `maxBatteryTempRiseC` (rise over the block's first ready reading) | 2 °C | **10 °C** (the configured maximum) |
+| `readinessTimeoutSec` | 180 s | **300 s** |
+
+Unchanged: the 30 s cooldown, 3 repetitions per block, the absolute battery limit
+of 40 °C, thermal status `NONE`, headroom ≤ 0.8, and every run-time flag
+(including `SEVERE`).
+
+Justification, decided before any data:
+
+1. **With the 2 °C bound, the comparison would be censored, and censored
+   unevenly.** On tethered phones this bound already skipped repetitions in a
+   2-run × 3-repetition configuration without deliberate charging (see
+   docs/RUN-CONDITIONS.md, "Device observations"). Charging heats the battery.
+   With 15 repetitions per condition, the bound would therefore skip more A than
+   B repetitions, and it would keep only A repetitions that happened to start
+   cool. That hides the effect we want to measure, and it reduces n_A.
+2. **The question is about legacy rows, which had no temperature gate.** They
+   were measured with a cooldown only. The relevant effect is the total effect
+   of charging, including the extra heat it produces. 10 °C, the maximum the
+   configuration parser accepts, effectively disables the relative rule while
+   keeping it recorded and validated.
+3. **Safety and symmetry are kept.** The absolute 40 °C limit, thermal status
+   `NONE` and the headroom limit still gate both conditions in the same way.
+4. **300 s readiness bound.** With the relative rule effectively off, the
+   remaining waits are for thermal status, headroom and the 40 °C limit. Earlier
+   waits were up to about 101 s. 300 s gives a phone heated by charging time to
+   pass these limits instead of being skipped. Skips are still recorded and
+   counted for each condition. The time budget still bounds the total.
+
+The driver was updated to match. The capture timeout is now 1500 s per block,
+because 3 repetitions can each wait up to 300 s. A block is not started with
+less than 12 min of budget left, instead of 6 min. The 3 h per phone limit is
+unchanged.
+
+### A1.3 Battery temperature as a pre-registered secondary outcome
+
+Battery temperature for each condition is now a **secondary outcome**, no longer
+only a diagnostic. Because of A1.2, temperature is free to differ between the
+conditions. For each device, the analysis script reports:
+
+- **battery temperature at the start of each repetition** (the `before`
+  snapshot): this is the main secondary outcome;
+- the maximum battery temperature during each repetition, and the rise from
+  before to after;
+- for each: median A, median B, and Δ = median B − median A in °C, with the
+  same percentile bootstrap (10,000 resamples, fixed seed);
+- decision rule: "charging raises battery temperature" when the 95% CI of B − A
+  for the starting temperature lies entirely below 0. A difference of ≥ 1 °C is
+  called noteworthy, which is descriptive only and not a decision threshold;
+- also reported for each condition: readiness wait time, the number of
+  readiness-skipped repetitions with their reasons, the maximum thermal status
+  and the maximum thermal headroom.
+
+The primary analysis, the 3% threshold and the recommendation rule are
+unchanged. A large temperature difference with an "irrelevant" throughput
+verdict would mean that charging heats the phone without changing the
+measurements within 3%.
+
+### A1.4 Build identity (replaces the earlier one)
+
+Recorded below, at build time and before any device run.
 
 ## Results
 
