@@ -60,7 +60,8 @@ conditions, peak memory, quality, and full native build identity remain unverifi
 
 Completed sessions can be previewed with `aggregate.mjs --pretty`; `--update`
 rejects these new records until publication validation and consumer migration are
-implemented. Raw records and diagnostics stay local. Historical data is unchanged.
+implemented. Raw records and diagnostics stay local; only a sanitized
+[evidence export](#evidence-export) may leave the machine. Historical data is unchanged.
 
 ## Host validation
 
@@ -79,6 +80,9 @@ condition evidence and keep `guardsPassed=null`; a mix is rejected.
 
 A rejected payload stays in `invalid-<id>.txt` beside `invalid-<id>.reason.json`
 (reason codes, JSON Pointer paths, messages); the manifest lists `rejections`.
+A retrieved device file keeps its exact bytes, and its reason file keeps the
+`sourceFile` and `claimedSha256` from the logcat reference, so the device checksum
+can be re-checked from saved evidence.
 A rejection prevents a `complete` capture: after `XEBENCH_DONE` it is `partial`.
 Exit codes: 0 complete, 2 setup, startup, capture or cleanup failure, 3 timeout,
 4 partial or app-changed, 130/143 interrupted. Manifest entries carry `validation`:
@@ -88,3 +92,55 @@ comparison eligibility; `publicationReady` stays false. To check files offline, 
 `python3 scripts/raw_session.py <file>...`. After an intended record change, run
 `XEBENCH_UPDATE_FIXTURES=1 npx jest __tests__/rawSessionSchema.test.ts` in
 `xebenchapp` and update the schema; CI fails while the two disagree.
+
+## Evidence export
+
+Capture directories are local diagnostics. Nothing in them is public until it is
+exported. [`export_evidence.py`](../scripts/export_evidence.py) is the only path
+from a capture to a shareable artifact:
+
+```sh
+python3 scripts/export_evidence.py export --out results/exports results/<captureId>...
+python3 scripts/export_evidence.py verify results/exports/<bundleSha256>
+```
+
+Export fails closed (exit 1, nothing written) if any check fails. It checks every
+listed record and checkpoint against its capture checksum and re-validates it with
+`raw_session.py`. It refuses legacy records, unlisted record files, inconsistent
+counts, duplicate sessions and captures without a terminal record. It also refuses
+an approved field whose value does not have the expected form. A final screen
+refuses an export if any output string looks like an email, local path, token,
+ANDROID_ID-like hex or network serial. Refusal messages give JSON locations, never values.
+
+Only allowlisted fields are copied. Unknown fields are dropped and listed in the
+report on stdout, which stays local. Reason codes, signal names and guard notes
+come from a closed vocabulary. Other values become `unrecognized`.
+
+- **Exported:** session and configuration identity, protocol with `promptSha256`
+  in place of the prompt text, engine and version, model SHA-256, every repetition
+  (metrics, token counts, methods, failure phase), condition snapshots including
+  battery temperature, policies, verdicts and summaries. Device identity is
+  limited to manufacturer, model, SoC and Android release. A capture contributes
+  its status, counts, rejection reason-code counts, and APK names with their SHA-256.
+- **Never exported:** serials, ANDROID_ID, the `ro.product.device` codename,
+  install and host paths, usernames, logcat, error logs, error and cleanup
+  messages, invalid payloads and their reason files, and `publicationReady`.
+
+The bundle `<bundleSha256>/` holds `manifest.json`, `captures/<captureId>.json` and
+`sessions/<runId>.json`. Every file is canonical JSON: sorted keys, `,`/`:`
+separators, ASCII only, no NaN or Infinity, and one trailing LF. The files contain
+no export time, host or path, so the same captures always give the same bytes.
+**`bundleSha256` is the SHA-256 of the bytes of `manifest.json`.** The manifest
+lists every other file with its SHA-256 and size. The export prints
+`{sessionIds, bundleSha256}`, plus `url` when `--base-url https://...` is given,
+for a verified row's `evidence`. To check a bundle, hash the bytes as served;
+never re-serialize them.
+
+`verify` checks the hash, every checksum and size, unlisted files, canonical form,
+allowlist conformance and the privacy screen. It then recomputes every summary
+from the repetitions, using the interpolation above.
+
+Approved labels (model, quant, configuration and run IDs) and device properties
+are copied verbatim once they pass the form checks and the screen. A serial typed
+into a label cannot be detected. Exporting a session does not make it eligible
+for publication.

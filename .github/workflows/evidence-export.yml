@@ -1,0 +1,23 @@
+name: Evidence export
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Privacy, fail-closed, determinism and checksum round-trip tests for the
+      # sanitized bundle, plus the capture evidence-integrity fixes it relies on.
+      - name: Export and verify tests
+        run: python3 -m unittest tests/test_export_evidence.py tests/test_capture_app_run.py -v
+      - name: Exporter CLI help
+        run: python3 scripts/export_evidence.py --help
+      - name: Tests leave no tracked or untracked files behind
+        run: test -z "$(git status --porcelain)"
