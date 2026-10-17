@@ -219,7 +219,8 @@ HEX64 = _text(r"[0-9a-f]{64}", "lowercase SHA-256")
 RUN_ID = _text(r"[A-Za-z0-9][A-Za-z0-9-]{0,99}", "run id")
 UUID = _text(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "UUID")
 UTC = _text(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|\+00:00)", "UTC timestamp")
-MODEL_FILE = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,122}\.gguf", "model file basename")
+# GGUF (llama.cpp) or .litertlm (LiteRT-LM, accelerator-v1) basenames.
+MODEL_FILE = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,118}\.(gguf|litertlm)", "model file basename")
 APK_NAME = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,123}\.apk", "APK file name")
 PACKAGE = _text(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+", "package name")
 DEVICE_TEXT = _text(r"[A-Za-z0-9][A-Za-z0-9 ._+()-]{0,63}", "device property")
@@ -242,6 +243,9 @@ REJECTION_CODES = Vocab((
     # cpu-reference-v3 identity checks (raw_session._semantic_v3).
     "artifact.expected", "build.inconsistent", "configuration.source", "execution.inconsistent",
     "settings.protocol-mismatch", "settings.distribution",
+    # accelerator-v1 cross-field checks (raw_session._semantic_accelerator).
+    "backend.inconsistent", "backend.recomputed", "comparison.recomputed", "configuration.run-invalid",
+    "correctness.inconsistent", "correctness.probe-set", "correctness.recomputed", "protocol.prompt",
 ))
 
 # Condition signals and reason codes emitted by the app (xebenchapp/src/harness),
@@ -256,7 +260,7 @@ REASONS = ("low-battery", "severe-thermal-state", "power-saving", "screen-off", 
            *(f"unknown-{signal}" for signal in SIGNALS))
 GUARD_NOTES = ("Run conditions and actual backend execution have not been verified",
                "Actual backend execution has not been verified", "Run conditions not fully verified",
-               *raw_session.UNMEASURED_NOTES.values(), *REASONS)
+               *raw_session.ACCELERATOR_UNMEASURED_NOTES.values(), *REASONS)
 SIGNAL, REASON, NOTE = Vocab(SIGNALS), Vocab(REASONS), Vocab(GUARD_NOTES)
 
 # Every lowercase word the app (xebenchapp/src/harness, main and the
@@ -282,6 +286,11 @@ ENUM_WORDS = (
     # cpu-reference-v3 identity: model hash check, configuration source, build identity and settings.
     "model-hash-mismatch", "bundled", "staged", "reported", "reference", "experimental", "geniex", "debug",
     "binding-defaults", "auto", "on", "off",
+    # accelerator-v1 (accelerator.ts, backend.ts, gate.ts, config.ts).
+    "agreement", "answer", "answer-mismatch", "backend-mismatch", "bug-repro", "candidate", "confirmed", "consistent",
+    "correctness-fail", "correctness-unverified", "engine-report", "engine-unavailable", "gate-cleanup-failed",
+    "gate-error", "gate-not-run", "greedy", "invalid", "measurement", "mismatch", "none", "process-libraries",
+    "reference", "reference-failed", "reference-unavailable", "user-turn-chat-template", "valid",
 )
 
 
@@ -295,7 +304,9 @@ class Enum(Vocab):
 
 ENUM = Enum(ENUM_WORDS)
 # protocol.coldDefinition is an app constant (session.ts), not operator text.
-COLD_DEFINITION = Vocab(("fresh engine instance in warm app process; artifact hashing warms OS file cache",))
+COLD_DEFINITION = Vocab(("fresh engine instance in warm app process; artifact hashing warms OS file cache",
+                         "fresh engine instance in warm app process; artifact hashing and the correctness gate "
+                         "warm OS file and engine caches"))
 
 BOOL = Scalar(lambda v: isinstance(v, bool), "boolean")
 NUM, NONNEG, INT, COUNT = _number(), _number(0), _number(integer=True), _number(0, integer=True)
@@ -345,8 +356,16 @@ METRIC_FIELDS = {
     "loadMs": NONNEG, "ttftMs": NONNEG, "promptTokens": COUNT, "prefillTps": NONNEG, "prefillMethod": ENUM,
     "decodeTokens": COUNT, "decodeTps": NONNEG, "decodeMethod": ENUM, "engineInternal": ENGINE_INTERNAL,
 }
+# accelerator-v1 backend evidence. llama.rn's reasonNoGPU is free engine text and stays local.
+BACKEND_EVIDENCE = Obj({
+    "status": ENUM, "source": ENUM,
+    "report": Nullable(Obj({"gpu": N_BOOL, "devices": Nullable(Arr(LABEL, max_items=8)),
+                            "androidLib": Nullable(LABEL)}, excluded=("reasonNoGpu",))),
+    "libraries": Nullable(Obj({"before": Nullable(Arr(LABEL, max_items=256)),
+                               "after": Nullable(Arr(LABEL, max_items=256))})),
+}, required=("status", "source"))
 ATTEMPT_BASE = {"runIndex": COUNT, "status": ENUM, "conditions": CONDITIONS, "cooldownMs": NONNEG,
-                "readiness": READINESS, "instance": Nullable(INSTANCE)}
+                "readiness": READINESS, "instance": Nullable(INSTANCE), "observedBackend": Nullable(BACKEND_EVIDENCE)}
 # Error and cleanup messages are free engine/log text: only the phase is exported.
 ERROR = Obj({"phase": ENUM}, required=("phase",), excluded=("message",))
 ATTEMPT = Variant("status", {
@@ -519,28 +538,57 @@ def _prompt_digest(protocol):
     return {"promptSha256": sha256(prompt.encode("utf-8"))} if isinstance(prompt, str) else {}
 
 
+def _output_digests(probe):
+    # Model outputs and probe prompts stay local; digests let a reader match them to raw evidence.
+    digest = {key + "Sha256": None if probe.get(key) is None else sha256(probe[key].encode("utf-8"))
+              for key in ("prompt", "output") if key in probe and (probe[key] is None or isinstance(probe[key], str))}
+    return digest
+
+
+PROBE = Obj({
+    "id": LABEL, "kind": ENUM, "promptSha256": Nullable(HEX64), "expected": Nullable(LABEL),
+    "maxOutputTokens": COUNT, "outputSha256": Nullable(HEX64), "passed": N_BOOL,
+    "reference": Nullable(Obj({"outputSha256": Nullable(HEX64), "passed": N_BOOL}, excluded=("output",),
+                              derive=_output_digests)),
+    "exactMatch": N_BOOL, "commonPrefixChars": N_COUNT,
+}, required=("id", "kind", "passed"), excluded=("prompt", "output"), derive=_output_digests)
+CORRECTNESS = Obj({
+    "version": VERSION, "role": ENUM, "status": ENUM, "reasons": Arr(ENUM, max_items=8),
+    "reference": Nullable(Obj({"configurationRunId": LABEL, "backend": ENUM, "modelFile": MODEL_FILE,
+                               "artifactSha256": Nullable(HEX64), "sameArtifact": N_BOOL, "status": Nullable(ENUM)})),
+    "error": Nullable(ERROR), "probes": Arr(PROBE, max_items=16),
+}, required=("version", "role", "status", "reasons", "reference", "error", "probes"))
+COMPARISON = Obj({"status": ENUM, "reasons": Arr(ENUM, max_items=4)}, required=("status", "reasons"))
+OBSERVED_BACKEND = Obj({"status": ENUM, "source": ENUM, "repetitions": COUNT},
+                       required=("status", "source", "repetitions"))
 PROTOCOL = Obj({
     "version": VERSION, "nColdRuns": COUNT, "cooldownSec": NONNEG, "readinessTimeoutSec": NONNEG,
-    "maxBatteryTempRiseC": NONNEG, "promptLabel": LABEL, "promptSha256": HEX64, "maxDecodeTokens": COUNT, "nThreads": COUNT, "nCtx": COUNT,
+    "maxBatteryTempRiseC": NONNEG, "promptLabel": LABEL, "promptSha256": HEX64, "maxDecodeTokens": COUNT,
+    "nThreads": Nullable(COUNT), "nCtx": Nullable(COUNT),
     "coldDefinition": COLD_DEFINITION, "measurementKind": ENUM, "warmRequests": ENUM,
     "processRestartBetweenRepetitions": BOOL,
+    # accelerator-v1.
+    "promptFormat": ENUM, "chatTemplate": VERSION, "sampling": ENUM, "gate": VERSION,
 }, required=("version", "nColdRuns", "promptLabel", "promptSha256", "maxDecodeTokens", "nThreads", "nCtx"),
     excluded=("prompt",), derive=_prompt_digest)
 CONFIGURATION = Obj({
     "schemaVersion": INT, "id": LABEL, "nColdRuns": COUNT, "cooldownSec": NONNEG,
     "readinessTimeoutSec": NONNEG, "maxBatteryTempRiseC": NONNEG, "maxDecodeTokens": COUNT,
-    "orderSeed": _number(0, 2 ** 32 - 1, integer=True),
+    "orderSeed": _number(0, 2 ** 32 - 1, integer=True), "chatTemplate": VERSION,
     # EXPERIMENT ONLY (docs/experiments/charging-ab.md): kept so a bundle shows the marker.
     "experimentChargingReadiness": ENUM,
     "runs": Arr(Obj({"id": LABEL, "engine": LABEL, "model": LABEL, "modelFile": MODEL_FILE, "quant": LABEL,
-                     "nThreads": COUNT, "nCtx": COUNT, "modelSha256": HEX64}, required=("id",)), max_items=64),
+                     "nThreads": Nullable(COUNT), "nCtx": Nullable(COUNT), "modelSha256": HEX64,
+                     # accelerator-v1 runs.
+                     "backend": ENUM, "purpose": ENUM, "nGpuLayers": COUNT, "devices": Arr(LABEL, max_items=4),
+                     "referenceRunId": Nullable(LABEL)}, required=("id",)), max_items=64),
 }, required=("id", "runs"))
 RECORD = Obj({
     "runId": RUN_ID, "timestampIso": UTC, "schema": VERSION, "schemaVersion": INT,
     "artifact": Nullable(Obj({"sha256": HEX64, "sizeBytes": COUNT, "expectedSha256": Nullable(HEX64)},
                              required=("sha256", "sizeBytes"))),
     "harnessVersion": LABEL, "engine": LABEL, "engineVersion": LABEL, "backend": ENUM,
-    "observedBackend": Nullable(ENUM), "platform": ENUM, "model": LABEL, "quant": LABEL,
+    "observedBackend": Nullable(OBSERVED_BACKEND), "platform": ENUM, "model": LABEL, "quant": LABEL,
     "modelFile": MODEL_FILE, "configuration": CONFIGURATION, "configurationRunId": LABEL, "protocol": PROTOCOL,
     "status": ENUM, "coldRuns": Arr(ATTEMPT, max_items=64), "summary": SUMMARY,
     "guardsPassed": Scalar(lambda v: v is None or isinstance(v, bool), "boolean or null"),
@@ -549,9 +597,12 @@ RECORD = Obj({
     # Fields added by the conditions-enforcement work; optional so either record generation exports.
     "runOrder": Nullable(RUN_ORDER), "repetitionsPlanned": COUNT, "stopReason": Nullable(ENUM),
     "chargingPolicy": CHARGING_POLICY, "conditionVerdict": CONDITION_VERDICT,
-    # cpu-reference-v3 build, configuration and execution identity.
-    "build": BUILD, "configurationSource": CONFIGURATION_SOURCE, "effectiveSettings": EFFECTIVE_SETTINGS,
+    # cpu-reference-v3 build, configuration and execution identity (effectiveSettings is null
+    # for accelerator-v1 LiteRT-LM runs).
+    "build": BUILD, "configurationSource": CONFIGURATION_SOURCE, "effectiveSettings": Nullable(EFFECTIVE_SETTINGS),
     "executionReports": Arr(EXECUTION_REPORT, max_items=64),
+    # accelerator-v1: run purpose, output-correctness gate and comparison validity.
+    "purpose": ENUM, "gateBackend": Nullable(BACKEND_EVIDENCE), "correctness": CORRECTNESS, "comparison": COMPARISON,
 }, required=("runId", "timestampIso", "schema", "schemaVersion", "artifact", "engine", "model", "quant",
              "modelFile", "configuration", "configurationRunId", "protocol", "status", "coldRuns", "summary"))
 DEVICE = Obj({"manufacturer": Nullable(DEVICE_TEXT), "model": Nullable(DEVICE_TEXT), "soc": Nullable(DEVICE_TEXT),
@@ -916,11 +967,14 @@ def _check_record(record, where, errors):
     if record["status"] == "complete":
         ok = len(runs) == planned and all(status == "complete" for status in statuses)
     elif record["status"] == "failed" and not runs:
-        # A run recorded without measurement (cpu-reference-v2+): no attempts, and no artifact
-        # unless it was hashed and found to differ from the configured hash.
+        # A run recorded without measurement (cpu-reference-v2+, accelerator-v1): no attempts, and
+        # no artifact unless it was hashed and found to differ from the configured hash.
         stop = record.get("stopReason")
-        ok = stop in raw_session.STOP_REASONS_UNMEASURED and \
-            (record.get("artifact") is None) == (stop in raw_session.STOP_REASONS_UNHASHED)
+        accelerator = record["protocol"]["version"] == raw_session.ACCELERATOR_PROTOCOL
+        unmeasured = raw_session.ACCELERATOR_UNMEASURED_NOTES if accelerator else raw_session.STOP_REASONS_UNMEASURED
+        unhashed = raw_session.STOP_REASONS_UNHASHED + (
+            ("engine-unavailable", "gate-cleanup-failed") if accelerator else ())
+        ok = stop in unmeasured and (record.get("artifact") is None) == (stop in unhashed)
     elif record["status"] == "failed":
         ok = statuses[-1] in ("failed", "skipped") and all(status == "complete" for status in statuses[:-1])
     else:
@@ -928,6 +982,81 @@ def _check_record(record, where, errors):
     if not ok:
         errors.append(f"{where}/status: does not agree with the repetitions")
     _check_statistics(record, where, errors)
+    _check_correctness(record, where, errors)
+
+
+def _check_correctness(record, where, errors):
+    """accelerator-v1: workload, backend evidence, gate and comparison follow from the exported evidence."""
+    if record["protocol"]["version"] != raw_session.ACCELERATOR_PROTOCOL:
+        return
+    try:
+        protocol, correctness = record["protocol"], record["correctness"]
+        if protocol.get("promptSha256") != raw_session.ACCELERATOR_PROMPT_SHA256 or \
+                protocol.get("promptLabel") != raw_session.ACCELERATOR_PROMPT_LABEL:
+            errors.append(f"{where}/protocol/promptSha256: not the accelerator-v1 prompt")
+        found = raw_session.probe_set_errors(correctness["probes"], protocol["maxDecodeTokens"],
+                                             lambda probe: probe.get("promptSha256"), f"{where}/correctness")
+        errors.extend(f"{item['path']}: {item['message']}" for item in found)
+        engine, backend = record["engine"], record["backend"]
+        found = raw_session.backend_evidence_errors(engine, backend, record.get("gateBackend"), f"{where}/gateBackend")
+        evidence = []
+        for index, attempt in enumerate(record["coldRuns"]):
+            if attempt.get("observedBackend") is not None:
+                evidence.append(attempt["observedBackend"])
+                found += raw_session.backend_evidence_errors(engine, backend, attempt["observedBackend"],
+                                                             f"{where}/coldRuns/{index}/observedBackend")
+        errors.extend(f"{item['path']}: {item['message']}" for item in found)
+        summary = raw_session.summarize_backend(evidence)
+        if record.get("observedBackend") != summary:
+            errors.append(f"{where}/observedBackend: does not summarize the repetitions' evidence")
+        confirmed = (summary or {}).get("status") == "confirmed"
+        if (raw_session.BACKEND_NOTE in record.get("guardNotes", [])) == confirmed:
+            errors.append(f"{where}/guardNotes: backend note disagrees with the observed backend")
+        reference, artifact = correctness["reference"], record.get("artifact")
+        if reference and reference["sameArtifact"] is not (
+                None if reference["artifactSha256"] is None or artifact is None
+                else reference["artifactSha256"] == artifact["sha256"]):
+            errors.append(f"{where}/correctness/reference/sameArtifact: does not compare the artifact hashes")
+        status, reasons = raw_session.correctness_status(
+            correctness["role"], correctness["error"], correctness["probes"], reference["status"] if reference else None)
+        mismatch = "mismatch" in ((summary or {}).get("status"), (record.get("gateBackend") or {}).get("status"))
+        comparison = raw_session.comparison_status(record["purpose"], {"status": status}, mismatch)
+    except (KeyError, TypeError, AttributeError):
+        errors.append(f"{where}/correctness: missing or malformed gate evidence")
+        return
+    if (correctness["status"], correctness["reasons"]) != (status, reasons):
+        errors.append(f"{where}/correctness/status: does not follow from the probe verdicts")
+    if record.get("comparison") != comparison:
+        errors.append(f"{where}/comparison: does not follow from correctness, backend evidence and purpose")
+
+
+def _check_references(mine, errors):
+    """accelerator-v1 within one capture: a candidate's copied reference matches the reference session."""
+    sessions = [doc for doc in mine if doc["record"].get("protocol", {}).get("version") == raw_session.ACCELERATOR_PROTOCOL]
+    for doc in sessions:
+        try:
+            correctness = doc["record"]["correctness"]
+            reference = correctness["reference"]
+            if correctness["role"] != "candidate" or reference is None or reference["status"] is None:
+                continue
+            matches = [other["record"] for other in sessions
+                       if other["record"]["configurationRunId"] == reference["configurationRunId"]
+                       and other["record"]["configuration"] == doc["record"]["configuration"]
+                       and other["record"]["correctness"]["probes"]]
+            if not matches:
+                continue
+            # One capture is normally one invocation; if a run repeats, one of its references must agree.
+            copied = {probe["id"]: (probe["reference"] or {}).get("outputSha256") for probe in correctness["probes"]}
+
+            def agrees(target):
+                outputs = {probe["id"]: probe.get("outputSha256") for probe in target["probes"]}
+                return target["status"] == reference["status"] and all(
+                    digest == outputs.get(id_) for id_, digest in copied.items())
+            if not any(agrees(match["correctness"]) for match in matches):
+                errors.append(f"sessions/{doc['sessionId']}.json/record/correctness/reference: "
+                              "status or outputs differ from the reference session's gate")
+        except (KeyError, TypeError, AttributeError):
+            errors.append(f"sessions/{doc.get('sessionId')}.json/record/correctness: malformed gate evidence")
 
 
 def _check_capture(capture, sessions, path, errors):
@@ -944,6 +1073,7 @@ def _check_capture(capture, sessions, path, errors):
                                             capture["engineErrors"] or
                                             capture["appIdentity"]["consistency"] == "changed"):
         errors.append(f"{path}/status: complete capture with errors, rejections or failures")
+    _check_references(mine, errors)
     for doc in mine:
         device = doc["device"]
         if (device["manufacturer"], device["soc"]) != (capture["device"]["manufacturer"], capture["device"]["soc"]):

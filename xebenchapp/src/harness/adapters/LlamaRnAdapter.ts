@@ -5,6 +5,7 @@ import type {
 } from './EngineAdapter';
 import {monotonicNow} from '../clock';
 import {readNativeLibraries} from '../build';
+import {backendEvidence, BackendEvidence} from '../backend';
 
 import {version as LLAMA_RN_VERSION} from 'llama.rn/package.json';
 
@@ -122,6 +123,20 @@ export class LlamaRnAdapter implements EngineAdapter {
     const reported: Pick<LlamaContext, 'gpu' | 'reasonNoGPU' | 'devices' | 'androidLib' | 'systemInfo'> = this.ctx;
     this.lastReport = executionReport(reported, await readNativeLibraries());
     return loadMs;
+  }
+
+  /** accelerator-v1 backend evidence, derived from the same execution report (backend.ts rules). */
+  backendEvidence(): BackendEvidence {
+    const report = this.lastReport && {gpu: this.lastReport.gpu, devices: this.lastReport.devices,
+      androidLib: this.lastReport.androidLib, reasonNoGpu: this.lastReport.reasonNoGPU};
+    return backendEvidence(this.engine, this.backend, report ? 'engine-report' : 'none', report, null);
+  }
+
+  /** Greedy reply text for the correctness gate (the same completion settings as benchOnce). */
+  async generate(cfg: BenchOnceConfig): Promise<string> {
+    if (!this.ctx) throw new Error('llama.rn: load() first');
+    const result = await this.ctx.completion({prompt: cfg.prompt, ...this.effectiveSettings(cfg).completion});
+    return result.text;
   }
 
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {

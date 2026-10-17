@@ -97,6 +97,24 @@ reference results.
 | ExecuTorch (rn-executorch) | `llama-3.2-1B-spinquant.pte` | SpinQuant 4-bit | HF: `software-mansion/react-native-executorch-llama-3.2` |
 | ExecuTorch | `tokenizer.json`, `tokenizer_config.json` | — | from the same Llama 3.2 1B repo (HF tokenizers format) |
 
+### LiteRT accelerator experiment (accelerator-v1)
+
+[docs/experiments/litert-accelerators.md](docs/experiments/litert-accelerators.md) compares
+LiteRT-LM with llama.cpp on Gemma 3 1B. These are not reference models either.
+
+- **llama.cpp comparator, pinned.** `gemma-3-1b-it-q4_0.gguf` comes from the gated HF repo
+  `google/gemma-3-1b-it-qat-q4_0-gguf` at revision `d1be121d36172a4b0b964657e2ee859d61138593`,
+  1003541152 bytes, sha256 `95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a`.
+  It is licensed under the Gemma Terms of Use. The pin lives in
+  [`configs/models/experimental-models.json`](configs/models/experimental-models.json). The
+  SHA-256 is the huggingface_hub download ETag of our copy at that revision; the gated repository
+  does not show LFS hashes without authentication. Stage it the same way as the reference model:
+  `python3 scripts/stage_model.py --manifest configs/models/experimental-models.json --serial <serial> <file>`.
+- **LiteRT-LM artifacts, not pinned yet.** `gemma3-1b-it-int4.litertlm` (CPU/GPU) and the
+  AOT NPU bundles `Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm` / `..._sm8550.litertlm` are
+  already on the test phones. Their source revisions are not recorded. Every session records
+  each file's SHA-256 and size, and the experiment doc lists them with the results.
+
 The experimental adapters take absolute paths in their options
 (`LlamaRnAdapterOptions.modelPath`, `ExecutorchAdapterOptions.modelSource`). To stage
 these files manually, push them to the app's external files directory and point the

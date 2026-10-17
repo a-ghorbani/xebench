@@ -1,28 +1,41 @@
 import {NativeModules} from 'react-native';
 import type {BackendId, SingleRunMetrics} from '../types';
 import type {BenchOnceConfig, EngineAdapter} from './EngineAdapter';
+import {backendEvidence, BackendEvidence} from '../backend';
 
-const LITERTLM_VERSION = 'litertlm-android 0.14.0';
+/** Pinned in android/app/build.gradle (experimental flavor); keep in step. */
+export const LITERTLM_VERSION = 'litertlm-android 0.18.0';
+export const LITERT_NPU_RUNTIME = 'litert-npu-runtime-qualcomm 2.3.0';
 
-const {LiteRtBench} = NativeModules;
+/** Exported label alphabet: no commas (scripts/export_evidence.py LABEL). */
+export const liteRtEngineVersion = (backend: BackendId) => backend === 'npu' ?
+  `LiteRT-LM ${LITERTLM_VERSION} + ${LITERT_NPU_RUNTIME} (npu)` : `LiteRT-LM ${LITERTLM_VERSION} (${backend})`;
 
 export interface LiteRtAdapterOptions {
   /** Absolute path to the .litertlm on device */
   modelPath: string;
-  /** 'cpu' | 'gpu' | 'npu' */
   backend: 'cpu' | 'gpu' | 'npu';
   quantLabel: string; // e.g. 'int4'
   modelLabel: string; // e.g. 'Gemma 3 1B'
+  /** CPU backend threads; null = LiteRT-LM default. */
+  nThreads?: number | null;
 }
 
+type Libraries = {before: string[] | null; after: string[] | null};
+
+const strings = (value: unknown): string[] | null =>
+  Array.isArray(value) && value.every(item => typeof item === 'string') ? value as string[] : null;
+
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
 /**
- * LiteRT-LM adapter. Unlike ExecuTorch (callback-derived), LiteRT-LM's native
- * benchmark() reports prefill AND decode tok/s from its own counters — so both
- * are 'engine-timings' (gold standard), directly comparable to llama.cpp.
+ * LiteRT-LM adapter over the Engine/Conversation API (LiteRtBenchModule.kt).
  *
- * The native call does load + prefill + decode + release in one shot, so the
- * EngineAdapter load()/release() are no-ops and each benchOnce() is a full cold
- * cycle (fresh engine init internally).
+ * load() creates and initializes a fresh Engine on the requested backend; benchOnce()
+ * runs one single-turn greedy conversation on the real prompt (the artifact's own chat
+ * template) and reports LiteRT-LM's engine counters (Conversation.getBenchmarkInfo):
+ * prefill and decode tok/s are 'engine-timings', like llama.cpp's timings. TTFT is
+ * request -> first streamed callback, timed natively on the worker thread.
  */
 export class LiteRtAdapter implements EngineAdapter {
   readonly engine = 'litert-lm' as const;
@@ -31,9 +44,12 @@ export class LiteRtAdapter implements EngineAdapter {
   readonly modelLabel: string;
   readonly modelFile: string;
   private opts: LiteRtAdapterOptions;
+  private libraries: Libraries | null = null;
+  private native: any;
 
   constructor(opts: LiteRtAdapterOptions) {
-    if (!LiteRtBench) {
+    this.native = NativeModules.LiteRtBench;
+    if (!this.native) {
       throw new Error('LiteRtBench native module not linked — build the experimental flavor (assembleExperimentalRelease)');
     }
     this.opts = opts;
@@ -44,36 +60,62 @@ export class LiteRtAdapter implements EngineAdapter {
   }
 
   engineVersion(): string {
-    return `LiteRT-LM (${LITERTLM_VERSION}, ${this.opts.backend})`;
+    return liteRtEngineVersion(this.opts.backend);
   }
 
   settings() {
-    return {nThreads: null, nCtx: null};
+    return {nThreads: this.opts.nThreads ?? null, nCtx: null};
   }
 
   async load(): Promise<number> {
-    return 0; // native bench() loads internally
+    this.libraries = null;
+    const result = await this.native.load(this.opts.modelPath, this.opts.backend, this.opts.nThreads ?? -1);
+    this.libraries = {before: strings(result?.librariesBefore), after: strings(result?.librariesAfter)};
+    if (!finite(result?.loadMs)) {
+      throw new Error('LiteRT-LM load returned no duration');
+    }
+    return result.loadMs;
+  }
+
+  backendEvidence(): BackendEvidence {
+    return backendEvidence(this.engine, this.backend, this.libraries ? 'process-libraries' : 'none', null,
+      this.libraries);
+  }
+
+  async generate(cfg: BenchOnceConfig): Promise<string> {
+    const result = await this.native.generate(cfg.text ?? cfg.prompt, cfg.maxDecodeTokens, false);
+    if (typeof result?.text !== 'string') {
+      throw new Error('LiteRT-LM returned no text');
+    }
+    return result.text;
   }
 
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {
-    // benchmark(prefillTokens=512, decodeTokens=cfg.maxDecodeTokens) — pp512/tg128
-    // convention, matching the llama-bench reference. Prompt tokens are synthetic
-    // (same as llama-bench), so this is a pp/tg throughput measurement, not a
-    // real-prompt TTFT run.
-    const r = await LiteRtBench.bench(this.opts.modelPath, this.opts.backend, 512, cfg.maxDecodeTokens);
+    if (cfg.text === undefined) {
+      throw new Error('LiteRT-LM takes the prompt as a user message (accelerator protocol)');
+    }
+    const result = await this.native.generate(cfg.text, cfg.maxDecodeTokens, true);
+    const info = result?.benchmark;
+    if (!info) {
+      throw new Error(`LiteRT-LM benchmark info unavailable: ${result?.benchmarkError ?? 'not reported'}`);
+    }
+    if (!finite(result.ttftMs) || !finite(info.prefillTps) || !finite(info.decodeTps)) {
+      throw new Error('LiteRT-LM returned non-finite timings');
+    }
     return {
-      loadMs: r.loadMs ?? 0,
-      ttftMs: Math.round(r.ttftMs ?? 0),
-      promptTokens: r.promptTokens ?? 0,
-      prefillTps: r.prefillTps ?? 0,
+      loadMs: 0, // filled by the protocol runner from load()
+      ttftMs: result.ttftMs,
+      promptTokens: info.prefillTokens,
+      prefillTps: info.prefillTps,
       prefillMethod: 'engine-timings',
-      decodeTokens: r.decodeTokens ?? 0,
-      decodeTps: r.decodeTps ?? 0,
+      decodeTokens: info.decodeTokens,
+      decodeTps: info.decodeTps,
       decodeMethod: 'engine-timings',
     };
   }
 
   async release(): Promise<void> {
-    // native bench() releases internally
+    this.libraries = null;
+    await this.native.release();
   }
 }

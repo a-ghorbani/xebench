@@ -145,14 +145,12 @@ android {
             dimension "runtime"
             versionNameSuffix "-reference"
         }
-        // LiteRT-LM + ExecuTorch + llama.rn Hexagon/OpenCL accelerators. Optional QNN
-        // libs for LiteRT NPU go in src/experimental/jniLibs/arm64-v8a (git-ignored).
-        // QNN libs alone are not enough: LiteRT-LM's NPU path also needs Google's
-        // published dispatch lib (libLiteRtDispatch_Qualcomm.so, from
-        // com.google.ai.edge.litert:litert-npu-runtime-qualcomm or the LiteRT release
-        // zip) whose ABI matches the LiteRT-LM release's LITERT_REF. For the 0.14.0
-        // pinned below use the LiteRT v2.1.6 release zip; Maven 2.3.0 pairs with 0.18.0.
-        // See ENGINES.md.
+        // LiteRT-LM + ExecuTorch + llama.rn Hexagon/OpenCL accelerators. LiteRT NPU
+        // needs three matched pieces: litertlm-android (below), Google's Qualcomm
+        // dispatch lib from Maven (litert-npu-runtime-qualcomm, below), and the QAIRT
+        // QNN runtime libs, which are proprietary and staged by
+        // scripts/stage_qairt_libs.py into src/experimental/jniLibs/arm64-v8a
+        // (git-ignored, never committed). See docs/experiments/litert-accelerators.md.
         experimental {
             dimension "runtime"
             versionNameSuffix "-experimental"
@@ -209,7 +207,13 @@ dependencies {
     }
 
     // LiteRT-LM (Google): no RN binding; driven via src/experimental LiteRtBenchModule.kt.
-    experimentalImplementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
+    // 0.18.0 pairs with litert-npu-runtime-qualcomm 2.3.0 and QAIRT 2.50.0.260828 (the
+    // dispatch lib and QAIRT must match the LiteRT-LM release's LITERT_REF; a mismatch
+    // logs "Unsupported dispatch runtime version" and engine creation fails).
+    experimentalImplementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
+    // Google-published Qualcomm NPU dispatch (libLiteRtDispatch_Qualcomm.so and
+    // libLiteRtCompilerPlugin_Qualcomm.so), Google Maven.
+    experimentalImplementation("com.google.ai.edge.litert:litert-npu-runtime-qualcomm:2.3.0")
     // GENIE-X (Qualcomm, Maven Central): no RN binding; driven via src/geniex
     // GenieXBenchModule.kt. Bundles its own llama.cpp+Hexagon runtime, which conflicts
     // with llama.rn's HTP path, hence its own flavor.

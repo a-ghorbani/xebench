@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/a-ghorbani/xebench/schemas/raw-session-v1.json",
   "title": "xebench raw reference session, schemaVersion 1",
-  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal), schemaVersion 1. The protocol version selects a branch: cpu-reference-v1 records (including those from apps built before condition snapshots) keep their original shape; cpu-reference-v2 records carry readiness, sampling, order and verdict evidence; cpu-reference-v3 records add build identity, configuration source and hash, effective engine settings, per-load engine reports and the configured model hash. Cross-field rules, including recomputed condition assessments, are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration stay open to additive fields.",
-  "oneOf": [{"$ref": "#/$defs/sessionV1"}, {"$ref": "#/$defs/sessionV2"}, {"$ref": "#/$defs/sessionV3"}],
+  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal), schemaVersion 1. The protocol version selects a branch: cpu-reference-v1 records (including those from apps built before condition snapshots) keep their original shape; cpu-reference-v2 records carry readiness, sampling, order and verdict evidence; cpu-reference-v3 records add build identity, configuration source and hash, effective engine settings, per-load engine reports and the configured model hash. Cross-field rules, including recomputed condition assessments, are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration stay open to additive fields. accelerator-v1 records (sessionAcceleratorV1) add LiteRT-LM, GPU/NPU backends, observed-backend evidence and the output-correctness gate.",
+  "oneOf": [{"$ref": "#/$defs/sessionV1"}, {"$ref": "#/$defs/sessionV2"}, {"$ref": "#/$defs/sessionV3"}, {"$ref": "#/$defs/sessionAcceleratorV1"}],
   "$defs": {
     "label": {
       "type": "string",
@@ -1128,6 +1128,597 @@
         "dischargingStatus": {"const": 3},
         "onBattery": {"const": "not-eligible"}
       }
+    },
+    "acceleratorModelFile": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*\\.(gguf|litertlm)$",
+      "description": "accelerator-v1: a GGUF (llama.cpp) or .litertlm (LiteRT-LM) basename; the engine/extension pairing is checked by raw_session.py."
+    },
+    "nullableThreads": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1, "maximum": 32}]},
+    "nullableCtx": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1024, "maximum": 32768}]},
+    "acceleratorRun": {
+      "type": "object",
+      "required": [
+        "id",
+        "engine",
+        "backend",
+        "purpose",
+        "model",
+        "modelFile",
+        "quant",
+        "nThreads",
+        "nCtx",
+        "referenceRunId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/label"},
+        "engine": {"enum": ["llama.cpp", "litert-lm"]},
+        "backend": {"enum": ["cpu", "gpu", "npu"]},
+        "purpose": {"enum": ["measurement", "bug-repro"]},
+        "model": {"$ref": "#/$defs/label"},
+        "modelFile": {"$ref": "#/$defs/acceleratorModelFile"},
+        "quant": {"$ref": "#/$defs/label"},
+        "nThreads": {"$ref": "#/$defs/nullableThreads"},
+        "nCtx": {"$ref": "#/$defs/nullableCtx"},
+        "nGpuLayers": {"type": "integer", "minimum": 0, "maximum": 999},
+        "devices": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {"type": "string", "pattern": "^[A-Za-z0-9]{1,32}$"}
+        },
+        "referenceRunId": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/label"}]}
+      }
+    },
+    "configurationV2": {
+      "type": "object",
+      "description": "accelerator-v1 configuration (config.ts parseAcceleratorConfig), echoed exactly as parsed.",
+      "required": [
+        "schemaVersion",
+        "id",
+        "nColdRuns",
+        "cooldownSec",
+        "readinessTimeoutSec",
+        "maxBatteryTempRiseC",
+        "maxDecodeTokens",
+        "chatTemplate",
+        "runs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {"const": 2},
+        "id": {"$ref": "#/$defs/label"},
+        "nColdRuns": {"type": "integer", "minimum": 1, "maximum": 20},
+        "cooldownSec": {"type": "integer", "minimum": 0, "maximum": 300},
+        "readinessTimeoutSec": {"type": "integer", "minimum": 10, "maximum": 900},
+        "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10},
+        "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+        "chatTemplate": {"enum": ["gemma3", "llama32"]},
+        "orderSeed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "runs": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/acceleratorRun"}}
+      }
+    },
+    "backendEvidence": {
+      "type": "object",
+      "description": "Per-repetition backend evidence read right after load (backend.ts); status is recomputed by raw_session.py.",
+      "required": ["status", "source", "report", "libraries"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"enum": ["confirmed", "consistent", "mismatch", "unknown"]},
+        "source": {"enum": ["engine-report", "process-libraries", "none"]},
+        "report": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["gpu", "devices", "androidLib", "reasonNoGpu"],
+              "additionalProperties": false,
+              "properties": {
+                "gpu": {"type": ["boolean", "null"]},
+                "devices": {
+                  "oneOf": [
+                    {"type": "null"},
+                    {"type": "array", "maxItems": 256, "items": {"type": "string", "maxLength": 128}}
+                  ]
+                },
+                "androidLib": {"type": ["string", "null"], "maxLength": 128},
+                "reasonNoGpu": {"type": ["string", "null"]}
+              }
+            }
+          ]
+        },
+        "libraries": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["before", "after"],
+              "additionalProperties": false,
+              "properties": {
+                "before": {
+                  "oneOf": [
+                    {"type": "null"},
+                    {"type": "array", "maxItems": 256, "items": {"type": "string", "maxLength": 128}}
+                  ]
+                },
+                "after": {
+                  "oneOf": [
+                    {"type": "null"},
+                    {"type": "array", "maxItems": 256, "items": {"type": "string", "maxLength": 128}}
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "observedBackend": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["status", "source", "repetitions"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {"enum": ["confirmed", "consistent", "mismatch", "unknown"]},
+            "source": {"enum": ["engine-report", "process-libraries", "none"]},
+            "repetitions": {"type": "integer", "minimum": 1}
+          }
+        }
+      ],
+      "description": "Summary of the repetitions' backendEvidence: any mismatch wins, else the weakest status; null before any load."
+    },
+    "probe": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "prompt",
+        "expected",
+        "maxOutputTokens",
+        "output",
+        "passed",
+        "reference",
+        "exactMatch",
+        "commonPrefixChars"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/label"},
+        "kind": {"enum": ["answer", "agreement"]},
+        "prompt": {"type": "string", "minLength": 1},
+        "expected": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/label"}]},
+        "maxOutputTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+        "output": {"type": ["string", "null"]},
+        "passed": {"type": ["boolean", "null"]},
+        "reference": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["output", "passed"],
+              "additionalProperties": false,
+              "properties": {"output": {"type": ["string", "null"]}, "passed": {"type": ["boolean", "null"]}}
+            }
+          ]
+        },
+        "exactMatch": {"type": ["boolean", "null"]},
+        "commonPrefixChars": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
+      }
+    },
+    "correctness": {
+      "type": "object",
+      "description": "output-gate-v1 (gate.ts): greedy probes answered by this engine/backend before measurement and compared with the CPU reference run of the same engine. Status and probe verdicts are recomputed by raw_session.py.",
+      "required": ["version", "role", "status", "reasons", "reference", "error", "probes"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {"const": "output-gate-v1"},
+        "role": {"enum": ["reference", "candidate"]},
+        "status": {"enum": ["pass", "fail", "unverified"]},
+        "reasons": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "enum": ["gate-error", "gate-not-run", "answer-mismatch", "reference-unavailable", "reference-failed"]
+          }
+        },
+        "reference": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["configurationRunId", "backend", "modelFile", "artifactSha256", "sameArtifact", "status"],
+              "additionalProperties": false,
+              "properties": {
+                "configurationRunId": {"$ref": "#/$defs/label"},
+                "backend": {"const": "cpu"},
+                "status": {"enum": ["pass", "fail", "unverified", null]},
+                "modelFile": {"$ref": "#/$defs/acceleratorModelFile"},
+                "artifactSha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+                "sameArtifact": {"type": ["boolean", "null"]}
+              }
+            }
+          ]
+        },
+        "error": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["phase", "message"],
+              "additionalProperties": false,
+              "properties": {"phase": {"enum": ["load", "inference", "release"]}, "message": {"type": "string"}}
+            }
+          ]
+        },
+        "probes": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/probe"}}
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "description": "Whether this session's metrics may be compared across backends: invalid for bug-repro runs, a failed gate or an engine-reported backend mismatch (metrics are kept), unverified when the gate could not decide.",
+      "required": ["status", "reasons"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"enum": ["valid", "invalid", "unverified"]},
+        "reasons": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {"enum": ["bug-repro", "correctness-fail", "correctness-unverified", "backend-mismatch"]}
+        }
+      }
+    },
+    "completeAttemptAcceleratorV1": {
+      "type": "object",
+      "description": "accelerator-v1 successful repetition: completeAttemptV2 plus observedBackend.",
+      "required": [
+        "runIndex",
+        "status",
+        "loadMs",
+        "ttftMs",
+        "promptTokens",
+        "prefillTps",
+        "prefillMethod",
+        "decodeTokens",
+        "decodeTps",
+        "decodeMethod",
+        "cooldownMs",
+        "readiness",
+        "instance",
+        "conditions",
+        "observedBackend"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 0},
+        "conditions": {"$ref": "#/$defs/attemptConditionsV2"},
+        "status": {"const": "complete"},
+        "loadMs": {"$ref": "#/$defs/nonNegative"},
+        "ttftMs": {"$ref": "#/$defs/nonNegative"},
+        "promptTokens": {"$ref": "#/$defs/tokenCount"},
+        "prefillTps": {"$ref": "#/$defs/nonNegative"},
+        "prefillMethod": {"$ref": "#/$defs/measureMethod"},
+        "decodeTokens": {"$ref": "#/$defs/tokenCount"},
+        "decodeTps": {"$ref": "#/$defs/positive"},
+        "decodeMethod": {"$ref": "#/$defs/measureMethod"},
+        "engineInternal": {"$ref": "#/$defs/engineInternal"},
+        "cooldownMs": {"type": "integer", "minimum": 0},
+        "readiness": {"$ref": "#/$defs/readiness"},
+        "instance": {"$ref": "#/$defs/instance"},
+        "observedBackend": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/backendEvidence"}]}
+      }
+    },
+    "failedAttemptAcceleratorV1": {
+      "type": "object",
+      "required": [
+        "runIndex",
+        "status",
+        "error",
+        "metrics",
+        "cooldownMs",
+        "readiness",
+        "instance",
+        "conditions",
+        "observedBackend"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runIndex": {"type": "integer", "minimum": 0},
+        "conditions": {"$ref": "#/$defs/attemptConditionsV2"},
+        "status": {"const": "failed"},
+        "error": {"$ref": "#/$defs/attemptError"},
+        "metrics": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/metrics"}]},
+        "cleanupError": {
+          "type": "object",
+          "required": ["phase", "message"],
+          "additionalProperties": false,
+          "properties": {"phase": {"const": "release"}, "message": {"type": "string"}}
+        },
+        "cooldownMs": {"type": "integer", "minimum": 0},
+        "readiness": {"$ref": "#/$defs/readiness"},
+        "instance": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/instance"}]},
+        "observedBackend": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/backendEvidence"}]}
+      },
+      "description": "accelerator-v1 failed repetition: failedAttemptV2 plus observedBackend (null if it never loaded)."
+    },
+    "effectiveSettingsLlamaRnAccelerator": {
+      "type": "object",
+      "description": "accelerator-v1 llama.cpp runs: effectiveSettingsLlamaRn with GPU/NPU offload (n_gpu_layers, devices).",
+      "required": ["binding", "init", "completion", "unlisted"],
+      "additionalProperties": false,
+      "properties": {
+        "binding": {"const": "llama.rn"},
+        "init": {
+          "type": "object",
+          "required": [
+            "n_ctx",
+            "n_batch",
+            "n_ubatch",
+            "n_threads",
+            "n_gpu_layers",
+            "use_mmap",
+            "use_mlock",
+            "flash_attn_type",
+            "cache_type_k",
+            "cache_type_v"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "n_ctx": {"type": "integer", "minimum": 1024, "maximum": 32768},
+            "n_batch": {"type": "integer", "minimum": 1, "maximum": 8192},
+            "n_ubatch": {"type": "integer", "minimum": 1, "maximum": 8192},
+            "n_threads": {"type": "integer", "minimum": 1, "maximum": 32},
+            "n_gpu_layers": {"type": "integer", "minimum": 0, "maximum": 999},
+            "use_mmap": {"type": "boolean"},
+            "use_mlock": {"type": "boolean"},
+            "flash_attn_type": {"enum": ["auto", "on", "off"]},
+            "cache_type_k": {"const": "f16"},
+            "cache_type_v": {"const": "f16"},
+            "devices": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {"type": "string", "pattern": "^[A-Za-z0-9]{1,32}$"}
+            }
+          }
+        },
+        "completion": {
+          "type": "object",
+          "required": ["n_predict", "temperature", "seed"],
+          "additionalProperties": false,
+          "properties": {
+            "n_predict": {"type": "integer", "minimum": 1, "maximum": 512},
+            "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+            "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295}
+          }
+        },
+        "unlisted": {"const": "binding-defaults"},
+        "distribution": {
+          "type": "object",
+          "description": "The binding as installed: the npm package as published, with no patches applied. Absent in records from apps built before it was recorded.",
+          "required": ["source", "package", "version", "patches"],
+          "additionalProperties": false,
+          "properties": {
+            "source": {"const": "npm"},
+            "package": {"const": "llama.rn"},
+            "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?$"},
+            "patches": {"type": "array", "maxItems": 0}
+          }
+        }
+      }
+    },
+    "sessionAcceleratorV1": {
+      "type": "object",
+      "required": [
+        "runId",
+        "timestampIso",
+        "deviceInfo",
+        "artifact",
+        "schema",
+        "schemaVersion",
+        "harnessVersion",
+        "engine",
+        "engineVersion",
+        "backend",
+        "observedBackend",
+        "platform",
+        "model",
+        "quant",
+        "modelFile",
+        "configuration",
+        "configurationRunId",
+        "protocol",
+        "status",
+        "coldRuns",
+        "summary",
+        "guardsPassed",
+        "guardNotes",
+        "conditionPolicy",
+        "repetitionsPlanned",
+        "stopReason",
+        "runOrder",
+        "chargingPolicy",
+        "conditionVerdict",
+        "build",
+        "configurationSource",
+        "effectiveSettings",
+        "executionReports",
+        "purpose",
+        "gateBackend",
+        "correctness",
+        "comparison"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,99}$"},
+        "timestampIso": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+        },
+        "deviceInfo": {
+          "type": "object",
+          "required": ["model", "androidRelease"],
+          "additionalProperties": false,
+          "properties": {"model": {"type": "string"}, "androidRelease": {"type": "string"}}
+        },
+        "artifact": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["sha256", "sizeBytes", "expectedSha256"],
+              "additionalProperties": false,
+              "properties": {
+                "sha256": {"$ref": "#/$defs/sha256"},
+                "sizeBytes": {"type": "integer", "minimum": 0},
+                "expectedSha256": {
+                  "oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}],
+                  "description": "The configured run's modelSha256, or null when the configuration names none."
+                }
+              }
+            }
+          ],
+          "description": "null only for runs recorded without measurement (stopReason setup-failed, configuration-aborted, engine-unavailable or gate-cleanup-failed)."
+        },
+        "schema": {"const": "xebench-raw"},
+        "schemaVersion": {"const": 1},
+        "harnessVersion": {"const": "xebench-0.7-accelerator"},
+        "engine": {"enum": ["llama.cpp", "litert-lm"]},
+        "engineVersion": {"type": "string", "minLength": 1},
+        "backend": {"enum": ["cpu", "gpu", "npu"], "description": "Requested backend."},
+        "observedBackend": {"$ref": "#/$defs/observedBackend"},
+        "platform": {"const": "android"},
+        "model": {"$ref": "#/$defs/label"},
+        "quant": {"$ref": "#/$defs/label"},
+        "modelFile": {"$ref": "#/$defs/acceleratorModelFile"},
+        "configuration": {"$ref": "#/$defs/configurationV2"},
+        "configurationRunId": {"$ref": "#/$defs/label"},
+        "protocol": {
+          "type": "object",
+          "description": "accelerator-v1 protocol; cpu-reference-v3 fields plus prompt format, sampling and gate version.",
+          "required": [
+            "version",
+            "nColdRuns",
+            "cooldownSec",
+            "promptLabel",
+            "prompt",
+            "maxDecodeTokens",
+            "nThreads",
+            "nCtx",
+            "coldDefinition",
+            "readinessTimeoutSec",
+            "measurementKind",
+            "warmRequests",
+            "processRestartBetweenRepetitions",
+            "maxBatteryTempRiseC",
+            "promptFormat",
+            "chatTemplate",
+            "sampling",
+            "gate"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "version": {"const": "accelerator-v1"},
+            "nColdRuns": {"type": "integer", "minimum": 1, "maximum": 20},
+            "cooldownSec": {"type": "integer", "minimum": 0, "maximum": 300},
+            "promptLabel": {"type": "string", "minLength": 1},
+            "prompt": {"type": "string", "minLength": 1},
+            "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+            "nThreads": {"$ref": "#/$defs/nullableThreads"},
+            "nCtx": {"$ref": "#/$defs/nullableCtx"},
+            "coldDefinition": {"type": "string", "minLength": 1},
+            "readinessTimeoutSec": {"type": "integer", "minimum": 10, "maximum": 900},
+            "measurementKind": {"const": "fresh-instance-first-request"},
+            "warmRequests": {"const": "not-measured"},
+            "processRestartBetweenRepetitions": {"const": false},
+            "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10},
+            "promptFormat": {"const": "user-turn-chat-template"},
+            "chatTemplate": {"enum": ["gemma3", "llama32"]},
+            "sampling": {"const": "greedy"},
+            "gate": {"const": "output-gate-v1"}
+          }
+        },
+        "status": {"enum": ["running", "complete", "failed"]},
+        "coldRuns": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 20,
+          "items": {
+            "oneOf": [
+              {"$ref": "#/$defs/completeAttemptAcceleratorV1"},
+              {"$ref": "#/$defs/failedAttemptAcceleratorV1"},
+              {"$ref": "#/$defs/skippedAttempt"}
+            ]
+          }
+        },
+        "summary": {
+          "type": "object",
+          "required": ["loadMs", "ttftMs", "prefillTps", "decodeTps"],
+          "additionalProperties": false,
+          "properties": {
+            "loadMs": {"$ref": "#/$defs/optionalAggregate"},
+            "ttftMs": {"$ref": "#/$defs/optionalAggregate"},
+            "prefillTps": {"$ref": "#/$defs/optionalAggregate"},
+            "decodeTps": {"$ref": "#/$defs/optionalAggregate"}
+          }
+        },
+        "guardsPassed": {
+          "enum": [false, null],
+          "description": "Never true: backend execution is unverified even when conditionVerdict passes."
+        },
+        "guardNotes": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+        "conditionPolicy": {"$ref": "#/$defs/conditionPolicyV2"},
+        "repetitionsPlanned": {"type": "integer", "minimum": 1, "maximum": 20},
+        "stopReason": {
+          "enum": [
+            null,
+            "repetition-failed",
+            "readiness-timeout",
+            "condition-probe-pending",
+            "cleanup-failed",
+            "configuration-aborted",
+            "setup-failed",
+            "model-hash-mismatch",
+            "engine-unavailable",
+            "gate-cleanup-failed"
+          ]
+        },
+        "runOrder": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/runOrder"}]},
+        "chargingPolicy": {"oneOf": [{"$ref": "#/$defs/chargingPolicyV2"}, {"$ref": "#/$defs/chargingPolicyV3"}]},
+        "conditionVerdict": {
+          "type": "object",
+          "required": ["status", "reasons", "charging"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {"enum": ["pass", "fail", "unverified"]},
+            "reasons": {"type": "array", "maxItems": 64, "items": {"type": "string"}},
+            "charging": {"enum": ["satisfied", "violated", "on-battery", "unknown"]}
+          }
+        },
+        "build": {"$ref": "#/$defs/buildIdentity"},
+        "configurationSource": {"$ref": "#/$defs/configurationSource"},
+        "effectiveSettings": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/effectiveSettingsLlamaRnAccelerator"}],
+          "description": "llama.cpp runs: every parameter passed to llama.rn. LiteRT-LM runs: null (LiteRtBenchModule.kt states its parameters in code)."
+        },
+        "executionReports": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/executionReport"},
+          "description": "One engine report per successful model load, in load order. Reports are what the engine said, not verified execution; observedBackend stays null."
+        },
+        "purpose": {"enum": ["measurement", "bug-repro"]},
+        "correctness": {"$ref": "#/$defs/correctness"},
+        "comparison": {"$ref": "#/$defs/comparison"},
+        "gateBackend": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/backendEvidence"}],
+          "description": "Backend evidence from the correctness gate's load, the first load of this run in the process; null when the gate did not load the engine."
+        }
+      },
+      "description": "Protocol accelerator-v1 (harness xebench-0.7-accelerator): cpu-reference-v3 repetitions, conditions and identity evidence for llama.cpp and LiteRT-LM on cpu/gpu/npu, with observed-backend evidence and the output-gate-v1 correctness gate (docs/experiments/litert-accelerators.md)."
     }
   }
 }
