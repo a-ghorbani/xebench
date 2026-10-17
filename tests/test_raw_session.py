@@ -182,6 +182,7 @@ class SchemaAndCliTests(unittest.TestCase):
             for bad in ({"type": "object", "properties": {"a": {"format": "date-time"}}},
                         {"properties": {"properties": {"format": "date-time"}}},
                         {"type": "decimal"},
+                        {"type": "array", "items": True},
                         {"$defs": {"a": {"type": "string"}}, "$ref": "#/$defs/a", "minLength": 1}):
                 with self.subTest(schema=bad):
                     path.write_text(json.dumps(bad))
@@ -203,6 +204,8 @@ class SchemaAndCliTests(unittest.TestCase):
             strip(record)
             record["guardNotes"] = record["guardNotes"][:1]
         self.assertEqual(codes(mutate("flagged", strip_flagged)), {"guards.inconsistent"})
+        self.assertEqual(raw_session.validate(mutate("beforeProbeBusy", lambda r: None)), [])
+        self.assertEqual(codes(mutate("beforeProbeBusy", strip)), {"conditions.inconsistent"})
 
     def test_patterns_are_anchored_like_ecma_regexes(self):
         for change in (lambda r: r.update(runId=r["runId"] + "\n"),

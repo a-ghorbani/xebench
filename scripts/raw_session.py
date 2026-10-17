@@ -126,9 +126,12 @@ def _check_keywords(node, where):
     for key in ("properties", "$defs"):
         for name, child in node.get(key, {}).items():
             _check_keywords(child, f"{where}/{key}/{name}")
-    for key in ("items", "additionalProperties"):
-        if isinstance(node.get(key), dict):
-            _check_keywords(node[key], f"{where}/{key}")
+    if "items" in node:
+        _check_keywords(node["items"], f"{where}/items")
+    if isinstance(node.get("additionalProperties"), dict):
+        _check_keywords(node["additionalProperties"], f"{where}/additionalProperties")
+    elif not isinstance(node.get("additionalProperties", True), bool):
+        raise ValueError(f"additionalProperties must be a boolean or schema at {where}")
     for index, child in enumerate(node.get("oneOf", [])):
         _check_keywords(child, f"{where}/oneOf/{index}")
 
@@ -335,9 +338,14 @@ def _semantic(record):
         errors.append(reason("conditions.inconsistent", "/conditionPolicy",
                              "conditionPolicy and every attempt's conditions must be present together"))
         return errors
-    if not any(observed) and record["guardsPassed"] is not None:
-        errors.append(reason("guards.inconsistent", "/guardsPassed",
-                             "Without condition evidence guardsPassed must stay null"))
+    if not any(observed):
+        if record["guardsPassed"] is not None:
+            errors.append(reason("guards.inconsistent", "/guardsPassed",
+                                 "Without condition evidence guardsPassed must stay null"))
+        for index, attempt in enumerate(attempts):
+            if attempt["status"] == "failed" and attempt["error"]["phase"] == "conditions":
+                errors.append(reason("conditions.inconsistent", f"/coldRuns/{index}/error/phase",
+                                     "A conditions-phase failure requires condition evidence"))
     flagged = [assessment for attempt in attempts if "conditions" in attempt for assessment in
                (attempt["conditions"]["beforeAssessment"], attempt["conditions"]["afterAssessment"])
                if assessment["status"] == "fail"]
