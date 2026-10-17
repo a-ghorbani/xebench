@@ -23,9 +23,10 @@ IDENTITY = {'engine': 'llama.cpp', 'backend': 'npu', 'platform': 'android', 'dev
             'soc': 'SM8850', 'model': 'Llama 3.2 1B', 'quant': 'Q4_0', 'provenance': 'measured'}
 PUBLISHED = {'ppTps': 197.6, 'tgTps': 38.6, 'ttftMs': 2396, 'sampleCount': 3}
 ORIGINAL_AS_STATED = 'n=3 cold-run median; prompt std-pp512-v1; decode 128 tok'
-NOTE = ('Marked failed 2026-10-17: a re-check on this phone with llama.rn 0.12.4 (the version this row was '
-        'measured with) found llama.cpp Hexagon output wrong for prompts over ~128 tokens; this row used a '
-        '~512-token prompt and had no output check, so its speed cannot be taken as correct inference.')
+NOTE = ('Marked failed 2026-10-17: a re-check on this phone with llama.rn 0.12.4 (the version locked in our '
+        'harness when this row was measured) found llama.cpp Hexagon output wrong on every tested prompt longer '
+        'than ~128 tokens; this row used a ~512-token prompt and had no output check, so its speed cannot be '
+        'taken as correct inference.')
 CORRECTED_AS_STATED = f'{ORIGINAL_AS_STATED}; {NOTE}'
 
 

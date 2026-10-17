@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.1",
-  "generatedAt": "2026-10-17T21:32:56Z",
+  "generatedAt": "2026-10-17T21:46:37Z",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Cross-engine on-device LLM benchmark results. provenance: measured = xebench lab runs; vendor = engine-maker official published numbers.",
   "rowCount": 41,
@@ -436,7 +436,7 @@
       "sourceName": "PocketPal R&D lab (xebench)",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; Marked failed 2026-10-17: a re-check on this phone with llama.rn 0.12.4 (the version this row was measured with) found llama.cpp Hexagon output wrong for prompts over ~128 tokens; this row used a ~512-token prompt and had no output check, so its speed cannot be taken as correct inference.",
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; Marked failed 2026-10-17: a re-check on this phone with llama.rn 0.12.4 (the version locked in our harness when this row was measured) found llama.cpp Hexagon output wrong on every tested prompt longer than ~128 tokens; this row used a ~512-token prompt and had no output check, so its speed cannot be taken as correct inference.",
       "validation": "failed"
     },
     {
