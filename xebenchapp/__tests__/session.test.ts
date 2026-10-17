@@ -21,7 +21,8 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-const config = parseConfig(configData);
+// No cooldown by default so tests do not wait; cooldown tests set cooldownSec explicitly.
+const config = {...parseConfig(configData), cooldownSec: 0};
 const identity = {runId: 'fixture-run', timestampIso: '2026-01-01T00:00:00Z',
   deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: {sha256: 'a'.repeat(64), sizeBytes: 100}};
 
@@ -51,7 +52,7 @@ test('retains each repetition and checkpoints before cooldown', async () => {
     expect(checkpoints).toHaveLength(engine.benchOnce.mock.calls.length);
     expect(engine.release).toHaveBeenCalledTimes(engine.benchOnce.mock.calls.length);
   });
-  const result = await runSession(engine, config, config.runs[0], identity, async record => {
+  const result = await runSession(engine, {...config, cooldownSec: 30}, config.runs[0], identity, async record => {
     checkpoints.push(JSON.parse(JSON.stringify(record)));
   }, sleep);
   expect(checkpoints.map(record => record.status)).toEqual(['running', 'running', 'complete']);
@@ -60,7 +61,9 @@ test('retains each repetition and checkpoints before cooldown', async () => {
   expect(result.coldRuns[0]).toMatchObject({loadMs: 17, promptTokens: 512, decodeTokens: 128});
   expect(result.guardsPassed).toBeNull();
   expect(result.observedBackend).toBeNull();
-  expect(sleep.mock.calls).toEqual([[30000], [30000]]);
+  // The cooldown precedes every repetition, the first included (after model hashing).
+  expect(sleep.mock.calls).toEqual([[30000], [30000], [30000]]);
+  expect(result.coldRuns.map(run => run.cooldownMs)).toEqual([30000, 30000, 30000]);
 });
 
 test.each(['load', 'inference'] as const)('retains failed %s attempt and releases resources', async phase => {
@@ -191,11 +194,12 @@ test('an interruption is flagged, then the next repetition waits for the app to 
     .mockResolvedValueOnce(conditions.normalizeConditions({...lost, foreground: false})) // still away
     .mockImplementation(async () => conditions.normalizeConditions(lost)); // back in front
   const sleep = jest.fn(noSleep);
-  const result = await runSession(adapter(), {...config, nColdRuns: 2}, config.runs[0], identity, async () => {}, sleep);
+  const result = await runSession(adapter(), {...config, nColdRuns: 2, cooldownSec: 30}, config.runs[0], identity,
+    async () => {}, sleep);
   expect(result.coldRuns[0].conditions.duringAssessment).toEqual({status: 'fail', reasons: ['interrupted']});
   expect(result.coldRuns[1].readiness).toMatchObject({status: 'ready', polls: 2, notReady: {'not-foreground': 1}});
   expect(result.coldRuns[1].conditions.duringAssessment?.status).toBe('pass');
-  expect(sleep.mock.calls).toEqual([[30000], [5000]]);
+  expect(sleep.mock.calls).toEqual([[30000], [30000], [5000]]);
   expect(result.status).toBe('complete');
   expect(result.conditionVerdict).toMatchObject({status: 'fail', reasons: ['interrupted']});
 });
@@ -289,8 +293,8 @@ test('records fresh-instance identity, process loads, run order and the charging
   const runOrder = {method: 'mulberry32-fisher-yates-v1' as const, seed: 7, seedSource: 'configured' as const,
     order: ['b', config.runs[0].id], position: 1};
   const sleep = jest.fn(noSleep);
-  const result = await runSession(adapter(), {...config, nColdRuns: 2}, config.runs[0], identity, async () => {},
-    sleep, {runOrder, initialCooldown: true});
+  const result = await runSession(adapter(), {...config, nColdRuns: 2, cooldownSec: 30}, config.runs[0], identity,
+    async () => {}, sleep, {runOrder});
   expect(sleep.mock.calls).toEqual([[30000], [30000]]);
   expect(result.coldRuns.map(run => run.cooldownMs)).toEqual([30000, 30000]);
   const [first, second] = result.coldRuns.map(run => run.instance!);

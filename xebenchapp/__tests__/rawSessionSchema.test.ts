@@ -190,7 +190,7 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
   const later = runs.find(run => run.id === ids[1])!;
   const runOrder = {method: ORDER_METHOD, seed: 12345, seedSource: 'configured' as const, order: ids, position: 1};
   records.orderedLaterRun = await single(adapter(), twoRuns,
-    {runOrder, baseline: {batteryTempC: 30}, initialCooldown: true}, later);
+    {runOrder, baseline: {batteryTempC: 30}}, later);
   records.configurationAborted = unmeasuredSession(adapter(), twoRuns, later, {...identity, artifact: null},
     runOrder, 'configuration-aborted');
 

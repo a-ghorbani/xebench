@@ -122,6 +122,20 @@ test('during-run samples pass only with complete coverage', () => {
   expect(assessDuring(normalizeMonitor(null), before, before).status).toBe('unverified');
 });
 
+test('the coverage rule is strict but achievable for long fixed-rate monitors', () => {
+  // A 300 s run sampled at start + k * 1000 ms (fixed rate, 2 ms late per wake-up) is covered.
+  const run = (spacing: number, offset: number, durationMs: number) => {
+    const samples = [];
+    for (let at = 0; at <= durationMs; at = samples.length * spacing + offset) samples.push({...healthy, elapsedMs: 100 + at});
+    return normalizeMonitor({status: 'stopped', intervalMs: 1000, startedElapsedMs: 100, stoppedElapsedMs: 100 + durationMs,
+      ticks: samples.length, dropped: 0, expired: false, maxSampleCostMs: 14, totalSampleCostMs: 14 * samples.length,
+      samples});
+  };
+  expect(assessDuring(run(1000, 2, 300_000), before, before).status).toBe('pass');
+  // The old fixed-delay loop (1000 ms after a 14 ms sample, 2 ms late) falls behind and is unverified.
+  expect(assessDuring(run(1016, 0, 300_000), before, before).status).toBe('unverified');
+});
+
 test('sampled failures and focus losses between endpoints are flagged', () => {
   const monitor = normalizeMonitor(monitorRaw([healthy, {...healthy, foreground: false}]));
   expect(assessDuring(monitor, before, before)).toEqual({status: 'fail', reasons: ['not-foreground']});

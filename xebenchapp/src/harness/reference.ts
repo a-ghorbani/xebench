@@ -82,8 +82,7 @@ export async function runReference(log: (message: string) => void) {
     }
     try {
       const result = await runSession(adapter, config, run, {...identity, artifact}, persist, undefined, {
-        // Every run cools down after model hashing, including the first.
-        runOrder, baseline, initialCooldown: true,
+        runOrder, baseline,
       });
       if (result.status === 'failed') {
         console.log(`XEBENCH_ERROR ${run.id}: see session evidence`);

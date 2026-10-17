@@ -424,6 +424,11 @@ class ConditionsV2Tests(unittest.TestCase):
         self.assertCodes(v2("orderedLaterRun", lambda r: r["runOrder"].update(seedSource="generated")),
                          {"order.inconsistent"})
         self.assertCodes(v2("complete", lambda r: r["coldRuns"][1].update(cooldownMs=0)), {"attempts.cooldown"})
+        # The cooldown before the first repetition is enforced too.
+        self.assertEqual(APP["complete"]["coldRuns"][0]["cooldownMs"], APP["complete"]["protocol"]["cooldownSec"] * 1000)
+        self.assertCodes(v2("complete", lambda r: r["coldRuns"][0].update(cooldownMs=0)), {"attempts.cooldown"})
+        reasons = raw_session.validate(v2("complete", lambda r: r["chargingPolicy"].update(notChargingStatuses=[5, 4])))
+        self.assertIn("charging-policy-v3", " ".join(item["message"] for item in reasons))
         self.assertCodes(v2("complete", lambda r: r["coldRuns"][1]["instance"].update(modelLoadsBeforeInProcess=0)),
                          {"instance.inconsistent"})
         self.assertCodes(v2("complete", lambda r: r["coldRuns"][1]["instance"].update(processInstanceId="other-proc")),

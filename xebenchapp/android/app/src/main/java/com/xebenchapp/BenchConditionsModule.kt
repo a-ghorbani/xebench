@@ -173,10 +173,11 @@ class BenchConditionsModule(private val context: ReactApplicationContext) :
         var first = true
         try {
           while (!active.stopped) {
-            // The first sample is immediate, so the start of load is covered.
+            // The first sample is immediate, so the start of load is covered. Later samples
+            // are due at start + k * interval (fixed rate), so sampling cost cannot drift.
             if (!first) {
               try {
-                Thread.sleep(active.intervalMs)
+                Thread.sleep(MonitorSchedule.nextDelayMs(start, SystemClock.elapsedRealtime(), active.intervalMs))
               } catch (_: InterruptedException) {
                 break
               }
