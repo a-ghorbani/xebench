@@ -124,8 +124,13 @@ class Capture:
 
     def read_reference(self, payload, read_file):
         """Resolve a bounded logcat file reference to the exact checksummed bytes."""
+        claimed = {}
+
         def fail(code, message, content=None):
-            raise raw_session.Invalid([raw_session.reason(code, "", message)], payload=content)
+            error = raw_session.Invalid([raw_session.reason(code, "", message)], payload=content)
+            # Once well formed, the reference's name and checksum stay with the rejection.
+            error.reference = claimed or None
+            raise error
         try:
             reference = strict_json(payload)
         except ValueError:
@@ -137,6 +142,7 @@ class Capture:
             fail("transport.reference", "Unsafe file reference")
         if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or read_file is None:
             fail("transport.reference", "Missing file checksum or reader")
+        claimed.update(name=name, sha256=digest)
         try:
             content = read_file(name)
         except UnicodeDecodeError:
@@ -147,15 +153,20 @@ class Capture:
             fail("transport.size", f"Record exceeds {MAX_RECORD_BYTES} bytes", content)
         if hashlib.sha256(raw).hexdigest() != digest:
             fail("transport.checksum", "Record checksum mismatch", content)
-        return content, name
+        return content, name, digest
 
-    def reject(self, marker, payload, source_file, reasons):
-        """Keep the rejected payload and, beside it, why it was rejected."""
+    def reject(self, marker, payload, source_file, reasons, claimed_sha256=None, retrieved=False):
+        """Keep the rejected payload and, beside it, why it was rejected.
+
+        Retrieved device files keep their exact bytes, so claimedSha256 can be
+        re-checked from saved evidence; inline logcat payloads end with a newline.
+        """
         stem = f"invalid-{uuid.uuid4()}"
-        with (self.directory / f"{stem}.txt").open("x", encoding="utf-8") as out:
-            out.write(payload + "\n")
+        with (self.directory / f"{stem}.txt").open("xb") as out:
+            out.write((payload if retrieved else payload + "\n").encode("utf-8"))
         rejection = {"schema": "xebench-ingest-rejection", "schemaVersion": 1, "payloadFile": f"{stem}.txt",
-                     "marker": marker, "sourceFile": source_file, "reasons": reasons}
+                     "marker": marker, "sourceFile": source_file, "claimedSha256": claimed_sha256,
+                     "reasons": reasons}
         with (self.directory / f"{stem}.reason.json").open("x", encoding="utf-8") as out:
             json.dump(rejection, out, indent=2, allow_nan=False)
             out.write("\n")
@@ -180,10 +191,12 @@ class Capture:
             elif message.startswith(("XEBENCH_RESULT ", "XEBENCH_RESULT_FILE ")):
                 marker, _, payload = message.partition(" ")
                 payload = payload.strip()
-                source_file = None
+                source_file = claimed = None
+                retrieved = False
                 try:
                     if marker == "XEBENCH_RESULT_FILE":
-                        payload, source_file = self.read_reference(payload, read_file)
+                        payload, source_file, claimed = self.read_reference(payload, read_file)
+                        retrieved = True
                     record = raw_session.parse(payload)
                     if isinstance(record, dict) and "schemaVersion" not in record and source_file is None:
                         # Pre-v1 inline records are preserved but never deep-validated.
@@ -194,13 +207,16 @@ class Capture:
                         raise raw_session.Invalid(reasons)
                 except raw_session.Invalid as error:
                     if error.payload is not None:
-                        payload = error.payload
-                    self.reject(marker, payload, source_file, error.reasons)
+                        payload, retrieved = error.payload, True
+                    reference = getattr(error, "reference", None)
+                    if reference:
+                        source_file, claimed = reference["name"], reference["sha256"]
+                    self.reject(marker, payload, source_file, error.reasons, claimed, retrieved)
                     continue
                 except (ValueError, TypeError, RecursionError, ArithmeticError) as error:
                     # Unexpected content must still be preserved, never crash capture.
                     self.reject(marker, payload, source_file,
-                                [raw_session.reason("ingest.error", "", type(error).__name__)])
+                                [raw_session.reason("ingest.error", "", type(error).__name__)], claimed, retrieved)
                     continue
                 legacy = validation == "legacy-unvalidated"
                 if legacy:

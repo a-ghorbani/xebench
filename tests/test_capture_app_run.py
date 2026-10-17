@@ -90,10 +90,14 @@ class CaptureTests(unittest.TestCase):
                 self.assertFalse(manifest['records'] or manifest['checkpoints'])
                 rejection = manifest['rejections'][0]
                 self.assertIn(code, rejection['codes'])
-                self.assertEqual((session.directory / rejection['file']).read_text(), payload + '\n')
+                stored = (session.directory / rejection['file']).read_bytes()
+                # Exact device bytes: the claimed checksum can be re-checked from saved evidence.
+                self.assertEqual(stored, payload.encode())
                 detail = json.loads((session.directory / rejection['reasonFile']).read_text())
                 self.assertEqual(detail['payloadFile'], rejection['file'])
                 self.assertEqual(detail['sourceFile'], 'fixture.json')
+                self.assertEqual(detail['claimedSha256'], reference['sha256'])
+                self.assertEqual(hashlib.sha256(stored).hexdigest(), detail['claimedSha256'])
                 self.assertIn(code, [item['code'] for item in detail['reasons']])
                 self.assertTrue(all(set(item) == {'code', 'path', 'message'} for item in detail['reasons']))
 
@@ -118,7 +122,40 @@ class CaptureTests(unittest.TestCase):
                     'transport.checksum' if should_read else 'transport.reference'
                 self.assertEqual(session.rejections[0]['codes'], [expected])
                 stored = (session.directory / session.rejections[0]['file']).read_text()
-                self.assertEqual(stored, (payload if should_read else json.dumps(reference)) + '\n')
+                self.assertEqual(stored, payload if should_read else json.dumps(reference) + '\n')
+                detail = json.loads((session.directory / session.rejections[0]['reasonFile']).read_text())
+                # A well-formed reference keeps its claim even when the bytes disagree with it.
+                self.assertEqual(detail['claimedSha256'], reference['sha256'] if should_read else None)
+                self.assertEqual(detail['sourceFile'], reference['name'] if should_read else None)
+
+    def test_rejected_file_record_can_be_rechecked_from_saved_evidence(self):
+        retrieved = json.dumps(APP_RECORDS['complete'])  # no trailing newline on the device
+        cases = {
+            'checksum': hashlib.sha256(b'other bytes').hexdigest(),
+            'validation': hashlib.sha256(retrieved.encode()).hexdigest(),
+        }
+        for case, claimed in cases.items():
+            payload = retrieved if case == 'checksum' else retrieved.replace('"loadMs": 17', '"loadMs": 99')
+            claimed = claimed if case == 'checksum' else hashlib.sha256(payload.encode()).hexdigest()
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as root:
+                session = capture.Capture(root, {})
+                reference = {'name': 'fixture.json', 'sha256': claimed}
+                session.ingest('1 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference),
+                               {'fixture.json': payload}.__getitem__)
+                rejection = session.rejections[0]
+                detail = json.loads((session.directory / rejection['reasonFile']).read_text())
+                stored = (session.directory / rejection['file']).read_bytes()
+                self.assertEqual(stored, payload.encode())
+                self.assertEqual((detail['sourceFile'], detail['claimedSha256']), ('fixture.json', claimed))
+                # The saved bytes reproduce the device checksum exactly when it matched,
+                # and demonstrably differ from the claim when it did not.
+                self.assertEqual(hashlib.sha256(stored).hexdigest() == claimed, case == 'validation')
+        with tempfile.TemporaryDirectory() as root:
+            session = capture.Capture(root, {})
+            session.ingest('1 I ReactNativeJS: XEBENCH_RESULT {"schema": "other"}')
+            detail = json.loads((session.directory / session.rejections[0]['reasonFile']).read_text())
+            self.assertIsNone(detail['claimedSha256'])
+            self.assertEqual((session.directory / session.rejections[0]['file']).read_text(), '{"schema": "other"}\n')
 
     def test_hostile_inline_payloads_are_rejected_not_fatal(self):
         with tempfile.TemporaryDirectory() as root:
@@ -136,7 +173,7 @@ class CaptureTests(unittest.TestCase):
             session.ingest('1 I ReactNativeJS: XEBENCH_RESULT_FILE ' + json.dumps(reference),
                            {'fixture.json': payload}.__getitem__)
             self.assertEqual(session.rejections[0]['codes'], ['json.non-finite'])
-            self.assertEqual((session.directory / session.rejections[0]['file']).read_text(), payload + '\n')
+            self.assertEqual((session.directory / session.rejections[0]['file']).read_text(), payload)
 
     def test_undecodable_reference_is_rejected_not_fatal(self):
         def read_file(_name):
