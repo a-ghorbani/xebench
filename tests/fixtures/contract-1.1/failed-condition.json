@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.1",
+  "generatedAt": "2026-10-17T12:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract 1.1 consumer fixture: a SYNTHETIC measured row whose run-condition guards failed. Render as failed; never rank it against verified rows.",
+  "rowCount": 1,
+  "rows": [
+    {
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Fixture Phone",
+      "model": "Fixture Model 1B",
+      "quant": "Q4_0",
+      "ppTps": 160.2,
+      "tgTps": 19.8,
+      "ttftMs": 3201,
+      "memoryMb": null,
+      "provenance": "measured",
+      "sourceName": "PocketPal R&D lab (xebench)",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sourceDate": "2026-10",
+      "sampleCount": 3,
+      "asStated": "SYNTHETIC FIXTURE; n=3 cold-run median; prompt std-pp512-v1; decode 64 tok; GUARDS FAILED: not-foreground",
+      "validation": "failed",
+      "guardsPassed": false,
+      "conditionPolicy": "observed-conditions-v1",
+      "protocolVersion": "cpu-reference-v1",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": { "iqr": 22.7, "min": 131.5, "max": 171.0 },
+        "tgTps": { "iqr": 2.9, "min": 16.1, "max": 21.4 }
+      }
+    }
+  ]
+}

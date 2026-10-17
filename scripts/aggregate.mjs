@@ -15,15 +15,19 @@
  * the file is replaced atomically, or left byte-identical on any failure.
  *
  * It does NOT invent numbers: every field comes from the on-device record.
+ *
+ * Contract 1.1 (data/benchmarks.schema.json): rows from legacy records carry
+ * validation "legacy"; schemaVersion 1 sessions preview as "unverified" or
+ * "failed". Nothing is ever emitted as "verified" until an evidence pipeline
+ * exists. --update requires a canonical file already migrated to 1.1
+ * (scripts/migrate_contract_1_1.mjs) and writes schemaVersion 1.1 with an
+ * ISO-8601 UTC generatedAt.
  */
-import {
-  chmodSync, closeSync, fsyncSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync,
-} from 'node:fs';
-import { dirname, join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
-  assertBenchmarks, assertFinite, assertSchema, compareRows, PublicationError, readJson, rowKey,
+  assertBenchmarks, assertFinite, assertSchema, compareRows, CONTRACT_VERSION, isoNow, migrationNeeds,
+  PublicationError, readJson, rowInvariantErrors, rowKey, writeAtomic,
 } from './lib/publication.mjs';
 
 const USAGE =
@@ -257,6 +261,15 @@ function toRow({ rec, where }, warnings) {
   if (legacy) warnings.push(`${where}: LEGACY record (no schemaVersion); protocol and evidence are not validated`);
 
   const dev = rec.deviceInfo;
+  // Reference sessions never claim a pass (checked above): false = failed, null = unverified.
+  const contract = legacy
+    ? { validation: 'legacy' }
+    : {
+      validation: rec.guardsPassed === false ? 'failed' : 'unverified',
+      guardsPassed: rec.guardsPassed,
+      protocolVersion: rec.protocol.version,
+      conditionPolicy: nonEmpty(rec.conditionPolicy?.version) ? rec.conditionPolicy.version : undefined,
+    };
   return {
     engine: rec.engine,
     backend: rec.backend,
@@ -276,46 +289,20 @@ function toRow({ rec, where }, warnings) {
     sourceDate: rec.timestampIso?.slice(0, 7),
     sampleCount: n,
     asStated: asStated(rec, n),
+    ...contract,
   };
 }
 
-/** Write next to the target, flush, then rename over it: readers see old or new, never partial. */
-function writeAtomic(target, text, expectedBefore) {
-  const tmp = join(dirname(target), `.${randomUUID()}.benchmarks.json.tmp`);
-  let fd;
-  try {
-    fd = openSync(tmp, 'wx', 0o644);
-    writeFileSync(fd, text); // loops until every byte is written; throws on EFBIG/ENOSPC
-    fsyncSync(fd);
-    const written = fd;
-    fd = undefined; // never close twice: a failed close must still reach the cleanup below
-    closeSync(written);
-    chmodSync(tmp, statSync(target).mode & 0o777);
-    if (readFileSync(tmp, 'utf8') !== text) throw new PublicationError('temporary file does not match the output');
-    if (readFileSync(target, 'utf8') !== expectedBefore) {
-      throw new PublicationError('data/benchmarks.json changed during aggregation; re-run');
-    }
-    renameSync(tmp, target);
-    try {
-      const dir = openSync(dirname(target), 'r');
-      fsyncSync(dir); // persist the rename; best-effort where directories cannot be fsynced
-      closeSync(dir);
-    } catch {
-      // not supported on this platform
-    }
-  } catch (error) {
-    try {
-      if (fd !== undefined) closeSync(fd);
-    } catch {
-      // keep the original error; still remove the temp file
-    }
-    try {
-      unlinkSync(tmp);
-    } catch {
-      // the temp file was never created or was already renamed
-    }
-    throw error;
+/**
+ * Producer-side contract check for every row about to be emitted. There is no
+ * evidence pipeline yet, so emitting "verified" is always an error.
+ */
+function assertEmittable(row, label) {
+  const errors = rowInvariantErrors(row, label);
+  if (row.validation === 'verified') {
+    errors.push(`${label}: refusing to emit validation=verified: no evidence pipeline exists yet`);
   }
+  if (errors.length) throw new PublicationError(errors.join('\n  '));
 }
 
 function main() {
@@ -335,6 +322,13 @@ function main() {
     }
     envelope = readJson(DATA, 'data/benchmarks.json');
     assertBenchmarks(envelope, schema, 'existing data/benchmarks.json');
+    const needs = migrationNeeds(envelope);
+    if (needs.length) {
+      throw new PublicationError(
+        `existing data/benchmarks.json is not at contract ${CONTRACT_VERSION} (${needs.join('; ')}); ` +
+          'run node scripts/migrate_contract_1_1.mjs first',
+      );
+    }
   }
 
   const records = readRecords(files);
@@ -343,6 +337,7 @@ function main() {
   const rows = records.map((record) => {
     const row = JSON.parse(JSON.stringify(toRow(record, warnings))); // drop undefined fields
     assertSchema(row, rowSchema, `${record.where}: aggregated row`, schema);
+    assertEmittable(row, `${record.where}: aggregated row`);
     return { row, where: record.where };
   });
   rows.sort((a, b) => compareRows(a.row, b.row) || (a.where < b.where ? -1 : a.where > b.where ? 1 : 0));
@@ -376,7 +371,10 @@ function main() {
     byKey.set(rowKey(row), row);
   }
   const merged = [...byKey.values()].sort(compareRows);
-  const out = { ...envelope, generatedAt: new Date().toISOString().slice(0, 10), rowCount: merged.length, rows: merged };
+  merged.forEach((row) => assertEmittable(row, `data/benchmarks.json row ${rowKey(row)}`));
+  const out = {
+    ...envelope, schemaVersion: CONTRACT_VERSION, generatedAt: isoNow(), rowCount: merged.length, rows: merged,
+  };
   const text = JSON.stringify(out, null, 2) + '\n';
   assertBenchmarks(JSON.parse(text), schema, 'updated data/benchmarks.json');
   writeAtomic(DATA, text, before);
