@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- geniex-android declares minSdk 27; the app is minSdk 24. GENIE-X only runs on
+         Snapdragon 8 Elite-class (Android 16) devices, so the floor is moot at runtime.
+         The override builds it without raising minSdk for every flavor. geniex-android
+         declares its own cdsprpc/adsprpc/OpenCL native-library entries. -->
+    <uses-sdk tools:overrideLibrary="com.geniex.sdk" />
+</manifest>

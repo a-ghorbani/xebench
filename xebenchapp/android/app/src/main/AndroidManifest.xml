@@ -1,12 +1,7 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- GENIE-X (geniex-android) declares minSdk 27; app is minSdk 24. GENIE-X only
-         runs on Snapdragon 8 Elite (Android 16 devices) so the floor is moot at
-         runtime. Override lets it build without bumping minSdk (which would force a
-         slow llama.rn native rebuild). -->
-    <uses-sdk tools:overrideLibrary="com.geniex.sdk" />
+    <!-- Engine-specific manifest entries live in src/experimental and src/geniex. -->
 
     <application
       android:name=".MainApplication"
@@ -18,8 +13,6 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
-      <!-- llama.rn Hexagon NPU (HTP) needs the cdsprpc loader at runtime. -->
-      <uses-native-library android:name="libcdsprpc.so" android:required="false" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

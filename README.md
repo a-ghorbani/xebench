@@ -53,14 +53,15 @@ and current limitations. Other engine adapters are retained for subsequent work.
 
 ```bash
 cd xebenchapp
-npm install                       # Node 20+ (Metro needs toReversed)
+npm ci                            # Node 20+; keep install scripts (see Build flavors)
 
 # stage models on the device's app dir (see MODELS.md for the exact files)
 adb -s <serial> push <model files> /storage/emulated/0/Android/data/com.xebenchapp/files/
 
-# build + install a RELEASE build (debug is unfair — see METHODOLOGY)
-cd android && ./gradlew assembleRelease
-adb -s <serial> install -r app/build/outputs/apk/release/app-release.apk
+# build, check + install the CPU reference RELEASE build (debug is unfair — see METHODOLOGY)
+cd android && ./gradlew assembleReferenceRelease
+python3 ../../scripts/check_reference_apk.py app/build/outputs/apk/reference/release/app-reference-release.apk
+adb -s <serial> install -r app/build/outputs/apk/reference/release/app-reference-release.apk
 
 # run: the app auto-runs its configuration and emits evidence references
 ../../scripts/capture_app_run.sh <serial>       # writes a unique results/<capture-id>/ directory
@@ -97,13 +98,51 @@ unattributed app logs. Error messages stay in local `error-*.txt` files; recover
 startup failures also retain `startup-logcat.txt` for native/Java errors emitted
 before JavaScript starts. These diagnostic files must not be published.
 
+## Build flavors and prerequisites
+
+Native runtimes that cannot share one APK are Gradle product flavors. All flavors
+keep the application ID `com.xebenchapp`, so installing one replaces another.
+
+| Flavor | Gradle task | Native engines packaged | Needs files outside the repo |
+|---|---|---|---|
+| `reference` | `assembleReferenceRelease` | llama.rn CPU only | No — builds from a clean checkout |
+| `experimental` | `assembleExperimentalRelease` | llama.rn CPU + Hexagon/OpenCL, LiteRT-LM, ExecuTorch | Only for LiteRT NPU: QAIRT libs in `app/src/experimental/jniLibs/arm64-v8a/` |
+| `geniex` | `assembleGeniexRelease` | llama.rn CPU + GENIE-X (`geniex-android`, which bundles its own QNN and llama.cpp Hexagon runtime) | For the NPU path: Genie context binaries (model files) |
+
+Prerequisites for a clean-checkout reference build (other flavors add only the
+files in the table):
+
+- Node 20+ and `npm ci` in `xebenchapp` **with install scripts enabled**; llama.rn
+  downloads checksum-verified native libraries then. After `npm ci --ignore-scripts`,
+  run `npm rebuild llama.rn --foreground-scripts` before building an APK.
+- JDK 17+, Android SDK platform 36, build-tools 36.0.0, SDK CMake 3.22.1, NDK
+  27.1.12297006 (the app's pin) and 27.0.12077973 (AGP's default, used by
+  react-native-executorch); set `sdk.dir` in `android/local.properties` or
+  `ANDROID_HOME`.
+- Network access to Maven Central and Google Maven for Gradle dependencies.
+
+`./gradlew assembleRelease` builds every flavor. Each APK lands in
+`app/build/outputs/apk/<flavor>/release/app-<flavor>-release.apk`. A successful
+Gradle build does not prove the runtime libraries were packaged; check each APK with
+`python3 scripts/check_reference_apk.py [--flavor <flavor>] <apk>`. It requires the
+flavor's libraries and engine bridges, and rejects runtimes that belong to another
+flavor (for `reference`: Hexagon/HTP, OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X and
+ExecuTorch native libraries).
+
+Known limitations: React Native autolinking is not flavor-aware, so
+react-native-executorch's Java glue is linked into every flavor; `reference` and
+`geniex` exclude its native libraries, and its module reports itself unavailable if
+called. On the S23, llama.rn's Hexagon/OpenCL library hangs at first model load;
+build `experimental` with `-Pxebench.excludeLlamaHexagon=true` to use its CPU
+libraries there.
+
 ## Native dependencies (you must obtain these yourself)
 
 This repo does **not** vendor model weights or proprietary vendor SDKs.
 
 - **Models** — GGUF / `.pte` / `.litertlm` / QNN context binaries. See **[MODELS.md](./MODELS.md)** for exact files and sources.
-- **QAIRT SDK** (Qualcomm AI Runtime) — needed for the LiteRT-NPU and Genie-NPU paths. Download the *Community* track (direct download) from Qualcomm; the `lib/aarch64-android/` host libs + the matching `lib/hexagon-vNN/unsigned/libQnnHtpVNNSkel.so` go into the app's `jniLibs/` (git-ignored — Qualcomm-licensed, do not redistribute). For **LiteRT-LM**, the QAIRT version must match the `LITERT_REF` of the LiteRT-LM release you use. The dispatch lib (`libLiteRtDispatch_Qualcomm.so`) is not part of QAIRT: it comes from Google's `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` Maven artifact, or from the per-arch `litert_npu_runtime_libraries.zip` on LiteRT GitHub releases. A combination that worked in our spikes: `litertlm-android` 0.18.0 + `litert-npu-runtime-qualcomm` 2.3.0 + QAIRT 2.50.0.260828.
-- **GENIE-X** (`com.qualcomm.qti:geniex-android`) — Qualcomm Maven dependency.
+- **QAIRT SDK** (Qualcomm AI Runtime) — needed for the LiteRT-NPU path and the CLI `genie-t2t-run` Genie measurements. Download the *Community* track (direct download) from Qualcomm; the `lib/aarch64-android/` host libs + the matching `lib/hexagon-vNN/unsigned/libQnnHtpVNNSkel.so` go into `app/src/experimental/jniLibs/arm64-v8a/` (git-ignored — Qualcomm-licensed, do not redistribute). Never put them in `app/src/main/jniLibs`. For **LiteRT-LM**, the QAIRT version must match the `LITERT_REF` of the LiteRT-LM release you use. The dispatch lib (`libLiteRtDispatch_Qualcomm.so`) is not part of QAIRT: it comes from Google's `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` Maven artifact, or from the per-arch `litert_npu_runtime_libraries.zip` on LiteRT GitHub releases. A combination that worked in our spikes: `litertlm-android` 0.18.0 + `litert-npu-runtime-qualcomm` 2.3.0 + QAIRT 2.50.0.260828.
+- **GENIE-X** (`com.qualcomm.qti:geniex-android`) — Maven Central dependency of the `geniex` flavor only.
 - **Genie context binaries** — per-SoC, per-QAIRT-version compiled `.bin` bundles (e.g. from `runanywhere/genie-npu-models` or Qualcomm AI Hub). They must match *both* your device's Hexagon arch (v73/v75/v79/v81) *and* a QAIRT version you can obtain.
 
 ### Toolchain gotchas (hard-won)
@@ -111,8 +150,8 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 - Host is often aarch64 Linux — point `hermesCommand` at the x86-64 hermesc (runs via emulation).
 - **Kotlin 2.3.0** required by `litertlm-android` (pin `kotlinVersion` *and* the plugin classpath).
 - `litertlm-android` needs `useLegacyPackaging` / `extractNativeLibs=true` so QNN libs land in `nativeLibraryDir`.
-- LiteRT-LM **GPU** (ML Drift) needs `<uses-native-library android:name="libOpenCL.so" android:required="false" />` and the same for `libvndksupport.so` in the app manifest, as the LiteRT-LM Kotlin guide has said since 0.14.0 ([LiteRT-LM#1860](https://github.com/google-ai-edge/LiteRT-LM/issues/1860)). Without them OpenCL fails to load (`libvndksupport.so` not found). In our spikes the F8 Ultra then reported `Can not find OpenCL library on this device`, and on the S23 ML Drift fell back to WebGPU and failed to create the engine. The manifest in this repo does not declare them yet.
-- **Build variants don't coexist:** llama.rn's Hexagon lib and GENIE-X's bundled Hexagon runtime collide, and llama.rn hijacks `ADSP_LIBRARY_PATH`. Toggle via `android/app/build.gradle` packaging excludes + `App.tsx` RUNS. (Turning this into a proper Gradle flavor is a good first contribution — see below.)
+- LiteRT-LM **GPU** (ML Drift) needs `<uses-native-library android:name="libOpenCL.so" android:required="false" />` and the same for `libvndksupport.so` in the app manifest, as the LiteRT-LM Kotlin guide has said since 0.14.0 ([LiteRT-LM#1860](https://github.com/google-ai-edge/LiteRT-LM/issues/1860)). Without them OpenCL fails to load (`libvndksupport.so` not found). In our spikes the F8 Ultra then reported `Can not find OpenCL library on this device`, and on the S23 ML Drift fell back to WebGPU and failed to create the engine. The `experimental` flavor manifest (`app/src/experimental/AndroidManifest.xml`) does not declare them yet.
+- **Runtimes don't coexist:** llama.rn's Hexagon lib and GENIE-X's bundled Hexagon runtime collide, and llama.rn hijacks `ADSP_LIBRARY_PATH`. They are separate [build flavors](#build-flavors-and-prerequisites).
 
 ## Results are published here — the website loads them dynamically
 
@@ -156,7 +195,6 @@ Publication fails closed: on any error it exits 1 and leaves `data/benchmarks.js
 ## Contributing
 
 Good first issues:
-- Turn the manual build-variant toggle into a proper Gradle **product flavor** (`mainVariant` / `geniexVariant` / `litertNpuVariant`).
 - Add a **quality metric** (perplexity or a small task-accuracy set) so the board isn't speed-only — the top methodology gap (see METHODOLOGY §quant).
 - New device rows (MediaTek / more Snapdragons), new engines (MLX/CoreML need an iOS harness).
 - A Rule-0-clean, in-app Genie NPU path (currently CLI-measured).
