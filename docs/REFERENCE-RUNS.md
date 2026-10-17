@@ -47,6 +47,19 @@ APK hashes, and the session's `build.signingCertSha256` says which key signed th
 Bit-for-bit reproducibility is measured, not guaranteed: the build is not
 hermetic (host NDK/SDK, JDK), so a mismatch is informative, not a failure.
 
+Measured on PR #24 (CI on x86-64 Ubuntu with Temurin 21, against a local aarch64
+Linux host with OpenJDK 21, same commit and both clean): the APK SHA-256s differ.
+The dex files, the Hermes bundle, `resources.arsc` and every other asset are
+identical. The difference is confined to the eight libraries compiled by CMake during
+the build (`libappmodules.so`, `libreact_codegen_safeareacontext.so` and llama.rn's
+`librnllama_jni*.so`). Seven differ only in their 20-byte GNU build ID, which hashes
+host-specific build paths. `libreact_codegen_safeareacontext.so` also embeds the
+absolute path of a React Native header in the Gradle cache, which includes the
+build user's home directory. Do not distribute an APK built under a home directory
+you do not want to disclose. Release builds set React Native's dev-server IP
+resource to `localhost`, so the build host's address is not in the APK. Removing
+the path dependence from native builds is a follow-up.
+
 ## Configure and capture
 
 Install the app first. Then stage the pinned reference GGUF in the
