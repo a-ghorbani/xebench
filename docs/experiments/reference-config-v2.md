@@ -106,15 +106,15 @@ enabling flash attention for a CPU-only run; the S23 and Pixel 9 were not measur
 
 ## cpu-reference-v3
 
-[`cpu-reference-v3`](../../xebenchapp/configs/cpu-reference-v3.json) is the configuration of
-the board's llama.cpp CPU rows. It keeps cpu-reference-v2's load settings (`use_mmap: false`,
-`use_mlock: false`, repacking on) and sets `flash_attn_type` to `auto`. Reading the weights
-into memory costs only load time, about 200 ms on the F8, and leaves the memory-safe loading
-of PocketPal's Android defaults in place. Flash attention off costs 18–31% prefill on the
-three phones, and `auto` measures the same as `on` on the F8. cpu-reference-v3 runs Llama 3.2
-1B Instruct Q4_K_M, Q4_0 and Q8_0 from the same pinned revision
-([MODELS.md](../../MODELS.md)), so the board compares Q4_0 and Q8_0 with the reference
-Q4_K_M under the same settings.
+[`cpu-reference-v3`](../../xebenchapp/configs/cpu-reference-v3.json) is the configuration
+chosen for the board's llama.cpp CPU rows. It keeps cpu-reference-v2's load settings
+(`use_mmap: false`, `use_mlock: false`, repacking on), PocketPal's Android defaults, and sets
+`flash_attn_type` to `auto`. On the F8, reading the weights into memory costs only load
+time, about 200 ms, while flash attention off accounts for the whole 18% prefill loss of v2,
+and `auto` measures the same as `on`. On the S23 and Pixel 9, v2 prefills 28–31% slower than
+v1; there only the two settings together were measured. cpu-reference-v3 runs Llama 3.2 1B
+Instruct Q4_K_M, Q4_0 and Q8_0 from the same pinned revision ([MODELS.md](../../MODELS.md))
+with the same settings.
 
 ## Sessions
 

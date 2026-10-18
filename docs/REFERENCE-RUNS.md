@@ -3,7 +3,7 @@
 The default app runs the versioned configuration in
 [`cpu-reference-v2.json`](../xebenchapp/configs/cpu-reference-v2.json), which every flavor
 bundles. [`cpu-reference-v3.json`](../xebenchapp/configs/cpu-reference-v3.json), the
-configuration of the board's llama.cpp CPU rows, and
+configuration chosen for the board's llama.cpp CPU rows, and
 [`cpu-reference-v1.json`](../xebenchapp/configs/cpu-reference-v1.json) run as staged
 configurations. All three record sessions of protocol `cpu-reference-v3`; the
 configuration IDs are separate from the protocol versions of the same names described
@@ -49,8 +49,9 @@ cache only reuses state across turns on recurrent, hybrid or SWA models. Llama 3
 these, and every repetition loads a fresh instance.
 
 cpu-reference-v3 keeps PocketPal's load settings (no memory map, no mlock, repacking on) and
-sets flash attention to `auto`. With flash attention off, prefill on the POCO F8 Ultra,
-Galaxy S23 and Pixel 9 is 18–31% slower, while the load mode changes only the load time
+sets flash attention to `auto`. cpu-reference-v2 prefills 18–31% slower than cpu-reference-v1
+on the POCO F8 Ultra, Galaxy S23 and Pixel 9. On the F8, flash attention off accounts for
+all of it, and the load mode changes only the load time
 ([reference-config-v2](experiments/reference-config-v2.md#cpu-reference-v3)).
 
 Other engine adapters remain experimental; expanding reference coverage is a follow-up in
@@ -134,8 +135,12 @@ To customize a run, copy the bundled JSON and edit its model basename, quant
 label, threads/context, load settings (`useMmap`, `useMlock`, `noExtraBufts`,
 `flashAttnType`), repetition, cooldown, readiness timeout
 (`readinessTimeoutSec`) or battery-rise bound (`maxBatteryTempRiseC`) settings, or
-add `orderSeed` to reproduce a recorded run order. To run cpu-reference-v1, stage the
-committed file byte for byte, so the recorded `configurationSource` hash names it. A run
+add `orderSeed` to reproduce a recorded run order. To run cpu-reference-v1 or
+cpu-reference-v3, stage the committed file byte for byte, so the recorded
+`configurationSource` hash names it. cpu-reference-v3 also needs its three model files on
+the device (`stage_model.py --serial <serial> models/<file>` for each, [MODELS.md](../MODELS.md)),
+and one invocation runs 9 repetitions, so give `capture_app_run.sh` a timeout above the
+default 900 s. A run
 may pin `modelSha256` (64 lowercase hex); the bundled configuration pins the reference
 GGUF from the manifest. `stage_model.py` stages only models listed in the manifest. Push any other
 GGUF with `adb` yourself, and remove or replace its `modelSha256`; runs with it are

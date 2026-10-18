@@ -279,6 +279,9 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
   }};
   records.referenceV1Staged = (await capture(persist => runSession(v1Engine, v1, v1.runs[0],
     {...identity, configurationSource: {kind: 'staged', sha256: 'f'.repeat(64)}}, persist, noSleep, context()))).pop()!;
+  const silent: Partial<ReturnType<typeof adapter>> = adapter();
+  delete silent.executionReport;
+  records.executionUnreported = await single(silent as ReturnType<typeof adapter>);
   // A staged cpu-reference-v3 invocation: each of its three runs (Q4_K_M, Q4_0, Q8_0) with its
   // own pinned model bytes, the v3 load settings and the seeded run order the app records.
   const v3 = parseConfig(v3Data);
@@ -297,9 +300,6 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
         configurationSource: {kind: 'staged', sha256: 'f'.repeat(64)}}, persist, noSleep,
       context({runOrder: v3RunOrder})))).pop()!;
   }
-  const silent: Partial<ReturnType<typeof adapter>> = adapter();
-  delete silent.executionReport;
-  records.executionUnreported = await single(silent as ReturnType<typeof adapter>);
   // The per-process ID is random by design; pin it so the fixture is reproducible.
   for (const record of Object.values(records)) {
     for (const attempt of record.coldRuns) {
