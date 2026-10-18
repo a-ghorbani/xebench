@@ -54,9 +54,10 @@ envelope. The producer (`scripts/aggregate.mjs`) labels rows from legacy records
 `validation: "legacy"`. It emits `verified`, `unverified` and `failed` rows only from
 hosted evidence bundles, under publication policy v1 (see
 [Published sessions and row selection](#published-sessions-and-row-selection)).
-1.1 data contains legacy and vendor rows, plus one measured row with
-`validation: "failed"` and no `guardsPassed`: the llama.cpp Hexagon row, invalidated
-by a later output-correctness re-check (`scripts/correct_hexagon_row.mjs`).
+The data contains legacy and vendor rows, verified rows published from evidence bundles,
+and one measured row with `validation: "failed"` and no `guardsPassed`: the llama.cpp
+Hexagon row, invalidated by a later output-correctness re-check
+(`scripts/correct_hexagon_row.mjs`).
 Consumers must not show a `failed` row as a normal measurement.
 
 Migration: `node scripts/migrate_contract_1_1.mjs` set `schemaVersion` "1.1",
@@ -115,7 +116,9 @@ fills `build` from the versions a session records (`runtimeVersions` in the raw
 session); a component the session does not report is absent, never guessed. It fills
 `configurationId` from the session's configuration and `configurationSha256` from its
 `configurationSource`; the publication policy has already checked that hash against the
-committed configuration file. The website shows `configurationId` as the row's "Config".
+committed configuration file. The website is to show `configurationId` as the row's
+"Config" in its details, and must accept both fields in production before a file that
+carries them is published.
 
 Producer rules and consumer behavior are separate. The producer rules above are
 strict: `scripts/validate_data.mjs` refuses a file that breaks one, so xebench

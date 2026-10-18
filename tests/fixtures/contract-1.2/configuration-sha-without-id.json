@@ -41,20 +41,8 @@
         }
       },
       "build": {
-        "engineVersion": "llama.cpp b11385 (bf9a0cc)",
-        "bindingVersion": "llama.rn 0.13.0-rc.7",
         "apkSha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "harnessCommit": "0000000000000000000000000000000000000000",
-        "runtimes": [
-          {
-            "name": "llama.cpp",
-            "version": "b11385"
-          },
-          {
-            "name": "llama.rn",
-            "version": "0.13.0-rc.7"
-          }
-        ]
+        "harnessCommit": "0000000000000000000000000000000000000000"
       },
       "evidence": {
         "sessionIds": [

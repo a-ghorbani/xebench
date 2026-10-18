@@ -314,8 +314,11 @@ The board displays sessions of the configurations listed in
 With `--allow-unlisted-configuration`, it logs the session and publishes it into the history
 only: such a session is never displayed, and a row key needs at least one session of a listed
 configuration. The display selection below considers only listed configurations, and
-`validate_data.mjs` checks the board file and the selection against it. Changing the list
-changes which sessions may be displayed, so it comes with a republished index.
+`validate_data.mjs` checks the board file and the selection against it. A change to the
+list that changes a displayed session leaves the committed index invalid, and
+`aggregate.mjs` has no command that re-selects the displayed sessions yet, so such a change
+needs that re-selection step first. A configuration that is a key's only listed one cannot be
+delisted, because published sessions are never removed.
 
 A published session is never rewritten, and CI re-derives every published row from its
 bundle with the current code. A change to the policy, the row format or its rounding

@@ -315,7 +315,7 @@ export function compareRows(a, b) {
 
 /** The contract version this producer writes (data/benchmarks.schema.json). */
 export const CONTRACT_VERSION = '1.1';
-/** The minor that adds build.runtimes; a file declares it only when a row carries runtimes. */
+/** The minor that adds build.runtimes and the configuration fields; a file declares it only when a row carries one. */
 export const RUNTIMES_CONTRACT_VERSION = '1.2';
 /** Minors at or above the producer's floor: a file at one of them needs no 1.1 migration. */
 const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION]);
