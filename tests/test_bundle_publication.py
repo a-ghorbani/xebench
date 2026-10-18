@@ -50,6 +50,7 @@ class Workspace(unittest.TestCase):
         self.root = Path(self.tmp.name) / "repo"
         shutil.copytree(ROOT / "scripts", self.root / "scripts")
         shutil.copytree(ROOT / "data", self.root / "data")
+        fx.reference_root(self.root)  # reviewed configs, model manifests, device table (+ fixture devices)
         (self.root / "evidence").mkdir()
         self.out = Path(self.tmp.name) / "work"
         self.canonical = self.root / "data/benchmarks.json"

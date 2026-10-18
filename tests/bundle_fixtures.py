@@ -76,6 +76,25 @@ def bundle(root, records, capture_id, *, consistency="matched", apks=None):
     return Path(report["bundle"]), report["evidence"]["bundleSha256"]
 
 
+# Synthetic device models the fixtures use, captured on HOST_DEVICE's SoC. They exist only in
+# the reference roots tests build; the committed configs/devices.json lists lab phones only.
+FIXTURE_DEVICES = ("Fixture", "Fixture Phone", "Fixture Tablet")
+
+
+def reference_root(target):
+    """A repository root with the committed reference data (reviewed run configurations,
+    model manifests, device table) plus the fixture devices; returns it."""
+    target = Path(target)
+    repo = Path(__file__).resolve().parents[1]
+    shutil.copytree(repo / "xebenchapp/configs", target / "xebenchapp/configs")
+    shutil.copytree(repo / "configs", target / "configs")
+    table = target / "configs/devices.json"
+    devices = json.loads(table.read_text())
+    devices["devices"] += [{"model": model, "name": model, "soc": HOST_DEVICE["soc"]} for model in FIXTURE_DEVICES]
+    table.write_text(json.dumps(devices, indent=2) + "\n")
+    return target
+
+
 def host(bundle_dir, repo_root):
     """Copy a bundle to <repo_root>/evidence/<sha>/, where its evidence URL serves it."""
     target = Path(repo_root) / "evidence" / Path(bundle_dir).name

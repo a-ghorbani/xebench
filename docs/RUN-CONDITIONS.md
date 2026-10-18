@@ -255,8 +255,19 @@ verdicts, because a bundle withholds prompt and output text. The capture's APK i
 is recomputed from its before and after snapshots. The values the raw-session schema
 fixes are checked too: every session runs on Android, and a cpu-reference session
 measures the CPU only. The device model the app reports must equal the model the host
-read from the phone. A bundle whose evidence disagrees with its own claims is refused
+read from the phone. Where a repetition times prefill or decode with `engine-timings`
+and keeps the engine's counters (`engineInternal`; LiteRT-LM keeps none), the published
+`prefillTps` and `decodeTps` must equal `promptPerSecond` and `predictedPerSecond`. A
+session whose SoC contradicts its device model's entry in
+[`configs/devices.json`](../configs/devices.json) is refused (SoC names compare
+case-insensitively). A bundle whose evidence disagrees with its own claims is refused
 as a whole.
+
+The policy also anchors each row to reviewed reference data in this repository: the
+run configurations under [`xebenchapp/configs/`](../xebenchapp/configs/) (except
+`experiment-*`), the model manifests
+[`configs/models/*-models.json`](../configs/models/) and the device table. Without
+that data no bundle is decided.
 
 A row earns `guardsPassed: true` and `validation: "verified"` only when every check
 passes:
@@ -267,12 +278,13 @@ passes:
 | `conditions` | every measured repetition, and the session, recompute to verdict `pass` | a recomputed `fail` | `unverified`, or no condition evidence (cpu-reference-v1) |
 | `charging` | every measured repetition recomputes to `satisfied` under `charging-policy-v3` | `violated` or `on-battery` | `unknown`, or another charging policy |
 | `coverage` | every measured repetition was sampled throughout (the coverage rule above) | — | a gap, expiry, dropped tick or missing monitor |
-| `artifact` | the artifact SHA-256 equals the configured run's `modelSha256` | it differs | the run pins no `modelSha256` |
+| `artifact` | the configured run (engine, backend, model, quant, model file, `modelSha256`) is exactly a run of a reviewed configuration, and the artifact SHA-256 equals both that `modelSha256` and the model manifest entry for the file | the artifact differs from the configured `modelSha256` or from the manifest entry | the run pins no `modelSha256`, is not a reviewed run, or its file has no manifest entry |
 | `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed` | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU/NPU evidence is at most `consistent` |
 | `correctness` (accelerator protocols) | output gate `pass` | `fail` | `unverified` |
 | `comparison` (accelerator protocols) | `valid` | `invalid` | `unverified` |
 | `build` | reported release build, clean tree (`gitDirty: false`), known commit, flavor `reference`, `experimental` or `geniex` | dirty tree | not reported, any field unknown, or a debug build (its JavaScript comes from Metro, so the commit does not identify the code that ran) |
 | `app-identity` | two recorded, identical APK snapshots (before and after the run) | the snapshots differ, or the capture reports `changed` | a missing or unrecorded snapshot |
+| `device` | the device model is in `configs/devices.json` and the capture's SoC matches it | — (a contradiction refuses the bundle) | the model is not in the table, or no SoC is reported |
 
 Backend evidence is recomputed with the `backend.ts` rule: from each repetition's
 `observedBackend` for accelerator protocols, and from each load's execution report

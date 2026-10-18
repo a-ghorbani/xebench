@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "description": "Lab devices by the ro.product.model a capture reads, with the SoC that model ships with. Publication refuses a session whose SoC contradicts its model's entry and leaves a row from an unlisted model unverified (docs/RUN-CONDITIONS.md, Publication policy v1). SoC values compare case-insensitively. Add a device only from a host getprop record of that phone.",
+  "devices": [
+    { "model": "SM-S911B", "name": "Samsung Galaxy S23", "soc": "SM8550" },
+    { "model": "25102PCBEG", "name": "POCO F8 Ultra", "soc": "SM8850" },
+    { "model": "Pixel 9", "name": "Google Pixel 9", "soc": "Tensor G4" },
+    { "model": "ONEPLUS A6003", "name": "OnePlus 6", "soc": "SDM845" },
+    { "model": "2511FPC34G", "name": "POCO X8 Pro", "soc": "MT6899" }
+  ]
+}

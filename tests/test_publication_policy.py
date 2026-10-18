@@ -22,6 +22,16 @@ spec.loader.exec_module(policy)
 
 PASS, UNKNOWN, FAIL = "pass", "unknown", "fail"
 HASH = "a" * 64
+REFERENCE = tempfile.TemporaryDirectory()
+
+
+def setUpModule():
+    # Reviewed configs, model manifests and the device table, plus the fixture devices.
+    policy.ROOT = fx.reference_root(Path(REFERENCE.name) / "repo")
+
+
+def tearDownModule():
+    REFERENCE.cleanup()
 
 
 def facts(**changes):
@@ -32,11 +42,13 @@ def facts(**changes):
         "measured": 3, "experiment": [], "chargingPolicy": "charging-policy-v3",
         "conditions": {"session": "pass", "repetitions": [
             {"runIndex": i, "verdict": "pass", "charging": "satisfied", "covered": True} for i in range(3)]},
-        "artifact": {"sha256": HASH, "recordedExpected": HASH, "configuredSha256": HASH},
+        "artifact": {"sha256": HASH, "recordedExpected": HASH, "configuredSha256": HASH,
+                     "reviewedConfigs": ["cpu-reference-v1.json"], "manifestSha256": [HASH]},
         "backendEvidence": "confirmed", "correctness": None, "comparison": None,
         "build": {"status": "reported", "gitCommit": "c" * 40, "gitDirty": False, "flavor": "reference",
                   "buildType": "release"},
         "appIdentity": "matched",
+        "device": {"model": "SM-S911B", "soc": "SM8550", "tableSoc": "SM8550"},
     }
     base.update(copy.deepcopy(changes))
     return base
@@ -124,6 +136,20 @@ DIMENSIONS = {
         ("recorded expectation differs", artifact(recordedExpected="b" * 64), "artifact", FAIL),
         ("unpinned", artifact(configuredSha256=None, recordedExpected=None), "artifact", UNKNOWN),
         ("no artifact", artifact(none=True), "artifact", UNKNOWN),
+        ("not a reviewed run", artifact(reviewedConfigs=[]), "artifact", UNKNOWN),
+        ("no manifest entry", artifact(manifestSha256=[]), "artifact", UNKNOWN),
+        ("manifest hash differs", artifact(manifestSha256=["b" * 64]), "artifact", FAIL),
+        ("manifest differs, run not reviewed", artifact(manifestSha256=["b" * 64], reviewedConfigs=[]), "artifact",
+         FAIL),
+    ],
+    "device": [
+        ("in the table", setter(), "device", PASS),
+        ("case differs only", setter(device={"model": "ONEPLUS A6003", "soc": "sdm845", "tableSoc": "SDM845"}),
+         "device", PASS),
+        ("unknown device", setter(device={"model": "Other", "soc": "X1", "tableSoc": None}), "device", UNKNOWN),
+        ("no SoC", setter(device={"model": "SM-S911B", "soc": None, "tableSoc": "SM8550"}), "device", UNKNOWN),
+        ("contradicts the table", setter(device={"model": "SM-S911B", "soc": "SM8850", "tableSoc": "SM8550"}),
+         "device", FAIL),
     ],
     "backend": [
         ("confirmed", setter(backendEvidence="confirmed"), "backend", PASS),
@@ -325,9 +351,10 @@ class FactsFromBundlesTests(unittest.TestCase):
         accelerator = {
             "f8-llama-hexagon": ("verified", True, []),
             "f8-llama-cpu": ("verified", True, []),
-            "f8-litert-cpu": ("verified", True, []),
-            "f8-litert-gpu": ("unverified", True, ["backend"]),
-            "f8-litert-npu": ("failed", True, ["backend", "correctness", "comparison"]),
+            # No .litertlm model is in a committed manifest, so LiteRT-LM artifacts stay unknown.
+            "f8-litert-cpu": ("unverified", True, ["artifact"]),
+            "f8-litert-gpu": ("unverified", True, ["artifact", "backend"]),
+            "f8-litert-npu": ("failed", True, ["artifact", "backend", "correctness", "comparison"]),
             "f8-llama-opencl": ("failed", True, ["backend", "comparison"]),
             "bugRepro-npu": (None, False, None),
             "engineUnavailable-cpu": (None, False, None),
@@ -464,6 +491,97 @@ class FactsFromBundlesTests(unittest.TestCase):
                 policy.export_evidence.verify = real_verify
             self.assertFalse(report["valid"])
             self.assertTrue(any("changed after verification" in error for error in report["errors"]), report["errors"])
+
+    def forge(self, record, *edits):
+        """Export `record`, then apply (path, change) edits, each re-hashed consistently; returns the report."""
+        with tempfile.TemporaryDirectory() as root:
+            directory, _ = fx.bundle(root, [record], "00000000-0000-4000-8000-000000000008")
+            for path, change in edits:
+                if path == "capture":
+                    path = next(directory.glob("captures/*.json")).relative_to(directory).as_posix()
+                directory = fx.rehash(directory, path, change)
+            return policy.bundle_report(directory, directory.name)
+
+    @staticmethod
+    def relabel_run(**fields):
+        """Change the record and its configured run together, as a consistent forger would."""
+        def change(document):
+            record = document["record"]
+            run = next(item for item in record["configuration"]["runs"] if item["id"] == record["configurationRunId"])
+            for key, value in fields.items():
+                if key == "sha256":
+                    record["artifact"]["sha256"] = record["artifact"]["expectedSha256"] = run["modelSha256"] = value
+                else:
+                    record[key] = run[key] = value
+        return change
+
+    def test_consistent_model_label_forgeries_are_not_verified(self):
+        """The model label is anchored to a reviewed configuration and the model manifest."""
+        path = "sessions/1767225600000-0-label.json"
+        q4_0 = "fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8"  # experimental-models.json
+        cases = {
+            "model renamed": ({"model": "Llama 3.2 3B"}, "unverified", UNKNOWN),
+            "quant renamed": ({"quant": "Q8_0"}, "unverified", UNKNOWN),
+            "hash swapped to an unlisted value": ({"sha256": "b" * 64}, "failed", FAIL),
+            "file and hash swapped to another manifest model": (
+                {"modelFile": "Llama-3.2-1B-Instruct-Q4_0.gguf", "sha256": q4_0}, "unverified", UNKNOWN),
+            "hash swapped to another manifest model's hash": ({"sha256": q4_0}, "failed", FAIL),
+        }
+        for name, (fields, validation, outcome) in cases.items():
+            with self.subTest(name):
+                report = self.forge(fx.cpu_record("complete", "1767225600000-0-label"), (path, self.relabel_run(**fields)))
+                self.assertTrue(report["valid"], report["errors"])
+                decision = report["sessions"][0]["decision"]
+                self.assertEqual((decision["validation"], outcome_of(decision, "artifact")), (validation, outcome),
+                                 decision["checks"])
+        unforged = self.forge(fx.cpu_record("complete", "1767225600000-0-label"))["sessions"][0]["decision"]
+        self.assertIn("cpu-reference-v1.json", next(c["detail"] for c in unforged["checks"] if c["check"] == "artifact"))
+
+    def test_engine_timings_must_equal_the_engine_counters(self):
+        path = "sessions/1767225600000-0-timing.json"
+        for counter in ("predictedPerSecond", "promptPerSecond"):
+            with self.subTest(counter):
+                def change(document, counter=counter):
+                    document["record"]["coldRuns"][0]["engineInternal"][counter] *= 1.25
+                report = self.forge(fx.cpu_record("complete", "1767225600000-0-timing"), (path, change))
+                self.assertFalse(report["valid"])
+                self.assertTrue(any("timing.engine-mismatch" in error for error in report["errors"]), report["errors"])
+
+    def test_device_and_soc_are_anchored_to_the_device_table(self):
+        path = "sessions/1767225600000-0-soc.json"
+
+        def soc(value):
+            def change(document):
+                document["device"]["soc"] = value
+            return change
+
+        def model(value):
+            def change(document):
+                document["device"]["model"] = value
+            return change
+        contradicted = self.forge(fx.cpu_record("complete", "1767225600000-0-soc"),
+                                  ("capture", soc("SM8850")), (path, soc("SM8850")))
+        self.assertFalse(contradicted["valid"])
+        self.assertTrue(any("contradicts configs/devices.json" in error for error in contradicted["errors"]),
+                        contradicted["errors"])
+        unlisted = self.forge(fx.cpu_record("complete", "1767225600000-0-soc"),
+                              ("capture", model("Unlisted Phone")), (path, model("Unlisted Phone")))
+        self.assertTrue(unlisted["valid"], unlisted["errors"])
+        decision = unlisted["sessions"][0]["decision"]
+        self.assertEqual((decision["validation"], outcome_of(decision, "device")), ("unverified", UNKNOWN))
+
+    def test_the_reference_data_is_required(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory, sha = fx.bundle(root, [fx.cpu_record("complete", "1767225600000-0-ref")],
+                                       "00000000-0000-4000-8000-000000000009")
+            report = policy.bundle_report(directory, sha, root=Path(root) / "no-such-repo")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("reference data" in error for error in report["errors"]), report["errors"])
+
+    def test_committed_device_table_names_the_lab_phones(self):
+        table = {entry["model"]: entry["soc"] for entry in json.loads((ROOT / "configs/devices.json").read_text())["devices"]}
+        self.assertEqual(table, {"SM-S911B": "SM8550", "25102PCBEG": "SM8850", "Pixel 9": "Tensor G4",
+                                 "ONEPLUS A6003": "SDM845", "2511FPC34G": "MT6899"})
 
     def test_recorded_claims_are_not_trusted(self):
         """A re-hashed bundle whose verdict or charging claims disagree with its evidence is refused."""

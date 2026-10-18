@@ -3,6 +3,10 @@
 
   publication_policy.py BUNDLE_DIR [--sha256 HEX]
 
+Reference data comes from this repository: the reviewed run configurations
+(xebenchapp/configs/*.json, experiment-* excluded), the model manifests
+(configs/models/*-models.json) and the device table (configs/devices.json).
+
 The bundle is checked with export_evidence.verify first (hashes, allowlist, privacy
 screen, summaries recomputed from repetitions). Each sanitized session record is then
 re-checked with raw_session's cross-field rules (readiness, condition assessments,
@@ -33,7 +37,42 @@ CHARGING_POLICY = "charging-policy-v3"
 # Protocols whose repetitions carry run-condition evidence (run-conditions-v2).
 CONDITION_PROTOCOLS = ("cpu-reference-v2", "cpu-reference-v3") + raw_session.ACCELERATOR_PROTOCOLS
 CHECKS = ("complete", "conditions", "charging", "coverage", "artifact", "backend", "correctness", "comparison",
-          "build", "app-identity")
+          "build", "app-identity", "device")
+ROOT = Path(__file__).resolve().parents[1]
+# A configured run's model identity; a reviewed run must agree on every one of these.
+RUN_IDENTITY = ("engine", "backend", "model", "quant", "modelFile", "modelSha256")
+# raw_session.TOLERANCE: engine-reported and published speeds are the same number.
+TIMING_TOLERANCE = 1e-9
+
+
+class ReferenceError_(ValueError):
+    """The repository's reference data is missing or malformed: nothing can be decided."""
+
+
+def load_reference(root=None):
+    """Reviewed runs, model manifest hashes by file name, and SoC by device model."""
+    root = Path(ROOT if root is None else root)
+    try:
+        runs = []
+        for path in sorted((root / "xebenchapp/configs").glob("*.json")):
+            config = json.loads(path.read_text(encoding="utf-8"))
+            if str(config.get("id", "")).startswith("experiment-"):
+                continue
+            for run in config["runs"]:
+                runs.append({key: run.get(key) for key in RUN_IDENTITY} | {"backend": run.get("backend", "cpu"),
+                                                                          "config": path.name})
+        manifests = {}
+        for path in sorted((root / "configs/models").glob("*-models.json")):
+            for entry in json.loads(path.read_text(encoding="utf-8"))["models"]:
+                manifests.setdefault(entry["file"], set()).add(entry["sha256"])
+        devices = {}
+        for entry in json.loads((root / "configs/devices.json").read_text(encoding="utf-8"))["devices"]:
+            devices[entry["model"]] = entry["soc"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise ReferenceError_(f"reference data unreadable ({type(error).__name__})")
+    if not runs or not manifests or not devices:
+        raise ReferenceError_("reference data is empty")
+    return {"runs": runs, "manifests": {key: sorted(value) for key, value in manifests.items()}, "devices": devices}
 
 
 # ── Facts: recomputed from the sanitized evidence ────────────────────────────
@@ -56,10 +95,28 @@ def recheck(record):
                 errors += raw_session._semantic_v3(record)
         else:
             errors = raw_session._semantic(record)
-        errors += schema_value_errors(record)
+        errors += schema_value_errors(record) + timing_errors(record)
     except (TypeError, ValueError, KeyError, IndexError, AttributeError, OverflowError):
         return ["record.unprocessable /"]
     return [f"{item['code']} {item['path'] or '/'}" for item in errors]
+
+
+def timing_errors(record):
+    """engine-timings speeds are the engine's own counters: where the record keeps them
+    (engineInternal), the published speed must equal them. LiteRT-LM keeps none."""
+    errors = []
+    for index, attempt in enumerate(record["coldRuns"]):
+        internal = attempt.get("engineInternal")
+        if attempt.get("status") != "complete" or not isinstance(internal, dict):
+            continue
+        for metric, method, counter in (("decodeTps", "decodeMethod", "predictedPerSecond"),
+                                        ("prefillTps", "prefillMethod", "promptPerSecond")):
+            if attempt.get(method) != "engine-timings" or counter not in internal:
+                continue
+            value, engine = attempt[metric], internal[counter]
+            if abs(value - engine) > TIMING_TOLERANCE * max(1.0, abs(value), abs(engine)):
+                errors.append({"code": "timing.engine-mismatch", "path": f"/coldRuns/{index}/{metric}"})
+    return errors
 
 
 def schema_value_errors(record):
@@ -178,8 +235,27 @@ def _gate(record, backend_status):
     return status, comparison["status"]
 
 
-def session_facts(doc, capture):
+def _reviewed(run, backend, reference):
+    """The reviewed configuration files whose run has exactly this run's model identity."""
+    if run is None:
+        return []
+    identity = {key: run.get(key) for key in RUN_IDENTITY} | {"backend": run.get("backend", backend)}
+    return sorted(item["config"] for item in reference["runs"]
+                  if all(item[key] == identity[key] for key in RUN_IDENTITY))
+
+
+def device_soc(doc, reference):
+    """(the table's SoC for this device model or None, error when the bundle's SoC contradicts it)."""
+    model, soc = doc["device"].get("model"), doc["device"].get("soc")
+    expected = reference["devices"].get(model)
+    if expected is not None and soc is not None and str(soc).casefold() != str(expected).casefold():
+        return expected, f"SoC {soc} contradicts configs/devices.json ({model} ships with {expected})"
+    return expected, None
+
+
+def session_facts(doc, capture, reference=None):
     """The facts publication-policy-v1 needs, for one session document of a verified bundle."""
+    reference = load_reference() if reference is None else reference
     record = doc["record"]
     version = record["protocol"]["version"]
     attempts = record["coldRuns"]
@@ -192,6 +268,8 @@ def session_facts(doc, capture):
         "chargingPolicy": (record.get("chargingPolicy") or {}).get("version"),
         "conditions": None, "artifact": None, "backendEvidence": None, "correctness": None, "comparison": None,
         "build": None, "appIdentity": app_identity(capture)[0],
+        "device": {"model": doc["device"].get("model"), "soc": doc["device"].get("soc"),
+                   "tableSoc": device_soc(doc, reference)[0]},
     }
     if version in CONDITION_PROTOCOLS:
         repetitions = []
@@ -206,8 +284,11 @@ def session_facts(doc, capture):
                                "repetitions": repetitions}
     artifact, run = record.get("artifact"), _configured_run(record)
     if artifact is not None:
+        model_file = None if run is None else run.get("modelFile")
         facts["artifact"] = {"sha256": artifact["sha256"], "recordedExpected": artifact.get("expectedSha256"),
-                             "configuredSha256": None if run is None else run.get("modelSha256")}
+                             "configuredSha256": None if run is None else run.get("modelSha256"),
+                             "reviewedConfigs": _reviewed(run, record["backend"], reference),
+                             "manifestSha256": reference["manifests"].get(model_file, [])}
     facts["backendEvidence"] = _backend(record, measured)
     if version in raw_session.ACCELERATOR_PROTOCOLS:
         facts["correctness"], facts["comparison"] = _gate(record, facts["backendEvidence"])
@@ -269,7 +350,15 @@ def _artifact(facts):
         return _check("artifact", UNKNOWN, "the configured run pins no modelSha256")
     if artifact["sha256"] != expected or recorded not in (None, expected):
         return _check("artifact", FAIL, "artifact SHA-256 differs from the configured modelSha256")
-    return _check("artifact", PASS, "artifact SHA-256 equals the configured modelSha256")
+    manifest, reviewed = artifact.get("manifestSha256") or [], artifact.get("reviewedConfigs") or []
+    if manifest and artifact["sha256"] not in manifest:
+        return _check("artifact", FAIL, "artifact SHA-256 differs from the model manifest entry for its file")
+    if not reviewed:
+        return _check("artifact", UNKNOWN, "the configured run (engine, backend, model, quant, file, hash) is not "
+                                           "a run of a reviewed configuration")
+    if not manifest:
+        return _check("artifact", UNKNOWN, "no model manifest entry for its file")
+    return _check("artifact", PASS, f"reviewed run ({', '.join(reviewed)}); hash matches the model manifest")
 
 
 def _backend_check(facts):
@@ -313,6 +402,18 @@ def _app_identity(facts):
     return _check("app-identity", outcome, f"capture APK identity {facts['appIdentity']}")
 
 
+def _device(facts):
+    device = facts.get("device") or {}
+    expected, soc = device.get("tableSoc"), device.get("soc")
+    if expected is None:
+        return _check("device", UNKNOWN, f"device model {device.get('model')} is not in configs/devices.json")
+    if soc is None:
+        return _check("device", UNKNOWN, "the capture reports no SoC")
+    if str(soc).casefold() != str(expected).casefold():
+        return _check("device", FAIL, f"SoC {soc} contradicts the device table ({expected})")
+    return _check("device", PASS, f"{device.get('model')} ships with {expected}")
+
+
 def evaluate(facts):
     """publication-policy-v1. Pure: the same facts always give the same decision.
 
@@ -328,7 +429,7 @@ def evaluate(facts):
     elif not facts["measured"]:
         refusal = "no measured repetition"
     checks = [_complete(facts), *_conditions(facts), _artifact(facts), _backend_check(facts), *_gate_checks(facts),
-              _build(facts), _app_identity(facts)]
+              _build(facts), _app_identity(facts), _device(facts)]
     if tuple(item["check"] for item in checks) != CHECKS:
         raise AssertionError("publication-policy-v1 checks are out of order")
     outcome = _worst([item["outcome"] for item in checks])
@@ -339,12 +440,17 @@ def evaluate(facts):
 
 # ── Bundle report ────────────────────────────────────────────────────────────
 
-def bundle_report(bundle, expected_sha=None):
+def bundle_report(bundle, expected_sha=None, root=None):
     bundle = Path(bundle)
     verified = export_evidence.verify(bundle, expected_sha)
     report = {"policy": POLICY_VERSION, "valid": False, "bundleSha256": verified["bundleSha256"],
               "errors": list(verified["errors"]), "sessions": []}
     if not verified["valid"]:
+        return report
+    try:
+        reference = load_reference(root)
+    except ReferenceError_ as error:
+        report["errors"].append(f"repository: {error}")
         return report
     try:
         # Re-read only bytes that still hash to what verify() checked.
@@ -375,8 +481,11 @@ def bundle_report(bundle, expected_sha=None):
             if doc["device"]["model"] != captures[doc["captureId"]]["device"]["model"]:
                 report["errors"].append(f"sessions/{session_id}.json/device/model: disagrees with its capture's "
                                         "host device")
+            contradiction = device_soc(doc, reference)[1]
+            if contradiction:
+                report["errors"].append(f"sessions/{session_id}.json/device/soc: {contradiction}")
             if not report["errors"]:
-                facts = session_facts(doc, captures[doc["captureId"]])
+                facts = session_facts(doc, captures[doc["captureId"]], reference)
                 sessions.append({"sessionId": session_id, "captureId": doc["captureId"], "facts": facts,
                                  "decision": evaluate(facts)})
     except (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError) as error:
