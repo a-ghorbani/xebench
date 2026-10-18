@@ -70,6 +70,9 @@ bundle file.
 
 | Bundle | Sessions | Devices | Cited by |
 |---|---|---|---|
+| [`5faa910117f3…`](5faa910117f3edd716afa22857469afd8197a4d528a47cc14a521ffdd02978e0/) | 6 | POCO F8 Ultra | Board rows (`cpu-reference-v3`: Q4_K_M, Q4_0, Q8_0), [#4](https://github.com/a-ghorbani/xebench/issues/4) |
+| [`6c0e288a6139…`](6c0e288a61393753dcfdfec590bca6d7b651e17182c9370b9cecc0ead8b39b41/) | 6 | Galaxy S23 | Board rows (`cpu-reference-v3`: Q4_K_M, Q4_0, Q8_0), [#4](https://github.com/a-ghorbani/xebench/issues/4) |
+| [`590b6fb6cf8b…`](590b6fb6cf8b6fd41c140826cfae2df2e97da5a33bcbb2f4c566bce3a1d978c3/) | 6 | Pixel 9 | Board rows (`cpu-reference-v3`: Q4_K_M, Q4_0, Q8_0), [#4](https://github.com/a-ghorbani/xebench/issues/4) |
 | [`a3ef19fae891…`](a3ef19fae8913867c1e131f53de4327bac4745896ccc85a583e9a17f97078479/) | 5 | POCO F8 Ultra | [cpu-reference-v2 vs v1](../docs/experiments/reference-config-v2.md#result-v1-vs-v2-on-three-phones) |
 | [`0d77346dfff7…`](0d77346dfff7b200512e57b50ce2d569ea33a9361e8467f9a678656701969054/) | 5 | Galaxy S23 | [cpu-reference-v2 vs v1](../docs/experiments/reference-config-v2.md#result-v1-vs-v2-on-three-phones) |
 | [`b5c69a2c8470…`](b5c69a2c8470ca4e9f815d05a050518017e2cfb33a48efff7a23d8fc57385d37/) | 5 | Pixel 9 | [cpu-reference-v2 vs v1](../docs/experiments/reference-config-v2.md#result-v1-vs-v2-on-three-phones) |
