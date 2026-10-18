@@ -114,9 +114,10 @@ except one entry per `name` (identical duplicate entries fail its
 `uniqueItems`); `scripts/lib/publication.mjs` enforces all of them. The producer
 fills `build` from the versions a session records (`runtimeVersions` in the raw
 session); a component the session does not report is absent, never guessed. It fills
-`configurationId` from the session's configuration and `configurationSha256` from its
-`configurationSource`; the publication policy has already checked that hash against the
-committed configuration file. The website is to show `configurationId` as the row's
+`configurationId` and `configurationSha256` only when the session's `configurationSource`
+hash names a committed configuration file and the session carries exactly that file's
+content: the id is that file's id, and the hash is the SHA-256 of its bytes. Otherwise a row
+names no configuration, and the board never displays it. The website is to show `configurationId` as the row's
 "Config" in its details, and must accept both fields in production before a file that
 carries them is published.
 

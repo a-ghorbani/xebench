@@ -310,7 +310,10 @@ is never a pass. Three kinds of session are never published at all:
 The board displays sessions of the configurations listed in
 [`configs/board.json`](../configs/board.json) (`displayConfigurations`, now
 `cpu-reference-v3`). A row published from a bundle names its configuration
-(`configurationId`). `aggregate.mjs --update` refuses a session of any other configuration.
+(`configurationId`, `configurationSha256`) only when the session's `configurationSource`
+hash names a committed file under `xebenchapp/configs/` and the session carries exactly that
+file's content; a session that names no such file names no configuration and is never
+displayed. `aggregate.mjs --update` refuses a session of any other configuration.
 With `--allow-unlisted-configuration`, it logs the session and publishes it into the history
 only: such a session is never displayed, and a row key needs at least one session of a listed
 configuration. The display selection below considers only listed configurations, and

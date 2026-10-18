@@ -666,7 +666,9 @@ function publishFromBundles() {
     // The plan shows what the board would display: sessions of configurations it lists.
     for (const session of shown) {
       if (session.row && !displayable(board(), session.row)) {
-        session.boardNote = `not displayed: configuration ${session.row.configurationId ?? 'unknown'} is not in configs/board.json`;
+        session.boardNote = session.row.configurationId
+          ? `not displayed: configuration ${session.row.configurationId} is not in configs/board.json`
+          : 'not displayed: the session names no reviewed configuration file (configurationSource)';
       }
     }
     const candidates = shown.filter((session) => session.row && !session.boardNote);
@@ -690,7 +692,8 @@ function publishFromBundles() {
   const candidates = namedCandidates(sessions);
   for (const session of candidates) {
     if (displayable(board(), session.row)) continue;
-    const configuration = session.row.configurationId ?? 'unknown';
+    const configuration = session.row.configurationId ??
+      'unknown (the session names no reviewed configuration file)';
     if (!allowUnlisted) {
       throw new PublicationError(
         `session ${session.sessionId}: configuration ${configuration} is not in configs/board.json; the board ` +

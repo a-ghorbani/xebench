@@ -770,6 +770,33 @@ class BoardConfigurationTests(Workspace):
         self.assertEqual(result.returncode, 1)
         self.assertIn("displays 1767225600000-0-listed (newest-verified) but", result.stderr)
 
+    def test_a_relabelled_configuration_id_is_never_displayed(self):
+        """configurationId comes from the reviewed file the session's configurationSource names,
+        not from the session's own configuration id: an unlisted session relabelled with a listed
+        id (alone, or with the listed file's hash) names no configuration and is never displayed."""
+        listed, _ = self.listed_and_unlisted()
+        listed_sha = fx.hashlib.sha256(fx.configuration_bytes(listed["configuration"])).hexdigest()
+        cases = {"id only": False, "id and hash": True}
+        for position, (name, with_hash) in enumerate(cases.items(), start=2):
+            with self.subTest(name):
+                forged = fx.cpu_record("noExpectedHash", f"1767225600000-{position}-relabel", timestamp=T["t2"],
+                                       device="Fixture Tablet")
+                forged["configuration"]["id"] = "cpu-reference-listed"
+                if with_hash:
+                    forged["configurationSource"]["sha256"] = listed_sha
+                self.bundle(forged)
+                result = self.dry_run()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                line = next(line for line in result.stdout.splitlines()
+                            if f"1767225600000-{position}-relabel |" in line and line.count(" | ") == 8)
+                self.assertIn("not displayed: the session names no reviewed configuration file", line)
+                before = self.digests()
+                result = self.aggregate("--from-bundles", self.root / "evidence", "--update", "--session",
+                                        f"1767225600000-{position}-relabel")
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("names no reviewed configuration file", result.stderr)
+                self.assertEqual(self.digests(), before)
+
     def test_the_dry_run_marks_sessions_the_board_does_not_display(self):
         self.listed_and_unlisted()
         result = self.dry_run()

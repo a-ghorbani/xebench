@@ -197,15 +197,20 @@ function rowBuild(record, capture, where, appIdentity) {
 }
 
 /**
- * Contract 1.2 configurationId/configurationSha256: the configuration the session ran, from
- * its configuration id and the configurationSource hash it recorded. A value without the
- * contract's form is absent, and the hash comes only with the id.
+ * Contract 1.2 configurationId/configurationSha256: the configuration the session ran. Both
+ * come from the reviewed configuration file publication_policy.py matched (facts
+ * configurationFile: the session's configurationSource hash names a committed file under
+ * xebenchapp/configs/ and the session carries exactly its content). A session that names no
+ * such file, or whose configuration differs from it, names no configuration, so the board
+ * (configs/board.json) never displays it. A value without the contract's form is absent.
  */
-function rowConfiguration(record) {
+function rowConfiguration(record, facts) {
+  const file = facts?.configurationFile;
   const id = record.configuration?.id;
-  if (typeof id !== 'string' || !CONFIGURATION_ID.test(id)) return {};
+  if (!isObject(file) || file.id !== id || typeof id !== 'string' || !CONFIGURATION_ID.test(id)) return {};
   const sha = record.configurationSource?.sha256;
-  return { configurationId: id, ...(typeof sha === 'string' && HEX64.test(sha) ? { configurationSha256: sha } : {}) };
+  if (sha !== file.sha256 || !HEX64.test(String(sha))) return {};
+  return { configurationId: id, configurationSha256: sha };
 }
 
 function asStated(record, n, decision) {
@@ -261,7 +266,7 @@ export function bundleRow({ doc, capture, decision, facts, bundleSha256 }) {
     guardsPassed: decision.guardsPassed,
     conditionPolicy: typeof record.conditionPolicy?.version === 'string' ? record.conditionPolicy.version : undefined,
     protocolVersion: record.protocol.version,
-    ...rowConfiguration(record),
+    ...rowConfiguration(record, facts),
     timingMethod: timingMethod(complete),
     dispersion,
     evidence: { sessionIds: [doc.sessionId], bundleSha256, url: evidenceUrl(bundleSha256) },
