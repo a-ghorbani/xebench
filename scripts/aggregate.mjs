@@ -41,6 +41,9 @@
  * It does NOT invent numbers: every field comes from the record or its bundle. --update
  * writes schemaVersion 1.1 with an ISO-8601 UTC generatedAt, or 1.2 once a row carries
  * build.runtimes (contract 1.2 build identity, from a session's runtimeVersions).
+ *
+ * --update requires a canonical file already migrated to contract 1.1
+ * (scripts/migrate_contract_1_1.mjs).
  */
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';

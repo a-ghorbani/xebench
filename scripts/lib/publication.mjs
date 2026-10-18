@@ -322,7 +322,7 @@ const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION])
 
 /** Closed list of build.runtimes names (contract 1.2). */
 export const RUNTIME_NAMES = Object.freeze([
-  'llama.cpp', 'llama.rn', 'LiteRT-LM', 'litert-npu-runtime-qualcomm', 'QAIRT', 'Genie',
+  'llama.cpp', 'llama.rn', 'LiteRT-LM', 'litert-npu-runtime-qualcomm', 'QAIRT', 'geniex-android',
 ]);
 /** build.runtimes[].version: a llama.cpp build (b11385) or a dotted version with an optional pre-release. */
 const DOTTED = '[0-9]{1,5}(\\.[0-9]{1,12}){1,3}(-[0-9A-Za-z]{1,16}(\\.[0-9A-Za-z]{1,16}){0,3})?';
@@ -614,14 +614,14 @@ export function buildFromSession(rec, where = '$') {
   const component = {
     'llama.cpp': llamaCpp && `b${llamaCpp.buildNumber}`, 'llama.rn': version('llamaRn'),
     'LiteRT-LM': version('litertLm'), 'litert-npu-runtime-qualcomm': version('litertNpuRuntimeQualcomm'),
-    QAIRT: version('qairt'), Genie: version('genie'),
+    QAIRT: version('qairt'), 'geniex-android': version('genie'),
   };
   const runtimes = RUNTIME_NAMES.filter((name) => component[name] !== null)
     .map((name) => ({ name, version: component[name] }));
   const engineVersion = rec.engine === 'llama.cpp'
     ? llamaCpp && `llama.cpp b${llamaCpp.buildNumber} (${llamaCpp.commit.slice(0, 7)})`
     : rec.engine === 'litert-lm' ? component['LiteRT-LM'] && `LiteRT-LM ${component['LiteRT-LM']}`
-      : rec.engine === 'genie-x' ? component.Genie && `Genie ${component.Genie}` : null;
+      : rec.engine === 'genie-x' ? component['geniex-android'] && `geniex-android ${component['geniex-android']}` : null;
   const bindingVersion = rec.engine === 'llama.cpp' && component['llama.rn'] ? `llama.rn ${component['llama.rn']}` : null;
   const build = {
     ...(engineVersion ? { engineVersion } : {}),
