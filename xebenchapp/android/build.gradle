@@ -4,7 +4,10 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 36
         targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
+        // Same NDK as PocketPal (pocketpal-ai android/build.gradle). llama.rn 0.13.0-rc.7 builds
+        // its native core from source in every app (its gradle.properties sets
+        // rnllamaBuildFromSource=true), so the NDK decides the shipped llama.cpp binary.
+        ndkVersion = "27.3.13750724"
         // Bumped from RN 0.82's default 2.1.20: LiteRT-LM 0.14.0 AAR ships Kotlin
         // 2.3.0 metadata, unreadable by the 2.1.x compiler. 2.3.x reads both.
         kotlinVersion = "2.3.0"
@@ -28,3 +31,24 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// Reference-only builds (every requested task names the reference flavor; only helper
+// tasks such as `help` or `dependencies` are exempt) compile only llama.rn's CPU
+// variants: the reference APK excludes the Hexagon/OpenCL variant anyway, and building it
+// would also start the Hexagon DSP build whenever a Hexagon SDK is installed. Any other
+// task (another flavor, a flavorless or abbreviated name such as `assembleRelease`,
+// `packageExperimentalRelease` or `aER`) keeps every variant, so a mixed task list can
+// never strip variants from experimental or geniex.
+// llama.rn reads rnllamaVariants as a project property (RNLLAMA_ANDROID_VARIANTS).
+def helperTask = /(?i)^(:?[A-Za-z0-9_.-]+:)*(help|tasks|dependencies|dependencyInsight|properties|projects|buildEnvironment|clean|wrapper)$/
+def requestedTasks = gradle.startParameter.taskNames.findAll { !(it ==~ helperTask) }
+def referenceOnly = !requestedTasks.isEmpty() && requestedTasks.every { it.toLowerCase().contains("reference") }
+if (referenceOnly) {
+    def cpu = ["", "_v8", "_v8_2", "_v8_2_dotprod", "_v8_2_i8mm", "_v8_2_dotprod_i8mm"]
+    def variants = (cpu.collect { "rnllama${it}" } + cpu.collect { "rnllama_jni${it}" }).join(",")
+    subprojects { project ->
+        if (project.name == "llama.rn") {
+            project.ext.rnllamaVariants = variants
+        }
+    }
+}

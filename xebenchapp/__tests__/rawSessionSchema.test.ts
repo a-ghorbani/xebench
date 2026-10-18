@@ -37,14 +37,17 @@ const build = {status: 'reported' as const, gitCommit: '0123456789abcdef01234567
 const identity = {runId: '1767225600000-0-fixture', timestampIso: '2026-01-01T00:00:00.000Z',
   deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: MODEL,
   build, configurationSource: {kind: 'bundled' as const, sha256: 'b'.repeat(64)}};
-// What llama.rn 0.12.4 reports for a CPU-only context in the reference flavor.
+// What llama.rn reports for a CPU-only context in the reference flavor (same strings in 0.12.4 and 0.13.0-rc.7).
 const report = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices: [],
   androidLib: 'rnllama_jni_v8_2_dotprod_i8mm', systemInfo: 'system_info: n_threads = 4 (n_threads_batch = 4) / 8 | ' +
-    'CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | '};
+    'CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ',
+  nativeLibraries: [{name: 'librnllama_jni_v8_2_dotprod_i8mm.so', buildId: 'c'.repeat(40)},
+    {name: 'librnllama_v8_2_dotprod_i8mm.so', buildId: 'd'.repeat(40)}]};
 const effective = ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
   init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: true, use_mlock: false,
     flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const, cache_type_v: 'f16' as const},
-  completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const});
+  completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const,
+  distribution: {source: 'npm' as const, package: 'llama.rn' as const, version: '0.0.0-fixture', patches: [] as []}});
 // USB-tethered at a charge limit (charging-policy-v3 eligible).
 const healthy = {timestampMs: 1767225600000, elapsedMs: 5000, batteryPct: 80, batteryTempC: 30.5, charging: true,
   batteryStatus: 4, plugged: 2, currentNowUa: -1500,
@@ -297,7 +300,8 @@ test('runSession records match the committed fixture validated by the host schem
   expect(records.complete.artifact).toEqual({...MODEL, expectedSha256: MODEL.sha256});
   expect(records.noExpectedHash.artifact).toEqual({...MODEL, expectedSha256: null});
   expect(records.executionUnreported.executionReports).toEqual([
-    {runIndex: 0, gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null}]);
+    {runIndex: 0, gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null,
+      nativeLibraries: null}]);
   expect(records.chargingRecordOnly.conditionVerdict.charging).toBe('violated');
   expect(records.chargingRecordOnly.chargingPolicy.readiness).toBe('record-only-experiment');
   expect(records.complete.chargingPolicy.readiness).toBe('wait-while-charging');

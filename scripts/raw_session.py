@@ -927,6 +927,10 @@ def _semantic_v3(record):
         if actual != wanted:
             errors.append(reason("settings.protocol-mismatch", f"/effectiveSettings/{key}",
                                  "Effective engine setting disagrees with the protocol"))
+    distribution = settings.get("distribution")
+    if distribution is not None and not record["engineVersion"].startswith(f"llama.rn {distribution['version']}"):
+        errors.append(reason("settings.distribution", "/effectiveSettings/distribution/version",
+                             "The installed llama.rn version disagrees with engineVersion"))
 
     source = record["configurationSource"]
     if source["kind"] == "staged" and source["sha256"] is None:

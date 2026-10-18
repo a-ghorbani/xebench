@@ -55,7 +55,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -64,7 +70,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -444,7 +460,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -453,7 +475,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         },
         {
           "runIndex": 1,
@@ -461,7 +493,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         },
         {
           "runIndex": 2,
@@ -469,7 +511,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         },
         {
           "runIndex": 3,
@@ -477,7 +529,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -1375,7 +1437,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -1384,7 +1452,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -1920,7 +1998,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -1929,7 +2013,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -2287,7 +2381,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -2296,7 +2396,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         },
         {
           "runIndex": 1,
@@ -2304,7 +2414,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -2859,7 +2979,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -2868,7 +2994,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         },
         {
           "runIndex": 1,
@@ -2876,7 +3012,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -3425,7 +3571,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -3434,7 +3586,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -3784,7 +3946,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -3793,7 +3961,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -4120,7 +4298,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -4129,7 +4313,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -4413,7 +4607,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -4677,7 +4877,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -4908,7 +5114,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -5172,7 +5384,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -5181,7 +5399,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -5520,7 +5748,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -5863,7 +6097,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -5872,7 +6112,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -6211,7 +6461,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -6220,7 +6476,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -6585,7 +6851,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -6837,7 +7109,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -6846,7 +7124,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -7221,7 +7509,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -7230,7 +7524,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -7601,7 +7905,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -7830,7 +8140,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -7839,7 +8155,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -8222,7 +8548,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -8231,7 +8563,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -8602,7 +8944,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -8611,7 +8959,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -8983,7 +9341,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -9214,7 +9578,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -9223,7 +9593,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         },
         {
           "runIndex": 1,
@@ -9231,7 +9611,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -9791,7 +10181,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -9986,7 +10382,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -9995,7 +10397,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -10355,7 +10767,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -10664,7 +11082,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -10673,7 +11097,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -11052,7 +11486,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -11061,7 +11501,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -11489,7 +11939,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -11498,7 +11954,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -11873,7 +12339,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -11882,7 +12354,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -12166,7 +12648,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -12175,7 +12663,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -13158,7 +13656,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -13333,7 +13837,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -13342,7 +13852,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -13712,7 +14232,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [],
       "platform": "android",
@@ -13887,7 +14413,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -13896,7 +14428,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -14265,7 +14807,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -14274,7 +14822,17 @@
           "reasonNoGPU": "GPU backend is not available",
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm",
-          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | "
+          "systemInfo": "system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
         }
       ],
       "platform": "android",
@@ -14645,7 +15203,13 @@
           "temperature": 0,
           "seed": 42
         },
-        "unlisted": "binding-defaults"
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
       },
       "executionReports": [
         {
@@ -14654,7 +15218,8 @@
           "reasonNoGPU": null,
           "devices": null,
           "androidLib": null,
-          "systemInfo": null
+          "systemInfo": null,
+          "nativeLibraries": null
         }
       ],
       "platform": "android",

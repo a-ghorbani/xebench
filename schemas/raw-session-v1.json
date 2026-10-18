@@ -736,12 +736,24 @@
             "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295}
           }
         },
-        "unlisted": {"const": "binding-defaults"}
+        "unlisted": {"const": "binding-defaults"},
+        "distribution": {
+          "type": "object",
+          "description": "The binding as installed: the npm package as published, with no patches applied. Absent in records from apps built before it was recorded.",
+          "required": ["source", "package", "version", "patches"],
+          "additionalProperties": false,
+          "properties": {
+            "source": {"const": "npm"},
+            "package": {"const": "llama.rn"},
+            "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?$"},
+            "patches": {"type": "array", "maxItems": 0}
+          }
+        }
       }
     },
     "executionReport": {
       "type": "object",
-      "description": "What llama.rn reported about the context created by one load: GPU placement and why not, devices used, the native library variant and llama.cpp's system_info line. Unreported or malformed values are null.",
+      "description": "What llama.rn reported about the context created by one load: GPU placement and why not, devices used, the native library variant, llama.cpp's system_info line and the mapped native libraries' build IDs. Unreported or malformed values are null.",
       "required": ["runIndex", "gpu", "reasonNoGPU", "devices", "androidLib", "systemInfo"],
       "additionalProperties": false,
       "properties": {
@@ -759,7 +771,26 @@
           ]
         },
         "androidLib": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-z0-9_]{1,64}$"}]},
-        "systemInfo": {"oneOf": [{"type": "null"}, {"type": "string", "maxLength": 2048, "pattern": "^[ -~]*$"}]}
+        "systemInfo": {"oneOf": [{"type": "null"}, {"type": "string", "maxLength": 2048, "pattern": "^[ -~]*$"}]},
+        "nativeLibraries": {
+          "description": "llama.rn native libraries mapped in the process after the load, with their ELF GNU build IDs (null when unreadable). Absent in records from apps built before it was recorded; null when the app could not report.",
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "required": ["name", "buildId"],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {"type": "string", "pattern": "^librnllama[a-z0-9_]{0,60}\\.so$"},
+                  "buildId": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{40}$"}]}
+                }
+              }
+            }
+          ]
+        }
       }
     },
     "completeAttemptV2": {

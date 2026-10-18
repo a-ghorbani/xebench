@@ -17,6 +17,18 @@ export interface ExecutionReport {
   androidLib: string | null;
   /** llama.cpp system_info line: threads in use and compiled CPU backend features. */
   systemInfo: string | null;
+  /**
+   * The llama.rn native libraries mapped in the process after the load, with their ELF GNU
+   * build IDs (40 hex; null when unreadable). Names the exact binary that ran; null when the
+   * BuildInfo module could not report.
+   */
+  nativeLibraries: NativeLibrary[] | null;
+}
+
+export interface NativeLibrary {
+  /** Library file name, e.g. librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so. */
+  name: string;
+  buildId: string | null;
 }
 
 /** Every llama.rn parameter the harness passes; anything unlisted is the binding's default. */
@@ -29,6 +41,12 @@ export interface LlamaRnEffectiveSettings {
   };
   completion: {n_predict: number; temperature: number; seed: number};
   unlisted: 'binding-defaults';
+  /**
+   * Where the binding came from: the npm package as published, without patches (xebench is
+   * reproducible from public packages). PocketPal ships the same version with its own
+   * JSI/completion-loop patch; see docs/REFERENCE-RUNS.md.
+   */
+  distribution: {source: 'npm'; package: 'llama.rn'; version: string; patches: []};
 }
 
 /**

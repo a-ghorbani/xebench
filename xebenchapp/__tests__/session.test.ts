@@ -31,9 +31,11 @@ const identity = {runId: 'fixture-run', timestampIso: '2026-01-01T00:00:00Z',
 const effective = ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
   init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: true, use_mlock: false,
     flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const, cache_type_v: 'f16' as const},
-  completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const});
+  completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const,
+  distribution: {source: 'npm' as const, package: 'llama.rn' as const, version: '0.0.0-fixture', patches: [] as []}});
 const report = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices: [],
-  androidLib: 'rnllama_jni_v8_2_dotprod_i8mm', systemInfo: 'system_info: n_threads = 4 / 8 | CPU : NEON = 1 | '};
+  androidLib: 'rnllama_jni_v8_2_dotprod_i8mm', systemInfo: 'system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ',
+  nativeLibraries: null};
 
 function adapter() {
   return {
