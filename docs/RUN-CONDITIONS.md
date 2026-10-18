@@ -307,6 +307,16 @@ is never a pass. Three kinds of session are never published at all:
 - bug reproductions (`purpose: "bug-repro"`);
 - sessions without a measured repetition.
 
+The board displays sessions of the configurations listed in
+[`configs/board.json`](../configs/board.json) (`displayConfigurations`, now
+`cpu-reference-v3`). A row published from a bundle names its configuration
+(`configurationId`). `aggregate.mjs --update` refuses a session of any other configuration.
+With `--allow-unlisted-configuration`, it logs the session and publishes it into the history
+only: such a session is never displayed, and a row key needs at least one session of a listed
+configuration. The display selection below considers only listed configurations, and
+`validate_data.mjs` checks the board file and the selection against it. Changing the list
+changes which sessions may be displayed, so it comes with a republished index.
+
 A published session is never rewritten, and CI re-derives every published row from its
 bundle with the current code. A change to the policy, the row format or its rounding
 therefore comes with a new policy version and a migration of the published index.

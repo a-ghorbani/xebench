@@ -16,6 +16,9 @@ import { assertBenchmarks, assertFindings, PublicationError, readJson } from './
 import { fileURLToPath } from 'node:url';
 import { reproductionErrors } from './lib/bundles.mjs';
 import { assertIndex } from './lib/history.mjs';
+import { BOARD_FILE, loadBoard } from './lib/board.mjs';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 const data = (name) => new URL(`../data/${name}`, import.meta.url);
 const paths = process.argv.slice(2);
@@ -31,7 +34,12 @@ try {
     const schemas = { benchmarks: schema, row: schema.$defs.row,
       index: readJson(data('sessions/index.schema.json'), 'data/sessions/index.schema.json') };
     const index = readJson(data('sessions/index.json'), 'data/sessions/index.json');
-    assertIndex(index, envelope, schemas);
+    const root = fileURLToPath(new URL('..', import.meta.url));
+    // configs/board.json decides which published sessions are displayed; it is validated
+    // whenever it exists, and needed as soon as a session is published.
+    const board = () => loadBoard(root);
+    if (existsSync(join(root, BOARD_FILE))) board();
+    assertIndex(index, envelope, schemas, board);
     // Every published session still comes out of its hosted bundle as the row the index keeps.
     const unreproduced = reproductionErrors(index, fileURLToPath(new URL('..', import.meta.url)));
     if (unreproduced.length) {

@@ -54,6 +54,7 @@ import {
 } from './lib/publication.mjs';
 import { bundleRow, isHosted, listBundles, readBoundBundle, reproductionErrors, runPolicy } from './lib/bundles.mjs';
 import { assertIndex, planPublication } from './lib/history.mjs';
+import { displayable, loadBoard } from './lib/board.mjs';
 
 const USAGE =
   'usage:\n' +
@@ -61,13 +62,15 @@ const USAGE =
   '        # report what the evidence bundles in <dir> would publish; writes nothing\n' +
   '  node scripts/aggregate.mjs --from-bundles <dir> --session <id> [--session <id>]... --update\n' +
   '        [--replace-legacy] [--replace-failed]       # publish those sessions (bundles under evidence/<sha>/)\n' +
+  '        [--allow-unlisted-configuration]          # also a session whose configuration configs/board.json\n' +
+  '                                                  # does not list (history only, never displayed; logged)\n' +
   '  node scripts/aggregate.mjs <raw.jsonl> [...] [--pretty]                  # preview EngineBenchmarkRow[] on stdout\n' +
   '  node scripts/aggregate.mjs <raw.jsonl> [...] --update --allow-legacy    # upsert reviewed legacy rows into data/benchmarks.json\n' +
   '  ... --update [--allow-legacy] --replace-failed                          # also replace rows marked validation=failed (logged)\n' +
   'exit codes: 0 ok, 1 rejected input/canonical data (nothing written), 2 usage';
 
 const FLAGS = new Set(['--pretty', '--update', '--allow-legacy', '--replace-failed', '--replace-legacy', '--dry-run',
-  '--json']);
+  '--json', '--allow-unlisted-configuration']);
 const VALUED = new Set(['--from-bundles', '--session']);
 const args = process.argv.slice(2);
 const sessionArgs = [];
@@ -100,6 +103,7 @@ const replaceFailed = has('--replace-failed');
 const replaceLegacy = has('--replace-legacy');
 const dryRun = has('--dry-run');
 const asJson = has('--json');
+const allowUnlisted = has('--allow-unlisted-configuration');
 const usage = [];
 if (unknown.length) usage.push(`unknown option(s): ${unknown.join(' ')}`);
 if (fromBundles !== null) {
@@ -117,6 +121,9 @@ if (fromBundles !== null) {
 }
 if (replaceFailed && !update) usage.push('--replace-failed only applies to --update');
 if (replaceLegacy && !update && fromBundles !== null) usage.push('--replace-legacy only applies to --update');
+if (allowUnlisted && (!update || fromBundles === null)) {
+  usage.push('--allow-unlisted-configuration only applies to --update --from-bundles');
+}
 if (usage.length) {
   for (const line of usage) console.error(line);
   console.error(USAGE);
@@ -381,6 +388,10 @@ function assertEmittable(row, label) {
   if (errors.length) throw new PublicationError(errors.join('\n  '));
 }
 
+let boardCache = null;
+/** configs/board.json, validated once: the configurations whose sessions the board displays. */
+const board = () => (boardCache ??= loadBoard(ROOT));
+
 /** Schemas of every published file. */
 function loadSchemas() {
   const benchmarks = readJson(SCHEMA, 'data/benchmarks.schema.json');
@@ -413,7 +424,7 @@ function loadCanonical(schemas) {
   }
   const indexBefore = readText(INDEX, 'data/sessions/index.json');
   const index = readJson(INDEX, 'data/sessions/index.json');
-  assertIndex(index, envelope, schemas, 'existing data/sessions/index.json');
+  assertIndex(index, envelope, schemas, board, 'existing data/sessions/index.json');
   const unreproduced = reproductionErrors(index, ROOT);
   if (unreproduced.length) {
     throw new PublicationError(`existing data/sessions/index.json does not reproduce from the hosted bundles:\n  ${unreproduced.slice(0, 20).join('\n  ')}`);
@@ -495,7 +506,7 @@ function aggregateRaw() {
   const text = serialize(out);
   const parsed = JSON.parse(text);
   assertBenchmarks(parsed, schemas.benchmarks, 'updated data/benchmarks.json');
-  assertIndex(index, parsed, schemas, 'data/sessions/index.json against the updated data/benchmarks.json');
+  assertIndex(index, parsed, schemas, board, 'data/sessions/index.json against the updated data/benchmarks.json');
   writeAtomicGroup([{ target: DATA, text, before }]);
   for (const key of replaced) console.error(`replaced existing row ${key}`);
   for (const entry of replacedFailed) console.error(`--replace-failed: replaced failed row ${entry}`);
@@ -612,7 +623,8 @@ function printDryRun(bundles, sessions, plan, planError, schemaVersion) {
     const label = row
       ? `${row.engine} ${row.backend} · ${row.device} · ${row.model}${row.quant ? ` ${row.quant}` : ''}`
       : `${session.facts.engine} ${session.facts.backend}`;
-    const validation = decision.publishable ? decision.validation : `not publishable (${decision.refusal})`;
+    const validation = !decision.publishable ? `not publishable (${decision.refusal})`
+      : session.boardNote ? `${decision.validation}; ${session.boardNote}` : decision.validation;
     lines.push(`| ${short(session.bundleSha256)} | ${session.sessionId} | ${session.protocolVersion} | ` +
       `${cell(String(session.configurationId ?? '—'))} | ${cell(label)} | ` +
       `${row ? row.sampleCount : session.facts.measured} | ${row ? `${row.ppTps} / ${row.tgTps}` : '—'} | ${cell(validation)} | ` +
@@ -651,11 +663,17 @@ function publishFromBundles() {
         session.row = null;
       }
     }
-    const candidates = shown.filter((session) => session.row);
+    // The plan shows what the board would display: sessions of configurations it lists.
+    for (const session of shown) {
+      if (session.row && !displayable(board(), session.row)) {
+        session.boardNote = `not displayed: configuration ${session.row.configurationId ?? 'unknown'} is not in configs/board.json`;
+      }
+    }
+    const candidates = shown.filter((session) => session.row && !session.boardNote);
     let plan = null;
     let planError = null;
     try {
-      plan = planPublication(envelope, index, candidates);
+      plan = planPublication(envelope, index, candidates, board());
     } catch (error) {
       if (!(error instanceof PublicationError)) throw error;
       planError = error.message;
@@ -670,7 +688,19 @@ function publishFromBundles() {
   }
 
   const candidates = namedCandidates(sessions);
-  const plan = planPublication(envelope, index, candidates);
+  for (const session of candidates) {
+    if (displayable(board(), session.row)) continue;
+    const configuration = session.row.configurationId ?? 'unknown';
+    if (!allowUnlisted) {
+      throw new PublicationError(
+        `session ${session.sessionId}: configuration ${configuration} is not in configs/board.json; the board ` +
+          'displays only listed configurations. Pass --allow-unlisted-configuration to publish it into the history only',
+      );
+    }
+    console.error(`--allow-unlisted-configuration: publishing ${session.sessionId} (configuration ${configuration}, ` +
+      'not in configs/board.json) into the history; it is never displayed');
+  }
+  const plan = planPublication(envelope, index, candidates, board());
   if (plan.actions.every((action) => action.added.length === 0)) {
     console.error('every named session is already published with identical content; nothing to write');
     return;
@@ -689,7 +719,7 @@ function publishFromBundles() {
   const indexText = serialize(plan.index);
   const parsed = JSON.parse(text);
   assertBenchmarks(parsed, schemas.benchmarks, 'updated data/benchmarks.json');
-  assertIndex(JSON.parse(indexText), parsed, schemas, 'updated data/sessions/index.json');
+  assertIndex(JSON.parse(indexText), parsed, schemas, board, 'updated data/sessions/index.json');
   writeAtomicGroup([{ target: INDEX, text: indexText, before: indexBefore }, { target: DATA, text, before }]);
   for (const action of plan.actions) {
     const flags = action.needs.length ? ` [${action.needs.join(' ')}]` : '';

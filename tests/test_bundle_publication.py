@@ -703,5 +703,111 @@ class ConsumerFixtureTests(Workspace):
             self.assertEqual(history["replacedRows"][0]["reason"], "replace-legacy")
 
 
+class BoardConfigurationTests(Workspace):
+    """configs/board.json lists the configurations whose sessions the board displays."""
+
+    def listed_and_unlisted(self):
+        """A verified session of a listed configuration (older) and of an unlisted one (newer),
+        for the same row key."""
+        listed = fx.cpu_record("complete", "1767225600000-0-listed", timestamp=T["t0"], device="Pixel 9")
+        listed["configuration"]["id"] = "cpu-reference-listed"
+        fx.anchored(listed)
+        # The listed configuration is a committed (reviewed) file of the repository.
+        (self.root / "xebenchapp/configs/cpu-reference-listed.json").write_bytes(
+            fx.configuration_bytes(listed["configuration"]))
+        unlisted = fx.cpu_record("complete", "1767225600000-1-unlisted", timestamp=T["t1"], device="Pixel 9")
+        fx.write_board(self.root, ["cpu-reference-listed"])
+        self.bundle(listed, unlisted)
+        return listed, unlisted
+
+    def test_the_committed_board_lists_cpu_reference_v3(self):
+        board = json.loads((ROOT / "configs/board.json").read_text())
+        self.assertEqual(board["displayConfigurations"], ["cpu-reference-v3"])
+        result = subprocess.run(["node", "--input-type=module", "-e",
+                                 "import {loadBoard} from './scripts/lib/board.mjs';"
+                                 "console.log(JSON.stringify(loadBoard(process.cwd())));"],
+                                cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"displayConfigurations": ["cpu-reference-v3"]})
+
+    def test_an_unlisted_configuration_is_refused_without_the_flag(self):
+        self.listed_and_unlisted()
+        before = self.digests()
+        result = self.aggregate("--from-bundles", self.root / "evidence", "--update", "--session", "1767225600000-1-unlisted",
+                                "--replace-legacy")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("configuration cpu-reference-v2 is not in configs/board.json", result.stderr)
+        self.assertIn("--allow-unlisted-configuration", result.stderr)
+        self.assertEqual(self.digests(), before)
+        # With the flag but no listed session for the key, nothing could be displayed: refused.
+        result = self.aggregate("--from-bundles", self.root / "evidence", "--update", "--session", "1767225600000-1-unlisted",
+                                "--replace-legacy", "--allow-unlisted-configuration")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("no published session of a configuration configs/board.json lists", result.stderr)
+        self.assertEqual(self.digests(), before)
+
+    def test_only_listed_configurations_are_displayed(self):
+        self.listed_and_unlisted()
+        result = self.publish("1767225600000-0-listed", "1767225600000-1-unlisted",
+                              flags=["--replace-legacy", "--allow-unlisted-configuration"])
+        self.assertIn("--allow-unlisted-configuration: publishing 1767225600000-1-unlisted (configuration "
+                      "cpu-reference-v2, not in configs/board.json)", result.stderr)
+        index = json.loads(self.index.read_text())
+        [entry] = [item for item in index["keys"] if item["key"] == LEGACY_KEY]
+        self.assertEqual([session["sessionId"] for session in entry["sessions"]],
+                         ["1767225600000-0-listed", "1767225600000-1-unlisted"])
+        self.assertEqual([session["validation"] for session in entry["sessions"]], ["verified", "verified"])
+        # The newer verified session is history only: its configuration is not on the board.
+        self.assertEqual((entry["displayed"], entry["rule"]), ("1767225600000-0-listed", "newest-verified"))
+        self.assertEqual(self.row(device="Google Pixel 9")["configurationId"], "cpu-reference-listed")
+        self.assert_valid_data()
+        # Listing the other configuration changes which session the selection displays, so the
+        # committed files no longer agree with the board until they are republished.
+        fx.write_board(self.root, ["cpu-reference-listed", "cpu-reference-v2"])
+        result = self.node("validate_data.mjs")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("displays 1767225600000-0-listed (newest-verified) but", result.stderr)
+
+    def test_the_dry_run_marks_sessions_the_board_does_not_display(self):
+        self.listed_and_unlisted()
+        result = self.dry_run()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        line = next(line for line in result.stdout.splitlines() if "1767225600000-1-unlisted |" in line
+                    and line.count(" | ") == 8)
+        self.assertIn("verified; not displayed: configuration cpu-reference-v2 is not in configs/board.json", line)
+        self.assertRegex(result.stdout, r"Google Pixel 9\\\|Llama 3.2 1B\\\|Q4_K_M\\\|measured \| "
+                                        r"1767225600000-0-listed \| newest-verified")
+
+    def test_a_malformed_board_is_refused(self):
+        cases = {
+            "unknown configuration": ["cpu-reference-unknown"],
+            "experiment configuration": ["experiment-charging-ab-v1"],
+            "empty": [],
+            "duplicate": ["cpu-reference-v2", "cpu-reference-v2"],
+            "not an id": ["CPU Reference"],
+        }
+        for name, ids in cases.items():
+            with self.subTest(name):
+                fx.write_board(self.root, ids)
+                result = self.node("validate_data.mjs")
+                self.assertEqual(result.returncode, 1, name)
+                self.assertIn("configs/board.json", result.stderr)
+        board = self.root / "configs/board.json"
+        fx.write_board(self.root, ["cpu-reference-v2"])
+        data = json.loads(board.read_text())
+        board.write_text(json.dumps({**data, "extra": True}))
+        self.assertIn("unknown field extra", self.node("validate_data.mjs").stderr)
+        board.unlink()
+        self.bundle(fx.cpu_record("complete", "1767225600000-0-noboard", device="Fixture Phone"))
+        result = self.aggregate("--from-bundles", self.root / "evidence", "--update", "--session", "1767225600000-0-noboard")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("configs/board.json: unreadable", result.stderr)
+
+    def test_the_flag_applies_to_bundle_updates_only(self):
+        result = self.aggregate("--from-bundles", self.root / "evidence", "--dry-run", "--allow-unlisted-configuration")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--allow-unlisted-configuration only applies to --update --from-bundles", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

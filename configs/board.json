@@ -1,0 +1,6 @@
+{
+  "schema": "xebench-board",
+  "schemaVersion": 1,
+  "description": "The run configurations whose published sessions data/benchmarks.json displays. A session of another configuration is published only with aggregate.mjs --allow-unlisted-configuration, stays in data/sessions/index.json and is never displayed. See docs/RUN-CONDITIONS.md, Publication policy v1.",
+  "displayConfigurations": ["cpu-reference-v3"]
+}

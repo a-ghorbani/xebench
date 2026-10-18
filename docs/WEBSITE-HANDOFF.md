@@ -185,9 +185,13 @@ history:
 | `keys[].displayed`, `keys[].rule` | The session `data/benchmarks.json` shows, and why: `newest-verified`, `newest-unverified` or `newest-failed` |
 | `keys[].replacedRows[]` | A legacy or failed row a published session replaced (`reason`, `replacedBy`, the row as it was) |
 
-Selection is explicit and deterministic: the newest verified session, else the newest
-unverified, else the newest failed, where newest is the latest `timestampIso`, then
-`sessionId`. A newer failed session never replaces a displayed verified row. The
+Selection is explicit and deterministic. Among the key's published sessions of a
+configuration [`configs/board.json`](../configs/board.json) lists (`displayConfigurations`,
+now `cpu-reference-v3`; the session's row names it in `configurationId`), it picks the newest
+verified session, else the newest unverified, else the newest failed, where newest is the
+latest `timestampIso`, then `sessionId`. A session of an unlisted configuration may be in the
+history (published with the logged `--allow-unlisted-configuration`) but is never
+displayed. A newer failed session never replaces a displayed verified row. The
 board row for a key is exactly `sessions[displayed].row`, and `validate_data.mjs`
 refuses any file pair where it is not, or where a session's row does not come out of
 its hosted bundle again. A published session is never removed or
