@@ -54,8 +54,10 @@ envelope. The producer (`scripts/aggregate.mjs`) labels rows from legacy records
 `validation: "legacy"`. It emits `verified`, `unverified` and `failed` rows only from
 hosted evidence bundles, under publication policy v1 (see
 [Published sessions and row selection](#published-sessions-and-row-selection)).
-Checked-in data holds no bundle rows yet: the first publication is a separate,
-owner-approved PR.
+1.1 data contains legacy and vendor rows, plus one measured row with
+`validation: "failed"` and no `guardsPassed`: the llama.cpp Hexagon row, invalidated
+by a later output-correctness re-check (`scripts/correct_hexagon_row.mjs`).
+Consumers must not show a `failed` row as a normal measurement.
 
 Migration: `node scripts/migrate_contract_1_1.mjs` set `schemaVersion` "1.1",
 re-stamped `generatedAt`, and appended `validation: "legacy"` to each of the 26

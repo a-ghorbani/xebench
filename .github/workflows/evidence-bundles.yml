@@ -1,0 +1,79 @@
+name: Evidence bundles
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The full history lets the immutability check diff against the base branch.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Bundle files are exempt from line-ending normalisation
+        run: |
+          set -euo pipefail
+          bad=$(git ls-files -z -- 'evidence/*/**' | xargs -0 -r git check-attr text -- | grep -v ': text: unset$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::evidence bundle files must have the -text attribute (.gitattributes):"
+            echo "$bad"
+            exit 1
+          fi
+      - name: Every bundle directory is named by its manifest hash and verifies
+        run: |
+          set -euo pipefail
+          shopt -s nullglob dotglob
+          n=0
+          for entry in evidence/*; do
+            name=$(basename "$entry")
+            if [ "$name" = README.md ] && [ -f "$entry" ] && [ ! -L "$entry" ]; then
+              continue
+            fi
+            if [ -L "$entry" ] || [ ! -d "$entry" ] || ! [[ "$name" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::evidence/$name is not a bundle directory named by a lowercase bundleSha256"
+              exit 1
+            fi
+            manifest="$entry/manifest.json"
+            if [ -L "$manifest" ] || [ ! -f "$manifest" ]; then
+              echo "::error::evidence/$name has no regular manifest.json"
+              exit 1
+            fi
+            actual=$(sha256sum "$manifest" | cut -d' ' -f1)
+            if [ "$actual" != "$name" ]; then
+              echo "::error::evidence/$name: sha256(manifest.json) is $actual"
+              exit 1
+            fi
+            if ! out=$(python3 scripts/export_evidence.py verify "$entry" --sha256 "$name" 2>&1); then
+              echo "::error::evidence/$name does not verify"
+              echo "$out"
+              exit 1
+            fi
+            echo "verified evidence/$name"
+            n=$((n + 1))
+          done
+          echo "$n bundle(s) verified"
+      - name: Published bundles are never modified or removed
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            before="${{ github.event.before }}"
+            if [ -z "$before" ] || [ "$before" = 0000000000000000000000000000000000000000 ]; then
+              echo "no previous commit to compare against"
+              exit 0
+            fi
+            range="$before..HEAD"
+          fi
+          changed=$(git diff --name-status --no-renames --diff-filter=DMT "$range" -- 'evidence/*/**')
+          if [ -n "$changed" ]; then
+            echo "::error::bundles are immutable; a new export is a new directory. Changed or removed:"
+            echo "$changed"
+            exit 1
+          fi
