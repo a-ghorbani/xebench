@@ -7,7 +7,7 @@ Part of [#9](https://github.com/a-ghorbani/xebench/issues/9). Status: **POCO F8 
 How fast is Gemma 3 1B on LiteRT-LM's CPU, GPU (ML Drift) and Qualcomm NPU paths, measured from
 an installed app on stock Android, and how does that compare with llama.cpp (llama.rn) on the
 same phones? Every GPU/NPU number must come with evidence that the output was correct, because
-one published NPU bundle reports fast tok/s while producing wrong text
+published Gemma 3 NPU bundles can report fast tok/s while producing wrong text
 ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)).
 
 | Phone | SoC | LiteRT-LM | llama.cpp (llama.rn) |
@@ -111,8 +111,8 @@ unless every repetition is `confirmed`, so LiteRT rows always carry it. An engin
 llama.rn's `gpu` flag is true when a GPU-type device is in the model's device list
 (`RNLlamaJSI.cpp`, `model->devices`), not when layers run there. With no devices requested,
 llama.cpp adds every GPU-type backend device by default, even at `n_gpu_layers: 0`. On the F8
-Ultra a CPU run therefore reports `gpu: true` with `GPUOpenCL` (and `HTP0`–`HTP5` on llama.rn
-0.12.4, where Hexagon was not yet opt-in). Such a device could still execute work only through
+Ultra a CPU run therefore reports `gpu: true` with `GPUOpenCL` (every recorded CPU run, on
+llama.rn 0.12.4 and 0.13.0-rc.7, lists only `GPUOpenCL`). Such a device could still execute work only through
 ggml's op offload (the scheduler copying a large batch's CPU-resident op to a GPU backend). That
 requires the backend's `offload_op` callback, and both backends leave it `NULL`:
 `ggml-opencl.cpp` (`/* .offload_op = */ NULL`) and `ggml-hexagon.cpp`
@@ -210,7 +210,7 @@ The drift fixture `tests/fixtures/raw-session/app-emitted-accelerator.json` is g
 
 The S23 NPU run is in its own configuration so that a native NPU failure cannot cost the main S23
 matrix, and its `bug-repro` purpose makes every one of its sessions invalid for comparison by
-construction. Cooldown 30 s, readiness timeout 300 s (900 s for the S23 configurations and the reruns), battery-rise bound 2 °C, decode budget 128.
+construction. Cooldown 30 s, readiness timeout 300 s (900 s for the S23 configurations, the reruns and the Llama 3.2 Hexagon check), battery-rise bound 2 °C, decode budget 128.
 
 Run a configuration:
 
@@ -286,8 +286,8 @@ Notes specific to these rows:
   521 tok/s against 676 here; process history matters for CPU numbers and is not controlled here.
 - **Observed backend for LiteRT GPU is `unknown`, not confirmed:** llama.rn's OpenCL variant had already
   mapped `libOpenCL.so` before any LiteRT engine was created, so no LiteRT load could show it being
-  loaded. The NPU gate saw `libLiteRtDispatch_Qualcomm.so`, `libQnnHtp.so`, `libQnnHtpV81Stub.so`
-  and `libQnnSystem.so` newly loaded (`consistent`); the measured repetitions found them already
+  loaded. The NPU gate saw `libLiteRtCompilerPlugin_Qualcomm.so`, `libLiteRtDispatch_Qualcomm.so`,
+  `libQnnHtp.so`, `libQnnHtpV81Stub.so` and `libQnnSystem.so` newly loaded (`consistent`); the measured repetitions found them already
   mapped (`unknown`).
 - **llama.cpp CPU is `consistent`, not `confirmed`:** llama.rn attached `GPUOpenCL` to the model at
   `nGpuLayers` 0 and reported `gpu: true` (see the backend table above).
@@ -388,7 +388,8 @@ Findings:
   wrong. Whether the July build produced correct output cannot be established from the record.
   Recommendation for the board (a PM-gated step, not done here): mark that row as unverified for
   output correctness, or withdraw it, until a Hexagon build passes the gate.
-- Hexagon on Q4_K_M is not faster than CPU (213.6 vs 204.8 prefill, 39.6 vs 47.6 decode),
+- Hexagon on Q4_K_M is barely faster than CPU at prefill (213.6 vs 204.8) and slower at decode
+  (39.6 vs 47.6),
   consistent with the old note that Q4_K_M largely falls back on the DSP.
 
 ## llama.rn 0.13.0-rc.7 re-check (POCO F8 Ultra, 2026-10-18)
@@ -434,20 +435,21 @@ back to within 2 °C of the baseline in 900 s. Its condition verdict is therefor
 
 ### What changed
 
-- **llama.cpp Hexagon output is correct on rc.7** for Gemma 3 1B and Llama 3.2 1B Q4_K_M. Every probe
-  agrees with the CPU reference, including the multi-chunk ones. Llama 3.2 Q4_0 misses one probe
+- **llama.cpp Hexagon output is correct on rc.7** for Gemma 3 1B and Llama 3.2 1B Q4_K_M. Every answer probe
+  passes, as it does on the CPU reference, including the multi-chunk ones (the output text is not
+  always identical to the CPU output, e.g. Gemma `long-fact-middle`; the gate checks answers). Llama 3.2 Q4_0 misses one probe
   exactly where the Q4_0 CPU reference also misses it, so that is not a Hexagon fault. The
   garbage output in the sections above is a property of llama.rn 0.12.4, not of the Hexagon path
   in general.
-- **rc.7 Hexagon is much faster at prefill** (Llama 3.2: 4007–4204 tok/s against about 200 on CPU).
+- **rc.7 Hexagon is much faster at prefill** (Llama 3.2: 4007–4204 tok/s against 207.2 (Q4_K_M) and 304.3 (Q4_0) on CPU).
   Decode is faster than CPU for Llama 3.2 (57.7–64.2 vs 47.3–52.5) but slower and noisier for
   Gemma 3 (24.0, IQR 5.7, against 51.3 on CPU).
 - **rc.7 OpenCL** is much faster than 0.12.4 OpenCL on the F8 (937.7 vs 342.9 prefill).
 - **The legacy board row** (Llama 3.2 1B Q4_0, 197.6 / 38.6) matches neither version's Hexagon
   numbers on today's prompt, and it was never output-checked. It remains unverified. rc.7 is the
   version to measure going forward.
-- On this build llama.rn's default devices no longer include HTP (Hexagon is opt-in in rc.7), so
-  CPU runs attach only `GPUOpenCL`. Backend evidence for llama.cpp CPU stays `consistent`.
+- As on 0.12.4, the recorded llama.cpp CPU runs attach only `GPUOpenCL`. Backend evidence for
+  llama.cpp CPU stays `consistent`.
 
 ## Limitations and threats to validity
 
