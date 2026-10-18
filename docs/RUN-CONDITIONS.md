@@ -76,8 +76,9 @@ peak model memory.
 - `unverified` otherwise, including failed engine repetitions, incomplete coverage
   and readiness timeouts caused only by unknown evidence.
 
-`guardsPassed` is never `true`: actual backend execution is still unverified, so a
-condition pass is necessary but not sufficient.
+A session record's `guardsPassed` is never `true`: a condition pass is necessary but
+not sufficient. A published row's `guardsPassed` is decided separately, by
+[publication policy v1](#publication-policy-v1).
 
 ## Charging policy (owner decision)
 
@@ -232,7 +233,60 @@ Thresholds are protocol choices, not device-calibrated limits. Battery temperatu
 is a proxy for device temperature. Headroom support and scale vary by device. A
 1 Hz sampler can miss sub-second thermal or battery changes; only focus losses
 are counted between samples. Device validation covers the devices named in the
-pull request, not other models. Publication remains blocked (#4).
+pull request, not other models.
+
+## Publication policy v1
+
+Policy `publication-policy-v1` decides the `validation` and `guardsPassed` of a row
+published from an evidence bundle (`scripts/aggregate.mjs --from-bundles`). It is
+the PM's rule set; [`publication_policy.py`](../scripts/publication_policy.py)
+`evaluate()` is its only implementation, and
+[`test_publication_policy.py`](../tests/test_publication_policy.py) tests every
+check alone and every pair of checks.
+
+The validator recomputes every input from the bundle's evidence and never trusts a
+recorded verdict, `guardsPassed` or summary. It first runs `export_evidence.py
+verify`, then re-runs the raw-session cross-field rules (readiness, condition
+assessments, monitor summaries, charging, verdict, run order and build identity) on
+each sanitized session. A bundle whose evidence disagrees with its own claims is
+refused as a whole.
+
+A row earns `guardsPassed: true` and `validation: "verified"` only when every check
+passes:
+
+| Check | Pass | Fail | Unknown |
+| --- | --- | --- | --- |
+| `complete` | status `complete` with every planned repetition measured | the session stopped early | anything else |
+| `conditions` | every measured repetition, and the session, recompute to verdict `pass` | a recomputed `fail` | `unverified`, or no condition evidence (cpu-reference-v1) |
+| `charging` | every measured repetition recomputes to `satisfied` under `charging-policy-v3` | `violated` or `on-battery` | `unknown`, or another charging policy |
+| `coverage` | every measured repetition was sampled throughout (the coverage rule above) | — | a gap, expiry, dropped tick or missing monitor |
+| `artifact` | the artifact SHA-256 equals the configured run's `modelSha256` | it differs | the run pins no `modelSha256` |
+| `backend` | CPU: `confirmed` or `consistent`. GPU/NPU: `confirmed` | `mismatch` | anything else, including `consistent` on GPU/NPU; LiteRT-LM GPU/NPU evidence is at most `consistent` |
+| `correctness` (accelerator protocols) | output gate `pass` | `fail` | `unverified` |
+| `comparison` (accelerator protocols) | `valid` | `invalid` | `unverified` |
+| `build` | reported release build, clean tree (`gitDirty: false`), known commit, flavor `reference`, `experimental` or `geniex` | dirty tree or debug build | not reported, or any field unknown |
+| `app-identity` | the capture's APK snapshots `matched` | `changed` | `unverified` or missing |
+
+Backend evidence is recomputed with the `backend.ts` rule: from each repetition's
+`observedBackend` for accelerator protocols, and from each load's execution report
+for cpu-reference-v3 llama.cpp runs. A repetition without evidence leaves the check
+unknown. `confirmed` is the engine's own device report, not per-operation execution.
+Correctness and comparison are recomputed from the exported probe verdicts.
+
+Any failed check gives `validation: "failed"` and `guardsPassed: false`. Otherwise,
+any unknown check gives `validation: "unverified"` and `guardsPassed: null`. Unknown
+is never a pass. Three kinds of session are never published at all:
+
+- experiments: `record-only-experiment` charging readiness, an
+  `experimentChargingReadiness` configuration, or a configuration id starting
+  `experiment-`;
+- bug reproductions (`purpose: "bug-repro"`);
+- sessions without a measured repetition.
+
+Limits: the gate's probe verdicts are recomputed from model outputs by the raw-session
+validator at capture time; a bundle carries only their digests, so the publication
+check re-derives the gate status from the verdicts, not from the outputs. The policy
+does not establish cross-device comparability or quality beyond the gate.
 
 API semantics: [thermal status](https://developer.android.com/reference/android/os/PowerManager#getCurrentThermalStatus()),
 [thermal headroom](https://developer.android.com/reference/android/os/PowerManager#getThermalHeadroom(int)),

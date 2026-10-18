@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/a-ghorbani/xebench/blob/main/data/sessions/index.schema.json",
+  "title": "xebench published sessions",
+  "description": "Every session published from an evidence bundle, per board row key, and which one data/benchmarks.json displays. The displayed session is chosen by the selection rule from the published sessions alone: the newest verified, else the newest unverified, else the newest failed (newest = latest timestampIso, then sessionId). Each session keeps the full row it publishes, so the row a key displays is reproducible from this file. replacedRows keeps a legacy or failed row that a published session replaced. Invariants this schema cannot express (key order, row identity, the selection, agreement with data/benchmarks.json) are enforced by scripts/lib/history.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "policy", "selectionRule", "keys"],
+  "properties": {
+    "schema": { "const": "xebench-sessions-index" },
+    "schemaVersion": { "const": "1.0" },
+    "policy": { "const": "publication-policy-v1", "description": "docs/RUN-CONDITIONS.md, Publication policy v1" },
+    "selectionRule": { "const": "newest-verified-else-newest-unverified-else-newest-failed" },
+    "keys": { "type": "array", "items": { "$ref": "#/$defs/key" } }
+  },
+  "$defs": {
+    "key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "displayed", "rule", "sessions", "replacedRows"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "description": "the row key: engine|backend|platform|device|model|quant|provenance" },
+        "displayed": { "type": "string", "minLength": 1, "description": "sessionId of the session data/benchmarks.json shows for this key" },
+        "rule": { "enum": ["newest-verified", "newest-unverified", "newest-failed"] },
+        "sessions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/session" } },
+        "replacedRows": { "type": "array", "items": { "$ref": "#/$defs/replaced" } }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "timestampIso", "bundleSha256", "url", "validation", "guardsPassed", "row"],
+      "properties": {
+        "sessionId": { "type": "string", "minLength": 1 },
+        "timestampIso": { "type": "string", "minLength": 1 },
+        "bundleSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "validation": { "enum": ["verified", "unverified", "failed"] },
+        "guardsPassed": { "type": ["boolean", "null"] },
+        "row": { "type": "object", "description": "the data/benchmarks.json row this session publishes (validated against its row schema)" }
+      }
+    },
+    "replaced": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "replacedBy", "row"],
+      "properties": {
+        "reason": { "enum": ["replace-legacy", "replace-failed"] },
+        "replacedBy": { "type": "string", "minLength": 1 },
+        "row": { "type": "object", "description": "the row data/benchmarks.json showed before, byte for byte as JSON" }
+      }
+    }
+  }
+}

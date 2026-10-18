@@ -187,10 +187,13 @@ measurement warms the OS file cache. Actual backend execution, peak memory and
 quality remain unverified; engine reports and build identity are recorded as
 reported, not attested. Condition sampling is 1 Hz, not continuous.
 
-Completed sessions can be previewed with `aggregate.mjs --pretty`; `--update`
-rejects these new records until publication validation and consumer migration are
-implemented. Raw records and diagnostics stay local; only a sanitized
-[evidence export](#evidence-export) may leave the machine. Historical data is unchanged.
+Completed sessions can be previewed from raw records with `aggregate.mjs --pretty`.
+They are published only from their sanitized [evidence export](#evidence-export):
+`aggregate.mjs --from-bundles evidence/ --dry-run` reports what each hosted bundle would
+publish, and `--update --session <id>` publishes a named session under
+[publication policy v1](RUN-CONDITIONS.md#publication-policy-v1) (README,
+"Results are published here"). Raw records and diagnostics stay local; only a sanitized
+evidence export may leave the machine. Historical data is unchanged.
 
 ## Host validation
 
@@ -334,4 +337,4 @@ re-run the full raw-schema validation, because the raw record is not exported.
 Approved labels (model, quant, engine version, prompt label, policy versions,
 configuration and run IDs) and device properties are copied verbatim once they pass the form checks and the screen. A serial typed
 into a label cannot be detected. Exporting a session does not make it eligible
-for publication.
+for publication: publication policy v1 decides that from the bundle.

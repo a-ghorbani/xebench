@@ -477,7 +477,12 @@ class ProducerTests(Workspace):
         data['rows'].append(verified_row())
         data['rowCount'] += 1
         self.canonical.write_text(dump(data), encoding='utf-8')
-        self.assertEqual(self.node('validate_data.mjs').returncode, 0, 'the verified fixture row is contract-valid')
+        self.assertEqual(self.node('validate_data.mjs', self.canonical).returncode, 0,
+                         'the verified fixture row is contract-valid')
+        # ...but no published session backs it, so the canonical data as a whole is not.
+        result = self.node('validate_data.mjs')
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn('refusing to emit validation=verified', result.stderr)
         self.assert_rejected('refusing to emit validation=verified', self.write_raw(legacy_record()), '--update',
                              '--allow-legacy')
 

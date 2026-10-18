@@ -1,0 +1,36 @@
+{
+  "description": "Consumer fixtures for rows published from evidence bundles (scripts/aggregate.mjs --from-bundles, docs/WEBSITE-HANDOFF.md). They are the producer's real output for a SYNTHETIC scenario: bundles built from the app-emitted test fixtures, published into a board holding one vendor and one legacy row. Evidence URLs name the fixture bundles' real hashes but do not resolve. tests/test_bundle_publication.py regenerates every file and fails while one differs. Every file is producer-valid (producerMustNotEmit false).",
+  "scenario": [
+    "Google Pixel 9 / Llama 3.2 1B Q4_K_M: a verified session replaces the legacy row (--replace-legacy, kept in replacedRows); a newer failed session stays in the history and is not displayed",
+    "Google Fixture Phone / Llama 3.2 1B Q4_K_M: unverified (the configured run pins no model hash)",
+    "Google Fixture Tablet / Llama 3.2 1B Q4_K_M: failed (interrupted repetition)",
+    "Google Fixture Phone / Gemma 3 1B Q4_0 (GGUF), llama.cpp NPU: verified (accelerator-v2, gate pass, backend confirmed)",
+    "the vendor row is unchanged"
+  ],
+  "fixtures": [
+    {
+      "file": "board-1.2.json",
+      "kind": "board",
+      "producerMustNotEmit": false,
+      "consumerExpectation": "rendered: verified, unverified, failed and vendor rows (the legacy row is replaced); build.runtimes shown; failed rows not shown as normal measurements"
+    },
+    {
+      "file": "sessions-1.2.json",
+      "kind": "sessions",
+      "producerMustNotEmit": false,
+      "consumerExpectation": "optional: history links per row key; the displayed session equals the board row"
+    },
+    {
+      "file": "board-1.1.json",
+      "kind": "board",
+      "producerMustNotEmit": false,
+      "consumerExpectation": "rendered like board-1.2.json; sessions without runtimeVersions give a 1.1 file with no build.runtimes"
+    },
+    {
+      "file": "sessions-1.1.json",
+      "kind": "sessions",
+      "producerMustNotEmit": false,
+      "consumerExpectation": "as sessions-1.2.json"
+    }
+  ]
+}

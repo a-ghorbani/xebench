@@ -1,0 +1,334 @@
+{
+  "schema": "xebench-sessions-index",
+  "schemaVersion": "1.0",
+  "policy": "publication-policy-v1",
+  "selectionRule": "newest-verified-else-newest-unverified-else-newest-failed",
+  "keys": [
+    {
+      "key": "llama.cpp|cpu|android|Google Fixture Phone|Llama 3.2 1B|Q4_K_M|measured",
+      "displayed": "1767225600000-2-phone",
+      "rule": "newest-unverified",
+      "sessions": [
+        {
+          "sessionId": "1767225600000-2-phone",
+          "timestampIso": "2026-01-01T00:00:00.000Z",
+          "bundleSha256": "aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d/manifest.json",
+          "validation": "unverified",
+          "guardsPassed": null,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Fixture Phone",
+            "soc": "Tensor G4",
+            "model": "Llama 3.2 1B",
+            "quant": "Q4_K_M",
+            "ppTps": 200.3,
+            "tgTps": 30.1,
+            "ttftMs": 25.5,
+            "provenance": "measured",
+            "sourceName": "PocketPal R&D lab (xebench)",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-01",
+            "sampleCount": 1,
+            "asStated": "n=1 cold-run median; prompt std-pp512-v1; decode 128 tok; publication-policy-v1 unverified: artifact unknown (the configured run pins no modelSha256)",
+            "validation": "unverified",
+            "guardsPassed": null,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "cpu-reference-v3",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0,
+                "min": 200.3,
+                "max": 200.3
+              },
+              "tgTps": {
+                "iqr": 0,
+                "min": 30.1,
+                "max": 30.1
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1767225600000-2-phone"
+              ],
+              "bundleSha256": "aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d/manifest.json"
+            },
+            "build": {
+              "bindingVersion": "llama.rn 0.0.0-fixture",
+              "harnessCommit": "0123456789abcdef0123456789abcdef01234567"
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "llama.cpp|cpu|android|Google Fixture Tablet|Llama 3.2 1B|Q4_K_M|measured",
+      "displayed": "1767225600000-3-tablet",
+      "rule": "newest-failed",
+      "sessions": [
+        {
+          "sessionId": "1767225600000-3-tablet",
+          "timestampIso": "2026-01-01T00:00:00.000Z",
+          "bundleSha256": "aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d/manifest.json",
+          "validation": "failed",
+          "guardsPassed": false,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Fixture Tablet",
+            "soc": "Tensor G4",
+            "model": "Llama 3.2 1B",
+            "quant": "Q4_K_M",
+            "ppTps": 195.4,
+            "tgTps": 30.8,
+            "ttftMs": 26.3,
+            "provenance": "measured",
+            "sourceName": "PocketPal R&D lab (xebench)",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-01",
+            "sampleCount": 2,
+            "asStated": "n=2 cold-run median; prompt std-pp512-v1; decode 128 tok; publication-policy-v1 failed: conditions fail (session verdict fail; repetitions fail)",
+            "validation": "failed",
+            "guardsPassed": false,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "cpu-reference-v3",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 4.9,
+                "min": 190.5,
+                "max": 200.3
+              },
+              "tgTps": {
+                "iqr": 0.7,
+                "min": 30.1,
+                "max": 31.5
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1767225600000-3-tablet"
+              ],
+              "bundleSha256": "aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d/manifest.json"
+            },
+            "build": {
+              "bindingVersion": "llama.rn 0.0.0-fixture",
+              "harnessCommit": "0123456789abcdef0123456789abcdef01234567"
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q4_K_M|measured",
+      "displayed": "1767225600000-0-pixel",
+      "rule": "newest-verified",
+      "sessions": [
+        {
+          "sessionId": "1767225600000-0-pixel",
+          "timestampIso": "2026-03-01T00:00:00.000Z",
+          "bundleSha256": "aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Pixel 9",
+            "soc": "Tensor G4",
+            "model": "Llama 3.2 1B",
+            "quant": "Q4_K_M",
+            "ppTps": 202.6,
+            "tgTps": 30.4,
+            "ttftMs": 25.9,
+            "provenance": "measured",
+            "sourceName": "PocketPal R&D lab (xebench)",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-03",
+            "sampleCount": 4,
+            "asStated": "n=4 cold-run median; prompt std-pp512-v1; decode 128 tok; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "cpu-reference-v3",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 8.6,
+                "min": 190.5,
+                "max": 210.8
+              },
+              "tgTps": {
+                "iqr": 1,
+                "min": 29.3,
+                "max": 31.5
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1767225600000-0-pixel"
+              ],
+              "bundleSha256": "aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d/manifest.json"
+            },
+            "build": {
+              "bindingVersion": "llama.rn 0.0.0-fixture",
+              "harnessCommit": "0123456789abcdef0123456789abcdef01234567"
+            }
+          }
+        },
+        {
+          "sessionId": "1767225600000-1-pixel",
+          "timestampIso": "2026-03-02T00:00:00.000Z",
+          "bundleSha256": "aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d/manifest.json",
+          "validation": "failed",
+          "guardsPassed": false,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Pixel 9",
+            "soc": "Tensor G4",
+            "model": "Llama 3.2 1B",
+            "quant": "Q4_K_M",
+            "ppTps": 195.4,
+            "tgTps": 30.8,
+            "ttftMs": 26.3,
+            "provenance": "measured",
+            "sourceName": "PocketPal R&D lab (xebench)",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-03",
+            "sampleCount": 2,
+            "asStated": "n=2 cold-run median; prompt std-pp512-v1; decode 128 tok; publication-policy-v1 failed: conditions fail (session verdict fail; repetitions fail)",
+            "validation": "failed",
+            "guardsPassed": false,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "cpu-reference-v3",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 4.9,
+                "min": 190.5,
+                "max": 200.3
+              },
+              "tgTps": {
+                "iqr": 0.7,
+                "min": 30.1,
+                "max": 31.5
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1767225600000-1-pixel"
+              ],
+              "bundleSha256": "aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/aaec1ac38082c5d20541cfbb767a68658b978a961ec9134823445f19e7a7960d/manifest.json"
+            },
+            "build": {
+              "bindingVersion": "llama.rn 0.0.0-fixture",
+              "harnessCommit": "0123456789abcdef0123456789abcdef01234567"
+            }
+          }
+        }
+      ],
+      "replacedRows": [
+        {
+          "reason": "replace-legacy",
+          "replacedBy": "1767225600000-0-pixel",
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Pixel 9",
+            "soc": "Tensor G4",
+            "model": "Llama 3.2 1B",
+            "quant": "Q4_K_M",
+            "ppTps": 144,
+            "tgTps": 24.1,
+            "ttftMs": 3282,
+            "memoryMb": null,
+            "provenance": "measured",
+            "sourceName": "PocketPal R&D lab (xebench)",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+            "validation": "legacy"
+          }
+        }
+      ]
+    },
+    {
+      "key": "llama.cpp|npu|android|Google Fixture Phone|Gemma 3 1B|Q4_0 (GGUF)|measured",
+      "displayed": "1767225600000-4-npu",
+      "rule": "newest-verified",
+      "sessions": [
+        {
+          "sessionId": "1767225600000-4-npu",
+          "timestampIso": "2026-01-01T00:00:00.000Z",
+          "bundleSha256": "1521018302c5d0a3b582417e515b56fb589e657af8cdc12e056c8b70e4714750",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/1521018302c5d0a3b582417e515b56fb589e657af8cdc12e056c8b70e4714750/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "npu",
+            "platform": "android",
+            "device": "Google Fixture Phone",
+            "soc": "Tensor G4",
+            "model": "Gemma 3 1B",
+            "quant": "Q4_0 (GGUF)",
+            "ppTps": 905.3,
+            "tgTps": 40.4,
+            "ttftMs": 121.5,
+            "provenance": "measured",
+            "sourceName": "PocketPal R&D lab (xebench)",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-01",
+            "sampleCount": 2,
+            "asStated": "n=2 cold-run median; prompt std-chat-v1; decode 128 tok; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 1.8,
+                "min": 903.5,
+                "max": 907
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 40.3,
+                "max": 40.5
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1767225600000-4-npu"
+              ],
+              "bundleSha256": "1521018302c5d0a3b582417e515b56fb589e657af8cdc12e056c8b70e4714750",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/1521018302c5d0a3b582417e515b56fb589e657af8cdc12e056c8b70e4714750/manifest.json"
+            },
+            "build": {
+              "bindingVersion": "llama.rn 0.0.0-fixture",
+              "harnessCommit": "0123456789abcdef0123456789abcdef01234567"
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    }
+  ]
+}

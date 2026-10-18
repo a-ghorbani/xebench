@@ -1,0 +1,7 @@
+{
+  "schema": "xebench-sessions-index",
+  "schemaVersion": "1.0",
+  "policy": "publication-policy-v1",
+  "selectionRule": "newest-verified-else-newest-unverified-else-newest-failed",
+  "keys": []
+}
