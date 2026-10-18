@@ -74,6 +74,9 @@ function adapter() {
     quantLabel: config.runs[0].quant, modelFile: config.runs[0].modelFile,
     engineVersion: () => 'llama.rn 0.0.0-fixture', settings: () => ({nThreads: 4, nCtx: 2048}),
     effectiveSettings: effective, executionReport: jest.fn(() => report),
+    // llama.rn's exported BuildInfo for the vendored llama.cpp, and llama.rn's own version.
+    runtimeVersions: () => ({llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'}, llamaRn: '0.0.0-fixture',
+      litertLm: null, litertNpuRuntimeQualcomm: null, qairt: null, genie: null}),
     load: jest.fn(async () => samples[call % samples.length].loadMs),
     release: jest.fn(async () => {}),
     benchOnce: jest.fn(async (): Promise<SingleRunMetrics> => {

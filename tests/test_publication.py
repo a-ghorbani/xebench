@@ -475,9 +475,9 @@ class DataValidationTests(unittest.TestCase):
     def test_unsupported_schema_keywords_fail_closed(self):
         result = self.run_node(
             "import {validateSchema} from './scripts/lib/publication.mjs';"
-            "validateSchema('x', {type: 'string', maxLength: 3});")
+            "validateSchema(['x'], {type: 'array', maxItems: 3});")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('unsupported schema keyword maxLength', result.stderr)
+        self.assertIn('unsupported schema keyword maxItems', result.stderr)
 
     def test_schema_is_checked_eagerly(self):
         for name, schema, message in [

@@ -153,6 +153,14 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
     with weight repacking on (`no_extra_bufts: false`), `flash_attn_type: off`,
     `n_gpu_layers: 99` with automatic devices, and `kv_unified: true`. The reference
     protocol keeps its own explicit, recorded settings.
+  - `runtimeVersions`: the versions of the runtimes the engine runs on, taken from the
+    shipped artifacts, never typed by hand. For llama.cpp: `llamaCpp`
+    (`{buildNumber, commit}` of the vendored llama.cpp, from llama.rn's exported
+    `BuildInfo`) and `llamaRn` (the installed package version). For LiteRT-LM:
+    `litertLm` and, on NPU runs, `litertNpuRuntimeQualcomm` (the AARs as Gradle
+    resolved them for the APK) and `qairt` (the build string embedded in the packaged
+    `libQnnHtp.so`). For GENIE-X: `genie` (the geniex-android AAR version). Runtimes the engine does not use, and
+    values that are missing or malformed, are null.
   - `executionReports`: one per successful model load, with what llama.rn reported
     about that context: `gpu`, `reasonNoGPU`, `devices`, the loaded native library
     variant (`androidLib`) and llama.cpp's `systemInfo` line (threads in use and

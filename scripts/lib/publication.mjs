@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto';
 const ANNOTATIONS = new Set(['$schema', '$id', '$comment', '$defs', 'title', 'description', 'default', 'examples']);
 const ASSERTIONS = new Set([
   'type', 'enum', 'const', 'required', 'properties', 'additionalProperties', 'items', '$ref', 'minimum', 'format',
-  'pattern', 'minLength', 'minItems', 'uniqueItems', 'allOf', 'if', 'then', 'else',
+  'pattern', 'minLength', 'maxLength', 'minItems', 'uniqueItems', 'allOf', 'if', 'then', 'else',
 ]);
 
 export class PublicationError extends Error {}
@@ -117,7 +117,7 @@ export function checkSchema(schema, path = '#') {
   if (schema.minimum !== undefined && typeof schema.minimum !== 'number') {
     throw new PublicationError(`minimum at ${path} must be a number`);
   }
-  for (const key of ['minLength', 'minItems']) {
+  for (const key of ['minLength', 'maxLength', 'minItems']) {
     if (schema[key] !== undefined && !(Number.isInteger(schema[key]) && schema[key] >= 0)) {
       throw new PublicationError(`${key} at ${path} must be a non-negative integer`);
     }
@@ -187,6 +187,9 @@ function validate(value, schema, root, path, errors) {
   if (typeof value === 'string') {
     if (schema.minLength !== undefined && [...value].length < schema.minLength) {
       errors.push(`${path}: shorter than ${schema.minLength} characters`);
+    }
+    if (schema.maxLength !== undefined && [...value].length > schema.maxLength) {
+      errors.push(`${path}: longer than ${schema.maxLength} characters`);
     }
     if (schema.pattern !== undefined && !compilePattern(schema.pattern, path).test(value)) {
       errors.push(`${path}: ${JSON.stringify(value)} does not match ${schema.pattern}`);
@@ -285,6 +288,20 @@ export function compareRows(a, b) {
 
 /** The contract version this producer writes (data/benchmarks.schema.json). */
 export const CONTRACT_VERSION = '1.1';
+/** The minor that adds build.runtimes; a file declares it only when a row carries runtimes. */
+export const RUNTIMES_CONTRACT_VERSION = '1.2';
+/** Minors at or above the producer's floor: a file at one of them needs no 1.1 migration. */
+const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION]);
+
+/** Closed list of build.runtimes names (contract 1.2). */
+export const RUNTIME_NAMES = Object.freeze([
+  'llama.cpp', 'llama.rn', 'LiteRT-LM', 'litert-npu-runtime-qualcomm', 'QAIRT', 'geniex-android',
+]);
+/** build.runtimes[].version: a llama.cpp build (b11385) or a dotted version with an optional pre-release. */
+const DOTTED = '[0-9]{1,5}(\\.[0-9]{1,12}){1,3}(-[0-9A-Za-z]{1,16}(\\.[0-9A-Za-z]{1,16}){0,3})?';
+export const RUNTIME_VERSION = new RegExp(`^(b[0-9]{1,7}|${DOTTED})$`);
+const VERSION = new RegExp(`^${DOTTED}$`);
+const HEX_COMMIT = /^[0-9a-f]{7,40}$/;
 
 /** Row fields introduced in 1.1; valid on provenance=measured rows only. */
 export const MEASURED_ONLY_FIELDS = Object.freeze([
@@ -330,6 +347,10 @@ export function rowInvariantErrors(row, path = '$') {
       if (Object.hasOwn(row, field)) errors.push(`${path}: legacy rows carry no ${field}`);
     }
   }
+  const runtimes = isObject(row.build) && Array.isArray(row.build.runtimes) ? row.build.runtimes : [];
+  const names = runtimes.map((item) => (isObject(item) ? item.name : undefined));
+  const repeated = names.filter((name, index) => name !== undefined && names.indexOf(name) !== index);
+  if (repeated.length) errors.push(`${path}.build.runtimes: more than one entry for ${[...new Set(repeated)].join(', ')}`);
   for (const [metric, spread] of Object.entries(isObject(row.dispersion) ? row.dispersion : {})) {
     if (isObject(spread) && typeof spread.min === 'number' && typeof spread.max === 'number' && spread.min > spread.max) {
       errors.push(`${path}.dispersion.${metric}: min ${spread.min} > max ${spread.max}`);
@@ -357,6 +378,13 @@ export function assertBenchmarks(envelope, schema, label) {
       }
     });
   }
+  if ((envelope?.schemaVersion === '1.0' || envelope?.schemaVersion === '1.1') && Array.isArray(envelope.rows)) {
+    envelope.rows.forEach((row, index) => {
+      if (isObject(row) && isObject(row.build) && Object.hasOwn(row.build, 'runtimes')) {
+        invariants.push(`$.rows[${index}]: build.runtimes needs schemaVersion ${RUNTIMES_CONTRACT_VERSION}`);
+      }
+    });
+  }
   assertSchema(envelope, schema, label, schema, invariants);
   if (envelope.rowCount !== undefined && envelope.rowCount !== envelope.rows.length) {
     throw new PublicationError(`${label}: rowCount ${envelope.rowCount} != ${envelope.rows.length} rows`);
@@ -375,7 +403,9 @@ export function assertBenchmarks(envelope, schema, label) {
 /** Why `envelope` is not yet at CONTRACT_VERSION; empty when fully migrated. */
 export function migrationNeeds(envelope) {
   const needs = [];
-  if (envelope.schemaVersion !== CONTRACT_VERSION) needs.push(`schemaVersion is ${envelope.schemaVersion}, not ${CONTRACT_VERSION}`);
+  if (!MIGRATED_VERSIONS.has(envelope.schemaVersion)) {
+    needs.push(`schemaVersion is ${envelope.schemaVersion}, not ${CONTRACT_VERSION} or later`);
+  }
   const unlabelled = envelope.rows.filter((row) => row.provenance === 'measured' && !Object.hasOwn(row, 'validation'));
   if (unlabelled.length) needs.push(`${unlabelled.length} measured row(s) carry no validation`);
   return needs;
@@ -388,7 +418,7 @@ export function migrationNeeds(envelope) {
  * unchanged (`touched` 0, `changed` false), which makes the migration idempotent.
  */
 export function migrateTo11(envelope, now = isoNow()) {
-  if (envelope.schemaVersion !== '1.0' && envelope.schemaVersion !== CONTRACT_VERSION) {
+  if (envelope.schemaVersion !== '1.0' && !MIGRATED_VERSIONS.has(envelope.schemaVersion)) {
     throw new PublicationError(`cannot migrate schemaVersion ${JSON.stringify(envelope.schemaVersion)} (only 1.0 -> 1.1)`);
   }
   if (migrationNeeds(envelope).length === 0) return { envelope, touched: 0, changed: false };
@@ -441,6 +471,80 @@ export function writeAtomic(target, text, expectedBefore) {
     }
     throw error;
   }
+}
+
+/**
+ * The schemaVersion an envelope holding `rows` declares: 1.2 as soon as one row
+ * carries build.runtimes, otherwise the producer's CONTRACT_VERSION; never below
+ * `floor` (the version the canonical file already declares).
+ */
+export function contractVersionFor(rows, floor = CONTRACT_VERSION) {
+  const needsRuntimes = rows.some((row) => isObject(row.build) && Object.hasOwn(row.build, 'runtimes'));
+  const minor = (version) => Number(String(version).split('.')[1]);
+  const wanted = needsRuntimes ? RUNTIMES_CONTRACT_VERSION : CONTRACT_VERSION;
+  return minor(floor) > minor(wanted) ? floor : wanted;
+}
+
+const RUNTIME_KEYS = Object.freeze(['llamaCpp', 'llamaRn', 'litertLm', 'litertNpuRuntimeQualcomm', 'qairt', 'genie']);
+/** runtimeVersions keys each engine may report (mirrors ENGINE_RUNTIMES in scripts/raw_session.py). */
+const ENGINE_RUNTIMES = Object.freeze({
+  'llama.cpp': ['llamaCpp', 'llamaRn'], 'litert-lm': ['litertLm', 'litertNpuRuntimeQualcomm', 'qairt'], 'genie-x': ['genie'],
+});
+/** LiteRT-LM runtimes that take part only in NPU runs. */
+const NPU_ONLY_RUNTIMES = Object.freeze(['litertNpuRuntimeQualcomm', 'qairt']);
+
+/**
+ * Contract `build` (engineVersion, bindingVersion, runtimes) from a session's
+ * `runtimeVersions` (raw schema; written by cpu-reference-v3 and accelerator-v2
+ * apps). Only reported components appear; nothing is invented. Returns undefined
+ * when the session carries no runtimeVersions; a malformed one is an error.
+ */
+export function buildFromSession(rec, where = '$') {
+  if (!Object.hasOwn(rec, 'runtimeVersions') || rec.runtimeVersions === null) return undefined;
+  const versions = rec.runtimeVersions;
+  const fail = (message) => {
+    throw new PublicationError(`${where}: runtimeVersions${message.startsWith('.') ? '' : ' '}${message}`);
+  };
+  if (!isObject(versions)) fail('must be an object');
+  for (const key of Object.keys(versions)) if (!RUNTIME_KEYS.includes(key)) fail(`has unknown key ${key}`);
+  // Never publish a runtime the row's engine (and backend) does not run on.
+  const reported = RUNTIME_KEYS.filter((key) => versions[key] !== undefined && versions[key] !== null);
+  const stray = reported.filter((key) => !(ENGINE_RUNTIMES[rec.engine] ?? []).includes(key) ||
+    (rec.engine === 'litert-lm' && rec.backend !== 'npu' && NPU_ONLY_RUNTIMES.includes(key)));
+  if (stray.length) fail(`names runtimes ${rec.engine} ${rec.backend ?? ''} does not run on: ${stray.join(', ')}`);
+  const version = (key) => {
+    const value = versions[key];
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'string' || !VERSION.test(value)) fail(`.${key} is not a version`);
+    return value;
+  };
+  let llamaCpp = null;
+  if (versions.llamaCpp !== undefined && versions.llamaCpp !== null) {
+    const { buildNumber, commit } = isObject(versions.llamaCpp) ? versions.llamaCpp : fail('.llamaCpp must be an object');
+    if (!Number.isInteger(buildNumber) || buildNumber < 1 || buildNumber > 9999999) {
+      fail('.llamaCpp.buildNumber must be an integer build number');
+    }
+    if (typeof commit !== 'string' || !HEX_COMMIT.test(commit)) fail('.llamaCpp.commit must be 7-40 lowercase hex');
+    llamaCpp = { buildNumber, commit };
+  }
+  const component = {
+    'llama.cpp': llamaCpp && `b${llamaCpp.buildNumber}`, 'llama.rn': version('llamaRn'),
+    'LiteRT-LM': version('litertLm'), 'litert-npu-runtime-qualcomm': version('litertNpuRuntimeQualcomm'),
+    QAIRT: version('qairt'), 'geniex-android': version('genie'),
+  };
+  const runtimes = RUNTIME_NAMES.filter((name) => component[name] !== null)
+    .map((name) => ({ name, version: component[name] }));
+  const engineVersion = rec.engine === 'llama.cpp'
+    ? llamaCpp && `llama.cpp b${llamaCpp.buildNumber} (${llamaCpp.commit.slice(0, 7)})`
+    : rec.engine === 'litert-lm' ? component['LiteRT-LM'] && `LiteRT-LM ${component['LiteRT-LM']}`
+      : rec.engine === 'genie-x' ? component['geniex-android'] && `geniex-android ${component['geniex-android']}` : null;
+  const bindingVersion = rec.engine === 'llama.cpp' && component['llama.rn'] ? `llama.rn ${component['llama.rn']}` : null;
+  const build = {
+    ...(engineVersion ? { engineVersion } : {}),
+    ...(bindingVersion ? { bindingVersion } : {}),
+    ...(runtimes.length ? { runtimes } : {}),
+  };
+  return Object.keys(build).length ? build : undefined;
 }
 
 export function assertFindings(envelope, schema, label) {

@@ -2,14 +2,27 @@ import {NativeModules} from 'react-native';
 import type {BackendId, SingleRunMetrics} from '../types';
 import type {BenchOnceConfig, EngineAdapter} from './EngineAdapter';
 import {backendEvidence, BackendEvidence} from '../backend';
+import {NO_RUNTIME_VERSIONS, RuntimeVersions, version} from '../runtime';
 
-/** Pinned in android/app/build.gradle (experimental flavor); keep in step. */
-export const LITERTLM_VERSION = 'litertlm-android 0.18.0';
-export const LITERT_NPU_RUNTIME = 'litert-npu-runtime-qualcomm 2.3.0';
+/**
+ * The versions LiteRtBenchModule reports from the APK: the AARs as Gradle resolved them and
+ * the QAIRT build string in the packaged libQnnHtp.so. The Qualcomm runtime and QAIRT only
+ * take part in NPU runs; other backends record them as null.
+ */
+export function liteRtRuntimeVersions(constants: unknown, backend: BackendId): RuntimeVersions {
+  const value = (constants ?? {}) as Record<string, unknown>;
+  const npu = backend === 'npu';
+  return {...NO_RUNTIME_VERSIONS, litertLm: version(value.litertLmVersion),
+    litertNpuRuntimeQualcomm: npu ? version(value.litertNpuRuntimeQualcommVersion) : null,
+    qairt: npu ? version(value.qairtVersion) : null};
+}
 
 /** Exported label alphabet: no commas (scripts/export_evidence.py LABEL). */
-export const liteRtEngineVersion = (backend: BackendId) => backend === 'npu' ?
-  `LiteRT-LM ${LITERTLM_VERSION} + ${LITERT_NPU_RUNTIME} (npu)` : `LiteRT-LM ${LITERTLM_VERSION} (${backend})`;
+export const liteRtEngineVersion = (backend: BackendId, versions: RuntimeVersions) => {
+  const litert = `litertlm-android ${versions.litertLm ?? 'unknown'}`;
+  return backend === 'npu' ? `LiteRT-LM ${litert} + litert-npu-runtime-qualcomm ` +
+    `${versions.litertNpuRuntimeQualcomm ?? 'unknown'} (npu)` : `LiteRT-LM ${litert} (${backend})`;
+};
 
 export interface LiteRtAdapterOptions {
   /** Absolute path to the .litertlm on device */
@@ -60,7 +73,12 @@ export class LiteRtAdapter implements EngineAdapter {
   }
 
   engineVersion(): string {
-    return liteRtEngineVersion(this.opts.backend);
+    return liteRtEngineVersion(this.opts.backend, this.runtimeVersions());
+  }
+
+  runtimeVersions(): RuntimeVersions {
+    const constants = typeof this.native.getConstants === 'function' ? this.native.getConstants() : this.native;
+    return liteRtRuntimeVersions(constants, this.opts.backend);
   }
 
   settings() {

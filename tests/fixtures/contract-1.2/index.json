@@ -1,0 +1,60 @@
+{
+  "contract": "1.2",
+  "description": "Fixtures for the xebench benchmarks contract 1.2 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): build.runtimes, engineVersion and bindingVersion. Each file is a complete envelope. producerMustNotEmit=true marks a file that breaks a producer rule: scripts/validate_data.mjs refuses it, so xebench never publishes it. consumerExpectation is what the website does with the file: consumers degrade per entry and fall back to the whole file only for an unknown major version, malformed JSON or no valid rows, none of which these files are. tests/test_contract_1_2.py checks producerMustNotEmit against scripts/validate_data.mjs.",
+  "fixtures": [
+    {
+      "file": "llama-cpp-runtimes.json",
+      "producerMustNotEmit": false,
+      "notes": "llama.cpp build plus llama.rn binding",
+      "consumerExpectation": "rendered: engine, binding and runtime versions shown"
+    },
+    {
+      "file": "litert-npu-runtimes.json",
+      "producerMustNotEmit": false,
+      "notes": "LiteRT-LM NPU with dispatch runtime and QAIRT; no binding",
+      "consumerExpectation": "rendered: engine and runtime versions shown; no binding"
+    },
+    {
+      "file": "v1.1-rows-in-1.2.json",
+      "producerMustNotEmit": false,
+      "notes": "1.2 is additive: rows without runtimes are unchanged",
+      "consumerExpectation": "rendered unchanged: 1.2 is additive"
+    },
+    {
+      "file": "runtimes-in-1.1.json",
+      "producerMustNotEmit": true,
+      "producerRule": "runtimes need schemaVersion 1.2",
+      "consumerExpectation": "rendered; the runtimes are harmless"
+    },
+    {
+      "file": "duplicate-runtime.json",
+      "producerMustNotEmit": true,
+      "producerRule": "one entry per runtime name",
+      "consumerExpectation": "that runtime's entries are dropped; the rest of the row renders"
+    },
+    {
+      "file": "unknown-runtime-name.json",
+      "producerMustNotEmit": true,
+      "producerRule": "names come from a closed list",
+      "consumerExpectation": "shown"
+    },
+    {
+      "file": "bad-runtime-version.json",
+      "producerMustNotEmit": true,
+      "producerRule": "versions are short version strings, never free text",
+      "consumerExpectation": "that entry is dropped (version token check ^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$)"
+    },
+    {
+      "file": "engine-version-form.json",
+      "producerMustNotEmit": true,
+      "producerRule": "with runtimes, engineVersion is 'llama.cpp b<number> (<commit>)'",
+      "consumerExpectation": "shown sanitised"
+    },
+    {
+      "file": "runtimes-on-vendor-row.json",
+      "producerMustNotEmit": true,
+      "producerRule": "build, including runtimes, is measured-only",
+      "consumerExpectation": "ignored"
+    }
+  ]
+}

@@ -43,6 +43,25 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
 
   override fun getName() = "LiteRtBench"
 
+  /**
+   * Versions of the runtimes this APK packages, from the shipped artifacts: the AARs as
+   * Gradle resolved them (BuildConfig), and the QAIRT build string embedded in the packaged
+   * libQnnHtp.so. Absent (null) when a library is not packaged or carries no version.
+   */
+  override fun getConstants(): Map<String, Any?> = mapOf(
+    "litertLmVersion" to BuildConfig.XEBENCH_LITERTLM_VERSION.ifEmpty { null },
+    "litertNpuRuntimeQualcommVersion" to BuildConfig.XEBENCH_LITERT_NPU_QUALCOMM_VERSION.ifEmpty { null },
+    "qairtVersion" to qairtVersion(),
+  )
+
+  /** QAIRT build string (e.g. 2.50.0.260828221209) from libQnnHtp.so's own "vX.Y.Z.BUILD" marker. */
+  private fun qairtVersion(): String? = runCatching {
+    val lib = File(reactContext.applicationInfo.nativeLibraryDir, "libQnnHtp.so")
+    if (!lib.isFile) return@runCatching null
+    val text = String(lib.readBytes(), Charsets.ISO_8859_1)
+    Regex("v([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{6,14})(?![0-9])").find(text)?.groupValues?.get(1)
+  }.getOrNull()
+
   private fun run(promise: Promise, code: String, body: () -> Any?) {
     worker.execute {
       try {

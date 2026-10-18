@@ -1,6 +1,7 @@
 import {NativeModules} from 'react-native';
 import type {BackendId, SingleRunMetrics} from '../types';
 import type {BenchOnceConfig, EngineAdapter} from './EngineAdapter';
+import {NO_RUNTIME_VERSIONS, RuntimeVersions, version} from '../runtime';
 
 /**
  * GENIE-X (Qualcomm) adapter — SCAFFOLD, NOT YET WIRED INTO THE BUILD.
@@ -20,8 +21,6 @@ import type {BenchOnceConfig, EngineAdapter} from './EngineAdapter';
  * so like ExecuTorch its prefill/decode are ttft-/callback-derived unless
  * LlmGenerateResult exposes engine counters (TBD on real hardware).
  */
-const GENIEX_VERSION = 'geniex-android 0.3.1';
-
 const {GenieXBench} = NativeModules;
 
 export interface GenieXAdapterOptions {
@@ -55,7 +54,13 @@ export class GenieXAdapter implements EngineAdapter {
   }
 
   engineVersion(): string {
-    return `GENIE-X (${GENIEX_VERSION}, ${this.opts.backend})`;
+    return `GENIE-X (geniex-android ${this.runtimeVersions().genie ?? 'unknown'}, ${this.opts.backend})`;
+  }
+
+  /** geniex-android as GenieXBenchModule reports it from the APK (Gradle-resolved). */
+  runtimeVersions(): RuntimeVersions {
+    const constants = typeof GenieXBench.getConstants === 'function' ? GenieXBench.getConstants() : GenieXBench;
+    return {...NO_RUNTIME_VERSIONS, genie: version(constants?.geniexVersion)};
   }
 
   settings() {

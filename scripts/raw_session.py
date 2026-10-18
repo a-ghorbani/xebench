@@ -925,12 +925,51 @@ def _semantic_v2(record):
 
 # --- cpu-reference-v3: build, configuration and execution identity ----------
 
+# runtimeVersions keys each engine may report (runtime.ts); every other key must be null.
+ENGINE_RUNTIMES = {"llama.cpp": ("llamaCpp", "llamaRn"), "litert-lm": ("litertLm", "litertNpuRuntimeQualcomm", "qairt"),
+                   "genie-x": ("genie",)}
+
+
+def runtime_versions_errors(record):
+    """runtimeVersions names only the engine's own runtimes; LiteRT's NPU runtimes only on NPU runs."""
+    runtimes = record.get("runtimeVersions")
+    if runtimes is None:
+        return []
+    errors = []
+    allowed = ENGINE_RUNTIMES.get(record["engine"], ())
+    stray = sorted(key for key, value in runtimes.items() if value is not None and key not in allowed)
+    if stray:
+        errors.append(reason("runtime.inconsistent", "/runtimeVersions",
+                             f"{record['engine']} does not run on {stray}"))
+    if record["engine"] == "litert-lm" and record["backend"] != "npu" and (
+            runtimes["litertNpuRuntimeQualcomm"] is not None or runtimes["qairt"] is not None):
+        errors.append(reason("runtime.inconsistent", "/runtimeVersions",
+                             "The Qualcomm NPU runtime and QAIRT take part only in NPU runs"))
+    distribution = (record.get("effectiveSettings") or {}).get("distribution")
+    if distribution is not None and runtimes["llamaRn"] is not None and runtimes["llamaRn"] != distribution["version"]:
+        errors.append(reason("runtime.inconsistent", "/runtimeVersions/llamaRn",
+                             "llama.rn version disagrees with effectiveSettings.distribution"))
+    if record["engine"] == "litert-lm" and record.get("engineVersion") != litert_engine_version(record["backend"], runtimes):
+        errors.append(reason("runtime.inconsistent", "/engineVersion",
+                             "LiteRT-LM engineVersion disagrees with runtimeVersions"))
+    return errors
+
+
+def litert_engine_version(backend, runtimes):
+    """The engineVersion LiteRtAdapter derives from runtimeVersions (liteRtEngineVersion)."""
+    litert = f"litertlm-android {runtimes['litertLm'] or 'unknown'}"
+    if backend == "npu":
+        return (f"LiteRT-LM {litert} + litert-npu-runtime-qualcomm "
+                f"{runtimes['litertNpuRuntimeQualcomm'] or 'unknown'} (npu)")
+    return f"LiteRT-LM {litert} ({backend})"
+
+
 def _semantic_v3(record):
     """Identity evidence: configured model hash, effective settings and per-load engine reports.
 
     accelerator-v1 records carry the same evidence, except that LiteRT-LM runs have no
     effectiveSettings (null) and no executionReports (LiteRT-LM reports neither)."""
-    errors = []
+    errors = runtime_versions_errors(record)
     protocol, config, attempts = record["protocol"], record["configuration"], record["coldRuns"]
     runs = [run for run in config["runs"] if run["id"] == record["configurationRunId"]]
     expected = runs[0].get("modelSha256") if runs else None

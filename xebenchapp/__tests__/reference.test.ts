@@ -26,7 +26,7 @@ jest.mock('react-native', () => {
     }, BuildInfo: {identity: jest.fn(), nativeLibraries: jest.fn()}},
   };
 });
-jest.mock('llama.rn', () => ({initLlama: jest.fn()}));
+jest.mock('llama.rn', () => ({initLlama: jest.fn(), BuildInfo: {number: '11385', commit: 'bf9a0cc'}}));
 
 let files: Map<string, string>;
 let output: jest.SpyInstance;
@@ -219,6 +219,9 @@ test('records the engine settings actually passed and what the loaded context re
     // Vanilla npm llama.rn, exactly the pinned version, no patches.
     distribution: {source: 'npm', package: 'llama.rn', version: '0.13.0-rc.7', patches: []}});
   expect(record.engineVersion).toBe('llama.rn 0.13.0-rc.7');
+  // llama.cpp's own build from llama.rn's exported BuildInfo; the other runtimes take no part.
+  expect(record.runtimeVersions).toEqual({llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'},
+    llamaRn: '0.13.0-rc.7', litertLm: null, litertNpuRuntimeQualcomm: null, qairt: null, genie: null});
   expect(record.executionReports).toEqual([{runIndex: 0, ...CONTEXT, nativeLibraries: LIBRARIES}]);
   // Engine reports are evidence, not verified execution: the observed backend stays unknown.
   expect(record.observedBackend).toBeNull();

@@ -1,3 +1,4 @@
+import type {RuntimeVersions} from './runtime';
 import type {BenchOnceConfig, EngineAdapter, ExecutionReport, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
 import type {BuildIdentity} from './build';
 import type {BackendEvidence} from './backend';
@@ -120,6 +121,8 @@ export interface ReferenceSession extends Omit<SessionIdentity, 'artifact'> {
   effectiveSettings: LlamaRnEffectiveSettings;
   /** As reported by the engine after each successful load; reports are not verified execution. */
   executionReports: ExecutionLoadReport[];
+  /** Versions of the runtimes the engine runs on, from the shipped artifacts (runtime.ts). */
+  runtimeVersions: RuntimeVersions | null;
   platform: 'android';
   model: string;
   quant: string;
@@ -248,6 +251,7 @@ export function createSession(
     schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.7-reference',
     engine: adapter.engine, engineVersion: adapter.engineVersion(), backend: 'cpu', observedBackend: null,
     effectiveSettings: adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens}), executionReports: [],
+    runtimeVersions: adapter.runtimeVersions?.() ?? null,
     platform: 'android', model: run.model, quant: run.quant, modelFile: run.modelFile,
     configuration: config, configurationRunId: run.id, runOrder,
     protocol: {

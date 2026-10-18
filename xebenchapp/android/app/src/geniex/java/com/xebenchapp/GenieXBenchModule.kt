@@ -27,6 +27,10 @@ class GenieXBenchModule(private val ctx: ReactApplicationContext) :
 
   override fun getName() = "GenieXBench"
 
+  /** geniex-android as Gradle resolved it for this APK; null when not packaged. */
+  override fun getConstants(): Map<String, Any?> =
+    mapOf("geniexVersion" to BuildConfig.XEBENCH_GENIEX_VERSION.ifEmpty { null })
+
   @ReactMethod
   fun bench(modelPath: String, backend: String, prompt: String, maxTokens: Int, promise: Promise) {
     thread {

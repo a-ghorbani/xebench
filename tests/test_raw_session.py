@@ -852,5 +852,57 @@ class AcceleratorRecordTests(unittest.TestCase):
         self.assertEqual(raw_session.js_trim("﻿x\u001c"), "x\u001c")
 
 
+
+class RuntimeVersionsTests(unittest.TestCase):
+    """runtimeVersions: strict shapes, the engine's own runtimes only, old records without it stay valid."""
+
+    def test_new_records_carry_runtime_versions_and_old_ones_need_none(self):
+        self.assertEqual(APP["complete"]["runtimeVersions"]["llamaCpp"], {"buildNumber": 11385, "commit": "bf9a0cc"})
+        self.assertEqual(ACCEL["f8-litert-npu"]["runtimeVersions"]["qairt"], "2.50.0.260828221209")
+        self.assertIsNone(ACCEL["f8-litert-gpu"]["runtimeVersions"]["qairt"])
+        record = copy.deepcopy(APP["complete"])
+        del record["runtimeVersions"]
+        self.assertEqual(raw_session.validate(record), [])
+        self.assertTrue(all("runtimeVersions" not in record for record in ACCEL_V1.values()))
+
+    def test_runtime_versions_are_strict_and_belong_to_the_engine(self):
+        def stray_litert(record):
+            record["runtimeVersions"]["litertLm"] = "0.18.0"
+
+        def npu_runtime_on_gpu(record):
+            record["runtimeVersions"]["qairt"] = "2.50.0.260828221209"
+
+        def binding_disagrees(record):
+            record["runtimeVersions"]["llamaRn"] = "0.12.4"
+
+        def free_text_version(record):
+            record["runtimeVersions"]["litertLm"] = "0.18.0 (npu build)"
+
+        def short_commit(record):
+            record["runtimeVersions"]["llamaCpp"]["commit"] = "bf9a0"
+
+        def string_build_number(record):
+            record["runtimeVersions"]["llamaCpp"]["buildNumber"] = "11385"
+
+        def litert_engine_version_disagrees(record):
+            record["runtimeVersions"]["litertLm"] = "0.19.0"
+
+        def npu_runtime_version_disagrees(record):
+            record["runtimeVersions"]["litertNpuRuntimeQualcomm"] = "2.4.0"
+
+        cases = (
+            (APP, "complete", stray_litert, "runtime.inconsistent"),
+            (ACCEL, "f8-litert-gpu", npu_runtime_on_gpu, "runtime.inconsistent"),
+            (APP, "complete", binding_disagrees, "runtime.inconsistent"),
+            (ACCEL, "f8-litert-npu", free_text_version, "schema.pattern"),
+            (APP, "complete", short_commit, "schema.pattern"),
+            (APP, "complete", string_build_number, "schema.type"),
+            (ACCEL, "f8-litert-gpu", litert_engine_version_disagrees, "runtime.inconsistent"),
+            (ACCEL, "f8-litert-npu", npu_runtime_version_disagrees, "runtime.inconsistent"),
+        )
+        for source, name, change, code in cases:
+            with self.subTest(name=name, change=change.__name__):
+                self.assertIn(code, codes(mutate(name, change, source)))
+
 if __name__ == "__main__":
     unittest.main()

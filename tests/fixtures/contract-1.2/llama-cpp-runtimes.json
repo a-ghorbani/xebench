@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.2",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract 1.2 consumer fixture: a SYNTHETIC llama.cpp row whose build names the engine (llama.cpp b11385, bf9a0cc), the binding (llama.rn 0.13.0-rc.7) and both as runtimes.",
+  "rowCount": 1,
+  "rows": [
+    {
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Fixture Phone",
+      "soc": "Fixture SoC",
+      "model": "Fixture Model 1B",
+      "quant": "Q4_0",
+      "ppTps": 210.4,
+      "tgTps": 27.3,
+      "ttftMs": 2480,
+      "memoryMb": 712.5,
+      "provenance": "measured",
+      "sourceName": "PocketPal R&D lab (xebench)",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sourceDate": "2026-10",
+      "sampleCount": 10,
+      "asStated": "SYNTHETIC FIXTURE; n=10 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "unverified",
+      "guardsPassed": null,
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "cpu-reference-v3",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 3.1,
+          "min": 205.9,
+          "max": 214.2
+        },
+        "tgTps": {
+          "iqr": 0.4,
+          "min": 26.8,
+          "max": 27.9
+        }
+      },
+      "build": {
+        "engineVersion": "llama.cpp b11385 (bf9a0cc)",
+        "bindingVersion": "llama.rn 0.13.0-rc.7",
+        "apkSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "harnessCommit": "0000000000000000000000000000000000000000",
+        "runtimes": [
+          {
+            "name": "llama.cpp",
+            "version": "b11385"
+          },
+          {
+            "name": "llama.rn",
+            "version": "0.13.0-rc.7"
+          }
+        ]
+      }
+    }
+  ]
+}

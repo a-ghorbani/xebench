@@ -242,7 +242,7 @@ REJECTION_CODES = Vocab((
     "readiness.recomputed", "record.unprocessable", "status.artifact",
     # cpu-reference-v3 identity checks (raw_session._semantic_v3).
     "artifact.expected", "build.inconsistent", "configuration.source", "execution.inconsistent",
-    "settings.protocol-mismatch", "settings.distribution", "settings.engine",
+    "settings.protocol-mismatch", "settings.distribution", "runtime.inconsistent", "settings.engine",
     # accelerator-v1 cross-field checks (raw_session._semantic_accelerator).
     "backend.inconsistent", "backend.recomputed", "comparison.recomputed", "configuration.run-invalid",
     "correctness.inconsistent", "correctness.probe-set", "correctness.recomputed", "protocol.prompt",
@@ -522,6 +522,15 @@ class SystemInfo:
         return SYSTEM_INFO.apply(value, path, ctx)
 
 
+# runtimeVersions (runtime.ts): strict shapes only, no free text.
+RUNTIME_VERSION = Nullable(_text(r"[0-9A-Za-z][0-9A-Za-z.+-]{0,39}", "runtime version"))
+RUNTIME_VERSIONS = Obj({
+    "llamaCpp": Nullable(Obj({"buildNumber": _number(1, 999999999, integer=True),
+                              "commit": _text(r"[0-9a-f]{7,40}", "llama.cpp commit")},
+                             required=("buildNumber", "commit"))),
+    "llamaRn": RUNTIME_VERSION, "litertLm": RUNTIME_VERSION, "litertNpuRuntimeQualcomm": RUNTIME_VERSION,
+    "qairt": RUNTIME_VERSION, "genie": RUNTIME_VERSION,
+}, required=("llamaCpp", "llamaRn", "litertLm", "litertNpuRuntimeQualcomm", "qairt", "genie"))
 EXECUTION_REPORT = Obj({
     "runIndex": COUNT, "gpu": N_BOOL, "reasonNoGPU": Nullable(REASON_NO_GPU),
     "devices": Nullable(Arr(ENGINE_DEVICE, max_items=16)), "androidLib": Nullable(ANDROID_LIB),
@@ -602,7 +611,7 @@ RECORD = Obj({
     # cpu-reference-v3 build, configuration and execution identity (effectiveSettings is null
     # for accelerator-v1 LiteRT-LM runs).
     "build": BUILD, "configurationSource": CONFIGURATION_SOURCE, "effectiveSettings": Nullable(EFFECTIVE_SETTINGS),
-    "executionReports": Arr(EXECUTION_REPORT, max_items=64),
+    "executionReports": Arr(EXECUTION_REPORT, max_items=64), "runtimeVersions": Nullable(RUNTIME_VERSIONS),
     # accelerator-v1: run purpose, output-correctness gate and comparison validity.
     "purpose": ENUM, "gateBackend": Nullable(BACKEND_EVIDENCE), "correctness": CORRECTNESS, "comparison": COMPARISON,
 }, required=("runId", "timestampIso", "schema", "schemaVersion", "artifact", "engine", "model", "quant",

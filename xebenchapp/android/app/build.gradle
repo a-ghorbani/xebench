@@ -242,8 +242,31 @@ def vendorNative = ["**/libQnn*.so", "**/libQairt*.so", "**/libSNPE*.so", "**/li
 // `-Pxebench.excludeLlamaHexagon=true` drops it from experimental so llama.cpp uses CPU.
 def excludeLlamaHexagon = (findProperty("xebench.excludeLlamaHexagon") ?: "false").toString() == "true"
 
+// Runtime versions packaged in each variant, as Gradle resolved them for its APK (never
+// typed by hand): "" when the variant does not carry the library. BuildInfo and the
+// engine bridges report them; session records copy them into runtimeVersions.
+def packagedVersion = { variant, String group, String name ->
+    project.provider {
+        def found = variant.runtimeConfiguration.incoming.resolutionResult.allComponents.find {
+            it.moduleVersion != null && it.moduleVersion.group == group && it.moduleVersion.name == name
+        }
+        found ? found.moduleVersion.version : ""
+    }
+}
+def packagedVersionFields = [
+    XEBENCH_LITERTLM_VERSION: ["com.google.ai.edge.litertlm", "litertlm-android"],
+    XEBENCH_LITERT_NPU_QUALCOMM_VERSION: ["com.google.ai.edge.litert", "litert-npu-runtime-qualcomm"],
+    XEBENCH_GENIEX_VERSION: ["com.qualcomm.qti", "geniex-android"],
+]
+
 androidComponents {
     onVariants(selector().all()) { variant ->
+        packagedVersionFields.each { field, coordinates ->
+            variant.buildConfigFields.put(field, packagedVersion(variant, coordinates[0], coordinates[1]).map {
+                new com.android.build.api.variant.BuildConfigField("String", "\"${it}\"",
+                    "${coordinates[0]}:${coordinates[1]} as resolved for this variant")
+            })
+        }
         def jniExcludes = variant.packaging.jniLibs.excludes
         def flavor = variant.flavorName
         if (flavor == "reference") {
