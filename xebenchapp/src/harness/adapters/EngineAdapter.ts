@@ -40,7 +40,7 @@ export interface LlamaRnEffectiveSettings {
   binding: 'llama.rn';
   init: {
     n_ctx: number; n_batch: number; n_ubatch: number; n_threads: number | null; n_gpu_layers: number;
-    use_mmap: boolean; use_mlock: boolean; flash_attn_type: 'auto' | 'on' | 'off';
+    use_mmap: boolean; use_mlock: boolean; no_extra_bufts: boolean; flash_attn_type: 'auto' | 'on' | 'off';
     cache_type_k: 'f16'; cache_type_v: 'f16'; devices?: string[];
   };
   completion: {n_predict: number; temperature: number; seed: number};

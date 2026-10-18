@@ -6,6 +6,7 @@ never a pass), the refusals, and the facts recomputed from real-shaped bundles b
 from the app-emitted fixtures.
 """
 import copy
+import hashlib
 import importlib.util
 import itertools
 import json
@@ -560,6 +561,40 @@ class FactsFromBundlesTests(unittest.TestCase):
         unhashed = copy.deepcopy(record)
         unhashed["configurationSource"] = {"kind": "bundled", "sha256": None}
         self.assertEqual(policy._reviewed(unhashed, run, reference), [])
+
+    def test_committed_cpu_reference_configurations_are_reviewed_anchors(self):
+        """A session that ran the committed cpu-reference-v2 (bundled) or a staged copy of
+        cpu-reference-v1, named by the SHA-256 of that file's bytes, is a reviewed run. Its effective
+        load settings must be the ones the file selects."""
+        cases = (("referenceV2", "cpu-reference-v2.json", {"use_mmap": True, "flash_attn_type": "auto"}),
+                 ("referenceV1Staged", "cpu-reference-v1.json", {"use_mmap": False, "flash_attn_type": "off"}))
+        for index, (name, file, other_settings) in enumerate(cases):
+            data = (ROOT / "xebenchapp/configs" / file).read_bytes()
+            record = fx.cpu_record(name, f"1767225600000-{index}-anchor")
+            self.assertEqual(record["configuration"], json.loads(data))
+            record["configurationSource"]["sha256"] = hashlib.sha256(data).hexdigest()
+            with self.subTest(name), tempfile.TemporaryDirectory() as root:
+                directory, sha = fx.bundle(root, [record], f"00000000-0000-4000-8000-00000000010{index}")
+                # The export keeps the configured load settings and the effective ones.
+                exported = json.loads((directory / f"sessions/1767225600000-{index}-anchor.json").read_text())
+                self.assertEqual(exported["record"]["configuration"], json.loads(data))
+                self.assertEqual(exported["record"]["effectiveSettings"]["init"], record["effectiveSettings"]["init"])
+                report = policy.bundle_report(directory, sha)
+                self.assertTrue(report["valid"], report["errors"])
+                decision = report["sessions"][0]["decision"]
+                self.assertEqual(decision["validation"], "verified", decision["checks"])
+                self.assertEqual(outcome_of(decision, "artifact"), PASS)
+                # In the repository's own reference data, the hash names exactly that committed file.
+                self.assertEqual(policy.load_reference(ROOT)["files"][hashlib.sha256(data).hexdigest()]["name"], file)
+            with self.subTest(name, settings="the other file's"), tempfile.TemporaryDirectory() as root:
+                directory, _ = fx.bundle(root, [record], f"00000000-0000-4000-8000-00000000011{index}")
+                path = f"sessions/1767225600000-{index}-anchor.json"
+                forged = fx.rehash(directory, path,
+                                   lambda document: document["record"]["effectiveSettings"]["init"].update(other_settings))
+                report = policy.bundle_report(forged, forged.name)
+                self.assertFalse(report["valid"])
+                self.assertTrue(any("settings.configuration-mismatch" in error for error in report["errors"]),
+                                report["errors"])
 
     def test_engine_timings_must_equal_the_engine_counters(self):
         path = "sessions/1767225600000-0-timing.json"

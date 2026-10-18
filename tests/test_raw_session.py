@@ -42,9 +42,10 @@ class AppEmittedRecordTests(unittest.TestCase):
             "chargingTimeout", "chargingUnknown", "inferenceFailedThenProbePending", "monitorStartTimeout",
             "cleanupFailedProbePending", "laterReadinessTimeout", "headroomUnavailable", "monitorStopError",
             "decimatedSamples", "onBattery", "riseOverride", "chargingRecordOnly", "noExpectedHash", "modelHashMismatch",
-            "stagedConfiguration", "buildUnavailable", "executionUnreported"})
+            "stagedConfiguration", "buildUnavailable", "executionUnreported", "referenceV2", "referenceV1Staged"})
         self.assertEqual(set(V2_FROZEN), set(APP) - {"noExpectedHash", "modelHashMismatch", "stagedConfiguration",
-                                                     "buildUnavailable", "executionUnreported"})
+                                                     "buildUnavailable", "executionUnreported", "referenceV2",
+                                                 "referenceV1Staged"})
         self.assertEqual({r["protocol"]["version"] for r in V2_FROZEN.values()}, {"cpu-reference-v2"})
         self.assertEqual({r["protocol"]["version"] for r in APP.values()}, {"cpu-reference-v3"})
         for records in (APP, LEGACY, V2_FROZEN):
@@ -534,6 +535,38 @@ class IdentityV3Tests(unittest.TestCase):
         self.assertCodes(v3("complete", lambda r: r["effectiveSettings"]["init"].update(devices=["HTP0"])),
                          {"schema.additional-property"})
         self.assertCodes(v3("complete", lambda r: r["effectiveSettings"]["init"].pop("use_mmap")), {"schema.required"})
+
+    def test_effective_load_settings_agree_with_the_configured_run(self):
+        """cpu-reference-v2 sets each load setting; cpu-reference-v1 leaves them to the harness defaults."""
+        self.assertEqual(APP["referenceV2"]["configuration"]["id"], "cpu-reference-v2")
+        self.assertEqual(APP["referenceV1Staged"]["configuration"]["id"], "cpu-reference-v1")
+        self.assertEqual(raw_session.validate(APP["referenceV2"]), [])
+        self.assertEqual(raw_session.validate(APP["referenceV1Staged"]), [])
+        init = lambda r: r["effectiveSettings"]["init"]  # noqa: E731
+        for key, value in (("use_mmap", True), ("use_mlock", True), ("no_extra_bufts", True),
+                           ("flash_attn_type", "auto"), ("flash_attn_type", "on")):
+            with self.subTest(key=key, value=value):
+                self.assertCodes(v3("referenceV2", lambda r: init(r).update({key: value})),
+                                 {"settings.configuration-mismatch"})
+        for key, value in (("use_mmap", False), ("use_mlock", True), ("no_extra_bufts", True),
+                           ("flash_attn_type", "off")):
+            with self.subTest(key=key, value=value, configuration="v1"):
+                self.assertCodes(v3("referenceV1Staged", lambda r: init(r).update({key: value})),
+                                 {"settings.configuration-mismatch"})
+        # A configured setting the engine was given agrees again.
+        def configured(record):
+            record["configuration"]["runs"][0]["flashAttnType"] = "on"
+            init(record)["flash_attn_type"] = "on"
+        self.assertCodes(v3("referenceV1Staged", configured), set())
+        # Builds before no_extra_bufts was passed omit it; only a run that does not set it may.
+        self.assertCodes(v3("referenceV1Staged", lambda r: init(r).pop("no_extra_bufts")), set())
+        self.assertCodes(v3("referenceV2", lambda r: init(r).pop("no_extra_bufts")),
+                         {"settings.configuration-mismatch"})
+        # Configured values are typed.
+        for key, value in (("useMmap", "false"), ("noExtraBufts", 0), ("flashAttnType", "enabled")):
+            with self.subTest(field=key):
+                result = v3("referenceV2", lambda r: r["configuration"]["runs"][0].update({key: value}))
+                self.assertTrue({"schema.type", "schema.enum"} & codes(result), raw_session.validate(result))
 
     def test_build_and_configuration_source(self):
         self.assertEqual(APP["complete"]["build"]["status"], "reported")

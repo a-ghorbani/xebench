@@ -45,7 +45,11 @@
               "quant": {"$ref": "#/$defs/label"},
               "nThreads": {"type": "integer", "minimum": 1, "maximum": 32},
               "nCtx": {"type": "integer", "minimum": 1024, "maximum": 32768},
-              "modelSha256": {"$ref": "#/$defs/sha256"}
+              "modelSha256": {"$ref": "#/$defs/sha256"},
+              "useMmap": {"type": "boolean"},
+              "useMlock": {"type": "boolean"},
+              "noExtraBufts": {"type": "boolean"},
+              "flashAttnType": {"enum": ["auto", "on", "off"]}
             }
           }
         }
@@ -694,7 +698,7 @@
     },
     "configurationSource": {
       "type": "object",
-      "description": "bundled: the APK's configs/cpu-reference-v1.json, hashed at build time (null if the build did not report it). staged: xebench-config.json, hashed as read.",
+      "description": "bundled: the APK's default configuration (configs/cpu-reference-v2.json; cpu-reference-v1.json in earlier builds), hashed at build time (null if the build did not report it). staged: xebench-config.json, hashed as read.",
       "required": ["kind", "sha256"],
       "additionalProperties": false,
       "properties": {
@@ -704,7 +708,7 @@
     },
     "effectiveSettingsLlamaRn": {
       "type": "object",
-      "description": "Every parameter the harness passes to llama.rn initLlama() (besides the model path) and completion() (besides the prompt). Unlisted parameters are the binding's defaults for engineVersion.",
+      "description": "Every parameter the harness passes to llama.rn initLlama() (besides the model path) and completion() (besides the prompt). Unlisted parameters are the binding's defaults for engineVersion. Records from builds that did not pass no_extra_bufts omit it (the binding default, false). use_mmap, use_mlock, no_extra_bufts and flash_attn_type must equal the configured run's useMmap, useMlock, noExtraBufts and flashAttnType, or the harness defaults (true, false, false, auto) when the run sets none (scripts/raw_session.py).",
       "required": ["binding", "init", "completion", "unlisted"],
       "additionalProperties": false,
       "properties": {
@@ -722,6 +726,7 @@
             "n_gpu_layers": {"const": 0},
             "use_mmap": {"type": "boolean"},
             "use_mlock": {"type": "boolean"},
+            "no_extra_bufts": {"type": "boolean"},
             "flash_attn_type": {"enum": ["auto", "on", "off"]},
             "cache_type_k": {"const": "f16"},
             "cache_type_v": {"const": "f16"}
@@ -1479,6 +1484,7 @@
             "n_gpu_layers": {"type": "integer", "minimum": 0, "maximum": 999},
             "use_mmap": {"type": "boolean"},
             "use_mlock": {"type": "boolean"},
+            "no_extra_bufts": {"type": "boolean"},
             "flash_attn_type": {"enum": ["auto", "on", "off"]},
             "cache_type_k": {"const": "f16"},
             "cache_type_v": {"const": "f16"},

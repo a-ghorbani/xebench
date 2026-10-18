@@ -242,7 +242,8 @@ REJECTION_CODES = Vocab((
     "readiness.recomputed", "record.unprocessable", "status.artifact",
     # cpu-reference-v3 identity checks (raw_session._semantic_v3).
     "artifact.expected", "build.inconsistent", "configuration.source", "execution.inconsistent",
-    "settings.protocol-mismatch", "settings.distribution", "runtime.inconsistent", "settings.engine",
+    "settings.protocol-mismatch", "settings.configuration-mismatch", "settings.distribution", "runtime.inconsistent",
+    "settings.engine",
     # accelerator-v1 cross-field checks (raw_session._semantic_accelerator).
     "backend.inconsistent", "backend.recomputed", "comparison.recomputed", "configuration.run-invalid",
     "correctness.inconsistent", "correctness.probe-set", "correctness.recomputed", "protocol.prompt",
@@ -425,7 +426,8 @@ CACHE_TYPE = Vocab(("f16", "f32", "bf16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_
 EFFECTIVE_SETTINGS = Obj({
     "binding": Vocab(("llama.rn",)), "unlisted": ENUM,
     "init": Obj({"n_ctx": COUNT, "n_batch": COUNT, "n_ubatch": COUNT, "n_threads": N_COUNT, "n_gpu_layers": INT,
-                 "use_mmap": BOOL, "use_mlock": BOOL, "flash_attn_type": ENUM, "cache_type_k": CACHE_TYPE,
+                 "use_mmap": BOOL, "use_mlock": BOOL, "no_extra_bufts": BOOL, "flash_attn_type": ENUM,
+                 "cache_type_k": CACHE_TYPE,
                  "cache_type_v": CACHE_TYPE,
                  # accelerator-v1 llama.cpp runs (ggml device names, e.g. HTP0).
                  "devices": Arr(LABEL, max_items=4)}, required=("n_ctx", "n_batch", "n_threads", "n_gpu_layers")),
@@ -590,6 +592,8 @@ CONFIGURATION = Obj({
     "experimentChargingReadiness": ENUM,
     "runs": Arr(Obj({"id": LABEL, "engine": LABEL, "model": LABEL, "modelFile": MODEL_FILE, "quant": LABEL,
                      "nThreads": Nullable(COUNT), "nCtx": Nullable(COUNT), "modelSha256": HEX64,
+                     # llama.rn load and attention settings (cpu-reference-v2).
+                     "useMmap": BOOL, "useMlock": BOOL, "noExtraBufts": BOOL, "flashAttnType": ENUM,
                      # accelerator-v1 runs.
                      "backend": ENUM, "purpose": ENUM, "nGpuLayers": COUNT, "devices": Arr(LABEL, max_items=4),
                      "referenceRunId": Nullable(LABEL)}, required=("id",)), max_items=64),

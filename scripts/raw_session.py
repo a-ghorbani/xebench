@@ -980,6 +980,12 @@ def litert_engine_version(backend, runtimes):
     return f"LiteRT-LM {litert} ({backend})"
 
 
+# config.ts LOAD_SETTINGS: optional run fields, the llama.rn parameter each sets, and the harness
+# default (LlamaRnAdapter LLAMA_RN_DEFAULTS) when a run sets none.
+LOAD_SETTINGS = (("useMmap", "use_mmap", True), ("useMlock", "use_mlock", False),
+                 ("noExtraBufts", "no_extra_bufts", False), ("flashAttnType", "flash_attn_type", "auto"))
+
+
 def _semantic_v3(record):
     """Identity evidence: configured model hash, effective settings and per-load engine reports.
 
@@ -1009,6 +1015,14 @@ def _semantic_v3(record):
         if actual != wanted:
             errors.append(reason("settings.protocol-mismatch", f"/effectiveSettings/{key}",
                                  "Effective engine setting disagrees with the protocol"))
+    for field, key, default in () if settings is None or not runs else LOAD_SETTINGS:
+        # Builds that did not pass no_extra_bufts (binding default false) could not run a
+        # configuration that sets noExtraBufts, so only those records may leave it out.
+        if key == "no_extra_bufts" and key not in settings["init"] and field not in runs[0]:
+            continue
+        if settings["init"].get(key) != runs[0].get(field, default):
+            errors.append(reason("settings.configuration-mismatch", f"/effectiveSettings/init/{key}",
+                                 "Effective engine setting disagrees with the configured run"))
     distribution = None if settings is None else settings.get("distribution")
     if distribution is not None and not record["engineVersion"].startswith(f"llama.rn {distribution['version']}"):
         errors.append(reason("settings.distribution", "/effectiveSettings/distribution/version",

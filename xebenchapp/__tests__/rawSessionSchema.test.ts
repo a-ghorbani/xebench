@@ -9,7 +9,8 @@
  */
 import {ReferenceSession, runSession, SessionContext, unmeasuredSession} from '../src/harness/session';
 import {parseConfig} from '../src/harness/config';
-import configData from '../configs/cpu-reference-v1.json';
+import configData from '../configs/cpu-reference-v2.json';
+import v1Data from '../configs/cpu-reference-v1.json';
 import type {SingleRunMetrics} from '../src/harness/types';
 import * as conditions from '../src/harness/conditions';
 import {ORDER_METHOD, seededOrder} from '../src/harness/order';
@@ -44,8 +45,9 @@ const report = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices
   nativeLibraries: [{name: 'librnllama_jni_v8_2_dotprod_i8mm.so', buildId: 'c'.repeat(40)},
     {name: 'librnllama_v8_2_dotprod_i8mm.so', buildId: 'd'.repeat(40)}]};
 const effective = ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
-  init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: true, use_mlock: false,
-    flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const, cache_type_v: 'f16' as const},
+  // cpu-reference-v2 (the bundled configuration): the settings its run sets.
+  init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: false, use_mlock: false,
+    no_extra_bufts: false, flash_attn_type: 'off' as const, cache_type_k: 'f16' as const, cache_type_v: 'f16' as const},
   completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const,
   distribution: {source: 'npm' as const, package: 'llama.rn' as const, version: '0.0.0-fixture', patches: [] as []}});
 // USB-tethered at a charge limit (charging-policy-v3 eligible).
@@ -265,6 +267,17 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
   records.buildUnavailable = (await capture(persist => runSession(adapter(), one, config.runs[0],
     {...identity, build: UNAVAILABLE_BUILD, configurationSource: {kind: 'bundled', sha256: null}}, persist, noSleep,
     context()))).pop()!;
+  // The committed reference configurations exactly as the app runs them: cpu-reference-v2
+  // bundled, and a staged copy of cpu-reference-v1 with the harness default load settings.
+  records.referenceV2 = (await capture(persist => runSession(adapter(), config, config.runs[0], identity, persist,
+    noSleep, context()))).pop()!;
+  const v1 = parseConfig(v1Data);
+  const v1Engine = {...adapter(), effectiveSettings: (request: {maxDecodeTokens: number}) => {
+    const settings = effective(request);
+    return {...settings, init: {...settings.init, use_mmap: true, flash_attn_type: 'auto' as const}};
+  }};
+  records.referenceV1Staged = (await capture(persist => runSession(v1Engine, v1, v1.runs[0],
+    {...identity, configurationSource: {kind: 'staged', sha256: 'f'.repeat(64)}}, persist, noSleep, context()))).pop()!;
   const silent: Partial<ReturnType<typeof adapter>> = adapter();
   delete silent.executionReport;
   records.executionUnreported = await single(silent as ReturnType<typeof adapter>);
@@ -298,7 +311,10 @@ test('runSession records match the committed fixture validated by the host schem
     monitorStopError: 'failed/condition-probe-pending/fail', decimatedSamples: 'complete/null/pass',
     noExpectedHash: 'complete/null/pass', modelHashMismatch: 'failed/model-hash-mismatch/unverified',
     stagedConfiguration: 'complete/null/pass', buildUnavailable: 'complete/null/pass',
-    executionUnreported: 'complete/null/pass', chargingRecordOnly: 'complete/null/pass'});
+    executionUnreported: 'complete/null/pass', chargingRecordOnly: 'complete/null/pass',
+    referenceV2: 'complete/null/pass', referenceV1Staged: 'complete/null/pass'});
+  expect(records.referenceV2.configuration).toEqual(configData);
+  expect(records.referenceV1Staged.configuration).toEqual(v1Data);
   expect(records.modelHashMismatch.artifact).toEqual({...MODEL, expectedSha256: 'c'.repeat(64)});
   expect(records.complete.artifact).toEqual({...MODEL, expectedSha256: MODEL.sha256});
   expect(records.noExpectedHash.artifact).toEqual({...MODEL, expectedSha256: null});

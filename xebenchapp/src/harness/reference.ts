@@ -1,6 +1,6 @@
 import * as FS from '@dr.pogodin/react-native-fs';
 import {Platform} from 'react-native';
-import bundledConfig from '../../configs/cpu-reference-v1.json';
+import bundledConfig from '../../configs/cpu-reference-v2.json';
 import {AcceleratorRun, parseAcceleratorConfig, parseConfig} from './config';
 import {runSession, UNMEASURED_NOTES, unmeasuredSession} from './session';
 import type {ConfigurationSource, ReferenceSession, SessionIdentity} from './session';
@@ -67,7 +67,9 @@ export async function runReference(log: (message: string) => void) {
     const modelPath = `${root}/${run.modelFile}`;
     const runId = `${Date.now()}-${sequence++}-${Math.random().toString(36).slice(2)}`;
     const adapter = new LlamaRnAdapter({modelPath, modelLabel: run.model, quantLabel: run.quant,
-      nThreads: run.nThreads, nCtx: run.nCtx, nGpuLayers: 0});
+      nThreads: run.nThreads, nCtx: run.nCtx, nGpuLayers: 0,
+      // Unset load settings (undefined) keep the adapter defaults.
+      useMmap: run.useMmap, useMlock: run.useMlock, noExtraBufts: run.noExtraBufts, flashAttnType: run.flashAttnType});
     const runOrder = {method: ORDER_METHOD, seed, seedSource: config.orderSeed === undefined ? 'generated' as const :
       'configured' as const, order, position};
     const persist = async (record: ReferenceSession) => {

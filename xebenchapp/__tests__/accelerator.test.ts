@@ -127,7 +127,7 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
     Object.assign(adapter, {
       effectiveSettings: ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
         init: {n_ctx: run.nCtx!, n_batch: 512, n_ubatch: 512, n_threads: run.nThreads, n_gpu_layers: run.nGpuLayers ?? 0,
-          use_mmap: true, use_mlock: false, flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const,
+          use_mmap: true, use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const,
           cache_type_v: 'f16' as const, ...(run.devices ? {devices: [...run.devices]} : {})},
         completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const,
         distribution: {source: 'npm' as const, package: 'llama.rn' as const, version: '0.0.0-fixture',
