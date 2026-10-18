@@ -36,6 +36,12 @@
         },
         "headline": { "type": "string", "description": "the money line — render verbatim" },
         "deck": { "type": "string", "description": "one-line summary under the headline — render verbatim" },
+        "detailsUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[A-Za-z0-9.-]+(:[0-9]+)?/[!-\\[\\]-~]*$",
+          "description": "optional: https link to the details (a commit-pinned docs section). The board renders only headline, deck and this link."
+        },
         "claims": {
           "type": "array",
           "items": { "type": "string" },
