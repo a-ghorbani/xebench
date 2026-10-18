@@ -926,6 +926,50 @@ class AcceleratorExportTests(unittest.TestCase):
             self.assertFalse(result["valid"])
             self.assertTrue(any("reference session" in error for error in result["errors"]), result["errors"])
 
+    def forged(self, root, name, change):
+        """Export the fixtures, apply change(record) to one session and re-hash the bundle consistently."""
+        named, report = self.export(root)
+        bundle = Path(report["bundle"])
+        path = f"sessions/{dict(named)[name]['runId']}.json"
+        document = json.loads((bundle / path).read_text())
+        change(document["record"])
+        data = evidence.canonical(document)
+        (bundle / path).write_bytes(data)
+        manifest = json.loads((bundle / "manifest.json").read_text())
+        for item in manifest["files"]:
+            if item["path"] == path:
+                item.update(sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
+        (bundle / "manifest.json").write_bytes(evidence.canonical(manifest))
+        renamed = bundle.parent / hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+        bundle.rename(renamed)
+        return evidence.verify(renamed)
+
+    def test_bundle_cannot_relabel_a_run_against_its_configuration(self):
+        def own_run(record):
+            return next(run for run in record["configuration"]["runs"] if run["id"] == record["configurationRunId"])
+
+        def relabel_purpose(record):
+            record["purpose"] = "bug-repro"
+            record["comparison"] = {"status": "invalid", "reasons": ["bug-repro"]}
+
+        def relabel_everywhere(record):
+            relabel_purpose(record)
+            own_run(record)["purpose"] = "bug-repro"
+
+        def swap_reference(record):
+            record["correctness"]["reference"]["configurationRunId"] = "llama-cpu"
+
+        cases = {
+            "record purpose differs from its configured run": (relabel_purpose, "disagrees with the configured run"),
+            "configuration edited in one session of a capture": (relabel_everywhere, "disagree on configuration"),
+            "reference is not the configured CPU run": (swap_reference, "not the configured CPU run"),
+        }
+        for label, (change, message) in cases.items():
+            with self.subTest(label), tempfile.TemporaryDirectory() as root:
+                result = self.forged(root, "f8-litert-gpu", change)
+                self.assertFalse(result["valid"])
+                self.assertTrue(any(message in error for error in result["errors"]), result["errors"])
+
     def test_frozen_accelerator_v1_records_export_and_verify(self):
         with tempfile.TemporaryDirectory() as root:
             named = []

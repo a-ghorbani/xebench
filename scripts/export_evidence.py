@@ -999,6 +999,29 @@ def _check_correctness(record, where, errors):
         found = raw_session.probe_set_errors(correctness["probes"], protocol["maxDecodeTokens"],
                                              lambda probe: probe.get("promptSha256"), f"{where}/correctness")
         errors.extend(f"{item['path']}: {item['message']}" for item in found)
+        # The configuration and the record's place in it (raw_session._semantic_accelerator and
+        # _correctness_accelerator): a bundle cannot relabel a bug repro or a backend, or point a
+        # candidate at a reference other than its configured CPU run.
+        config = record["configuration"]
+        errors.extend(f"{where}/configuration{item['path'].removeprefix('/configuration')}: {item['message']}"
+                      for item in raw_session._configuration_accelerator(config))
+        run = next((item for item in config["runs"] if item["id"] == record["configurationRunId"]), None)
+        if run is None:
+            errors.append(f"{where}/configurationRunId: not a configured run")
+        else:
+            for key in ("backend", "purpose"):
+                if run.get(key) != record.get(key):
+                    errors.append(f"{where}/{key}: disagrees with the configured run")
+            if correctness["role"] != ("reference" if record["backend"] == "cpu" else "candidate"):
+                errors.append(f"{where}/correctness/role: CPU runs are references, GPU/NPU runs candidates")
+            target = next((item for item in config["runs"] if item["id"] == run.get("referenceRunId")), None)
+            reference = correctness["reference"]
+            if correctness["role"] == "candidate" and (
+                    reference is None or target is None or reference["configurationRunId"] != target["id"]
+                    or reference["modelFile"] != target["modelFile"]):
+                errors.append(f"{where}/correctness/reference: not the configured CPU run and its model file")
+            if correctness["role"] == "reference" and reference is not None:
+                errors.append(f"{where}/correctness/reference: a reference has no reference")
         engine, backend = record["engine"], record["backend"]
         found = raw_session.backend_evidence_errors(engine, backend, record.get("gateBackend"), f"{where}/gateBackend")
         evidence = []
@@ -1077,6 +1100,18 @@ def _check_capture(capture, sessions, path, errors):
                                             capture["appIdentity"]["consistency"] == "changed"):
         errors.append(f"{path}/status: complete capture with errors, rejections or failures")
     _check_references(mine, errors)
+    # One app invocation runs one configuration, so accelerator sessions of a capture that name
+    # the same configuration id carry the same configuration: one session's run purpose or
+    # backend cannot be relabelled on its own.
+    by_id = {}
+    for doc in mine:
+        config = doc["record"].get("configuration")
+        protocol = (doc["record"].get("protocol") or {}).get("version")
+        if isinstance(config, dict) and protocol in raw_session.ACCELERATOR_PROTOCOLS:
+            by_id.setdefault(str(config.get("id")), set()).add(canonical(config))
+    for config_id, values in sorted(by_id.items()):
+        if len(values) > 1:
+            errors.append(f"{path}: sessions of this capture disagree on configuration {config_id!r}")
     for doc in mine:
         device = doc["device"]
         if (device["manufacturer"], device["soc"]) != (capture["device"]["manufacturer"], capture["device"]["soc"]):
