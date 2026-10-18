@@ -42,7 +42,7 @@ export const CORRECTION_NOTE =
   'llama.cpp Hexagon output on this phone is wrong for every tested prompt longer than ~128 tokens; this ' +
   'row used a ~512-token prompt and has no output check, so its speed does not represent correct ' +
   'inference. With llama.rn 0.13.0-rc.7 the Llama 3.2 1B output is correct (Q4_K_M passes; Q4_0 passes ' +
-  'the same probes as its CPU reference, gate unverified). Successor: a separate Q4_K_M row.';
+  'the same probes as its CPU reference, gate unverified). Successor: a separate Q4_K_M row, not yet measured.';
 export const CORRECTED_AS_STATED = `${ORIGINAL_AS_STATED}; ${CORRECTION_NOTE}`;
 
 const args = process.argv.slice(2);

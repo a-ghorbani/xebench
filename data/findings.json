@@ -14,15 +14,15 @@
           "device": "Samsung Galaxy S23"
         }
       ],
-      "headline": "LiteRT-LM runs on Qualcomm NPUs with Google's published NPU runtime; the SM8550 Gemma 3 1B bundle gives wrong output past one prefill chunk",
-      "deck": "LiteRT-LM's Qualcomm NPU path needs four pieces: the litertlm-android AAR, Google's litert-npu-runtime-qualcomm, a QAIRT version that matches the release's LITERT_REF, and manifest declarations. With them, Gemma 3 1B runs on the NPU of a POCO F8 Ultra (correct output) and a Galaxy S23 (wrong output from the published SM8550 bundle). This board has no LiteRT-LM NPU row yet.",
+      "headline": "LiteRT-LM 0.18.0 runs on the SM8850 and SM8550 NPUs with Google's published NPU runtime; the SM8550 Gemma 3 1B bundle loses prompt content after the first 128-token prefill chunk",
+      "deck": "LiteRT-LM's Qualcomm NPU path needs four pieces: the litertlm-android AAR, Google's litert-npu-runtime-qualcomm, a QAIRT version that matches the release's LITERT_REF, and manifest declarations. With them and litertlm-android 0.18.0, Gemma 3 1B runs on the NPU of a POCO F8 Ultra (correct output) and a Galaxy S23 (wrong output from the published SM8550 bundle). This board has no LiteRT-LM NPU row yet.",
       "claims": [
         "Running LiteRT-LM on a Qualcomm NPU needs the litertlm-android AAR; Google's NPU runtime com.google.ai.edge.litert:litert-npu-runtime-qualcomm on Google Maven, which provides libLiteRtDispatch_Qualcomm.so; Qualcomm's QAIRT runtime libraries; and <uses-native-library> manifest declarations (libcdsprpc.so for the NPU; libOpenCL.so and libvndksupport.so for the GPU).",
         "Per-architecture dispatch libraries are also attached to LiteRT GitHub releases (litert_npu_runtime_libraries.zip). libGemmaModelConstraintProvider.so is in the LiteRT-LM repository under prebuilt/android_arm64/.",
         "The QAIRT version and the dispatch library must match the LITERT_REF of the LiteRT-LM release. A mismatch logs 'Unsupported dispatch runtime version'; with litertlm-android 0.18.0 the Kotlin API reports only a generic 'Failed to create engine'.",
         "Measured stack: litertlm-android 0.18.0, litert-npu-runtime-qualcomm 2.3.0 and QAIRT 2.50.0.260828 (public Community download), with an output-correctness gate whose prompts span several 128-token prefill chunks. Results and evidence bundles are in docs/experiments/litert-accelerators.md; they are experiment results, not board rows.",
         "POCO F8 Ultra (Snapdragon SM8850, Hexagon v81): the SM8850 Gemma 3 1B bundle (QAIRT 2.44) passes every gate probe. LiteRT-LM CPU and GPU output also passes on this phone.",
-        "Galaxy S23 (Snapdragon SM8550, Hexagon v73): the published SM8550 Gemma 3 1B bundle (Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm, built with QAIRT 2.34.0) answers the short and fact-first probes correctly, but on probes whose question comes after the first 128-token prefill chunk it answers as if the question were missing (LiteRT-LM #3508). LiteRT-LM CPU and GPU output passes on this phone.",
+        "Galaxy S23 (Snapdragon SM8550, Hexagon v73): the published SM8550 Gemma 3 1B bundle (Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm, built with QAIRT 2.34.0) answers the short and fact-first probes correctly; on the fact-last and fact-middle probes, whose fact comes after the first 128-token prefill chunk, it answers as if the question were missing (LiteRT-LM #3508). LiteRT-LM CPU and GPU output passes on this phone.",
         "This board has no LiteRT-LM NPU or GPU row yet."
       ],
       "steps": [
@@ -41,7 +41,7 @@
           "status": "ok"
         },
         {
-          "label": "S23 (SM8550 bundle): output wrong past one 128-token prefill chunk (LiteRT-LM #3508)",
+          "label": "S23 (SM8550 bundle): loses prompt content after the first 128-token prefill chunk (LiteRT-LM #3508)",
           "status": "fail"
         },
         {
@@ -103,15 +103,15 @@
           "device": "POCO F8 Ultra"
         }
       ],
-      "headline": "llama.cpp's Hexagon backend: wrong output with llama.rn 0.12.4, correct with 0.13.0-rc.7 (POCO F8 Ultra; Llama 3.2 1B, Gemma 3 1B)",
-      "deck": "An output-correctness gate checks llama.cpp's Hexagon (HTP0) output against llama.cpp on CPU with the same model file. On a POCO F8 Ultra the output is wrong with llama.rn 0.12.4 and correct with 0.13.0-rc.7, for Llama 3.2 1B and Gemma 3 1B. The board's 0.12.4-era llama.cpp NPU row is marked failed.",
+      "headline": "llama.cpp's Hexagon backend on a POCO F8 Ultra: wrong output with llama.rn 0.12.4, correct with 0.13.0-rc.7 (Llama 3.2 1B Q4_K_M, Gemma 3 1B Q4_0)",
+      "deck": "An output-correctness gate checks llama.cpp's Hexagon (HTP0) output against llama.cpp on CPU with the same model file. On a POCO F8 Ultra the output is wrong with llama.rn 0.12.4 and correct with 0.13.0-rc.7 for Llama 3.2 1B Q4_K_M and Gemma 3 1B Q4_0 (Llama 3.2 1B Q4_0: gate unverified). The board's 0.12.4-era llama.cpp NPU row is marked failed.",
       "claims": [
         "Scope: POCO F8 Ultra (Snapdragon SM8850, Hexagon v81); llama.cpp's Hexagon backend (HTP0) through llama.rn; each Hexagon run is gated against llama.cpp on CPU with the same model file.",
         "llama.rn 0.12.4, Llama 3.2 1B (Q4_K_M and Q4_0): the short prompt (about 20 tokens) is answered correctly; every tested prompt longer than about 128 tokens, including the ~460-token measured prompt, degenerates into repeated fragments such as 'which, which, which …'. llama.cpp on CPU with the same Q4_K_M file answers every answer probe correctly. Evidence bundle 7cd4368bf08f339b78e731c2eed789768de44f736f338ad38f06ee154c3ae478.",
         "llama.rn 0.12.4, Gemma 3 1B (QAT Q4_0 GGUF): even the short prompt fails, with a repeated token. Evidence bundle c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972.",
         "llama.rn 0.13.0-rc.7, Llama 3.2 1B (4 repetitions per Hexagon run): Q4_K_M passes all four answer probes, as does its CPU reference; its measured-prompt output is not identical to the CPU output, and the gate checks the answer probes. Q4_0 passes the same probes as its CPU reference, which misses one long-fact probe (a model-quality miss), so that gate is unverified. Evidence bundle 20009fec0a56fe4bcb2b0046a2e160e3fca5c9263de1fef8a364dc62674ca210 (the Q4_K_M CPU reference ran 3 of 4 repetitions, stopped by a readiness timeout after its gate passed).",
         "llama.rn 0.13.0-rc.7, Gemma 3 1B (QAT Q4_0 GGUF, 10 repetitions): every probe passes, including the short probe; comparison valid. Evidence bundle beb9a67ced8709bf195a64d048be0d8529505f5b76e24ee612de2d8867046bd2.",
-        "The board's only llama.cpp NPU row (F8 Ultra, Llama 3.2 1B, Q4_0) comes from a build that locked llama.rn 0.12.4, used a ~512-token prompt and has no output check. It is marked failed, with its numbers kept for the record. Its successor is a separate Q4_K_M row (the pinned reference model).",
+        "The board's only llama.cpp NPU row (F8 Ultra, Llama 3.2 1B, Q4_0) was measured while the harness locked llama.rn 0.12.4 (the build's own llama.rn version is not recorded), used a ~512-token prompt and has no output check. It is marked failed, with its numbers kept for the record. Its successor, a separate Q4_K_M row (the pinned reference model), is not yet measured.",
         "No llama.rn 0.13.0-rc.7 speed is on this board yet. These results are not a claim about other versions, phones or models."
       ],
       "steps": [
@@ -142,7 +142,7 @@
           "status": "missing"
         }
       ],
-      "resolution": "The 0.12.4-era row stays marked failed. A llama.cpp Hexagon row appears on this board as a separate Q4_K_M row, measured with a llama.rn version that passes the output-correctness gate.",
+      "resolution": "The 0.12.4-era row stays marked failed. A llama.cpp Hexagon row appears on this board only as a separate Q4_K_M row, once it is measured with a llama.rn version that passes the output-correctness gate.",
       "context": {
         "device": "POCO F8 Ultra",
         "soc": "SM8850",

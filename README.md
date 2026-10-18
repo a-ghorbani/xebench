@@ -11,7 +11,7 @@ It powers the cross-engine leaderboard at **[pocketpal.dev/leaderboard/engines](
 
 | Engine | Via | CPU | GPU | NPU |
 |---|---|---|---|---|
-| **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | Hexagon (`ggml-hexagon`): wrong output with llama.rn 0.12.4 (row marked failed); correct for Llama 3.2 1B and Gemma 3 1B with 0.13.0-rc.7 on the F8 Ultra; not yet re-measured |
+| **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | Hexagon (`ggml-hexagon`), F8 Ultra: wrong output with llama.rn 0.12.4 (row marked failed); correct for Llama 3.2 1B Q4_K_M and Gemma 3 1B with 0.13.0-rc.7; not yet re-measured |
 | **ExecuTorch** | `react-native-executorch` | ✅ XNNPACK | — | — (delegate not in RN binding) |
 | **LiteRT-LM** | native Kotlin bridge | ✅ | ⚠️ ML Drift: measured in experiment, not yet on the board (needs `uses-native-library`) | ⚠️ measured in experiment, not yet on the board; SM8550 bundle output wrong ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) |
 | **GENIE-X / Genie** | `geniex-android` / QAIRT `genie-t2t-run` | ✅ | — | ✅ Hexagon (QNN context binary) |
@@ -22,7 +22,7 @@ LiteRT-LM GPU and NPU are measured in the [accelerator experiment](./docs/experi
 
 - **There is no single "fastest engine."** The ranking flips by model *and* by metric: LiteRT wins Gemma prefill; llama.cpp wins Qwen decode; ExecuTorch wins Llama prefill; llama.cpp wins Llama decode.
 - **NPU is not automatically faster.** On a Snapdragon 8 Elite Gen 5 (Hexagon v81), for Llama 3.2 1B, Qualcomm's Genie on the NPU *wins prefill outright* but *loses decode badly* to the CPU — the Oryon cores are strong and decode is memory-bandwidth-bound.
-- **Same NPU, very different integration effort for the two "NPU-first" engines.** Qualcomm's Genie ships as a complete stack: give it a device+version-matched context binary and it runs end-to-end. LiteRT-LM's Qualcomm NPU path also runs for a third party, but only after you assemble four pieces by hand: the AAR, Google's `litert-npu-runtime-qualcomm` from Maven, a QAIRT version matched to the release's `LITERT_REF`, and manifest `<uses-native-library>` declarations. A mismatch fails with opaque errors. Separately, Google's published SM8550 Gemma 3 1B bundle gives wrong output past one 128-token prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)). See ENGINES.md. (Corrected 2026-10-17; see [docs/CORRECTIONS.md](./docs/CORRECTIONS.md).)
+- **Same NPU, very different integration effort for the two "NPU-first" engines.** Qualcomm's Genie ships as a complete stack: give it a device+version-matched context binary and it runs end-to-end. LiteRT-LM 0.18.0's Qualcomm NPU path also runs for a third party (POCO F8 Ultra, Galaxy S23), but only after you assemble four pieces by hand: the AAR, Google's `litert-npu-runtime-qualcomm` from Maven, a QAIRT version matched to the release's `LITERT_REF`, and manifest `<uses-native-library>` declarations. A mismatch fails with opaque errors. Separately, Google's published SM8550 Gemma 3 1B bundle loses prompt content after the first 128-token prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)). See ENGINES.md. (Corrected 2026-10-17; see [docs/CORRECTIONS.md](./docs/CORRECTIONS.md).)
 
 ## Architecture
 

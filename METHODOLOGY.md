@@ -171,8 +171,9 @@ its manifest declares it with
 `<uses-native-library android:name="libOpenCL.so" android:required="false" />`.
 The LiteRT-LM Kotlin guide requires declaring both `libOpenCL.so` and
 `libvndksupport.so` (since 0.14.0, LiteRT-LM#1860); on both phones the native
-loader registers only `libOpenCL.so`. With the declarations, LiteRT-LM's ML Drift
-GPU runs on both phones; without them, `Backend.GPU()` fails (on the F8 Ultra with
+loader registers only `libOpenCL.so`. With the declarations, LiteRT-LM 0.18.0's ML
+Drift GPU backend creates an engine and passes the output-correctness gate on both
+phones (the record does not confirm GPU execution); without them, `Backend.GPU()` fails (on the F8 Ultra with
 `Can not find OpenCL library on this device`). The Pixel 9 (Tensor G4) is
 untested with the declarations.
 

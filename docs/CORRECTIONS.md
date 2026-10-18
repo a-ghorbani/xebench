@@ -51,21 +51,26 @@ PR [#25](https://github.com/a-ghorbani/xebench/pull/25).
   3. LiteRT GPU (ML Drift) "can't find OpenCL", because an app cannot load the vendor
      `libOpenCL.so` on stock Android.
 - **What is true (device re-evaluation 2026-10-17, Galaxy S23 and POCO F8 Ultra).**
-  1. Both libraries are published. Per-architecture dispatch libraries are attached to LiteRT
-     GitHub releases (`litert_npu_runtime_libraries.zip`) and are on Google Maven as
-     `com.google.ai.edge.litert:litert-npu-runtime-qualcomm`. `libGemmaModelConstraintProvider.so`
-     is committed in the LiteRT-LM repository under `prebuilt/android_arm64/`.
+  1. Both libraries were already public in July. Per-architecture dispatch libraries are attached
+     to LiteRT GitHub releases (`litert_npu_runtime_libraries.zip`; v73 since v2.0.0-alpha,
+     2025-05; v81 since v2.1.0rc1, 2025-11) and are on Google Maven as
+     `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` (2.3.0 published 2026-10-06).
+     `libGemmaModelConstraintProvider.so` has been committed in the LiteRT-LM repository under
+     `prebuilt/android_arm64/` since 2025-12.
   2. The SIGABRT (`No dispatch library found` / `No usable Dispatch runtime found`) came from our
-     APK not bundling the published dispatch library.
+     APK not bundling the published dispatch library. Our July LiteRT-LM version (0.14.0) runs on
+     the NPU with Google's prebuilt dispatch library from the LiteRT v2.1.6 release (2026-07-02).
   3. Our manifest lacked the `<uses-native-library>` declarations for `libOpenCL.so` and
      `libvndksupport.so` that the LiteRT-LM Kotlin guide requires
      ([LiteRT-LM#1860](https://github.com/google-ai-edge/LiteRT-LM/issues/1860)). With them, ML
-     Drift runs on both phones; a control build without them fails again.
+     Drift runs on both phones; a control build without them fails again. The July claim also
+     covered the Pixel 9 (Tensor G4), which is not re-tested.
 - **What remains an upstream problem.** The published SM8550 Gemma 3 1B NPU bundle gives wrong
   output on the S23 past one 128-token prefill chunk
   ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)).
 - **What changed.** Finding `litert-lm-npu-blocked` was replaced by `litert-lm-npu-integration`;
-  ENGINES.md, README and METHODOLOGY.md ("GPU backend on stock Android") were rewritten. The
+  ENGINES.md, README and METHODOLOGY.md (then "GPU backend reality on stock Android", now "GPU
+  backend on stock Android") were rewritten. The
   accelerator experiment ([docs/experiments/litert-accelerators.md](./experiments/litert-accelerators.md),
   PR [#29](https://github.com/a-ghorbani/xebench/pull/29)) later measured these paths with an
   output-correctness gate: F8 Ultra bundle
