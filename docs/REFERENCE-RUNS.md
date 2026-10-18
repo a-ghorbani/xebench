@@ -37,6 +37,11 @@ and the prompt and decode length of cpu-reference-v1. PocketPal's defaults for `
 parameters are not adopted, among them `n_gpu_layers: 99` with automatic devices,
 `kv_unified: true`, `n_parallel: 1`, `state_cache_budget_mb` and the per-device thread count
 it sets on first launch; the harness leaves the ones it does not list to the binding.
+For this single-sequence CPU run, `kv_unified`, `n_parallel` and `state_cache_budget_mb`
+change nothing. llama.rn's own `n_parallel` default is also 1. With one sequence, the KV
+cache has one stream and a 2048-token context per sequence, unified or not. The prompt state
+cache only reuses state across turns on recurrent, hybrid or SWA models. Llama 3.2 is none of
+these, and every repetition loads a fresh instance.
 
 Other engine adapters remain experimental; expanding reference coverage is a follow-up in
 issue #3.
