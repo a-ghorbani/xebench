@@ -3,8 +3,9 @@
  * where inference ran. Each repetition records what the engine or process reported
  * after loading, and a status derived from it by fixed rules:
  *
- *   confirmed   the engine itself reported executing on the requested backend
- *               (llama.rn: context `gpu` flag and used devices)
+ *   confirmed   the engine itself reported the requested backend's device for the model
+ *               (llama.rn: context `gpu` flag and used devices); not proof that every op
+ *               ran there (unsupported weight types fall back to the CPU)
  *   consistent  indirect evidence only: creating this engine newly loaded the
  *               accelerator runtime into the process and the engine accepted the
  *               backend (LiteRT-LM, which does not report its executing backend)

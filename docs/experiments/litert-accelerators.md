@@ -91,7 +91,7 @@ the engine or process reported, and a status derived by fixed rules (`backend.ts
 
 | Status | Meaning |
 |---|---|
-| `confirmed` | The engine itself reported the requested backend: llama.rn's context `gpu` flag and the devices it placed the model on (`HTP0` for Hexagon). This is the engine's own report, not an independent measurement of where each operation ran. For a CPU run, `gpu: false`. |
+| `confirmed` | The engine itself reported the requested backend: llama.rn's context `gpu` flag and the devices it placed the model on (`HTP0` for Hexagon). This is the engine's own report, not an independent measurement of where each operation ran: layers whose weight type the device backend does not support fall back to the CPU while the status stays `confirmed` (for example Q4_K_M on Hexagon with llama.rn 0.12.4, whose Hexagon matmul supports Q4_0, Q8_0, IQ4_NL, MXFP4 and F16 only). For a CPU run, `gpu: false`. |
 | `consistent` | Indirect evidence only. LiteRT-LM does not report its executing backend, so the record lists the accelerator libraries mapped in the process before and after engine creation (`/proc/self/maps`). NPU and GPU count only when that engine creation **newly** loaded `libLiteRtDispatch_Qualcomm.so` or `libOpenCL.so`; CPU counts when it loaded neither. A loaded runtime is not proof of execution. Also used for a llama.cpp CPU run (`nGpuLayers` 0) that reports `gpu: true`; see "Why a llama.cpp CPU run with `gpu: true` is `consistent`" below. |
 | `mismatch` | The engine reported a different backend (for example llama.rn `gpu: false` on an OpenCL run). |
 | `unknown` | No usable evidence. Unknown stays unknown. |
@@ -111,8 +111,9 @@ unless every repetition is `confirmed`, so LiteRT rows always carry it. An engin
 llama.rn's `gpu` flag is true when a GPU-type device is in the model's device list
 (`RNLlamaJSI.cpp`, `model->devices`), not when layers run there. With no devices requested,
 llama.cpp adds every GPU-type backend device by default, even at `n_gpu_layers: 0`. On the F8
-Ultra a CPU run therefore reports `gpu: true` with `GPUOpenCL` (every recorded CPU run, on
-llama.rn 0.12.4 and 0.13.0-rc.7, lists only `GPUOpenCL`). Such a device could still execute work only through
+Ultra a CPU run therefore reports `gpu: true` with `GPUOpenCL` (in every CPU run of the
+bundled captures, on llama.rn 0.12.4 and 0.13.0-rc.7; two earlier 0.12.4 smoke builds also attached
+`HTP0`–`HTP5`, and the argument below covers both). Such a device could still execute work only through
 ggml's op offload (the scheduler copying a large batch's CPU-resident op to a GPU backend). That
 requires the backend's `offload_op` callback, and both backends leave it `NULL`:
 `ggml-opencl.cpp` (`/* .offload_op = */ NULL`) and `ggml-hexagon.cpp`
