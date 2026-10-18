@@ -331,7 +331,8 @@ class FactsFromBundlesTests(unittest.TestCase):
             "chargingUnknown": ("unverified", True, ["charging"]),
             "monitorIncomplete": ("unverified", True, ["conditions", "charging", "coverage"]),
             "noExpectedHash": ("unverified", True, ["artifact"]),
-            "buildUnavailable": ("unverified", True, ["build"]),
+            # No configuration hash without a build identity, so no reviewed configuration either.
+            "buildUnavailable": ("unverified", True, ["artifact", "build"]),
             "executionUnreported": ("unverified", True, ["backend"]),
             "failed": ("failed", True, ["complete", "conditions"]),
             "chargingRecordOnly": (None, False, None),
@@ -526,6 +527,11 @@ class FactsFromBundlesTests(unittest.TestCase):
             "file and hash swapped to another manifest model": (
                 {"modelFile": "Llama-3.2-1B-Instruct-Q4_0.gguf", "sha256": q4_0}, "unverified", UNKNOWN),
             "hash swapped to another manifest model's hash": ({"sha256": q4_0}, "failed", FAIL),
+            # Exactly another reviewed run (f8-llama32-hexagon-check-v1.json llama32-q40-cpu) with its hash:
+            # the configuration no longer is the reviewed file its configurationSource hash names.
+            "relabelled as another reviewed run": (
+                {"model": "Llama 3.2 1B", "quant": "Q4_0 (GGUF)", "modelFile": "Llama-3.2-1B-Instruct-Q4_0.gguf",
+                 "sha256": q4_0}, "unverified", UNKNOWN),
         }
         for name, (fields, validation, outcome) in cases.items():
             with self.subTest(name):
@@ -535,7 +541,25 @@ class FactsFromBundlesTests(unittest.TestCase):
                 self.assertEqual((decision["validation"], outcome_of(decision, "artifact")), (validation, outcome),
                                  decision["checks"])
         unforged = self.forge(fx.cpu_record("complete", "1767225600000-0-label"))["sessions"][0]["decision"]
-        self.assertIn("cpu-reference-v1.json", next(c["detail"] for c in unforged["checks"] if c["check"] == "artifact"))
+        self.assertEqual(unforged["validation"], "verified")
+        self.assertIn("reviewed run (fixture-", next(c["detail"] for c in unforged["checks"] if c["check"] == "artifact"))
+
+    def test_the_reviewed_configuration_is_the_one_the_session_names(self):
+        """A run identical to a reviewed run counts only inside the reviewed file the session's
+        configurationSource hash names, with that file's content."""
+        reference = policy.load_reference()
+        record = fx.cpu_record("complete", "1767225600000-0-source")
+        run = next(item for item in record["configuration"]["runs"] if item["id"] == record["configurationRunId"])
+        self.assertTrue(policy._reviewed(record, run, reference))
+        other = copy.deepcopy(record)
+        other["configurationSource"]["sha256"] = "c" * 64
+        self.assertEqual(policy._reviewed(other, run, reference), [])
+        edited = copy.deepcopy(record)
+        edited["configuration"]["cooldownSec"] += 1
+        self.assertEqual(policy._reviewed(edited, run, reference), [])
+        unhashed = copy.deepcopy(record)
+        unhashed["configurationSource"] = {"kind": "bundled", "sha256": None}
+        self.assertEqual(policy._reviewed(unhashed, run, reference), [])
 
     def test_engine_timings_must_equal_the_engine_counters(self):
         path = "sessions/1767225600000-0-timing.json"
@@ -596,6 +620,22 @@ class FactsFromBundlesTests(unittest.TestCase):
         stage_model = importlib.util.module_from_spec(spec_)
         spec_.loader.exec_module(stage_model)
         self.assertEqual(len(stage_model.load_manifest(ROOT / "configs/models/experimental-models.json")), 2)
+
+    def test_every_pinned_artifact_is_documented_and_used(self):
+        """policy.load_reference reads pinnedArtifacts from every *-models.json, so a pin added in any
+        manifest must be in MODELS.md and be the hash a committed configuration pins for that file."""
+        configured = {}
+        for path in (ROOT / "xebenchapp/configs").glob("*.json"):
+            for run in json.loads(path.read_text())["runs"]:
+                configured.setdefault(run["modelFile"], set()).add(run.get("modelSha256"))
+        models_md = (ROOT / "MODELS.md").read_text()
+        manifests = sorted((ROOT / "configs/models").glob("*-models.json"))
+        self.assertEqual([path.name for path in manifests], ["experimental-models.json", "reference-models.json"])
+        for path in manifests:
+            for entry in json.loads(path.read_text()).get("pinnedArtifacts", []):
+                with self.subTest(f"{path.name} {entry['file']}"):
+                    self.assertIn(entry["sha256"], models_md)
+                    self.assertIn(entry["sha256"], configured.get(entry["file"], set()))
 
     def test_committed_device_table_names_the_lab_phones(self):
         table = {entry["model"]: entry["soc"] for entry in json.loads((ROOT / "configs/devices.json").read_text())["devices"]}

@@ -43,8 +43,8 @@
         "sessionIds": [
           "1767225600000-4-npu"
         ],
-        "bundleSha256": "045702c6a56d3a367a06a87e2c96c13411a353315ad2d3b290f7e90d5b91da64",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/045702c6a56d3a367a06a87e2c96c13411a353315ad2d3b290f7e90d5b91da64/manifest.json"
+        "bundleSha256": "6a122f667596333b95884e7036743b5a6825f4fa748b74d4f09b7d6e9ea4a239",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/6a122f667596333b95884e7036743b5a6825f4fa748b74d4f09b7d6e9ea4a239/manifest.json"
       },
       "build": {
         "engineVersion": "llama.cpp b11385 (bf9a0cc)",
@@ -100,8 +100,8 @@
         "sessionIds": [
           "1767225600000-2-phone"
         ],
-        "bundleSha256": "e8f253fef2e71847fba8f0f95454272d827af049f42464642935103133970aed",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/e8f253fef2e71847fba8f0f95454272d827af049f42464642935103133970aed/manifest.json"
+        "bundleSha256": "d0e77be10a98268a2ad1f106701fa69bd2cddf9b0149d698bbfaf580cb5e2c88",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/d0e77be10a98268a2ad1f106701fa69bd2cddf9b0149d698bbfaf580cb5e2c88/manifest.json"
       },
       "build": {
         "engineVersion": "llama.cpp b11385 (bf9a0cc)",
@@ -157,8 +157,8 @@
         "sessionIds": [
           "1767225600000-3-tablet"
         ],
-        "bundleSha256": "e8f253fef2e71847fba8f0f95454272d827af049f42464642935103133970aed",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/e8f253fef2e71847fba8f0f95454272d827af049f42464642935103133970aed/manifest.json"
+        "bundleSha256": "d0e77be10a98268a2ad1f106701fa69bd2cddf9b0149d698bbfaf580cb5e2c88",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/d0e77be10a98268a2ad1f106701fa69bd2cddf9b0149d698bbfaf580cb5e2c88/manifest.json"
       },
       "build": {
         "engineVersion": "llama.cpp b11385 (bf9a0cc)",
@@ -229,8 +229,8 @@
         "sessionIds": [
           "1767225600000-0-pixel"
         ],
-        "bundleSha256": "e8f253fef2e71847fba8f0f95454272d827af049f42464642935103133970aed",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/e8f253fef2e71847fba8f0f95454272d827af049f42464642935103133970aed/manifest.json"
+        "bundleSha256": "d0e77be10a98268a2ad1f106701fa69bd2cddf9b0149d698bbfaf580cb5e2c88",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/d0e77be10a98268a2ad1f106701fa69bd2cddf9b0149d698bbfaf580cb5e2c88/manifest.json"
       },
       "build": {
         "engineVersion": "llama.cpp b11385 (bf9a0cc)",

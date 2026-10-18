@@ -7,6 +7,7 @@ times are pinned, so the same scenario always gives the same bytes and bundleSha
 No raw capture is committed: bundles are generated into temporary directories.
 """
 import copy
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -27,7 +28,7 @@ def cpu_record(name, run_id, *, timestamp=None, device=None, runtimes=True, **ch
     if not runtimes:
         record.pop("runtimeVersions", None)
     record.update(changes)
-    return record
+    return anchored(record)
 
 
 def accel_record(name, run_id, *, timestamp=None, device=None, runtimes=True):
@@ -42,6 +43,21 @@ def accel_record(name, run_id, *, timestamp=None, device=None, runtimes=True):
         record["deviceInfo"]["model"] = device
     if not runtimes:
         record.pop("runtimeVersions", None)
+    return anchored(record)
+
+
+def configuration_bytes(configuration):
+    """The bytes a fixture configuration file holds in the reference roots tests build."""
+    return (json.dumps(configuration, indent=2) + "\n").encode("utf-8")
+
+
+def anchored(record):
+    """Point the record's configurationSource hash at its configuration's fixture file, as the
+    app does for the file it reads (the committed fixtures carry placeholder hashes). A record
+    whose configuration a test changes afterwards no longer matches its file."""
+    source = record.get("configurationSource")
+    if isinstance(source, dict) and source.get("sha256") is not None:
+        source["sha256"] = hashlib.sha256(configuration_bytes(record["configuration"])).hexdigest()
     return record
 
 
@@ -83,10 +99,15 @@ FIXTURE_DEVICES = ("Fixture", "Fixture Phone", "Fixture Tablet")
 
 def reference_root(target):
     """A repository root with the committed reference data (reviewed run configurations,
-    model manifests, device table) plus the fixture devices; returns it."""
+    model manifests, device table) plus the fixture configurations and devices; returns it."""
     target = Path(target)
     repo = Path(__file__).resolve().parents[1]
     shutil.copytree(repo / "xebenchapp/configs", target / "xebenchapp/configs")
+    configurations = [cpu_record(name, "1767225600000-0-ref")["configuration"] for name in APP_V2]
+    configurations += [accel_record(name, "1767225600000-0-ref")["configuration"] for name in ACCEL]
+    for configuration in configurations:
+        data = configuration_bytes(configuration)
+        (target / f"xebenchapp/configs/fixture-{hashlib.sha256(data).hexdigest()[:16]}.json").write_bytes(data)
     shutil.copytree(repo / "configs", target / "configs")
     table = target / "configs/devices.json"
     devices = json.loads(table.read_text())

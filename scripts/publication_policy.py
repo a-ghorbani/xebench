@@ -53,11 +53,14 @@ def load_reference(root=None):
     """Reviewed runs, model manifest hashes by file name, and SoC by device model."""
     root = Path(ROOT if root is None else root)
     try:
-        runs = []
+        runs, files = [], {}
         for path in sorted((root / "xebenchapp/configs").glob("*.json")):
-            config = json.loads(path.read_text(encoding="utf-8"))
+            data = path.read_bytes()
+            config = json.loads(data.decode("utf-8"))
             if str(config.get("id", "")).startswith("experiment-"):
                 continue
+            # The app records the SHA-256 of the configuration bytes it read (bundled or staged).
+            files[export_evidence.sha256(data)] = {"name": path.name, "configuration": config}
             for run in config["runs"]:
                 runs.append({key: run.get(key) for key in RUN_IDENTITY} | {"backend": run.get("backend", "cpu"),
                                                                           "config": path.name})
@@ -75,7 +78,8 @@ def load_reference(root=None):
         raise ReferenceError_(f"reference data unreadable ({type(error).__name__})")
     if not runs or not manifests or not devices:
         raise ReferenceError_("reference data is empty")
-    return {"runs": runs, "manifests": {key: sorted(value) for key, value in manifests.items()}, "devices": devices}
+    return {"runs": runs, "files": files, "manifests": {key: sorted(value) for key, value in manifests.items()},
+            "devices": devices}
 
 
 # ── Facts: recomputed from the sanitized evidence ────────────────────────────
@@ -238,13 +242,20 @@ def _gate(record, backend_status):
     return status, comparison["status"]
 
 
-def _reviewed(run, backend, reference):
-    """The reviewed configuration files whose run has exactly this run's model identity."""
-    if run is None:
+def _reviewed(record, run, reference):
+    """The reviewed configuration file this session ran, when its run has exactly this run's model identity.
+
+    The session's configurationSource hash must name a reviewed file, and the configuration it
+    carries must be that file's content. Matching a run of any reviewed file is not enough: a
+    re-hashed bundle could relabel a run as another reviewed run with that run's hash.
+    """
+    source = record.get("configurationSource")
+    entry = reference["files"].get(source.get("sha256")) if isinstance(source, dict) else None
+    if run is None or entry is None or entry["configuration"] != record["configuration"]:
         return []
-    identity = {key: run.get(key) for key in RUN_IDENTITY} | {"backend": run.get("backend", backend)}
-    return sorted(item["config"] for item in reference["runs"]
-                  if all(item[key] == identity[key] for key in RUN_IDENTITY))
+    identity = {key: run.get(key) for key in RUN_IDENTITY} | {"backend": run.get("backend", record["backend"])}
+    return sorted(item["config"] for item in reference["runs"] if item["config"] == entry["name"]
+                  and all(item[key] == identity[key] for key in RUN_IDENTITY))
 
 
 def device_soc(doc, reference):
@@ -290,7 +301,7 @@ def session_facts(doc, capture, reference=None):
         model_file = None if run is None else run.get("modelFile")
         facts["artifact"] = {"sha256": artifact["sha256"], "recordedExpected": artifact.get("expectedSha256"),
                              "configuredSha256": None if run is None else run.get("modelSha256"),
-                             "reviewedConfigs": _reviewed(run, record["backend"], reference),
+                             "reviewedConfigs": _reviewed(record, run, reference),
                              "manifestSha256": reference["manifests"].get(model_file, [])}
     facts["backendEvidence"] = _backend(record, measured)
     if version in raw_session.ACCELERATOR_PROTOCOLS:
@@ -358,7 +369,7 @@ def _artifact(facts):
         return _check("artifact", FAIL, "artifact SHA-256 differs from the model manifest entry for its file")
     if not reviewed:
         return _check("artifact", UNKNOWN, "the configured run (engine, backend, model, quant, file, hash) is not "
-                                           "a run of a reviewed configuration")
+                                           "a run of the reviewed configuration the session names")
     if not manifest:
         return _check("artifact", UNKNOWN, "no model manifest entry for its file")
     return _check("artifact", PASS, f"reviewed run ({', '.join(reviewed)}); hash matches the model manifest")

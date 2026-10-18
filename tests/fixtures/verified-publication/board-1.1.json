@@ -43,8 +43,8 @@
         "sessionIds": [
           "1767225600000-4-npu"
         ],
-        "bundleSha256": "e6211daf484c287a7c713fb024b84e55462ab9123e6bae2145208424d422c394",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/e6211daf484c287a7c713fb024b84e55462ab9123e6bae2145208424d422c394/manifest.json"
+        "bundleSha256": "dc156002f3224f1446d0ff8e4a6c5557d601b044800b9c85b428fc3dbe1004fc",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/dc156002f3224f1446d0ff8e4a6c5557d601b044800b9c85b428fc3dbe1004fc/manifest.json"
       },
       "build": {
         "bindingVersion": "llama.rn 0.0.0-fixture",
@@ -89,8 +89,8 @@
         "sessionIds": [
           "1767225600000-2-phone"
         ],
-        "bundleSha256": "7c69eb3ca150c9c0fccd58640421925f4765fb4e1d130df14b8f0b2f8d3c7e57",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/7c69eb3ca150c9c0fccd58640421925f4765fb4e1d130df14b8f0b2f8d3c7e57/manifest.json"
+        "bundleSha256": "71c373899cdfdf15db0e58cdb87e5f0a6e28ecd536b0a8eaa5ce2642c1b479d2",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/71c373899cdfdf15db0e58cdb87e5f0a6e28ecd536b0a8eaa5ce2642c1b479d2/manifest.json"
       },
       "build": {
         "bindingVersion": "llama.rn 0.0.0-fixture",
@@ -135,8 +135,8 @@
         "sessionIds": [
           "1767225600000-3-tablet"
         ],
-        "bundleSha256": "7c69eb3ca150c9c0fccd58640421925f4765fb4e1d130df14b8f0b2f8d3c7e57",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/7c69eb3ca150c9c0fccd58640421925f4765fb4e1d130df14b8f0b2f8d3c7e57/manifest.json"
+        "bundleSha256": "71c373899cdfdf15db0e58cdb87e5f0a6e28ecd536b0a8eaa5ce2642c1b479d2",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/71c373899cdfdf15db0e58cdb87e5f0a6e28ecd536b0a8eaa5ce2642c1b479d2/manifest.json"
       },
       "build": {
         "bindingVersion": "llama.rn 0.0.0-fixture",
@@ -196,8 +196,8 @@
         "sessionIds": [
           "1767225600000-0-pixel"
         ],
-        "bundleSha256": "7c69eb3ca150c9c0fccd58640421925f4765fb4e1d130df14b8f0b2f8d3c7e57",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/7c69eb3ca150c9c0fccd58640421925f4765fb4e1d130df14b8f0b2f8d3c7e57/manifest.json"
+        "bundleSha256": "71c373899cdfdf15db0e58cdb87e5f0a6e28ecd536b0a8eaa5ce2642c1b479d2",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/71c373899cdfdf15db0e58cdb87e5f0a6e28ecd536b0a8eaa5ce2642c1b479d2/manifest.json"
       },
       "build": {
         "bindingVersion": "llama.rn 0.0.0-fixture",

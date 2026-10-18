@@ -268,7 +268,9 @@ run configurations under [`xebenchapp/configs/`](../xebenchapp/configs/) (except
 `experiment-*`), the model manifests
 [`configs/models/*-models.json`](../configs/models/) (their `models` and
 `pinnedArtifacts`) and the device table. Without
-that data no bundle is decided.
+that data no bundle is decided. A configuration file that a published session names
+is therefore never edited: a changed run configuration is a new file, or the published
+rows stop reproducing.
 
 A row earns `guardsPassed: true` and `validation: "verified"` only when every check
 passes:
@@ -279,7 +281,7 @@ passes:
 | `conditions` | every measured repetition, and the session, recompute to verdict `pass` | a recomputed `fail` | `unverified`, or no condition evidence (cpu-reference-v1) |
 | `charging` | every measured repetition recomputes to `satisfied` under `charging-policy-v3` | `violated` or `on-battery` | `unknown`, or another charging policy |
 | `coverage` | every measured repetition was sampled throughout (the coverage rule above) | — | a gap, expiry, dropped tick or missing monitor |
-| `artifact` | the configured run (engine, backend, model, quant, model file, `modelSha256`) is exactly a run of a reviewed configuration, and the artifact SHA-256 equals both that `modelSha256` and the model manifest entry for the file | the artifact differs from the configured `modelSha256` or from the manifest entry | the run pins no `modelSha256`, is not a reviewed run, or its file has no manifest entry |
+| `artifact` | the session's `configurationSource` hash names a reviewed configuration file, the session carries that file's content, its configured run (engine, backend, model, quant, model file, `modelSha256`) is exactly a run of that file, and the artifact SHA-256 equals both that `modelSha256` and the model manifest entry for the file | the artifact differs from the configured `modelSha256` or from the manifest entry | the run pins no `modelSha256`, the session names no reviewed configuration file or carries other content, the run is not in that file, or its file has no manifest entry |
 | `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed` | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU/NPU evidence is at most `consistent` |
 | `correctness` (accelerator protocols) | output gate `pass` | `fail` | `unverified` |
 | `comparison` (accelerator protocols) | `valid` | `invalid` | `unverified` |
