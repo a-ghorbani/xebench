@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import board_before
 
 ROOT = Path(__file__).resolve().parents[1]
 EXISTING_KEY = 'llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q4_0|measured'
@@ -111,6 +112,7 @@ class PublicationTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         shutil.copytree(ROOT / 'scripts', self.root / 'scripts')
         shutil.copytree(ROOT / 'data', self.root / 'data')
+        board_before.seed(self.root)  # the board before the first bundle publication
         self.canonical = self.root / 'data/benchmarks.json'
         self.inputs = self.root / 'inputs'
         self.inputs.mkdir()
@@ -345,7 +347,7 @@ class PublicationTests(unittest.TestCase):
 
         results = []
         for path in (forward, backward):
-            shutil.copyfile(ROOT / 'data/benchmarks.json', self.canonical)
+            shutil.copyfile(board_before.BENCHMARKS, self.canonical)
             result = self.run_aggregate(path, '--update', '--allow-legacy')
             self.assertEqual(result.returncode, 0, result.stderr)
             results.append(self.published()['rows'])

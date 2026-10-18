@@ -19,6 +19,7 @@ import subprocess
 import tempfile
 import unittest
 
+import board_before
 import bundle_fixtures as fx
 from test_export_evidence import raw_session
 
@@ -50,6 +51,7 @@ class Workspace(unittest.TestCase):
         self.root = Path(self.tmp.name) / "repo"
         shutil.copytree(ROOT / "scripts", self.root / "scripts")
         shutil.copytree(ROOT / "data", self.root / "data")
+        board_before.seed(self.root)  # the board before the first bundle publication
         fx.reference_root(self.root)  # reviewed configs, model manifests, device table (+ fixture devices)
         (self.root / "evidence").mkdir()
         self.out = Path(self.tmp.name) / "work"
@@ -637,7 +639,7 @@ class ReviewRegressionTests(Workspace):
 
 def consumer_fixtures(test):
     """Publish the fixture scenario into a small board and return {file name: text}."""
-    real = load(ROOT / "data/benchmarks.json")
+    real = load(board_before.BENCHMARKS)
     vendor = next(row for row in real["rows"] if row["provenance"] == "vendor")
     legacy = next(row for row in real["rows"] if key_of(row) == LEGACY_KEY)
     outputs = {}
@@ -807,6 +809,28 @@ class BoardConfigurationTests(Workspace):
         result = self.aggregate("--from-bundles", self.root / "evidence", "--dry-run", "--allow-unlisted-configuration")
         self.assertEqual(result.returncode, 2)
         self.assertIn("--allow-unlisted-configuration only applies to --update --from-bundles", result.stderr)
+
+
+class PublishedBoardTests(unittest.TestCase):
+    """The checked-in board: every row published from a bundle comes from a listed configuration,
+    named by the hash of its committed file, and the files reproduce from evidence/."""
+
+    def test_published_rows_name_a_listed_committed_configuration(self):
+        board = json.loads((ROOT / "configs/board.json").read_text())
+        files = {}
+        for path in (ROOT / "xebenchapp/configs").glob("*.json"):
+            files[json.loads(path.read_text())["id"]] = hashlib.sha256(path.read_bytes()).hexdigest()
+        data = json.loads((ROOT / "data/benchmarks.json").read_text())
+        index = json.loads((ROOT / "data/sessions/index.json").read_text())
+        published = [row for row in data["rows"] if "evidence" in row]
+        self.assertEqual(len(published), len(index["keys"]))
+        for row in published:
+            with self.subTest(row=key_of(row)):
+                self.assertIn(row["configurationId"], board["displayConfigurations"])
+                self.assertEqual(row["configurationSha256"], files[row["configurationId"]])
+                self.assertEqual(row["validation"], "verified")
+        result = subprocess.run(["node", str(ROOT / "scripts/validate_data.mjs")], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

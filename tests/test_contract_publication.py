@@ -16,6 +16,7 @@ import unittest
 
 from test_hexagon_correction import is_target as is_hexagon_row, revert_hexagon_correction
 from test_publication import legacy_record, reference_record
+import board_before
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / 'tests/fixtures/contract-1.1'
@@ -61,6 +62,7 @@ class Workspace(unittest.TestCase):
         self.root = Path(self.tmp.name)
         shutil.copytree(ROOT / 'scripts', self.root / 'scripts')
         shutil.copytree(ROOT / 'data', self.root / 'data')
+        board_before.seed(self.root)  # the board before the first bundle publication
         self.canonical = self.root / 'data/benchmarks.json'
         self.counter = 0
 
@@ -117,20 +119,26 @@ class MigrationTests(Workspace):
         result = subprocess.run(['node', str(ROOT / 'scripts/migrate_contract_1_1.mjs'), '--check'],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        data = load(ROOT / 'data/benchmarks.json')
-        self.assertEqual(data['schemaVersion'], '1.1')
-        self.assertRegex(data['generatedAt'], ISO)
-        for row in data['rows']:
-            if row['provenance'] == 'measured':
-                # The one later correction (tests/test_hexagon_correction.py) marked a legacy row failed.
-                self.assertEqual(row['validation'], 'failed' if is_hexagon_row(row) else 'legacy')
-                self.assertEqual(list(row)[-1], 'validation', 'validation must be appended, not interleaved')
-                self.assertEqual([f for f in NEW_FIELDS if f in row], ['validation'])
-            else:
-                self.assertEqual([f for f in NEW_FIELDS if f in row], [])
+        for path in (board_before.BENCHMARKS, ROOT / 'data/benchmarks.json'):
+            data = load(path)
+            self.assertIn(data['schemaVersion'], ('1.1', '1.2'))
+            self.assertRegex(data['generatedAt'], ISO)
+            for row in data['rows']:
+                with self.subTest(path=path.name, row=row.get('device')):
+                    if row['provenance'] != 'measured':
+                        self.assertEqual([f for f in NEW_FIELDS if f in row], [])
+                    elif 'evidence' in row:
+                        # Published from an evidence bundle (tests/test_bundle_publication.py).
+                        self.assertIn(row['validation'], ('verified', 'unverified', 'failed'))
+                    else:
+                        # The one later correction (tests/test_hexagon_correction.py) marked a legacy row failed.
+                        self.assertEqual(row['validation'], 'failed' if is_hexagon_row(row) else 'legacy')
+                        self.assertEqual(list(row)[-1], 'validation', 'validation must be appended, not interleaved')
+                        self.assertEqual([f for f in NEW_FIELDS if f in row], ['validation'])
+        self.assertEqual(load(board_before.BENCHMARKS)['schemaVersion'], '1.1')
 
     def test_migration_from_1_0_and_idempotence(self):
-        current = load(ROOT / 'data/benchmarks.json')
+        current = load(board_before.BENCHMARKS)
         old = as_1_0(current)
         old_text = dump(old)
         self.canonical.write_text(old_text, encoding='utf-8')
@@ -167,7 +175,7 @@ class MigrationTests(Workspace):
         self.assertEqual(self.node('validate_data.mjs').returncode, 0)
 
     def test_vendor_rows_are_byte_identical(self):
-        current = load(ROOT / 'data/benchmarks.json')
+        current = load(board_before.BENCHMARKS)
         old_text = dump(as_1_0(current))
         self.canonical.write_text(old_text, encoding='utf-8')
         self.assertEqual(self.migrate().returncode, 0)
@@ -198,7 +206,7 @@ class MigrationTests(Workspace):
                          sorted(l for l in body_added if l != '      "validation": "legacy"'))
 
     def test_migration_fails_closed(self):
-        current = load(ROOT / 'data/benchmarks.json')
+        current = load(board_before.BENCHMARKS)
         old = as_1_0(current)
         smuggled = copy.deepcopy(old)
         measured = next(r for r in smuggled['rows'] if r['provenance'] == 'measured')
@@ -408,7 +416,7 @@ class FixtureTests(Workspace):
         self.assertEqual([f for f in NEW_FIELDS if f not in load(FIXTURES / 'verified.json')['rows'][0]], [])
 
     def test_legacy_and_vendor_fixtures_match_canonical_rows(self):
-        canonical = load(ROOT / 'data/benchmarks.json')['rows']
+        canonical = load(board_before.BENCHMARKS)['rows']
         for name in ('legacy.json', 'vendor.json'):
             with self.subTest(fixture=name):
                 self.assertIn(load(FIXTURES / name)['rows'][0], canonical)

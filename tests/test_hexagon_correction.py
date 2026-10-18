@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import board_before
 
 ROOT = Path(__file__).resolve().parents[1]
 ISO = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$')
@@ -69,11 +70,17 @@ class CheckedInDataTests(unittest.TestCase):
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_it_is_the_only_non_legacy_measured_row(self):
+    def test_it_is_the_only_non_legacy_measured_row_not_published_from_a_bundle(self):
         data = load(ROOT / 'data/benchmarks.json')
+        index = load(ROOT / 'data/sessions/index.json')
+        published = {session['sessionId'] for entry in index['keys'] for session in entry['sessions']}
         others = [r for r in data['rows'] if r['provenance'] == 'measured' and not is_target(r)]
         self.assertTrue(others)
-        self.assertEqual({r['validation'] for r in others}, {'legacy'})
+        unpublished = [r for r in others if 'evidence' not in r]
+        self.assertEqual({r['validation'] for r in unpublished}, {'legacy'})
+        for row in others:
+            if 'evidence' in row:
+                self.assertTrue(set(row['evidence']['sessionIds']) <= published)
 
 
 class CorrectionScriptTests(unittest.TestCase):
@@ -82,8 +89,9 @@ class CorrectionScriptTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         shutil.copytree(ROOT / 'scripts', self.root / 'scripts')
         shutil.copytree(ROOT / 'data', self.root / 'data')
+        board_before.seed(self.root)  # the board before the first bundle publication
         self.canonical = self.root / 'data/benchmarks.json'
-        self.current = load(ROOT / 'data/benchmarks.json')
+        self.current = load(board_before.BENCHMARKS)
         self.before_text = dump(revert_hexagon_correction(self.current))
         self.canonical.write_text(self.before_text, encoding='utf-8')
 
