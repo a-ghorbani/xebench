@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto';
 const ANNOTATIONS = new Set(['$schema', '$id', '$comment', '$defs', 'title', 'description', 'default', 'examples']);
 const ASSERTIONS = new Set([
   'type', 'enum', 'const', 'required', 'properties', 'additionalProperties', 'items', '$ref', 'minimum', 'format',
-  'pattern', 'minLength', 'minItems', 'uniqueItems', 'allOf', 'if', 'then', 'else',
+  'pattern', 'minLength', 'maxLength', 'minItems', 'uniqueItems', 'allOf', 'if', 'then', 'else',
 ]);
 
 export class PublicationError extends Error {}
@@ -117,7 +117,7 @@ export function checkSchema(schema, path = '#') {
   if (schema.minimum !== undefined && typeof schema.minimum !== 'number') {
     throw new PublicationError(`minimum at ${path} must be a number`);
   }
-  for (const key of ['minLength', 'minItems']) {
+  for (const key of ['minLength', 'maxLength', 'minItems']) {
     if (schema[key] !== undefined && !(Number.isInteger(schema[key]) && schema[key] >= 0)) {
       throw new PublicationError(`${key} at ${path} must be a non-negative integer`);
     }
@@ -187,6 +187,9 @@ function validate(value, schema, root, path, errors) {
   if (typeof value === 'string') {
     if (schema.minLength !== undefined && [...value].length < schema.minLength) {
       errors.push(`${path}: shorter than ${schema.minLength} characters`);
+    }
+    if (schema.maxLength !== undefined && [...value].length > schema.maxLength) {
+      errors.push(`${path}: longer than ${schema.maxLength} characters`);
     }
     if (schema.pattern !== undefined && !compilePattern(schema.pattern, path).test(value)) {
       errors.push(`${path}: ${JSON.stringify(value)} does not match ${schema.pattern}`);
@@ -483,6 +486,12 @@ export function contractVersionFor(rows, floor = CONTRACT_VERSION) {
 }
 
 const RUNTIME_KEYS = Object.freeze(['llamaCpp', 'llamaRn', 'litertLm', 'litertNpuRuntimeQualcomm', 'qairt', 'genie']);
+/** runtimeVersions keys each engine may report (mirrors ENGINE_RUNTIMES in scripts/raw_session.py). */
+const ENGINE_RUNTIMES = Object.freeze({
+  'llama.cpp': ['llamaCpp', 'llamaRn'], 'litert-lm': ['litertLm', 'litertNpuRuntimeQualcomm', 'qairt'], 'genie-x': ['genie'],
+});
+/** LiteRT-LM runtimes that take part only in NPU runs. */
+const NPU_ONLY_RUNTIMES = Object.freeze(['litertNpuRuntimeQualcomm', 'qairt']);
 
 /**
  * Contract `build` (engineVersion, bindingVersion, runtimes) from a session's
@@ -498,6 +507,11 @@ export function buildFromSession(rec, where = '$') {
   };
   if (!isObject(versions)) fail('must be an object');
   for (const key of Object.keys(versions)) if (!RUNTIME_KEYS.includes(key)) fail(`has unknown key ${key}`);
+  // Never publish a runtime the row's engine (and backend) does not run on.
+  const reported = RUNTIME_KEYS.filter((key) => versions[key] !== undefined && versions[key] !== null);
+  const stray = reported.filter((key) => !(ENGINE_RUNTIMES[rec.engine] ?? []).includes(key) ||
+    (rec.engine === 'litert-lm' && rec.backend !== 'npu' && NPU_ONLY_RUNTIMES.includes(key)));
+  if (stray.length) fail(`names runtimes ${rec.engine} ${rec.backend ?? ''} does not run on: ${stray.join(', ')}`);
   const version = (key) => {
     const value = versions[key];
     if (value === undefined || value === null) return null;
@@ -507,7 +521,7 @@ export function buildFromSession(rec, where = '$') {
   let llamaCpp = null;
   if (versions.llamaCpp !== undefined && versions.llamaCpp !== null) {
     const { buildNumber, commit } = isObject(versions.llamaCpp) ? versions.llamaCpp : fail('.llamaCpp must be an object');
-    if (!Number.isInteger(buildNumber) || buildNumber < 0 || buildNumber > 9999999) {
+    if (!Number.isInteger(buildNumber) || buildNumber < 1 || buildNumber > 9999999) {
       fail('.llamaCpp.buildNumber must be an integer build number');
     }
     if (typeof commit !== 'string' || !HEX_COMMIT.test(commit)) fail('.llamaCpp.commit must be 7-40 lowercase hex');

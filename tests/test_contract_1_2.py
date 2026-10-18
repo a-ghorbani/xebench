@@ -36,8 +36,9 @@ class Contract12Tests(Workspace):
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
 
-    def build_for(self, engine, versions):
-        return self.module(f'p.buildFromSession({json.dumps({"engine": engine, "runtimeVersions": versions})})')
+    def build_for(self, engine, versions, backend='cpu'):
+        session = {"engine": engine, "backend": backend, "runtimeVersions": versions}
+        return self.module(f'p.buildFromSession({json.dumps(session)})')
 
     def test_consumer_fixtures(self):
         index = load(FIXTURES / 'index.json')
@@ -141,7 +142,7 @@ class Contract12Tests(Workspace):
         self.assertEqual(self.build_for('llama.cpp', full)['ok']['engineVersion'], 'llama.cpp b11385 (bf9a0cc)')
 
     def test_build_from_session_litert_and_genie(self):
-        self.assertEqual(self.build_for('litert-lm', LITERT_NPU_VERSIONS), {'ok': {
+        self.assertEqual(self.build_for('litert-lm', LITERT_NPU_VERSIONS, 'npu'), {'ok': {
             'engineVersion': 'LiteRT-LM 0.18.0',
             'runtimes': [{'name': 'LiteRT-LM', 'version': '0.18.0'},
                          {'name': 'litert-npu-runtime-qualcomm', 'version': '2.3.0'},
@@ -161,7 +162,7 @@ class Contract12Tests(Workspace):
         partial = {**LLAMA_VERSIONS, 'llamaCpp': None}
         self.assertEqual(self.build_for('llama.cpp', partial), {'ok': {
             'bindingVersion': 'llama.rn 0.13.0-rc.7', 'runtimes': [{'name': 'llama.rn', 'version': '0.13.0-rc.7'}]}})
-        self.assertNotIn('bindingVersion', self.build_for('litert-lm', {**LITERT_NPU_VERSIONS, 'llamaRn': '0.13.0'})['ok'])
+        self.assertNotIn('bindingVersion', self.build_for('litert-lm', LITERT_NPU_VERSIONS, 'npu')['ok'])
 
     def test_build_from_session_fails_closed(self):
         bad = {
@@ -171,12 +172,45 @@ class Contract12Tests(Workspace):
             'negative-build-number': {**LLAMA_VERSIONS, 'llamaCpp': {'buildNumber': -1, 'commit': 'bf9a0cc'}},
             'short-commit': {**LLAMA_VERSIONS, 'llamaCpp': {'buildNumber': 11385, 'commit': 'bf9a0c'}},
             'uppercase-commit': {**LLAMA_VERSIONS, 'llamaCpp': {'buildNumber': 11385, 'commit': 'BF9A0CC'}},
+            'zero-build-number': {**LLAMA_VERSIONS, 'llamaCpp': {'buildNumber': 0, 'commit': 'bf9a0cc'}},
+        }
+        litert = {
             'free-text-version': {**LITERT_NPU_VERSIONS, 'litertLm': 'latest'},
             'b-version-off-llama': {**LITERT_NPU_VERSIONS, 'qairt': 'b11385'},
         }
-        for name, versions in bad.items():
+        cases = [(name, 'llama.cpp', 'cpu', versions) for name, versions in bad.items()] + \
+            [(name, 'litert-lm', 'npu', versions) for name, versions in litert.items()]
+        for name, engine, backend, versions in cases:
             with self.subTest(case=name):
-                self.assertIn('runtimeVersions', self.build_for('llama.cpp', versions).get('error', ''))
+                self.assertIn('runtimeVersions', self.build_for(engine, versions, backend).get('error', ''))
+
+    def test_build_from_session_publishes_only_the_engines_runtimes(self):
+        # aggregate.mjs does not run scripts/raw_session.py, so the mapping itself refuses a
+        # runtime the row's engine or backend does not run on (raw_session's runtime.inconsistent).
+        cases = {
+            'litert-on-llama': ('llama.cpp', 'cpu', {**LLAMA_VERSIONS, 'litertLm': '0.18.0'}),
+            'llama-rn-on-litert': ('litert-lm', 'npu', {**LITERT_NPU_VERSIONS, 'llamaRn': '0.13.0'}),
+            'qairt-on-litert-gpu': ('litert-lm', 'gpu', {**LITERT_NPU_VERSIONS, 'litertNpuRuntimeQualcomm': None}),
+            'npu-runtime-on-litert-cpu': ('litert-lm', 'cpu', {**LITERT_NPU_VERSIONS, 'qairt': None}),
+            'genie-on-llama': ('llama.cpp', 'cpu', {**LLAMA_VERSIONS, 'genie': '1.19.0'}),
+            'unknown-engine': ('mlc', 'gpu', {**LLAMA_VERSIONS}),
+        }
+        for name, (engine, backend, versions) in cases.items():
+            with self.subTest(case=name):
+                self.assertIn('does not run on', self.build_for(engine, versions, backend).get('error', ''))
+
+    def test_runtime_versions_are_at_most_64_characters(self):
+        # The website drops a runtime field longer than 64 characters; the pattern alone allows more.
+        litert = fixture_row('litert-npu-runtimes.json')
+        longest = '1' * 5 + ('.' + '1' * 12) * 3 + '-' + 'a' * 16 + ('.' + 'a' * 16) * 3
+        self.assertGreater(len(longest), 64)
+        for version, valid in ((longest, False), (longest[:64].rstrip('.-'), True)):
+            with self.subTest(length=len(version)):
+                row = {**litert, 'build': {**litert['build'], 'runtimes': [{'name': 'QAIRT', 'version': version}]}}
+                result = self.validate(envelope_with(row, schemaVersion="1.2"))
+                self.assertEqual(result.returncode, 0 if valid else 1, result.stderr)
+                if not valid:
+                    self.assertIn('longer than 64 characters', result.stderr)
 
     def test_contract_version_for(self):
         self.assertEqual(self.module("p.contractVersionFor([{build: {runtimes: [{name: 'QAIRT', version: '2.50.0'}]}}])"),
