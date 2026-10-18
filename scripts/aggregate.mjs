@@ -49,7 +49,7 @@ import {
   assertBenchmarks, assertFinite, assertSchema, buildFromSession, compareRows, CONTRACT_VERSION, contractVersionFor,
   friendlyDevice, isoNow, migrationNeeds, PublicationError, readJson, rowInvariantErrors, rowKey, writeAtomicGroup,
 } from './lib/publication.mjs';
-import { bundleRow, isHosted, listBundles, readBoundBundle, runPolicy } from './lib/bundles.mjs';
+import { bundleRow, isHosted, listBundles, readBoundBundle, reproductionErrors, runPolicy } from './lib/bundles.mjs';
 import { assertIndex, planPublication } from './lib/history.mjs';
 
 const USAGE =
@@ -411,6 +411,10 @@ function loadCanonical(schemas) {
   const indexBefore = readText(INDEX, 'data/sessions/index.json');
   const index = readJson(INDEX, 'data/sessions/index.json');
   assertIndex(index, envelope, schemas, 'existing data/sessions/index.json');
+  const unreproduced = reproductionErrors(index, ROOT);
+  if (unreproduced.length) {
+    throw new PublicationError(`existing data/sessions/index.json does not reproduce from the hosted bundles:\n  ${unreproduced.slice(0, 20).join('\n  ')}`);
+  }
   return { before, envelope, indexBefore, index };
 }
 
@@ -531,7 +535,7 @@ function readBundles(schemas) {
           protocolVersion: doc.record.protocol.version, decision: item.decision, facts: item.facts, row: null,
         };
         if (item.decision.publishable) {
-          const row = bundleRow({ doc, capture, decision: item.decision, bundleSha256: bundle.sha });
+          const row = bundleRow({ doc, capture, decision: item.decision, facts: item.facts, bundleSha256: bundle.sha });
           if (row.sampleCount !== item.facts.measured) {
             throw new PublicationError(`${dir}: ${item.sessionId}: recomputed n ${row.sampleCount} differs from the verifier's ${item.facts.measured}`);
           }
@@ -629,13 +633,20 @@ function publishFromBundles() {
 
   if (dryRun) {
     const wanted = sessionArgs.length ? new Set(sessionArgs) : null;
+    const missing = [...(wanted ?? [])].filter((id) => !sessions.some((session) => session.sessionId === id));
+    if (missing.length) throw new PublicationError(`session(s) not in any bundle under ${fromBundles}: ${missing.join(', ')}`);
     const shown = wanted ? sessions.filter((session) => wanted.has(session.sessionId)) : sessions;
-    const seen = new Set();
-    const candidates = shown.filter((session) => {
-      if (!session.row || seen.has(session.sessionId)) return false;
-      seen.add(session.sessionId);
-      return true;
-    });
+    // A session in more than one bundle is ambiguous; --update refuses it, so the plan leaves it out.
+    const copies = new Map();
+    for (const session of sessions) copies.set(session.sessionId, (copies.get(session.sessionId) ?? 0) + 1);
+    for (const session of shown) {
+      if (copies.get(session.sessionId) > 1 && session.decision.publishable) {
+        session.decision = { ...session.decision, publishable: false,
+          refusal: `in ${copies.get(session.sessionId)} bundles; --update refuses to pick one` };
+        session.row = null;
+      }
+    }
+    const candidates = shown.filter((session) => session.row);
     let plan = null;
     let planError = null;
     try {
@@ -690,6 +701,7 @@ try {
   else aggregateRaw();
 } catch (error) {
   console.error(error instanceof PublicationError ? `error: ${error.message}` : error);
+  if (error?.partialWrite) process.exit(1); // the message names the files left with new content
   console.error(update
     ? `data/benchmarks.json${fromBundles !== null ? ' and data/sessions/index.json were' : ' was'} not modified.`
     : dryRun ? 'nothing was written.' : 'no rows were emitted.');

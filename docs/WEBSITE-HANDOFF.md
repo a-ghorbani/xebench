@@ -173,7 +173,8 @@ Selection is explicit and deterministic: the newest verified session, else the n
 unverified, else the newest failed, where newest is the latest `timestampIso`, then
 `sessionId`. A newer failed session never replaces a displayed verified row. The
 board row for a key is exactly `sessions[displayed].row`, and `validate_data.mjs`
-refuses any file pair where it is not. A published session is never removed or
+refuses any file pair where it is not, or where a session's row does not come out of
+its hosted bundle again. A published session is never removed or
 rewritten.
 
 The index is an additive, optional file: the board needs only

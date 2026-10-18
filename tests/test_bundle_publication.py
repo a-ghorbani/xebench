@@ -497,13 +497,116 @@ class HistoryTests(Workspace):
         self.assertIn("already published with identical content", result.stderr)
         self.assertEqual(self.digests(), before)
         # The same session in a second, different bundle: ambiguous in one run, refused once published.
-        self.bundle(fx.cpu_record("complete", "1767225600000-1-v", timestamp=T["t0"], device="Fixture Phone"),
-                    fx.cpu_record("complete", "1767225600000-9-other", device="Fixture Tablet"))
+        second, _ = self.bundle(fx.cpu_record("complete", "1767225600000-1-v", timestamp=T["t0"], device="Fixture Phone"),
+                                fx.cpu_record("complete", "1767225600000-9-other", device="Fixture Tablet"))
         self.assert_rejected("refusing to pick one", "--from-bundles", self.root / "evidence", "--update",
                              "--session", "1767225600000-1-v")
-        shutil.rmtree(directory)
-        self.assert_rejected("is already published with different content", "--from-bundles", self.root / "evidence",
+        result = self.dry_run("--session", "1767225600000-1-v")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("not publishable (in 2 bundles; --update refuses to pick one)", result.stdout)
+        self.assert_rejected("is already published with different content", "--from-bundles", second,
                              "--update", "--session", "1767225600000-1-v")
+        self.assert_rejected("not in any bundle", "--from-bundles", self.root / "evidence", "--dry-run",
+                             "--session", "1767225600000-8-nowhere")
+
+
+HOOK = """
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+const real = fs.renameSync;
+const from = Number(process.env.XEBENCH_FAIL_RENAME_FROM);
+const only = process.env.XEBENCH_FAIL_RENAME_ONLY === '1';
+let count = 0;
+fs.renameSync = (source, target) => {
+  count += 1;
+  if (count === from || (!only && count > from)) {
+    const error = new Error('injected rename failure');
+    error.code = 'EIO';
+    throw error;
+  }
+  return real(source, target);
+};
+syncBuiltinESMExports();
+"""
+
+
+class ReviewRegressionTests(Workspace):
+    def test_every_published_row_must_reproduce_from_its_bundle(self):
+        self.bundle(fx.cpu_record("complete", "1767225600000-0-one", device="Fixture Phone"))
+        self.publish("1767225600000-0-one")
+        key = "llama.cpp|cpu|android|Google Fixture Phone|Llama 3.2 1B|Q4_K_M|measured"
+        board, index = load(self.canonical), load(self.index)
+        good = (self.canonical.read_text(), self.index.read_text())
+        # A consistent hand edit of both files: they agree with each other, not with the bundle.
+        next(row for row in board["rows"] if key_of(row) == key)["tgTps"] = 99.9
+        index["keys"][0]["sessions"][0]["row"]["tgTps"] = 99.9
+        self.canonical.write_text(json.dumps(board, indent=2) + "\n")
+        self.index.write_text(json.dumps(index, indent=2) + "\n")
+        self.assertEqual(self.node("validate_data.mjs", self.canonical).returncode, 0, "contract-valid alone")
+        result = self.node("validate_data.mjs")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("does not reproduce from evidence/", result.stderr)
+        self.bundle(fx.cpu_record("complete", "1767225600000-1-two", device="Fixture Tablet"))
+        self.assert_rejected("does not reproduce from the hosted bundles", "--from-bundles", self.root / "evidence",
+                             "--update", "--session", "1767225600000-1-two")
+        self.canonical.write_text(good[0])
+        self.index.write_text(good[1])
+        self.assert_valid_data()
+        for bundle in (self.root / "evidence").iterdir():
+            shutil.rmtree(bundle)
+        result = self.node("validate_data.mjs")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("bundle is not hosted", result.stderr)
+
+    def test_replaced_rows_keep_the_kind_they_name(self):
+        self.bundle(fx.cpu_record("complete", "1767225600000-0-pixel", device="Pixel 9"))
+        self.publish("1767225600000-0-pixel", flags=["--replace-legacy"])
+        index = load(self.index)
+        entry = next(item for item in index["keys"] if item["key"] == LEGACY_KEY)
+        entry["replacedRows"][0]["reason"] = "replace-failed"
+        self.index.write_text(json.dumps(index, indent=2) + "\n")
+        result = self.node("validate_data.mjs")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("a replace-failed entry must keep a failed row", result.stderr)
+
+    def run_with_hook(self, fail_from, only):
+        hook = Path(self.tmp.name) / "hook.mjs"
+        hook.write_text(HOOK)
+        env = {**os.environ, "XEBENCH_FAIL_RENAME_FROM": str(fail_from), "XEBENCH_FAIL_RENAME_ONLY": "1" if only else "0"}
+        return subprocess.run(["node", "--import", hook.as_uri(), str(self.root / "scripts/aggregate.mjs"),
+                               "--from-bundles", str(self.root / "evidence"), "--update", "--session",
+                               "1767225600000-0-roll"], capture_output=True, text=True, env=env)
+
+    def test_a_failed_second_rename_restores_the_first_file(self):
+        self.bundle(fx.cpu_record("complete", "1767225600000-0-roll", device="Fixture Phone"))
+        before = self.digests()
+        result = self.run_with_hook(2, only=True)  # the index is renamed, data/benchmarks.json is not
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("injected rename failure", result.stderr)
+        self.assertIn("were not modified", result.stderr)
+        self.assertEqual(self.digests(), before)
+        self.no_leftovers()
+
+    def test_a_failed_restore_is_reported_not_hidden(self):
+        self.bundle(fx.cpu_record("complete", "1767225600000-0-roll", device="Fixture Phone"))
+        result = self.run_with_hook(2, only=False)  # the restore's rename fails too
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("restoring the earlier content failed too: index.json now hold the new content", result.stderr)
+        self.assertIn("checkout -- data/", result.stderr)
+        self.assertNotIn("not modified", result.stderr)
+        self.no_leftovers()
+
+    def test_newest_compares_instants_not_text(self):
+        script = ("import {compareSessions, selectSession} from './scripts/lib/history.mjs';"
+                  "const s = [{sessionId: 'a', timestampIso: '2026-03-01T00:00:00.500Z', validation: 'verified'},"
+                  "{sessionId: 'b', timestampIso: '2026-03-01T00:00:00Z', validation: 'verified'},"
+                  "{sessionId: 'c', timestampIso: '2026-03-01T00:00:00.250+00:00', validation: 'verified'}];"
+                  "console.log(JSON.stringify([s.slice().sort(compareSessions).map((x) => x.sessionId),"
+                  " selectSession(s).sessionId, selectSession(s.slice().reverse()).sessionId]));")
+        result = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True,
+                                cwd=self.root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), [["b", "c", "a"], "a", "a"])
 
 
 def consumer_fixtures(test):
@@ -531,6 +634,7 @@ def consumer_fixtures(test):
                                     runtimes=runtimes))
         test.publish("1767225600000-0-pixel", "1767225600000-1-pixel", "1767225600000-2-phone",
                      "1767225600000-3-tablet", "1767225600000-4-npu", flags=["--replace-legacy"])
+        test.assert_valid_data()  # every published row reproduces from its hosted bundle
         board = load(test.canonical)
         test.assertEqual(board["schemaVersion"], version)
         board["generatedAt"] = "2026-10-18T00:00:00Z"
@@ -560,9 +664,6 @@ class ConsumerFixtureTests(Workspace):
                 self.assertEqual(result.returncode, 0, result.stderr)
         for version in ("1.1", "1.2"):
             board, sessions = load(FIXTURES / f"board-{version}.json"), load(FIXTURES / f"sessions-{version}.json")
-            shutil.copy(FIXTURES / f"board-{version}.json", self.canonical)
-            shutil.copy(FIXTURES / f"sessions-{version}.json", self.index)
-            self.assert_valid_data()
             validations = {row.get("validation") for row in board["rows"]}
             self.assertEqual(validations, {None, "verified", "unverified", "failed"})
             history = next(entry for entry in sessions["keys"] if entry["key"] == LEGACY_KEY)

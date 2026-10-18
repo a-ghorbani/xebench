@@ -529,14 +529,22 @@ export function writeAtomicGroup(items) {
     }
   } catch (error) {
     staged.filter((item) => !done.includes(item)).forEach((item) => removeQuietly(item.tmp));
+    const stuck = [];
     for (const item of done.reverse()) {
       try {
         writeAtomicGroup([{ target: item.target, text: item.before, before: item.text }]);
       } catch {
-        // best effort; the original error is what the caller needs
+        stuck.push(item.target);
       }
     }
-    throw error;
+    if (!stuck.length) throw error;
+    const failure = new PublicationError(
+      `writing failed (${error.code ?? error.message}) and restoring the earlier content failed too: ` +
+        `${stuck.map((path) => basename(path)).join(', ')} now hold the new content while the rest are unchanged. ` +
+        'Restore them (git checkout -- data/) before publishing again.',
+    );
+    failure.partialWrite = stuck;
+    throw failure;
   }
 }
 

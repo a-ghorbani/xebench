@@ -238,18 +238,22 @@ pull request, not other models.
 ## Publication policy v1
 
 Policy `publication-policy-v1` decides the `validation` and `guardsPassed` of a row
-published from an evidence bundle (`scripts/aggregate.mjs --from-bundles`). It is
-the PM's rule set; [`publication_policy.py`](../scripts/publication_policy.py)
-`evaluate()` is its only implementation, and
+published from an evidence bundle (`scripts/aggregate.mjs --from-bundles`).
+[`publication_policy.py`](../scripts/publication_policy.py) `evaluate()` is its only
+implementation, and
 [`test_publication_policy.py`](../tests/test_publication_policy.py) tests every
 check alone and every pair of checks.
 
 The validator recomputes every input from the bundle's evidence and never trusts a
 recorded verdict, `guardsPassed` or summary. It first runs `export_evidence.py
-verify`, then re-runs the raw-session cross-field rules (readiness, condition
-assessments, monitor summaries, charging, verdict, run order and build identity) on
-each sanitized session. A bundle whose evidence disagrees with its own claims is
-refused as a whole.
+verify`, then re-runs the raw-session cross-field rules on each sanitized session:
+the configured run behind the record (engine, model, quant, model file, threads and
+context), repetition numbering, the summary, readiness, condition assessments, monitor
+summaries, charging, verdict, run order and, for cpu-reference-v3 and accelerator-v2,
+build and execution identity. Accelerator gates are re-checked from the exported probe
+verdicts, because a bundle withholds prompt and output text. The capture's APK identity
+is recomputed from its before and after snapshots. A bundle whose evidence disagrees
+with its own claims is refused as a whole.
 
 A row earns `guardsPassed: true` and `validation: "verified"` only when every check
 passes:
@@ -261,15 +265,17 @@ passes:
 | `charging` | every measured repetition recomputes to `satisfied` under `charging-policy-v3` | `violated` or `on-battery` | `unknown`, or another charging policy |
 | `coverage` | every measured repetition was sampled throughout (the coverage rule above) | — | a gap, expiry, dropped tick or missing monitor |
 | `artifact` | the artifact SHA-256 equals the configured run's `modelSha256` | it differs | the run pins no `modelSha256` |
-| `backend` | CPU: `confirmed` or `consistent`. GPU/NPU: `confirmed` | `mismatch` | anything else, including `consistent` on GPU/NPU; LiteRT-LM GPU/NPU evidence is at most `consistent` |
+| `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed` | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU/NPU evidence is at most `consistent` |
 | `correctness` (accelerator protocols) | output gate `pass` | `fail` | `unverified` |
 | `comparison` (accelerator protocols) | `valid` | `invalid` | `unverified` |
-| `build` | reported release build, clean tree (`gitDirty: false`), known commit, flavor `reference`, `experimental` or `geniex` | dirty tree or debug build | not reported, or any field unknown |
-| `app-identity` | the capture's APK snapshots `matched` | `changed` | `unverified` or missing |
+| `build` | reported release build, clean tree (`gitDirty: false`), known commit, flavor `reference`, `experimental` or `geniex` | dirty tree | not reported, any field unknown, or a debug build (its JavaScript comes from Metro, so the commit does not identify the code that ran) |
+| `app-identity` | two recorded, identical APK snapshots (before and after the run) | the snapshots differ, or the capture reports `changed` | a missing or unrecorded snapshot |
 
 Backend evidence is recomputed with the `backend.ts` rule: from each repetition's
 `observedBackend` for accelerator protocols, and from each load's execution report
-for cpu-reference-v3 llama.cpp runs. A repetition without evidence leaves the check
+for cpu-reference-v3 llama.cpp runs. llama.rn's GPU flag says only that GPU devices
+are attached, so a llama.cpp CPU run also needs effective settings with
+`n_gpu_layers` 0 and no device. A repetition without evidence leaves the check
 unknown. `confirmed` is the engine's own device report, not per-operation execution.
 Correctness and comparison are recomputed from the exported probe verdicts.
 

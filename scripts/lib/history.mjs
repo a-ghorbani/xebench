@@ -23,10 +23,23 @@ const PREFERENCE = ['verified', 'unverified', 'failed'];
 const codepoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const clone = (value) => JSON.parse(JSON.stringify(value));
+const isLegacy = (row) => row.provenance === 'measured' && (row.validation === 'legacy' || !Object.hasOwn(row, 'validation'));
 
-/** Total order of a key's sessions: oldest first (timestampIso, then sessionId). */
-export const compareSessions = (a, b) =>
-  codepoint(String(a.timestampIso), String(b.timestampIso)) || codepoint(String(a.sessionId), String(b.sessionId));
+const instant = (value) => {
+  const time = Date.parse(String(value));
+  return Number.isFinite(time) ? time : null;
+};
+
+/**
+ * Total order of a key's sessions, oldest first: the instant timestampIso names (so
+ * "…Z" and "…+00:00" or different fraction digits compare correctly), then the
+ * timestampIso text, then sessionId.
+ */
+export const compareSessions = (a, b) => {
+  const [x, y] = [instant(a.timestampIso), instant(b.timestampIso)];
+  return (x !== null && y !== null ? Math.sign(x - y) : 0) || codepoint(String(a.timestampIso), String(b.timestampIso)) ||
+    codepoint(String(a.sessionId), String(b.sessionId));
+};
 
 /** The displayed session of a key, by SELECTION_RULE: { sessionId, rule }. */
 export function selectSession(sessions) {
@@ -72,6 +85,7 @@ export function indexErrors(index, envelope, schemas) {
       if (index_ > 0 && compareSessions(entry.sessions[index_ - 1], session) >= 0) {
         add(`${where}: sessions must be unique and sorted oldest first (timestampIso, sessionId)`);
       }
+      if (instant(session.timestampIso) === null) add(`${where}: timestampIso is not a date and time`);
       if (seenSessions.has(session.sessionId)) add(`${where}: session ${session.sessionId} is also under ${seenSessions.get(session.sessionId)}`);
       seenSessions.set(session.sessionId, entry.key);
       const { row } = session;
@@ -113,7 +127,14 @@ export function indexErrors(index, envelope, schemas) {
     }
     entry.replacedRows.forEach((item, index_) => {
       if (!ids.has(item.replacedBy)) add(`${at} replacedRows[${index_}]: replacedBy is not a session of this key`);
-      if (!isObject(item.row) || rowKey(item.row) !== entry.key) add(`${at} replacedRows[${index_}]: row is not this key`);
+      if (!isObject(item.row) || rowKey(item.row) !== entry.key) {
+        add(`${at} replacedRows[${index_}]: row is not this key`);
+        return;
+      }
+      const kind = isLegacy(item.row) ? 'replace-legacy' : item.row.validation === 'failed' ? 'replace-failed' : null;
+      if (item.reason !== kind) {
+        add(`${at} replacedRows[${index_}]: a ${item.reason} entry must keep a ${item.reason === 'replace-legacy' ? 'legacy' : 'failed'} row`);
+      }
     });
     const shown = rows.get(entry.key);
     const expected = entry.sessions.find((session) => session.sessionId === entry.displayed)?.row;
@@ -138,8 +159,6 @@ export function assertIndex(index, envelope, schemas, label = 'data/sessions/ind
   const errors = indexErrors(index, envelope, schemas);
   if (errors.length) throw new PublicationError(`${label} is inconsistent:\n  ${errors.slice(0, 20).join('\n  ')}`);
 }
-
-const isLegacy = (row) => row.provenance === 'measured' && (row.validation === 'legacy' || !Object.hasOwn(row, 'validation'));
 
 /**
  * Add candidate sessions to the history and re-select each touched key. Pure: returns

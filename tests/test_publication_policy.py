@@ -136,7 +136,7 @@ DIMENSIONS = {
     "build": [
         ("clean release", build(), "build", PASS),
         ("dirty", build(gitDirty=True), "build", FAIL),
-        ("debug", build(buildType="debug"), "build", FAIL),
+        ("debug (code that ran is not identified)", build(buildType="debug"), "build", UNKNOWN),
         ("dirty flag unknown", build(gitDirty=None), "build", UNKNOWN),
         ("no commit", build(gitCommit=None), "build", UNKNOWN),
         ("unknown flavor", build(flavor="unrecognized"), "build", UNKNOWN),
@@ -350,6 +350,97 @@ class FactsFromBundlesTests(unittest.TestCase):
         changed = self.report([fx.cpu_record("complete", "1767225600000-0-changed")], consistency="changed")
         decision = changed["1767225600000-0-changed"]["decision"]
         self.assertEqual((decision["validation"], outcome_of(decision, "app-identity")), ("failed", FAIL))
+
+    def test_relabelled_accelerator_identity_is_refused(self):
+        """Model, quant or model file relabelled consistently (re-hashed) disagree with the configured run."""
+        for field, value in (("model", "Llama 3.2 3B"), ("quant", "Q8_0"), ("modelFile", "other.gguf")):
+            with self.subTest(field), tempfile.TemporaryDirectory() as root:
+                record = fx.accel_record("f8-llama-hexagon", "1767225600000-0-relabel")
+                directory, _ = fx.bundle(root, [record], "00000000-0000-4000-8000-000000000004")
+                forged = fx.rehash(directory, "sessions/1767225600000-0-relabel.json",
+                                   lambda document: document["record"].update({field: value}))
+                report = policy.bundle_report(forged, forged.name)
+                self.assertFalse(report["valid"])
+                self.assertTrue(any("configuration.run-mismatch" in error for error in report["errors"]),
+                                report["errors"])
+
+    def test_app_identity_is_recomputed_from_the_snapshots(self):
+        record = fx.cpu_record("complete", "1767225600000-0-apk")
+        cases = {
+            "labelled matched, snapshots differ": ("matched", {"before": "a", "after": "b"}, None),
+            "labelled matched, no snapshots": ("matched", {"before": None, "after": None}, None),
+            "labelled unverified, identical": ("unverified", {"before": "a", "after": "a"}, UNKNOWN),
+            "labelled changed": ("changed", {"before": "a", "after": "a"}, FAIL),
+            "matched": ("matched", {"before": "a", "after": "a"}, PASS),
+        }
+        for name, (label, snapshots, outcome) in cases.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as root:
+                directory, _ = fx.bundle(root, [copy.deepcopy(record)], "00000000-0000-4000-8000-000000000005")
+                capture = next(directory.glob("captures/*.json")).relative_to(directory).as_posix()
+
+                def relabel(document):
+                    identity = document["appIdentity"]
+                    identity["consistency"] = label
+                    for side, apk in snapshots.items():
+                        identity[side] = None if apk is None else {
+                            "status": "recorded", "apks": [{"name": "base.apk", "sha256": apk * 64}]}
+                    if label == "changed":
+                        document["status"] = "app-changed"
+                forged = fx.rehash(directory, capture, relabel)
+                report = policy.bundle_report(forged, forged.name)
+                if outcome is None:
+                    self.assertFalse(report["valid"])
+                    self.assertTrue(any("appIdentity says matched" in error for error in report["errors"]))
+                else:
+                    self.assertTrue(report["valid"], report["errors"])
+                    self.assertEqual(outcome_of(report["sessions"][0]["decision"], "app-identity"), outcome)
+
+    def test_a_cpu_run_that_offloads_layers_is_not_a_cpu_row(self):
+        with tempfile.TemporaryDirectory() as root:
+            record = fx.cpu_record("complete", "1767225600000-0-offload")
+            directory, _ = fx.bundle(root, [record], "00000000-0000-4000-8000-000000000006")
+
+            def offload(document):
+                document["record"]["effectiveSettings"]["init"]["n_gpu_layers"] = 99
+                for report in document["record"]["executionReports"]:
+                    report.update(gpu=True, devices=["GPUOpenCL"])
+            forged = fx.rehash(directory, "sessions/1767225600000-0-offload.json", offload)
+            report = policy.bundle_report(forged, forged.name)
+            self.assertTrue(report["valid"], report["errors"])
+            decision = report["sessions"][0]["decision"]
+            self.assertEqual((outcome_of(decision, "backend"), decision["validation"]), (FAIL, "failed"))
+
+            def unknown(document):
+                document["record"]["effectiveSettings"] = None
+            forged = fx.rehash(forged, "sessions/1767225600000-0-offload.json", unknown)
+            report = policy.bundle_report(forged, forged.name)
+            self.assertTrue(report["valid"], report["errors"])
+            self.assertEqual(outcome_of(report["sessions"][0]["decision"], "backend"), UNKNOWN)
+        facts_ = {"engine": "llama.cpp", "backend": "cpu", "protocol": {"version": "cpu-reference-v3"},
+                  "configuration": {"runs": [{"id": "r"}]}, "configurationRunId": "r", "executionReports": []}
+        self.assertEqual(policy._backend({**facts_, "effectiveSettings": {"init": {"n_gpu_layers": 1}}}, []), "mismatch")
+        self.assertEqual(policy._backend({**facts_, "effectiveSettings": None}, []), "unknown")
+        self.assertEqual(policy._backend({**facts_, "effectiveSettings": {"init": {"n_gpu_layers": 0, "devices": ["HTP0"]}}}, []),
+                         "mismatch")
+
+    def test_bytes_changed_after_verification_are_refused(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory, sha = fx.bundle(root, [fx.cpu_record("complete", "1767225600000-0-swap")],
+                                       "00000000-0000-4000-8000-000000000007")
+            real_verify = policy.export_evidence.verify
+
+            def verify_then_swap(bundle, expected=None, sessions=()):
+                result = real_verify(bundle, expected, sessions)
+                path = Path(bundle) / "sessions/1767225600000-0-swap.json"
+                path.write_bytes(path.read_bytes().replace(b"Llama 3.2 1B", b"Llama 3.2 3B"))
+                return result
+            policy.export_evidence.verify = verify_then_swap
+            try:
+                report = policy.bundle_report(directory, sha)
+            finally:
+                policy.export_evidence.verify = real_verify
+            self.assertFalse(report["valid"])
+            self.assertTrue(any("changed after verification" in error for error in report["errors"]), report["errors"])
 
     def test_recorded_claims_are_not_trusted(self):
         """A re-hashed bundle whose verdict or charging claims disagree with its evidence is refused."""

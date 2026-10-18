@@ -17,7 +17,7 @@ import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  assertFinite, buildFromSession, evidenceUrl, friendlyDevice, PublicationError,
+  assertFinite, buildFromSession, evidenceUrl, friendlyDevice, jsonEqual, PublicationError,
 } from './publication.mjs';
 
 export const POLICY_SCRIPT = fileURLToPath(new URL('../publication_policy.py', import.meta.url));
@@ -174,7 +174,7 @@ const spread = (agg) => (agg ? { iqr: round1(agg.iqr), min: round1(agg.min), max
  * harness commit and the installed APK. Without runtimeVersions, a llama.cpp session's
  * own "llama.rn <version>" label is its binding. Unknown values are absent.
  */
-function rowBuild(record, capture, where) {
+function rowBuild(record, capture, where, appIdentity) {
   const fromRuntimes = buildFromSession(record, where) ?? {};
   const build = { ...fromRuntimes };
   if (!build.runtimes && record.engine === 'llama.cpp') {
@@ -183,7 +183,7 @@ function rowBuild(record, capture, where) {
     else if (/^llama\.rn [0-9][0-9A-Za-z.+-]{0,39}$/.test(String(record.engineVersion))) build.bindingVersion = record.engineVersion;
   }
   const after = capture.appIdentity?.after;
-  if (capture.appIdentity?.consistency === 'matched' && Array.isArray(after?.apks) && after.apks.length === 1) {
+  if (appIdentity === 'matched' && Array.isArray(after?.apks) && after.apks.length === 1) {
     build.apkSha256 = after.apks[0].sha256;
   }
   if (record.build?.status === 'reported' && typeof record.build.gitCommit === 'string') {
@@ -210,7 +210,7 @@ function asStated(record, n, decision) {
  * The board row a publishable session gives. Every number is recomputed from the
  * bundle's repetitions; validation and guardsPassed are the policy decision.
  */
-export function bundleRow({ doc, capture, decision, bundleSha256 }) {
+export function bundleRow({ doc, capture, decision, facts, bundleSha256 }) {
   const record = doc.record;
   const where = `${bundleSha256.slice(0, 12)}…/sessions/${doc.sessionId}.json`;
   const stats = recomputeSummary(record);
@@ -252,7 +252,7 @@ export function bundleRow({ doc, capture, decision, bundleSha256 }) {
     timingMethod: timingMethod(complete),
     dispersion,
     evidence: { sessionIds: [doc.sessionId], bundleSha256, url: evidenceUrl(bundleSha256) },
-    build: rowBuild(record, capture, where),
+    build: rowBuild(record, capture, where, facts?.appIdentity),
   };
   return JSON.parse(JSON.stringify(row)); // drop undefined fields
 }
@@ -264,4 +264,48 @@ export function isHosted(bundleDir, root, sha) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Every indexed session must still come out of its hosted bundle as exactly the row the
+ * index keeps: the bundle exists at <root>/evidence/<sha>/, verifies, and the policy and
+ * recomputation give the same row. A hand-edited row, a rewritten session or a missing
+ * bundle is an error. Returns "path: message" errors.
+ */
+export function reproductionErrors(index, root) {
+  const errors = [];
+  const bySha = new Map();
+  for (const entry of index.keys) {
+    for (const session of entry.sessions) {
+      bySha.set(session.bundleSha256, [...(bySha.get(session.bundleSha256) ?? []), { key: entry.key, session }]);
+    }
+  }
+  for (const [sha, sessions] of [...bySha].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    const dir = join(root, 'evidence', sha);
+    const label = `evidence/${sha}`;
+    try {
+      if (!HEX64.test(sha) || !isHosted(dir, root, sha)) throw new PublicationError(`${label}: bundle is not hosted`);
+      const report = runPolicy(dir, sha);
+      if (!report.valid) throw new PublicationError(`${label}: bundle no longer verifies: ${report.errors.slice(0, 3).join('; ')}`);
+      const bound = readBoundBundle(dir, sha);
+      for (const { key, session } of sessions) {
+        const item = report.sessions.find((candidate) => candidate.sessionId === session.sessionId);
+        if (!item) {
+          errors.push(`${label}: indexed session ${session.sessionId} (${key}) is not in its bundle`);
+          continue;
+        }
+        const doc = bound.file(`sessions/${item.sessionId}.json`);
+        const capture = bound.file(`captures/${doc.captureId}.json`);
+        const row = item.decision.publishable
+          ? bundleRow({ doc, capture, decision: item.decision, facts: item.facts, bundleSha256: sha }) : null;
+        if (!row || !jsonEqual(row, session.row)) {
+          errors.push(`data/sessions/index.json: session ${session.sessionId} (${key}) does not reproduce from ${label}`);
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof PublicationError)) throw error;
+      errors.push(error.message);
+    }
+  }
+  return errors;
 }

@@ -41,14 +41,17 @@ CHECKS = ("complete", "conditions", "charging", "coverage", "artifact", "backend
 def recheck(record):
     """raw_session's cross-field rules on a sanitized record; a list of "code path" strings.
 
-    accelerator records withhold prompt and output text, so their gate is re-checked by
-    export_evidence.verify (correctness, comparison and backend evidence) instead of
-    raw_session._semantic_accelerator.
+    accelerator records withhold prompt and output text, so their gate (probe set,
+    correctness, comparison and backend evidence) is re-checked by export_evidence.verify
+    instead of raw_session._semantic_accelerator; every other rule runs here.
     """
     try:
         version = record["protocol"]["version"]
         if version in raw_session.ACCELERATOR_PROTOCOLS:
-            errors = raw_session._semantic_v2(record)
+            # The shared rules (configured run, repetition numbering, summary) and every
+            # condition and identity rule; only the text-dependent gate rules are left out.
+            errors = raw_session.identity_errors(record) + raw_session.summary_errors(record)
+            errors += raw_session._semantic_v2(record)
             if version == raw_session.ACCELERATOR_PROTOCOL:
                 errors += raw_session._semantic_v3(record)
         else:
@@ -75,6 +78,50 @@ def _experiment_markers(record):
     return markers
 
 
+def _cpu_offload(record):
+    """llama.cpp CPU: None when no layer is offloaded, else "mismatch" (offloaded) or "unknown".
+
+    The engine's gpu flag says only that GPU devices are attached, so a CPU run counts as
+    CPU only when its effective settings offload no layer and select no device.
+    """
+    settings, run = record.get("effectiveSettings"), _configured_run(record)
+    if not isinstance(settings, dict) or not isinstance(settings.get("init"), dict):
+        return "unknown"
+    init = settings["init"]
+    layers = init.get("n_gpu_layers")
+    if not isinstance(layers, int) or isinstance(layers, bool):
+        return "unknown"
+    if layers != 0 or init.get("devices") or (run or {}).get("nGpuLayers", 0) != 0 or (run or {}).get("devices"):
+        return "mismatch"
+    return None
+
+
+def _apk_set(snapshot):
+    if not isinstance(snapshot, dict) or snapshot.get("status") != "recorded":
+        return None
+    apks = snapshot.get("apks")
+    if not isinstance(apks, list) or not apks:
+        return None
+    return sorted((item.get("name"), item.get("sha256")) for item in apks)
+
+
+def app_identity(capture):
+    """(consistency recomputed from the capture's APK snapshots, error when its label disagrees).
+
+    matched needs two recorded, non-empty, identical snapshots; changed is a label of
+    changed or two recorded snapshots that differ; anything else is unverified.
+    """
+    identity = capture.get("appIdentity") or {}
+    label = identity.get("consistency")
+    before, after = _apk_set(identity.get("before")), _apk_set(identity.get("after"))
+    snapshots = "unverified" if before is None or after is None else "matched" if before == after else "changed"
+    if label == "matched" and snapshots != "matched":
+        return "unverified", "appIdentity says matched, but its APK snapshots are not two identical recorded sets"
+    if label == "changed" or snapshots == "changed":
+        return "changed", None
+    return ("matched" if label == "matched" else "unverified"), None
+
+
 def _backend(record, measured):
     """Backend evidence status over the measured repetitions, recomputed with backend.ts rules.
 
@@ -83,6 +130,10 @@ def _backend(record, measured):
     Anything without evidence for every measured repetition is None (unknown).
     """
     engine, backend = record["engine"], record["backend"]
+    if engine == "llama.cpp" and backend == "cpu":
+        offload = _cpu_offload(record)
+        if offload is not None:
+            return offload
     evidence = []
     for attempt in measured:
         if record["protocol"]["version"] in raw_session.ACCELERATOR_PROTOCOLS:
@@ -126,7 +177,7 @@ def session_facts(doc, capture):
         "attempts": len(attempts), "measured": len(measured), "experiment": _experiment_markers(record),
         "chargingPolicy": (record.get("chargingPolicy") or {}).get("version"),
         "conditions": None, "artifact": None, "backendEvidence": None, "correctness": None, "comparison": None,
-        "build": None, "appIdentity": (capture.get("appIdentity") or {}).get("consistency"),
+        "build": None, "appIdentity": app_identity(capture)[0],
     }
     if version in CONDITION_PROTOCOLS:
         repetitions = []
@@ -235,7 +286,8 @@ def _build(facts):
     if build.get("gitDirty") is True:
         return _check("build", FAIL, "built from a dirty tree")
     if build.get("buildType") == "debug":
-        return _check("build", FAIL, "debug build (JavaScript not part of the binary)")
+        # A debug build loads its JavaScript from Metro: the commit does not identify the code that ran.
+        return _check("build", UNKNOWN, "debug build: its JavaScript is not part of the binary")
     if not (isinstance(build.get("gitCommit"), str) and build.get("gitDirty") is False
             and build.get("flavor") in KNOWN_FLAVORS and build.get("buildType") == "release"):
         return _check("build", UNKNOWN, "commit, clean tree, known flavor or release build not established")
@@ -281,12 +333,26 @@ def bundle_report(bundle, expected_sha=None):
     if not verified["valid"]:
         return report
     try:
-        manifest = json.loads((bundle / "manifest.json").read_bytes())
-        captures = {capture_id: json.loads((bundle / f"captures/{capture_id}.json").read_bytes())
-                    for capture_id in manifest["captureIds"]}
+        # Re-read only bytes that still hash to what verify() checked.
+        manifest_bytes = (bundle / "manifest.json").read_bytes()
+        if export_evidence.sha256(manifest_bytes) != verified["bundleSha256"]:
+            raise ValueError("manifest changed after verification")
+        manifest = json.loads(manifest_bytes)
+        listed = {item["path"]: item["sha256"] for item in manifest["files"]}
+
+        def read(path):
+            data = (bundle / path).read_bytes()
+            if export_evidence.sha256(data) != listed[path]:
+                raise ValueError(f"{path} changed after verification")
+            return json.loads(data)
+        captures = {capture_id: read(f"captures/{capture_id}.json") for capture_id in manifest["captureIds"]}
+        for capture_id, capture in sorted(captures.items()):
+            error = app_identity(capture)[1]
+            if error:
+                report["errors"].append(f"captures/{capture_id}.json/appIdentity: {error}")
         sessions = []
         for session_id in manifest["sessionIds"]:
-            doc = json.loads((bundle / f"sessions/{session_id}.json").read_bytes())
+            doc = read(f"sessions/{session_id}.json")
             errors = recheck(doc["record"])
             report["errors"] += [f"sessions/{session_id}.json/record: recomputed evidence disagrees: {item}"
                                  for item in errors]
@@ -295,7 +361,10 @@ def bundle_report(bundle, expected_sha=None):
                 sessions.append({"sessionId": session_id, "captureId": doc["captureId"], "facts": facts,
                                  "decision": evaluate(facts)})
     except (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError) as error:
-        report["errors"].append(f"bundle: unreadable after verification ({type(error).__name__})")
+        # OS messages name host paths; only the policy's own messages are shown.
+        detail = str(error) if isinstance(error, ValueError) and "after verification" in str(error) \
+            else type(error).__name__
+        report["errors"].append(f"bundle: unreadable or changed after verification ({detail})")
     if not report["errors"]:
         report["valid"], report["sessions"] = True, sessions
     return report
