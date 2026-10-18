@@ -195,8 +195,10 @@ percentage only as a condition, not energy use.
 - Each row is stamped with **engine version** (llama.rn / rn-executorch
   version), model file, and quant — because a driver or engine update can move
   numbers release-over-release, an unstamped number is meaningless over time.
-- `scripts/aggregate.mjs` is the only path from raw records to published rows;
-  it invents nothing.
+- `scripts/aggregate.mjs` is the only path to published rows; it invents nothing.
+  Rows from current sessions are published from sanitized evidence bundles: each
+  links its bundle, and its statistics are recomputed from the bundle's
+  repetitions ([publication policy v1](docs/RUN-CONDITIONS.md#publication-policy-v1)).
 
 ## Explicitly not claimed in v1
 1. That the two quantizations are quality-equivalent (no quality-delta column yet).

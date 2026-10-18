@@ -39,7 +39,7 @@ const matchesType = (value, type) => {
 };
 
 /** JSON value equality (const/enum): same type and structure. */
-const jsonEqual = (a, b) => {
+export const jsonEqual = (a, b) => {
   if (a === b) return true;
   if (typeOf(a) !== typeOf(b) || typeof a !== 'object' || a === null) return false;
   if (Array.isArray(a)) return a.length === b.length && a.every((item, index) => jsonEqual(item, b[index]));
@@ -271,6 +271,33 @@ export function readJson(path, label = String(path)) {
 export const rowKey = (row) =>
   [row.engine, row.backend, row.platform, row.device, row.model, row.quant, row.provenance].join('|');
 
+/**
+ * The stable public URL of a hosted evidence bundle: its manifest under evidence/<sha>/
+ * on main (evidence/README.md). Every row's evidence.url comes from this one function.
+ */
+export const EVIDENCE_BASE_URL = 'https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence';
+export const evidenceUrl = (bundleSha256) => {
+  if (typeof bundleSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(bundleSha256)) {
+    throw new PublicationError(`not a bundle SHA-256: ${JSON.stringify(bundleSha256)}`);
+  }
+  return `${EVIDENCE_BASE_URL}/${bundleSha256}/manifest.json`;
+};
+
+// Marketing names for lab devices (raw ro.product.model -> friendly). Lab rows
+// bypass the website's crowd device-name resolver, so map here.
+const DEVICE_NAMES = {
+  'Pixel 9': 'Google Pixel 9',
+  'SM-S911B': 'Samsung Galaxy S23',
+  'ONEPLUS A6003': 'OnePlus 6',
+  '25102PCBEG': 'POCO F8 Ultra',
+  '2511FPC34G': 'POCO X8 Pro',
+  '22126RN91Y': 'Redmi Note 12',
+};
+export const friendlyDevice = (mfr, model) => {
+  if (DEVICE_NAMES[model]) return DEVICE_NAMES[model];
+  return [mfr, model].filter(Boolean).join(' ').trim() || 'unknown';
+};
+
 const ORDER = ['platform', 'device', 'model', 'engine', 'backend', 'quant', 'provenance'];
 const codepoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -431,11 +458,8 @@ export function migrateTo11(envelope, now = isoNow()) {
   return { envelope: { ...envelope, schemaVersion: CONTRACT_VERSION, generatedAt: now, rows }, touched, changed: true };
 }
 
-/**
- * Write next to the target, flush, then rename over it: readers see old or new,
- * never partial. Refuses if the target no longer holds `expectedBefore`.
- */
-export function writeAtomic(target, text, expectedBefore) {
+/** Write `text` to a fresh temp file next to `target`, flush it and check it; returns the temp path. */
+function stage(target, text) {
   const tmp = join(dirname(target), `.${randomUUID()}.${basename(target)}.tmp`);
   let fd;
   try {
@@ -447,30 +471,90 @@ export function writeAtomic(target, text, expectedBefore) {
     closeSync(written);
     chmodSync(tmp, statSync(target).mode & 0o777);
     if (readFileSync(tmp, 'utf8') !== text) throw new PublicationError('temporary file does not match the output');
-    if (readFileSync(target, 'utf8') !== expectedBefore) {
-      throw new PublicationError(`${basename(target)} changed while it was being regenerated; re-run`);
-    }
-    renameSync(tmp, target);
-    try {
-      const dir = openSync(dirname(target), 'r');
-      fsyncSync(dir); // persist the rename; best-effort where directories cannot be fsynced
-      closeSync(dir);
-    } catch {
-      // not supported on this platform
-    }
+    return tmp;
   } catch (error) {
     try {
       if (fd !== undefined) closeSync(fd);
     } catch {
       // keep the original error; still remove the temp file
     }
-    try {
-      unlinkSync(tmp);
-    } catch {
-      // the temp file was never created or was already renamed
-    }
+    removeQuietly(tmp);
     throw error;
   }
+}
+
+function removeQuietly(path) {
+  try {
+    unlinkSync(path);
+  } catch {
+    // never created or already renamed
+  }
+}
+
+function syncDirectory(path) {
+  try {
+    const dir = openSync(dirname(path), 'r');
+    fsyncSync(dir); // persist the rename; best-effort where directories cannot be fsynced
+    closeSync(dir);
+  } catch {
+    // not supported on this platform
+  }
+}
+
+/**
+ * Replace several files together: every new text is staged and checked first, every
+ * target must still hold its `before` text, then each is renamed over its target in
+ * order. If a later rename fails, the targets already replaced are restored to their
+ * `before` text, so readers see the old set or the new set, never a mix that stays.
+ */
+export function writeAtomicGroup(items) {
+  const staged = [];
+  try {
+    for (const item of items) staged.push({ ...item, tmp: stage(item.target, item.text) });
+    for (const item of staged) {
+      if (readFileSync(item.target, 'utf8') !== item.before) {
+        throw new PublicationError(`${basename(item.target)} changed while it was being regenerated; re-run`);
+      }
+    }
+  } catch (error) {
+    staged.forEach((item) => removeQuietly(item.tmp));
+    throw error;
+  }
+  const done = [];
+  try {
+    for (const item of staged) {
+      renameSync(item.tmp, item.target);
+      done.push(item);
+      syncDirectory(item.target);
+    }
+  } catch (error) {
+    staged.filter((item) => !done.includes(item)).forEach((item) => removeQuietly(item.tmp));
+    const stuck = [];
+    for (const item of done.reverse()) {
+      try {
+        writeAtomicGroup([{ target: item.target, text: item.before, before: item.text }]);
+      } catch {
+        stuck.push(item.target);
+      }
+    }
+    if (!stuck.length) throw error;
+    const failure = new PublicationError(
+      `writing failed (${error.code ?? error.message}) and restoring the earlier content failed too: ` +
+        `${stuck.map((path) => basename(path)).join(', ')} now ${stuck.length === 1 ? 'holds' : 'hold'} the new ` +
+        'content while the rest are unchanged. ' +
+        'Restore them (git checkout -- data/) before publishing again.',
+    );
+    failure.partialWrite = stuck;
+    throw failure;
+  }
+}
+
+/**
+ * Write next to the target, flush, then rename over it: readers see old or new,
+ * never partial. Refuses if the target no longer holds `expectedBefore`.
+ */
+export function writeAtomic(target, text, expectedBefore) {
+  writeAtomicGroup([{ target, text, before: expectedBefore }]);
 }
 
 /**

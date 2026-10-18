@@ -76,8 +76,9 @@ peak model memory.
 - `unverified` otherwise, including failed engine repetitions, incomplete coverage
   and readiness timeouts caused only by unknown evidence.
 
-`guardsPassed` is never `true`: actual backend execution is still unverified, so a
-condition pass is necessary but not sufficient.
+A session record's `guardsPassed` is never `true`: a condition pass is necessary but
+not sufficient. A published row's `guardsPassed` is decided separately, by
+[publication policy v1](#publication-policy-v1).
 
 ## Charging policy (owner decision)
 
@@ -232,7 +233,90 @@ Thresholds are protocol choices, not device-calibrated limits. Battery temperatu
 is a proxy for device temperature. Headroom support and scale vary by device. A
 1 Hz sampler can miss sub-second thermal or battery changes; only focus losses
 are counted between samples. Device validation covers the devices named in the
-pull request, not other models. Publication remains blocked (#4).
+pull request, not other models.
+
+## Publication policy v1
+
+Policy `publication-policy-v1` decides the `validation` and `guardsPassed` of a row
+published from an evidence bundle (`scripts/aggregate.mjs --from-bundles`).
+[`publication_policy.py`](../scripts/publication_policy.py) `evaluate()` is its only
+implementation, and
+[`test_publication_policy.py`](../tests/test_publication_policy.py) tests every
+check alone and every pair of checks.
+
+The validator recomputes every input from the bundle's evidence and never trusts a
+recorded verdict, `guardsPassed` or summary. It first runs `export_evidence.py
+verify`, then re-runs the raw-session cross-field rules on each sanitized session:
+the configured run behind the record (engine, model, quant, model file, threads and
+context), repetition numbering, the summary, readiness, condition assessments, monitor
+summaries, charging, verdict, run order and, for cpu-reference-v3 and accelerator-v2,
+build and execution identity. Accelerator gates are re-checked from the exported probe
+verdicts, because a bundle withholds prompt and output text. The capture's APK identity
+is recomputed from its before and after snapshots. The values the raw-session schema
+fixes are checked too: every session runs on Android, and a cpu-reference session
+measures the CPU only. The device model the app reports must equal the model the host
+read from the phone. Where a repetition times prefill or decode with `engine-timings`
+and keeps the engine's counters (`engineInternal`; LiteRT-LM keeps none), the published
+`prefillTps` and `decodeTps` must equal `promptPerSecond` and `predictedPerSecond`. A
+session whose SoC contradicts its device model's entry in
+[`configs/devices.json`](../configs/devices.json) is refused (SoC names compare
+case-insensitively). A bundle whose evidence disagrees with its own claims is refused
+as a whole.
+
+The policy also anchors each row to reviewed reference data in this repository: the
+run configurations under [`xebenchapp/configs/`](../xebenchapp/configs/) (except
+`experiment-*`), the model manifests
+[`configs/models/*-models.json`](../configs/models/) (their `models` and
+`pinnedArtifacts`) and the device table. Without
+that data no bundle is decided. A configuration file that a published session names
+is therefore never edited: a changed run configuration is a new file, or the published
+rows stop reproducing.
+
+A row earns `guardsPassed: true` and `validation: "verified"` only when every check
+passes:
+
+| Check | Pass | Fail | Unknown |
+| --- | --- | --- | --- |
+| `complete` | status `complete` with every planned repetition measured | the session stopped early | anything else |
+| `conditions` | every measured repetition, and the session, recompute to verdict `pass` | a recomputed `fail` | `unverified`, or no condition evidence (cpu-reference-v1) |
+| `charging` | every measured repetition recomputes to `satisfied` under `charging-policy-v3` | `violated` or `on-battery` | `unknown`, or another charging policy |
+| `coverage` | every measured repetition was sampled throughout (the coverage rule above) | — | a gap, expiry, dropped tick or missing monitor |
+| `artifact` | the session's `configurationSource` hash names a reviewed configuration file, the session carries that file's content, its configured run (engine, backend, model, quant, model file, `modelSha256`) is exactly a run of that file, and the artifact SHA-256 equals both that `modelSha256` and the model manifest entry for the file | the artifact differs from the configured `modelSha256` or from the manifest entry | the run pins no `modelSha256`, the session names no reviewed configuration file or carries other content, the run is not in that file, or its file has no manifest entry |
+| `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed` | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU/NPU evidence is at most `consistent` |
+| `correctness` (accelerator protocols) | output gate `pass` | `fail` | `unverified` |
+| `comparison` (accelerator protocols) | `valid` | `invalid` | `unverified` |
+| `build` | reported release build, clean tree (`gitDirty: false`), known commit, flavor `reference`, `experimental` or `geniex` | dirty tree | not reported, any field unknown, or a debug build (its JavaScript comes from Metro, so the commit does not identify the code that ran) |
+| `app-identity` | two recorded, identical APK snapshots (before and after the run) | the snapshots differ, or the capture reports `changed` | a missing or unrecorded snapshot |
+| `device` | the device model is in `configs/devices.json` and the capture's SoC matches it | — (a contradiction refuses the bundle) | the model is not in the table, or no SoC is reported |
+
+Backend evidence is recomputed with the `backend.ts` rule: from each repetition's
+`observedBackend` for accelerator protocols, and from each load's execution report
+for cpu-reference-v3 llama.cpp runs. llama.rn's GPU flag says only that GPU devices
+are attached, so a llama.cpp CPU run also needs effective settings with
+`n_gpu_layers` 0 and no device. A repetition without evidence leaves the check
+unknown. `confirmed` is the engine's own device report, not per-operation execution.
+Correctness and comparison are recomputed from the exported probe verdicts.
+
+Any failed check gives `validation: "failed"` and `guardsPassed: false`. Otherwise,
+any unknown check gives `validation: "unverified"` and `guardsPassed: null`. Unknown
+is never a pass. Three kinds of session are never published at all:
+
+- experiments: `record-only-experiment` charging readiness, an
+  `experimentChargingReadiness` configuration, or a configuration id starting
+  `experiment-`;
+- bug reproductions (`purpose: "bug-repro"`);
+- sessions without a measured repetition.
+
+A published session is never rewritten, and CI re-derives every published row from its
+bundle with the current code. A change to the policy, the row format or its rounding
+therefore comes with a new policy version and a migration of the published index.
+
+Limits: for engines whose only timing source is the engine's own benchmark API
+(LiteRT-LM's `getBenchmarkInfo`), the counter cross-check does not apply: that API is the
+measurement, and no independent counter exists. The gate's probe verdicts are recomputed from model outputs by the raw-session
+validator at capture time; a bundle carries only their digests, so the publication
+check re-derives the gate status from the verdicts, not from the outputs. The policy
+does not establish cross-device comparability or quality beyond the gate.
 
 API semantics: [thermal status](https://developer.android.com/reference/android/os/PowerManager#getCurrentThermalStatus()),
 [thermal headroom](https://developer.android.com/reference/android/os/PowerManager#getThermalHeadroom(int)),

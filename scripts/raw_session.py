@@ -331,7 +331,9 @@ def _close(a, b):
     return math.isclose(a, b, rel_tol=TOLERANCE, abs_tol=TOLERANCE)
 
 
-def _semantic(record):
+def identity_errors(record):
+    """Rules every protocol shares: protocol/configuration agreement, unique run IDs, the
+    configured run behind the record, repetition numbering and count."""
     errors = []
     protocol, config = record["protocol"], record["configuration"]
     for key in ("nColdRuns", "cooldownSec", "maxDecodeTokens"):
@@ -353,7 +355,7 @@ def _semantic(record):
                 errors.append(reason("configuration.run-mismatch", "/configurationRunId",
                                      f"Record {key} disagrees with the configured run"))
 
-    attempts, expected, status = record["coldRuns"], protocol["nColdRuns"], record["status"]
+    attempts, expected = record["coldRuns"], protocol["nColdRuns"]
     for index, attempt in enumerate(attempts):
         if attempt["runIndex"] != index:
             errors.append(reason("attempts.run-index", f"/coldRuns/{index}/runIndex",
@@ -361,6 +363,36 @@ def _semantic(record):
     if len(attempts) > expected:
         errors.append(reason("attempts.count", "/coldRuns",
                              f"{len(attempts)} attempts exceed the configured {expected}"))
+    return errors
+
+
+def summary_errors(record):
+    """The summary must be recomputable from the successful repetitions."""
+    errors = []
+    complete = [attempt for attempt in record["coldRuns"] if attempt["status"] == "complete"]
+    for metric in METRICS:
+        actual, recomputed = record["summary"][metric], aggregate([a[metric] for a in complete])
+        where = f"/summary/{metric}"
+        if recomputed is None or actual is None:
+            if recomputed is not actual:
+                errors.append(reason("summary.mismatch", where,
+                                     "Summary must be null exactly when no repetition succeeded"))
+            continue
+        if actual["n"] != recomputed["n"]:
+            errors.append(reason("summary.count", f"{where}/n",
+                                 f"Reported n={actual['n']} but {recomputed['n']} repetitions succeeded"))
+            continue
+        for key in ("median", "iqr", "min", "max"):
+            if not _close(actual[key], recomputed[key]):
+                errors.append(reason("summary.mismatch", f"{where}/{key}",
+                                     f"Reported {actual[key]!r}; repetitions give {recomputed[key]!r}"))
+    return errors
+
+
+def _semantic(record):
+    errors = identity_errors(record)
+    protocol = record["protocol"]
+    attempts, expected, status = record["coldRuns"], protocol["nColdRuns"], record["status"]
     # cpu-reference-v3 keeps the v2 measurement procedure and adds identity evidence;
     # accelerator-v1 shares every v2/v3 rule and adds its own (_semantic_accelerator).
     v2 = protocol["version"] in ("cpu-reference-v2", "cpu-reference-v3") + ACCELERATOR_PROTOCOLS
@@ -378,23 +410,7 @@ def _semantic(record):
         errors.append(reason("status.attempts", "/status",
                              "A failed session must end at its only failed attempt"))
 
-    complete = [attempt for attempt in attempts if attempt["status"] == "complete"]
-    for metric in METRICS:
-        actual, recomputed = record["summary"][metric], aggregate([a[metric] for a in complete])
-        where = f"/summary/{metric}"
-        if recomputed is None or actual is None:
-            if recomputed is not actual:
-                errors.append(reason("summary.mismatch", where,
-                                     "Summary must be null exactly when no repetition succeeded"))
-            continue
-        if actual["n"] != recomputed["n"]:
-            errors.append(reason("summary.count", f"{where}/n",
-                                 f"Reported n={actual['n']} but {recomputed['n']} repetitions succeeded"))
-            continue
-        for key in ("median", "iqr", "min", "max"):
-            if not _close(actual[key], recomputed[key]):
-                errors.append(reason("summary.mismatch", f"{where}/{key}",
-                                     f"Reported {actual[key]!r}; repetitions give {recomputed[key]!r}"))
+    errors += summary_errors(record)
 
     if v2:
         errors += _semantic_v2(record)
