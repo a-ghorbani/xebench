@@ -55,8 +55,12 @@ the build (`libappmodules.so`, `libreact_codegen_safeareacontext.so` and llama.r
 `librnllama_jni*.so`). Seven differ only in their 20-byte GNU build ID, which hashes
 host-specific build paths. `libreact_codegen_safeareacontext.so` also embeds the
 absolute path of a React Native header in the Gradle cache, which includes the
-build user's home directory. Do not distribute an APK built under a home directory
-you do not want to disclose. Release builds set React Native's dev-server IP
+build user's home directory. Since llama.rn 0.13.0-rc.7 compiles its core from
+source, every `librnllama*.so` also embeds the absolute paths of its source files
+(about 165 per library, e.g. `<checkout>/xebenchapp/node_modules/llama.rn/cpp/...`),
+so a local build discloses its checkout path and user name in six libraries. Do not
+distribute an APK built under a home directory you do not want to disclose; share
+CI-built APKs (`/home/runner/...`) instead. Release builds set React Native's dev-server IP
 resource to `localhost`, so the build host's address is not in the APK. Removing
 the path dependence from native builds is a follow-up.
 
