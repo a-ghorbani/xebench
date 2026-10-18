@@ -302,7 +302,7 @@ Build and evidence identity:
 | `Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm` | `fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f` |
 | `gemma-3-1b-it-q4_0.gguf` | `95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a` |
 | QAIRT `libQnnHtp.so` / `libQnnSystem.so` | `09e930b6…f264` / `b30bd988…2027` (all six in `qairt-libs.json`) |
-| Evidence bundle (both F8 captures, 7 sessions, verified) | `c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972` |
+| Evidence bundle (both F8 captures, 7 sessions, verified) | [`c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972`](../../evidence/c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972/) |
 
 The 1-repetition smoke runs used the earlier APK `070d0d19…dfc1`, whose only difference is that
 it recorded llama.cpp CPU with GPU devices attached as `mismatch`; they are not part of the results.
@@ -339,7 +339,7 @@ reference: 233.9 (2.8) prefill, 38.0 (0.0) decode, 5/5, gate pass.
   tree. SHA-256 `29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af`.
 
 Evidence bundle (main matrix + bug reproduction, 6 sessions, verified):
-`1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403`.
+[`1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403`](../../evidence/1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403/).
 APK `8f14f0ffba3d4f01ba63fef637ebe829dbc56d49aef7f0fe783c9a4ce6494b25`.
 
 ## Legacy Hexagon row check (POCO F8 Ultra, Llama 3.2 1B, 2026-10-17)
@@ -364,7 +364,7 @@ rc.7 re-check below.
 | llama.cpp | Hexagon | Q4_0 | 1211.6 (14.9) | 51.8 (1.3) | 382 (5) | 4/4 | confirmed (`HTP0`) | pass, **fail**, **fail**, **fail** | **invalid** |
 
 All four sessions passed run conditions with charging eligibility satisfied. Evidence bundle
-`7cd4368bf08f339b78e731c2eed789768de44f736f338ad38f06ee154c3ae478` (4 sessions, verified).
+[`7cd4368bf08f339b78e731c2eed789768de44f736f338ad38f06ee154c3ae478`](../../evidence/7cd4368bf08f339b78e731c2eed789768de44f736f338ad38f06ee154c3ae478/) (4 sessions, verified).
 Q4_0 SHA-256 `fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8`; Q4_K_M
 `6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83`.
 
@@ -418,7 +418,7 @@ prebuilt. Later runs align the toolchain with PocketPal (NDK 27.3.13750724); the
 | Hexagon (`HTP0`) | 256.5 / 71.0 | **fail (garbage)** | 1249.7 (19.2) / 24.0 (5.7) | **pass** | valid |
 
 All rc.7 sessions: 10/10, conditions pass, charging satisfied, backend confirmed for OpenCL and
-Hexagon. Bundle `beb9a67ced8709bf195a64d048be0d8529505f5b76e24ee612de2d8867046bd2`.
+Hexagon. Bundle [`beb9a67ced8709bf195a64d048be0d8529505f5b76e24ee612de2d8867046bd2`](../../evidence/beb9a67ced8709bf195a64d048be0d8529505f5b76e24ee612de2d8867046bd2/).
 
 ### Llama 3.2 1B Hexagon check (`f8-llama32-hexagon-check-v1`, 4 repetitions)
 
@@ -432,7 +432,7 @@ Hexagon. Bundle `beb9a67ced8709bf195a64d048be0d8529505f5b76e24ee612de2d8867046bd
 The rc.7 Q4_K_M CPU reference's fourth repetition was skipped because the battery did not cool
 back to within 2 °C of the baseline in 900 s. Its condition verdict is therefore `fail
 (readiness-timeout)`; the three measured repetitions are kept. Bundle
-`20009fec0a56fe4bcb2b0046a2e160e3fca5c9263de1fef8a364dc62674ca210`.
+[`20009fec0a56fe4bcb2b0046a2e160e3fca5c9263de1fef8a364dc62674ca210`](../../evidence/20009fec0a56fe4bcb2b0046a2e160e3fca5c9263de1fef8a364dc62674ca210/).
 
 ### What changed
 

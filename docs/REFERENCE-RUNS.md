@@ -309,6 +309,14 @@ lists every other file with its SHA-256 and size. The export prints
 for a verified row's `evidence`. To check a bundle, hash the bytes as served;
 never re-serialize them.
 
+Public bundles are committed byte for byte under
+[`evidence/<bundleSha256>/`](../evidence/README.md) and served from
+`https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/<bundleSha256>/manifest.json`.
+Exporting with `--base-url https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence`
+prints that `url`. A committed bundle is never edited; a new export is a new
+directory. Git does not normalise these files, and CI checks that each directory
+name equals the SHA-256 of its `manifest.json` and that `verify` passes.
+
 `verify` checks the following:
 
 - the hash, every checksum and size, and any unlisted or symlinked files;

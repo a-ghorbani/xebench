@@ -415,8 +415,8 @@ is under "Deviations" (D1): the host's adb server hung for all phones.
   (`cooldownMs` 30000 on repetition 0), so #23's repetition-0 cooldown rule
   accepts them as well.
 - The 8 sessions export to one evidence bundle that verifies:
-  `0f9069eb78f298168fce71410e106e7ad09e08bf55726859028c3054515ca80c`, kept
-  local. The bundle keeps `experimentChargingReadiness: "record-only"` and
+  [`0f9069eb78f298168fce71410e106e7ad09e08bf55726859028c3054515ca80c`](../../evidence/0f9069eb78f298168fce71410e106e7ad09e08bf55726859028c3054515ca80c/).
+  The bundle keeps `experimentChargingReadiness: "record-only"` and
   `readiness: "record-only-experiment"`.
 - Settings used to switch A and B:
   - S23: `global protect_battery` 0 (A) / 1 (B, "Maximum", 80% limit);
