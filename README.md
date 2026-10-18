@@ -11,7 +11,7 @@ It powers the cross-engine leaderboard at **[pocketpal.dev/leaderboard/engines](
 
 | Engine | Via | CPU | GPU | NPU |
 |---|---|---|---|---|
-| **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | ⚠️ Hexagon (`ggml-hexagon`): output wrong with llama.rn 0.12.4, row marked failed; 0.13.0-rc.7 re-check in progress |
+| **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | Hexagon (`ggml-hexagon`): output wrong with llama.rn 0.12.4 (row marked failed); correct with 0.13.0-rc.7 in our re-check; to be re-measured |
 | **ExecuTorch** | `react-native-executorch` | ✅ XNNPACK | — | — (delegate not in RN binding) |
 | **LiteRT-LM** | native Kotlin bridge | ✅ | ⚠️ ML Drift runs in spike (not measured; needs `uses-native-library`) | ⚠️ runs in spike (not measured); SM8550 bundle output wrong ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) |
 | **GENIE-X / Genie** | `geniex-android` / QAIRT `genie-t2t-run` | ✅ | — | ✅ Hexagon (QNN context binary) |
