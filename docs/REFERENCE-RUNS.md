@@ -58,8 +58,9 @@ cache only reuses state across turns on recurrent, hybrid or SWA models. Llama 3
 these, and every repetition loads a fresh instance.
 
 cpu-reference-v3 keeps PocketPal's load settings (no memory map, no mlock, repacking on) and
-sets flash attention to `auto`. cpu-reference-v2 prefills 18–31% slower than cpu-reference-v1
-on the POCO F8 Ultra, Galaxy S23 and Pixel 9. On the F8, flash attention off accounts for
+sets flash attention to `auto`. With llama.rn 0.13.0-rc.7 and Llama 3.2 1B Q4_K_M on 4 CPU
+threads, cpu-reference-v2 prefills 18–31% slower than cpu-reference-v1 on the POCO F8 Ultra,
+Galaxy S23 and Pixel 9. On the F8, flash attention off accounts for
 all of it, and the load mode changes only the load time
 ([reference-config-v2](experiments/reference-config-v2.md#cpu-reference-v3)).
 
