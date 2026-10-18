@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import unittest
 
+from test_hexagon_correction import is_target as is_hexagon_row, revert_hexagon_correction
 from test_publication import legacy_record, reference_record
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,8 +40,9 @@ def envelope_with(*rows, **fields):
 
 
 def as_1_0(envelope):
-    """The pre-migration shape of a 1.1 file: what main held before this contract."""
-    old = copy.deepcopy(envelope)
+    """The pre-migration shape of a 1.1 file: what main held before this contract (and so
+    before the 2026-10-17 Hexagon row correction, which came later)."""
+    old = revert_hexagon_correction(envelope)
     old['schemaVersion'] = '1.0'
     old['generatedAt'] = '2026-07-22'
     for row in old['rows']:
@@ -120,7 +122,8 @@ class MigrationTests(Workspace):
         self.assertRegex(data['generatedAt'], ISO)
         for row in data['rows']:
             if row['provenance'] == 'measured':
-                self.assertEqual(row['validation'], 'legacy')
+                # The one later correction (tests/test_hexagon_correction.py) marked a legacy row failed.
+                self.assertEqual(row['validation'], 'failed' if is_hexagon_row(row) else 'legacy')
                 self.assertEqual(list(row)[-1], 'validation', 'validation must be appended, not interleaved')
                 self.assertEqual([f for f in NEW_FIELDS if f in row], ['validation'])
             else:
@@ -146,9 +149,10 @@ class MigrationTests(Workspace):
         self.assertEqual(migrated['schemaVersion'], '1.1')
         self.assertRegex(migrated['generatedAt'], ISO)
         # Rows are exactly the checked-in migrated rows, key order included.
-        self.assertEqual(json.dumps(migrated['rows']), json.dumps(current['rows']))
+        self.assertEqual(json.dumps(migrated['rows']), json.dumps(revert_hexagon_correction(current)['rows']))
         self.assertEqual({k: v for k, v in migrated.items() if k not in ('schemaVersion', 'generatedAt')},
-                         {k: v for k, v in current.items() if k not in ('schemaVersion', 'generatedAt')})
+                         {k: v for k, v in revert_hexagon_correction(current).items()
+                          if k not in ('schemaVersion', 'generatedAt')})
         self.no_leftovers()
 
         inode = self.canonical.stat().st_ino
@@ -440,6 +444,37 @@ class ProducerTests(Workspace):
         self.assertEqual(row['validation'], 'legacy')
         self.assertEqual(self.node('validate_data.mjs').returncode, 0)
         self.assertEqual(self.node('migrate_contract_1_1.mjs', '--check').returncode, 0)
+
+    def test_failed_rows_are_not_overwritten_without_replace_failed(self):
+        raw = self.write_raw(legacy_record())
+        self.assertEqual(self.aggregate(raw, '--update', '--allow-legacy').returncode, 0)
+        data = load(self.canonical)
+        row = next(r for r in data['rows'] if r['model'] == 'Test Model 1B')
+        row['validation'] = 'failed'  # e.g. invalidated by a later output-correctness re-check
+        self.canonical.write_text(dump(data), encoding='utf-8')
+        self.assertEqual(self.node('validate_data.mjs').returncode, 0, 'failed without guardsPassed is valid')
+
+        # Re-running the original record must not restore it, even with --allow-legacy (without
+        # it, a legacy record is refused earlier, before any row is merged).
+        self.assert_rejected('refusing to overwrite row', raw, '--update', '--allow-legacy')
+        self.assert_rejected('pass --replace-failed to replace it explicitly', raw, '--update', '--allow-legacy')
+        self.assertEqual(self.aggregate(raw, '--replace-failed').returncode, 2, '--replace-failed needs --update')
+
+        result = self.aggregate(raw, '--update', '--allow-legacy', '--replace-failed')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertRegex(result.stderr, r'--replace-failed: replaced failed row .*Test Model 1B.*'
+                                        r'\(validation failed -> legacy\)')
+        row = next(r for r in load(self.canonical)['rows'] if r['model'] == 'Test Model 1B')
+        self.assertEqual(row['validation'], 'legacy')
+
+    def test_checked_in_failed_row_survives_unrelated_updates(self):
+        before = next(r for r in load(self.canonical)['rows'] if is_hexagon_row(r))
+        self.assertEqual(before['validation'], 'failed')
+        result = self.aggregate(self.write_raw(legacy_record()), '--update', '--allow-legacy')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('--replace-failed', result.stderr)
+        after = next(r for r in load(self.canonical)['rows'] if is_hexagon_row(r))
+        self.assertEqual(json.dumps(after), json.dumps(before))
 
     def test_preview_labels(self):
         result = self.aggregate(self.write_raw(legacy_record()))

@@ -11,18 +11,18 @@ It powers the cross-engine leaderboard at **[pocketpal.dev/leaderboard/engines](
 
 | Engine | Via | CPU | GPU | NPU |
 |---|---|---|---|---|
-| **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | ✅ Hexagon (`ggml-hexagon`) |
+| **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | Hexagon (`ggml-hexagon`), F8 Ultra: wrong output with llama.rn 0.12.4 (row marked failed); correct for Llama 3.2 1B Q4_K_M and Gemma 3 1B with 0.13.0-rc.7; not yet re-measured |
 | **ExecuTorch** | `react-native-executorch` | ✅ XNNPACK | — | — (delegate not in RN binding) |
-| **LiteRT-LM** | native Kotlin bridge | ✅ | ⚠️ ML Drift runs in spike (not measured; needs `uses-native-library`) | ⚠️ runs in spike (not measured); SM8550 bundle output wrong ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) |
+| **LiteRT-LM** | native Kotlin bridge | ✅ | ⚠️ ML Drift: measured in experiment, not yet on the board (needs `uses-native-library`) | ⚠️ measured in experiment, not yet on the board; SM8550 bundle output wrong ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) |
 | **GENIE-X / Genie** | `geniex-android` / QAIRT `genie-t2t-run` | ✅ | — | ✅ Hexagon (QNN context binary) |
 
-LiteRT-LM GPU and NPU ran in 2026-10-17 spikes on the S23 and F8 Ultra, outside this repo's harness. They are not yet in the harness or measured as board rows. See [ENGINES.md](./ENGINES.md#correction-2026-10-17-litert-npu-and-gpu).
+LiteRT-LM GPU and NPU are measured in the [accelerator experiment](./docs/experiments/litert-accelerators.md) (F8 Ultra, S23) but not yet published as board rows. See [ENGINES.md](./ENGINES.md#litert-lm-google-ai-edge).
 
 ## Headline findings so far
 
 - **There is no single "fastest engine."** The ranking flips by model *and* by metric: LiteRT wins Gemma prefill; llama.cpp wins Qwen decode; ExecuTorch wins Llama prefill; llama.cpp wins Llama decode.
-- **NPU is not automatically faster.** On a Snapdragon 8 Elite Gen 5 (Hexagon v81), for Llama 3.2 1B, the NPU *wins prefill outright* but *loses decode badly* to the CPU — the Oryon cores are strong and decode is memory-bandwidth-bound.
-- **Same NPU, very different integration effort for the two "NPU-first" engines.** Qualcomm's Genie ships as a complete stack: give it a device+version-matched context binary and it runs end-to-end. LiteRT-LM's Qualcomm NPU path also runs for a third party, but only after you assemble four pieces by hand: the AAR, Google's `litert-npu-runtime-qualcomm` from Maven, a QAIRT version matched to the release's `LITERT_REF`, and manifest `<uses-native-library>` declarations. A mismatch fails with opaque errors. Separately, Google's published SM8550 Gemma 3 1B bundle gives wrong output past one 128-token prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)). **Correction (2026-10-17):** we previously wrote here that Google ships the runtime but not the prebuilt Qualcomm bridge libraries. That was wrong. The dispatch lib is published, and our app was not bundling it. The constraint-provider lib had been in the LiteRT-LM repo all along. (See ENGINES.md.)
+- **NPU is not automatically faster.** On a Snapdragon 8 Elite Gen 5 (Hexagon v81), for Llama 3.2 1B, Qualcomm's Genie on the NPU *wins prefill outright* but *loses decode badly* to the CPU — the Oryon cores are strong and decode is memory-bandwidth-bound.
+- **Same NPU, very different integration effort for the two "NPU-first" engines.** Qualcomm's Genie ships as a complete stack: give it a device+version-matched context binary and it runs end-to-end. LiteRT-LM 0.18.0's Qualcomm NPU path also runs for a third party (POCO F8 Ultra, Galaxy S23), but only after you assemble four pieces by hand: the AAR, Google's `litert-npu-runtime-qualcomm` from Maven, a QAIRT version matched to the release's `LITERT_REF`, and manifest `<uses-native-library>` declarations. A mismatch fails with opaque errors. Separately, Google's published SM8550 Gemma 3 1B bundle loses prompt content after the first 128-token prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)). See ENGINES.md. (Corrected 2026-10-17; see [docs/CORRECTIONS.md](./docs/CORRECTIONS.md).)
 
 ## Architecture
 
@@ -189,7 +189,7 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 - Host is often aarch64 Linux — point `hermesCommand` at the x86-64 hermesc (runs via emulation).
 - **Kotlin 2.3.0** required by `litertlm-android` (pin `kotlinVersion` *and* the plugin classpath).
 - `litertlm-android` needs `useLegacyPackaging` / `extractNativeLibs=true` so QNN libs land in `nativeLibraryDir`.
-- LiteRT-LM **GPU** (ML Drift) needs `<uses-native-library android:name="libOpenCL.so" android:required="false" />` and the same for `libvndksupport.so` in the app manifest, as the LiteRT-LM Kotlin guide has said since 0.14.0 ([LiteRT-LM#1860](https://github.com/google-ai-edge/LiteRT-LM/issues/1860)). Without them OpenCL fails to load (`libvndksupport.so` not found). In our spikes the F8 Ultra then reported `Can not find OpenCL library on this device`, and on the S23 ML Drift fell back to WebGPU and failed to create the engine. The `experimental` flavor manifest (`app/src/experimental/AndroidManifest.xml`) declares both.
+- LiteRT-LM **GPU** (ML Drift) needs `<uses-native-library android:name="libOpenCL.so" android:required="false" />` and the same for `libvndksupport.so` in the app manifest, as the LiteRT-LM Kotlin guide has said since 0.14.0 ([LiteRT-LM#1860](https://github.com/google-ai-edge/LiteRT-LM/issues/1860)). Without them OpenCL does not load (`libvndksupport.so` not found): on the F8 Ultra the engine then fails with `Can not find OpenCL library on this device`, and on the S23 ML Drift falls back to WebGPU and engine creation fails. The `experimental` flavor manifest (`app/src/experimental/AndroidManifest.xml`) declares both.
 - **Runtimes don't coexist:** llama.rn's Hexagon lib and GENIE-X's bundled Hexagon runtime collide, and llama.rn hijacks `ADSP_LIBRARY_PATH`. They are separate [build flavors](#build-flavors-and-prerequisites).
 
 ## Results are published here — the website loads them dynamically
@@ -219,6 +219,7 @@ Publication fails closed: on any error it exits 1 and leaves `data/benchmarks.js
 - Contract invariants are enforced on every emitted row and in validation: `verified` requires `guardsPassed: true` and `evidence`; `guardsPassed: false` requires `validation: "failed"`; legacy rows carry no `dispersion` or `evidence`; 1.1 fields appear on measured rows only. Aggregation refuses to emit `verified` (including a `verified` row already in the canonical file) until an evidence pipeline exists.
 - Failed or unverified guards and incomplete sessions are rejected. `sampleCount` is the summary `n`, checked against the successful repetitions in the record. Two legacy producers never exported repetitions: the old app (`xebench-0.4-app`) and `bench_llamacpp.py` (`xebench-0.2-native`). Their self-reported `n` is accepted and logged; any other record without repetitions is rejected.
 - Two input records with the same row key are rejected rather than picking one implicitly; a single input row replacing an existing row is logged.
+- An existing row marked `validation: "failed"` (for example, invalidated by a later output-correctness re-check) is never overwritten or downgraded, even with `--allow-legacy`; the run is refused. Replacing one needs the explicit `--replace-failed` flag, and each replacement is logged.
 - Rows are ordered by platform, device, model, engine, backend, quant and provenance (plain string comparison), independent of input order and locale. The first update after this change swaps three pairs of existing rows that tied on the first four fields.
 
 `node scripts/validate_data.mjs` checks the checked-in `data/*.json` against their schemas and contract invariants; `node scripts/validate_data.mjs <file>...` checks any benchmarks envelope. CI runs it with `tests/test_publication.py` and `tests/test_contract_publication.py`.
