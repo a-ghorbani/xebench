@@ -1,4 +1,5 @@
 import importlib.util
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -158,6 +159,21 @@ class ReferenceApkTests(unittest.TestCase):
             apk_check.check_apk(path, 'experimental', require_qnn=True)
             with self.assertRaisesRegex(ValueError, 'only to the experimental'):
                 apk_check.check_apk(path, 'reference', require_qnn=True)
+
+
+
+class BundledConfigurationTests(unittest.TestCase):
+    def test_the_hashed_and_the_imported_bundled_configuration_are_one_file(self):
+        """build.gradle hashes the file reference.ts bundles; if they differ, every bundled
+        session names a file it did not run and its run is no longer a reviewed one."""
+        root = Path(__file__).resolve().parents[1]
+        gradle = (root / 'xebenchapp/android/app/build.gradle').read_text()
+        runner = (root / 'xebenchapp/src/harness/reference.ts').read_text()
+        hashed = re.findall(r'def bundledConfig = file\("\$rootDir/\.\./configs/([^"]+)"\)', gradle)
+        imported = re.findall(r"import bundledConfig from '\.\./\.\./configs/([^']+)';", runner)
+        self.assertEqual(hashed, ['cpu-reference-v2.json'])
+        self.assertEqual(imported, hashed)
+        self.assertTrue((root / 'xebenchapp/configs' / hashed[0]).is_file())
 
 
 if __name__ == '__main__':

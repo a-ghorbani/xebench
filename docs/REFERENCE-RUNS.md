@@ -3,7 +3,10 @@
 The default app runs the versioned configuration in
 [`cpu-reference-v2.json`](../xebenchapp/configs/cpu-reference-v2.json), which every flavor
 bundles. [`cpu-reference-v1.json`](../xebenchapp/configs/cpu-reference-v1.json) runs as a
-staged configuration. This first reference path supports **llama.cpp CPU**.
+staged configuration. Both record sessions of protocol `cpu-reference-v3`; the
+configuration IDs are separate from the protocol versions of the same names described
+under [Host validation](#host-validation). This first reference path supports
+**llama.cpp CPU**.
 
 The two configurations differ only in how llama.rn loads the model and computes attention:
 
@@ -30,9 +33,10 @@ cpu-reference-v2's four values are PocketPal's Android defaults in
 `use_mmap: false`. Every other setting stays the CPU reference's: `n_gpu_layers` 0,
 `n_threads` 4, `n_ctx` 2048, `n_batch` 512, `n_ubatch` 512, f16 K/V caches, greedy sampling,
 and the prompt and decode length of cpu-reference-v1. PocketPal's defaults for `n_ctx`,
-`n_batch`, `n_ubatch` and the K/V cache types are the same. Its `n_gpu_layers: 99` with
-automatic devices, `kv_unified: true` and the per-device thread count it sets on first launch
-are not adopted.
+`n_batch`, `n_ubatch` and the K/V cache types are the same. Its other `initLlama()`
+parameters are not adopted, among them `n_gpu_layers: 99` with automatic devices,
+`kv_unified: true`, `n_parallel: 1`, `state_cache_budget_mb` and the per-device thread count
+it sets on first launch; the harness leaves the ones it does not list to the binding.
 
 Other engine adapters remain experimental; expanding reference coverage is a follow-up in
 issue #3.
@@ -116,9 +120,9 @@ label, threads/context, load settings (`useMmap`, `useMlock`, `noExtraBufts`,
 `flashAttnType`), repetition, cooldown, readiness timeout
 (`readinessTimeoutSec`) or battery-rise bound (`maxBatteryTempRiseC`) settings, or
 add `orderSeed` to reproduce a recorded run order. To run cpu-reference-v1, stage the
-committed file byte for byte, so the recorded `configurationSource` hash names it. A run may pin `modelSha256`
-(64 lowercase hex); the bundled configuration pins the reference GGUF from the
-manifest. `stage_model.py` stages only models listed in the manifest. Push any other
+committed file byte for byte, so the recorded `configurationSource` hash names it. A run
+may pin `modelSha256` (64 lowercase hex); the bundled configuration pins the reference
+GGUF from the manifest. `stage_model.py` stages only models listed in the manifest. Push any other
 GGUF with `adb` yourself, and remove or replace its `modelSha256`; runs with it are
 not reference runs. Then stage the configuration:
 

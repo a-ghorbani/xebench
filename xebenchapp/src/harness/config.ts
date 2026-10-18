@@ -93,7 +93,7 @@ function flag(value: unknown, name: string): boolean {
   return value;
 }
 
-/** The load settings a run sets, validated, in file order; unset ones stay absent. */
+/** The load settings a run sets, validated; unset ones stay absent. */
 function loadSettings(run: Record<string, unknown>): Pick<ReferenceRun, keyof typeof LOAD_SETTINGS> {
   const result: Pick<ReferenceRun, keyof typeof LOAD_SETTINGS> = {};
   for (const key of Object.keys(run)) {
