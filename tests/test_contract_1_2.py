@@ -45,9 +45,11 @@ class Contract12Tests(Workspace):
         self.assertEqual(listed, {p.name for p in FIXTURES.glob('*.json')} - {'index.json'})
         for entry in index['fixtures']:
             with self.subTest(fixture=entry['file']):
+                self.assertIsInstance(entry['producerMustNotEmit'], bool)
+                self.assertTrue(entry['consumerExpectation'])
                 result = self.node('validate_data.mjs', FIXTURES / entry['file'])
-                self.assertEqual(result.returncode, 0 if entry['expect'] == 'accept' else 1, result.stderr)
-        accepted = [load(FIXTURES / e['file']) for e in index['fixtures'] if e['expect'] == 'accept']
+                self.assertEqual(result.returncode, 1 if entry['producerMustNotEmit'] else 0, result.stderr)
+        accepted = [load(FIXTURES / e['file']) for e in index['fixtures'] if not e['producerMustNotEmit']]
         self.assertEqual({e['schemaVersion'] for e in accepted}, {'1.2'})
 
     def test_runtime_rejections(self):
@@ -110,6 +112,25 @@ class Contract12Tests(Workspace):
             with self.subTest(version=version):
                 good = {**litert, 'build': {**litert['build'], 'runtimes': [{'name': 'QAIRT', 'version': version}]}}
                 self.assert_valid(envelope_with(good, schemaVersion='1.2'))
+
+    def test_producer_versions_pass_the_consumer_token_check(self):
+        # The website drops a runtime entry whose version fails this check; xebench must never emit one.
+        import re
+        token = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$')
+        schema = load(ROOT / 'data/benchmarks.schema.json')
+        producer = re.compile(schema['$defs']['runtime']['properties']['version']['pattern'])
+        samples = ['b11385', 'b1', '0.13.0-rc.7', '0.18.0', '2.3.0', '2.50.0.260828221209', '1.0', '10.2.3-beta.1',
+                   '1.2.3-rc.1.2.3', 'b9999999', '99999.999999999999.1.2-ABCDEFGHIJKLMNOP.abc']
+        for version in samples:
+            if producer.fullmatch(version):
+                self.assertRegex(version, token)
+        for entry in load(FIXTURES / 'index.json')['fixtures']:
+            if entry['producerMustNotEmit']:
+                continue
+            for row in [v for v in load(FIXTURES / entry['file']).values() if isinstance(v, list)][0]:
+                for runtime in row.get('build', {}).get('runtimes', []):
+                    with self.subTest(fixture=entry['file'], version=runtime['version']):
+                        self.assertRegex(runtime['version'], token)
 
     def test_build_from_session_llama_cpp(self):
         self.assertEqual(self.build_for('llama.cpp', LLAMA_VERSIONS), {'ok': {

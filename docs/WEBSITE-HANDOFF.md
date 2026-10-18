@@ -105,21 +105,30 @@ except one entry per `name` (identical duplicate entries fail its
 fills `build` from the versions a session records (`runtimeVersions` in the raw
 session); a component the session does not report is absent, never guessed.
 
+Producer rules and consumer behavior are separate. The producer rules above are
+strict: `scripts/validate_data.mjs` refuses a file that breaks one, so xebench
+never publishes it. Every version the producer can emit also passes the
+website's version-token check `^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$`. The website
+degrades per entry or per row instead of refusing the file. It falls back to the
+whole file only for an unknown major version, malformed JSON or a file with no
+valid rows.
+
 Consumer fixtures are in
 [`tests/fixtures/contract-1.2/`](../tests/fixtures/contract-1.2/), listed in
-`index.json`:
+`index.json`. Each entry states `producerMustNotEmit` (whether the file breaks
+a producer rule) and `consumerExpectation` (what the website does with it):
 
-| Fixture | Expect | Covers |
-| --- | --- | --- |
-| `llama-cpp-runtimes.json` | accept | Synthetic llama.cpp row: engine build, llama.rn binding, both as runtimes |
-| `litert-npu-runtimes.json` | accept | Synthetic LiteRT-LM NPU row: LiteRT-LM, Qualcomm NPU dispatch runtime and QAIRT |
-| `v1.1-rows-in-1.2.json` | accept | A 1.2 file whose rows carry no 1.2 field |
-| `runtimes-in-1.1.json` | reject | `build.runtimes` in a file that declares 1.1 |
-| `duplicate-runtime.json` | reject | Two entries with the same `name` |
-| `unknown-runtime-name.json` | reject | A `name` outside the closed list |
-| `bad-runtime-version.json` | reject | A free-text `version` |
-| `engine-version-form.json` | reject | With `runtimes`, an `engineVersion` outside the fixed forms |
-| `runtimes-on-vendor-row.json` | reject | `build` on a vendor row |
+| Fixture | Producer must not emit | Consumer expectation | Covers |
+| --- | --- | --- | --- |
+| `llama-cpp-runtimes.json` | false | Rendered: engine, binding and runtime versions shown | Synthetic llama.cpp row: engine build, llama.rn binding, both as runtimes |
+| `litert-npu-runtimes.json` | false | Rendered: engine and runtime versions shown; no binding | Synthetic LiteRT-LM NPU row: LiteRT-LM, Qualcomm NPU dispatch runtime and QAIRT |
+| `v1.1-rows-in-1.2.json` | false | Rendered unchanged | A 1.2 file whose rows carry no 1.2 field |
+| `runtimes-in-1.1.json` | true | Rendered; the runtimes are harmless | `build.runtimes` in a file that declares 1.1 |
+| `duplicate-runtime.json` | true | That runtime's entries are dropped; the rest of the row renders | Two entries with the same `name` and conflicting versions |
+| `unknown-runtime-name.json` | true | Shown | A `name` outside the closed list |
+| `bad-runtime-version.json` | true | That entry is dropped by the version-token check | A free-text `version` (`0.18.0 (Maven)`) |
+| `engine-version-form.json` | true | Shown sanitised | With `runtimes`, an `engineVersion` outside the fixed forms |
+| `runtimes-on-vendor-row.json` | true | Ignored | `build` on a vendor row |
 
 ## Contract and display
 
