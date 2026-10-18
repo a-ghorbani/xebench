@@ -558,6 +558,27 @@ class ReviewRegressionTests(Workspace):
         self.assertEqual(result.returncode, 1)
         self.assertIn("bundle is not hosted", result.stderr)
 
+    def test_a_hand_edited_timestamp_cannot_change_the_displayed_row(self):
+        """timestampIso picks the displayed session, so it is re-derived from the bundle too."""
+        self.bundle(fx.cpu_record("noExpectedHash", "1767225600000-0-old", timestamp=T["t0"], device="Fixture Phone"),
+                    fx.cpu_record("noExpectedHash", "1767225600000-1-new", timestamp=T["t1"], device="Fixture Phone"))
+        self.publish("1767225600000-0-old", "1767225600000-1-new")
+        key = "llama.cpp|cpu|android|Google Fixture Phone|Llama 3.2 1B|Q4_K_M|measured"
+        board, index = load(self.canonical), load(self.index)
+        entry = index["keys"][0]
+        self.assertEqual(entry["displayed"], "1767225600000-1-new")
+        old = next(session for session in entry["sessions"] if session["sessionId"] == "1767225600000-0-old")
+        old["timestampIso"] = T["t2"]  # same month, so the row's sourceDate still agrees
+        entry["sessions"].sort(key=lambda session: session["timestampIso"])
+        entry["displayed"] = old["sessionId"]
+        board["rows"] = [old["row"] if key_of(row) == key else row for row in board["rows"]]
+        self.canonical.write_text(json.dumps(board, indent=2) + "\n")
+        self.index.write_text(json.dumps(index, indent=2) + "\n")
+        result = self.node("validate_data.mjs")
+        self.assertEqual(result.returncode, 1, "a reordered history must not validate")
+        self.assertIn("session 1767225600000-0-old", result.stderr)
+        self.assertIn("does not reproduce from evidence/", result.stderr)
+
     def test_replaced_rows_keep_the_kind_they_name(self):
         self.bundle(fx.cpu_record("complete", "1767225600000-0-pixel", device="Pixel 9"))
         self.publish("1767225600000-0-pixel", flags=["--replace-legacy"])

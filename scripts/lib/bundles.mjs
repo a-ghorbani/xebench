@@ -298,7 +298,9 @@ export function reproductionErrors(index, root) {
         const capture = bound.file(`captures/${doc.captureId}.json`);
         const row = item.decision.publishable
           ? bundleRow({ doc, capture, decision: item.decision, facts: item.facts, bundleSha256: sha }) : null;
-        if (!row || !jsonEqual(row, session.row)) {
+        // timestampIso orders the key's history and so picks the displayed row: it is
+        // re-derived too, like the row itself.
+        if (!row || !jsonEqual(row, session.row) || session.timestampIso !== doc.record.timestampIso) {
           errors.push(`data/sessions/index.json: session ${session.sessionId} (${key}) does not reproduce from ${label}`);
         }
       }
