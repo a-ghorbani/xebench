@@ -364,6 +364,29 @@ class FactsFromBundlesTests(unittest.TestCase):
                 self.assertTrue(any("configuration.run-mismatch" in error for error in report["errors"]),
                                 report["errors"])
 
+    def test_relabelled_device_backend_or_platform_is_refused(self):
+        """One re-hashed field must not move a verified CPU reference run to another row."""
+        def gpu(document):
+            document["record"]["backend"] = "gpu"
+            for report in document["record"]["executionReports"]:
+                report.update(gpu=True, devices=["GPUOpenCL"])
+        cases = {
+            "device model": (lambda document: document["device"].update(model="25102PCBEG"), "device/model"),
+            "cpu reference as gpu": (gpu, "schema.value /backend"),
+            "platform": (lambda document: document["record"].update(platform="ios"), "schema.value /platform"),
+        }
+        for name, (change, expected) in cases.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as root:
+                record = fx.cpu_record("complete", "1767225600000-0-move")
+                directory, sha = fx.bundle(root, [record], "00000000-0000-4000-8000-000000000008")
+                self.assertEqual(policy.bundle_report(directory, sha)["sessions"][0]["decision"]["validation"],
+                                 "verified")
+                forged = fx.rehash(directory, "sessions/1767225600000-0-move.json", change)
+                report = policy.bundle_report(forged, forged.name)
+                self.assertFalse(report["valid"])
+                self.assertTrue(any(expected in error for error in report["errors"]), report["errors"])
+                self.assertEqual(report["sessions"], [])
+
     def test_app_identity_is_recomputed_from_the_snapshots(self):
         record = fx.cpu_record("complete", "1767225600000-0-apk")
         cases = {

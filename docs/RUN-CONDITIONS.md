@@ -252,8 +252,11 @@ context), repetition numbering, the summary, readiness, condition assessments, m
 summaries, charging, verdict, run order and, for cpu-reference-v3 and accelerator-v2,
 build and execution identity. Accelerator gates are re-checked from the exported probe
 verdicts, because a bundle withholds prompt and output text. The capture's APK identity
-is recomputed from its before and after snapshots. A bundle whose evidence disagrees
-with its own claims is refused as a whole.
+is recomputed from its before and after snapshots. The values the raw-session schema
+fixes are checked too: every session runs on Android, and a cpu-reference session
+measures the CPU only. The device model the app reports must equal the model the host
+read from the phone. A bundle whose evidence disagrees with its own claims is refused
+as a whole.
 
 A row earns `guardsPassed: true` and `validation: "verified"` only when every check
 passes:

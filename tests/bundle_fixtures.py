@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 import shutil
 
-from test_export_evidence import ACCEL, APP_V2, evidence, make_capture
+from test_export_evidence import ACCEL, APP_V2, HOST_DEVICE, evidence, make_capture
 
 STARTED, FINISHED = "2026-10-18T09:00:00+00:00", "2026-10-18T09:30:00+00:00"
 
@@ -46,20 +46,33 @@ def accel_record(name, run_id, *, timestamp=None, device=None, runtimes=True):
 
 
 def bundle(root, records, capture_id, *, consistency="matched", apks=None):
-    """Export one capture of `records`; returns (bundle directory, bundleSha256)."""
+    """Export `records`; returns (bundle directory, bundleSha256).
+
+    Records are captured on the host device their deviceInfo names, one capture per
+    device model, as on a real lab run: publication refuses a session whose model
+    disagrees with its capture's host. The first capture is `capture_id`; the others
+    differ from it in the fourth UUID group.
+    """
     root = Path(root)
-    directory = make_capture(root / f"results-{capture_id}", records)
-    manifest_path = directory / "manifest.json"
-    manifest = json.loads(manifest_path.read_text())
-    manifest.update(captureId=capture_id, startedAt=STARTED, finishedAt=FINISHED)
-    identity = manifest["appIdentity"]
-    if apks is not None:
-        identity["before"] = identity["after"] = {"status": "recorded", "apks": apks}
-    identity["consistency"] = consistency
-    if consistency == "changed":
-        manifest["status"] = "app-changed"
-    manifest_path.write_text(json.dumps(manifest))
-    report = evidence.export([directory], root / "bundles")
+    by_model = {}
+    for record in records:
+        by_model.setdefault(record["deviceInfo"]["model"], []).append(record)
+    directories = []
+    for position, (model, group) in enumerate(by_model.items()):
+        cid = capture_id if position == 0 else f"{capture_id[:19]}{0x8000 + position:04x}{capture_id[23:]}"
+        directory = make_capture(root / f"results-{cid}", group, device_info={**HOST_DEVICE, "model": model})
+        manifest_path = directory / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest.update(captureId=cid, startedAt=STARTED, finishedAt=FINISHED)
+        identity = manifest["appIdentity"]
+        if apks is not None:
+            identity["before"] = identity["after"] = {"status": "recorded", "apks": apks}
+        identity["consistency"] = consistency
+        if consistency == "changed":
+            manifest["status"] = "app-changed"
+        manifest_path.write_text(json.dumps(manifest))
+        directories.append(directory)
+    report = evidence.export(directories, root / "bundles")
     return Path(report["bundle"]), report["evidence"]["bundleSha256"]
 
 

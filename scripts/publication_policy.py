@@ -56,9 +56,23 @@ def recheck(record):
                 errors += raw_session._semantic_v3(record)
         else:
             errors = raw_session._semantic(record)
+        errors += schema_value_errors(record)
     except (TypeError, ValueError, KeyError, IndexError, AttributeError, OverflowError):
         return ["record.unprocessable /"]
     return [f"{item['code']} {item['path'] or '/'}" for item in errors]
+
+
+def schema_value_errors(record):
+    """Values schemas/raw-session-v1.json fixes but the export allowlist does not check.
+
+    Every session is an Android run, and the cpu-reference protocols measure the CPU
+    only. Without this, a re-hashed bundle could relabel a CPU reference run as a GPU or
+    NPU row (its execution report then reads as confirmed) or move it to another platform.
+    """
+    cpu_only = record["protocol"]["version"] not in raw_session.ACCELERATOR_PROTOCOLS
+    allowed = {"platform": ("android",), "backend": ("cpu",) if cpu_only else ("cpu", "gpu", "npu")}
+    return [{"code": "schema.value", "path": f"/{key}"} for key, values in allowed.items()
+            if record.get(key) not in values]
 
 
 def _configured_run(record):
@@ -356,7 +370,12 @@ def bundle_report(bundle, expected_sha=None):
             errors = recheck(doc["record"])
             report["errors"] += [f"sessions/{session_id}.json/record: recomputed evidence disagrees: {item}"
                                  for item in errors]
-            if not errors:
+            # The row's device comes from the session; the app's own report of the model must
+            # agree with the host's (verify already binds manufacturer and SoC to the capture).
+            if doc["device"]["model"] != captures[doc["captureId"]]["device"]["model"]:
+                report["errors"].append(f"sessions/{session_id}.json/device/model: disagrees with its capture's "
+                                        "host device")
+            if not report["errors"]:
                 facts = session_facts(doc, captures[doc["captureId"]])
                 sessions.append({"sessionId": session_id, "captureId": doc["captureId"], "facts": facts,
                                  "decision": evaluate(facts)})
