@@ -540,7 +540,8 @@ export function writeAtomicGroup(items) {
     if (!stuck.length) throw error;
     const failure = new PublicationError(
       `writing failed (${error.code ?? error.message}) and restoring the earlier content failed too: ` +
-        `${stuck.map((path) => basename(path)).join(', ')} now hold the new content while the rest are unchanged. ` +
+        `${stuck.map((path) => basename(path)).join(', ')} now ${stuck.length === 1 ? 'holds' : 'hold'} the new ` +
+        'content while the rest are unchanged. ' +
         'Restore them (git checkout -- data/) before publishing again.',
     );
     failure.partialWrite = stuck;

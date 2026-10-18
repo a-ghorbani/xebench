@@ -289,6 +289,10 @@ is never a pass. Three kinds of session are never published at all:
 - bug reproductions (`purpose: "bug-repro"`);
 - sessions without a measured repetition.
 
+A published session is never rewritten, and CI re-derives every published row from its
+bundle with the current code. A change to the policy, the row format or its rounding
+therefore comes with a new policy version and a migration of the published index.
+
 Limits: the gate's probe verdicts are recomputed from model outputs by the raw-session
 validator at capture time; a bundle carries only their digests, so the publication
 check re-derives the gate status from the verdicts, not from the outputs. The policy

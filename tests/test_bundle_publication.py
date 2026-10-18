@@ -591,7 +591,7 @@ class ReviewRegressionTests(Workspace):
         self.bundle(fx.cpu_record("complete", "1767225600000-0-roll", device="Fixture Phone"))
         result = self.run_with_hook(2, only=False)  # the restore's rename fails too
         self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn("restoring the earlier content failed too: index.json now hold the new content", result.stderr)
+        self.assertIn("restoring the earlier content failed too: index.json now holds the new content", result.stderr)
         self.assertIn("checkout -- data/", result.stderr)
         self.assertNotIn("not modified", result.stderr)
         self.no_leftovers()
