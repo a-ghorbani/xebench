@@ -22,7 +22,7 @@ test('cpu-reference-v2 is cpu-reference-v1 with PocketPal\'s Android load defaul
   expect({...bundled, id: v1.id, runs: [run]}).toEqual(v1);
 });
 
-test('cpu-reference-v3 runs Q4_K_M, Q4_0 and Q8_0 with v2 settings except flash attention auto', () => {
+test('cpu-reference-v3 runs Q4_K_M, Q4_0 and Q8_0 with v2 settings except flash attention auto and longer cooling', () => {
   expect(parseConfig(v3)).toEqual(v3);
   expect(v3.runs.map(run => [run.quant, run.modelFile])).toEqual([
     ['Q4_K_M', 'Llama-3.2-1B-Instruct-Q4_K_M.gguf'], ['Q4_0', 'Llama-3.2-1B-Instruct-Q4_0.gguf'],
@@ -30,7 +30,10 @@ test('cpu-reference-v3 runs Q4_K_M, Q4_0 and Q8_0 with v2 settings except flash 
   const {runs, id, ...rest} = v3;
   const {runs: v2Runs, id: v2Id, ...v2Rest} = bundled;
   expect([id, v2Id]).toEqual(['cpu-reference-v3', 'cpu-reference-v2']);
-  expect(rest).toEqual(v2Rest);
+  // Nine repetitions share one battery-temperature baseline: a longer cooldown and readiness
+  // wait let the phone cool back within the 2 °C bound instead of skipping a repetition.
+  expect(rest).toEqual({...v2Rest, cooldownSec: 120, readinessTimeoutSec: 900});
+  expect(rest.maxBatteryTempRiseC).toBe(2);
   const identity = ['id', 'modelFile', 'quant', 'modelSha256'];
   const others = (run: Record<string, unknown>) =>
     Object.fromEntries(Object.entries(run).filter(([key]) => !identity.includes(key)));

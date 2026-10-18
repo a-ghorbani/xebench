@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "id": "cpu-reference-v3",
   "nColdRuns": 3,
-  "cooldownSec": 30,
-  "readinessTimeoutSec": 180,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
   "maxBatteryTempRiseC": 2,
   "maxDecodeTokens": 128,
   "runs": [

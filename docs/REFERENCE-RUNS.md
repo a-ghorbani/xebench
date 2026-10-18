@@ -22,6 +22,15 @@ computes attention:
 | `noExtraBufts` | `no_extra_bufts` | not set (`false`, weight repacking on) | `false` | `false` |
 | `flashAttnType` | `flash_attn_type` | not set (`auto`) | `off` | `auto` |
 
+Two configuration fields also differ. One cpu-reference-v3 invocation runs 9 repetitions
+against one battery-temperature baseline, so it cools longer between repetitions and waits
+longer for readiness; the 2 °C rise bound (`maxBatteryTempRiseC`) is the same in all three.
+
+| Configuration field | cpu-reference-v1 | cpu-reference-v2 | cpu-reference-v3 |
+| --- | --- | --- | --- |
+| `cooldownSec` | 30 | 30 | 120 |
+| `readinessTimeoutSec` | 180 | 180 | 900 |
+
 A run field that is not set takes the harness default in parentheses
 (`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).
 With llama.rn 0.13.0-rc.7, `use_mmap: true` selects memory-mapped loading
@@ -139,8 +148,9 @@ add `orderSeed` to reproduce a recorded run order. To run cpu-reference-v1 or
 cpu-reference-v3, stage the committed file byte for byte, so the recorded
 `configurationSource` hash names it. cpu-reference-v3 also needs its three model files on
 the device (`stage_model.py --serial <serial> models/<file>` for each, [MODELS.md](../MODELS.md)),
-and one invocation runs 9 repetitions, so give `capture_app_run.sh` a timeout above the
-default 900 s. A run
+and one invocation runs 9 repetitions with a 120 s cooldown and up to 900 s of readiness
+wait each, so give `capture_app_run.sh` a timeout well above the default 900 s (at least
+3600 s; the worst case is longer). A run
 may pin `modelSha256` (64 lowercase hex); the bundled configuration pins the reference
 GGUF from the manifest. `stage_model.py` stages only models listed in the manifest. Push any other
 GGUF with `adb` yourself, and remove or replace its `modelSha256`; runs with it are
