@@ -681,5 +681,176 @@ class SchemaAndCliTests(unittest.TestCase):
                     self.assertEqual(raw_session.main([str(path)]), 1)
 
 
+# Produced by xebenchapp/__tests__/accelerator.test.ts through runAcceleratorConfiguration.
+ACCEL = json.loads((FIXTURES / "app-emitted-accelerator.json").read_text())["records"]
+# Frozen output of the pre-port accelerator-v1 app (feat/litert-accelerators a81441a): the measured
+# F8 Ultra and S23 rows are records of this shape and must keep validating unchanged.
+ACCEL_V1 = json.loads((FIXTURES / "app-emitted-accelerator-v1.json").read_text())["records"]
+
+
+class AcceleratorRecordTests(unittest.TestCase):
+    """accelerator-v1: backend evidence, correctness gate and comparison validity are recomputed."""
+
+    def test_every_app_emitted_accelerator_record_is_valid(self):
+        self.assertGreaterEqual(len(ACCEL), 13)
+        for name, record in ACCEL.items():
+            with self.subTest(name=name):
+                self.assertEqual(record["protocol"]["version"], "accelerator-v2")
+                self.assertEqual(record["harnessVersion"], "xebench-0.8-accelerator")
+                self.assertEqual(raw_session.validate(record), [])
+
+    def test_frozen_accelerator_v1_records_stay_valid_without_identity_fields(self):
+        self.assertGreaterEqual(len(ACCEL_V1), 13)
+        for name, record in ACCEL_V1.items():
+            with self.subTest(name=name):
+                self.assertEqual((record["protocol"]["version"], record["harnessVersion"]),
+                                 ("accelerator-v1", "xebench-0.7-accelerator"))
+                for key in ("build", "configurationSource", "effectiveSettings", "executionReports"):
+                    self.assertNotIn(key, record)
+                self.assertEqual(raw_session.validate(record), [])
+        # The accelerator rules still apply to v1: a forged comparison is rejected.
+        forged = copy.deepcopy(ACCEL_V1["f8-litert-npu"])
+        forged["comparison"] = {"status": "valid", "reasons": []}
+        self.assertIn("comparison.recomputed", codes(forged))
+        # The branches are never mixed: v2 identity fields on a v1 record, or a v2 record without them.
+        mixed = copy.deepcopy(ACCEL_V1["f8-litert-cpu"])
+        mixed["build"] = copy.deepcopy(ACCEL["f8-litert-cpu"]["build"])
+        self.assertTrue(codes(mixed) & {"schema.one-of", "schema.additional-property", "schema.required"}, codes(mixed))
+        stripped = copy.deepcopy(ACCEL["f8-litert-cpu"])
+        del stripped["build"]
+        self.assertTrue(codes(stripped) & {"schema.one-of", "schema.additional-property", "schema.required"}, codes(stripped))
+
+    def test_fixture_covers_the_decisions_that_matter(self):
+        npu = ACCEL["f8-litert-npu"]
+        self.assertEqual((npu["correctness"]["status"], npu["comparison"]["status"]), ("fail", "invalid"))
+        self.assertEqual(npu["summary"]["decodeTps"]["n"], npu["protocol"]["nColdRuns"], "failed gate keeps metrics")
+        self.assertEqual(ACCEL["bugRepro-npu"]["comparison"], {"status": "invalid", "reasons": ["bug-repro"]})
+        self.assertEqual(ACCEL["f8-llama-opencl"]["observedBackend"]["status"], "mismatch")
+        self.assertEqual(ACCEL["f8-llama-hexagon"]["observedBackend"]["status"], "confirmed")
+        self.assertEqual(ACCEL["bugRepro-npu"]["observedBackend"]["status"], "unknown")
+        self.assertEqual(ACCEL["referenceUnavailable-npu"]["correctness"]["reasons"], ["reference-unavailable"])
+
+    def test_claims_the_evidence_does_not_support_are_rejected(self):
+        def flip_passed(record):
+            record["correctness"]["probes"][1]["passed"] = True
+
+        def claim_valid(record):
+            record["comparison"] = {"status": "valid", "reasons": []}
+
+        def claim_confirmed(record):
+            record["coldRuns"][0]["observedBackend"]["status"] = "confirmed"
+
+        def claim_session_confirmed(record):
+            record["observedBackend"]["status"] = "confirmed"
+
+        def drop_evidence(record):
+            record["coldRuns"][0]["observedBackend"] = None
+
+        def same_artifact(record):
+            record["correctness"]["reference"]["sameArtifact"] = True
+
+        def wrong_reference(record):
+            record["correctness"]["reference"]["configurationRunId"] = "llama-cpu"
+
+        def edit_output(record):
+            record["correctness"]["probes"][0]["output"] = "Lyon"
+
+        def gpu_backend(record):
+            record["backend"] = "gpu"
+
+        def gguf_for_litert(record):
+            record["configuration"]["runs"][0]["modelFile"] = "gemma.gguf"
+
+        def htp_for_opencl(record):
+            run = next(item for item in record["configuration"]["runs"] if item["id"] == "llama-opencl")
+            run["devices"] = ["HTP0"]
+
+        def drop_backend_note(record):
+            record["guardNotes"] = [note for note in record["guardNotes"] if note != raw_session.BACKEND_NOTE]
+
+        def reference_passing(record):
+            record["correctness"]["reference"]["status"] = "fail"
+
+        def hide_hash_mismatch(record):
+            record["artifact"]["sha256"] = record["artifact"]["expectedSha256"]
+
+        def drop_expected_hash(record):
+            record["artifact"]["expectedSha256"] = None
+
+        def report_disagrees(record):
+            record["coldRuns"][0]["observedBackend"]["report"]["devices"] = ["HTP0"]
+            record["coldRuns"][0]["observedBackend"]["status"] = "mismatch"
+
+        def keep_only_agreement(record):
+            record["correctness"]["probes"] = [probe for probe in record["correctness"]["probes"]
+                                               if probe["kind"] == "agreement"]
+
+        def easier_prompt(record):
+            probe = record["correctness"]["probes"][1]
+            probe["prompt"] = "Say PELICAN."
+
+        def reference_passed_without_output(record):
+            probe = record["correctness"]["probes"][1]
+            probe["reference"] = {"output": None, "passed": True}
+            probe["exactMatch"] = probe["commonPrefixChars"] = None
+
+        def claim_gate_backend(record):
+            record["gateBackend"]["status"] = "confirmed"
+
+        def hide_mismatch(record):
+            record["comparison"] = {"status": "valid", "reasons": []}
+
+        def other_prompt(record):
+            record["protocol"]["prompt"] = record["protocol"]["prompt"] + " Be brief."
+
+        def litert_settings(record):
+            record["effectiveSettings"] = copy.deepcopy(ACCEL["f8-llama-cpu"]["effectiveSettings"])
+
+        def llama_without_settings(record):
+            record["effectiveSettings"] = None
+
+        def offload_mismatch(record):
+            record["effectiveSettings"]["init"]["n_gpu_layers"] = 0
+
+        cases = (
+            ("f8-litert-gpu", litert_settings, "settings.engine"),
+            ("f8-llama-hexagon", llama_without_settings, "settings.engine"),
+            ("f8-llama-hexagon", offload_mismatch, "settings.protocol-mismatch"),
+            ("f8-litert-gpu", keep_only_agreement, "correctness.probe-set"),
+            ("f8-litert-gpu", easier_prompt, "correctness.probe-set"),
+            ("f8-litert-gpu", reference_passed_without_output, "correctness.recomputed"),
+            ("f8-litert-npu", claim_gate_backend, "backend.recomputed"),
+            ("f8-llama-opencl", hide_mismatch, "comparison.recomputed"),
+            ("f8-litert-gpu", other_prompt, "protocol.prompt"),
+            ("f8-litert-npu", flip_passed, "correctness.recomputed"),
+            ("f8-litert-npu", claim_valid, "comparison.recomputed"),
+            ("bugRepro-npu", claim_valid, "comparison.recomputed"),
+            ("f8-litert-npu", claim_confirmed, "backend.recomputed"),
+            ("f8-litert-npu", claim_session_confirmed, "backend.recomputed"),
+            ("f8-litert-gpu", drop_evidence, "backend.inconsistent"),
+            ("f8-litert-npu", same_artifact, "correctness.inconsistent"),
+            ("f8-litert-gpu", wrong_reference, "correctness.inconsistent"),
+            ("f8-litert-gpu", edit_output, "correctness.recomputed"),
+            ("f8-litert-npu", gpu_backend, "configuration.run-mismatch"),
+            ("f8-litert-cpu", gguf_for_litert, "configuration.run-invalid"),
+            ("f8-llama-cpu", htp_for_opencl, "configuration.run-invalid"),
+            ("f8-litert-npu", drop_backend_note, "guards.inconsistent"),
+            ("f8-litert-gpu", reference_passing, "correctness.recomputed"),
+            ("hashMismatch-npu", hide_hash_mismatch, "artifact.expected"),
+            ("f8-litert-npu", drop_expected_hash, "artifact.expected"),
+            ("f8-llama-opencl", report_disagrees, "backend.inconsistent"),
+        )
+        for name, change, code in cases:
+            with self.subTest(name=name, change=change.__name__):
+                self.assertIn(code, codes(mutate(name, change, ACCEL)))
+
+    def test_text_rules_mirror_the_app(self):
+        self.assertTrue(raw_session.answer_passed("The code word is **PELICAN**.", "pelican"))
+        self.assertFalse(raw_session.answer_passed("pelicans", "pelican"))
+        self.assertEqual(raw_session.common_prefix("  abc\U0001F600d ", "abc\U0001F600e"), 4)
+        # ECMAScript trim(), not Python's: U+FEFF is trimmed, U+001C is not.
+        self.assertEqual(raw_session.js_trim("﻿x\u001c"), "x\u001c")
+
+
 if __name__ == "__main__":
     unittest.main()

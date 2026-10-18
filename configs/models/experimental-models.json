@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "id": "gemma3-1b-it-qat-q4_0",
+      "repo": "google/gemma-3-1b-it-qat-q4_0-gguf",
+      "revision": "d1be121d36172a4b0b964657e2ee859d61138593",
+      "file": "gemma-3-1b-it-q4_0.gguf",
+      "size": 1003541152,
+      "sha256": "95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a",
+      "baseModel": "google/gemma-3-1b-it",
+      "license": "Gemma Terms of Use",
+      "licenseUrl": "https://ai.google.dev/gemma/terms",
+      "gated": true,
+      "licenseAcceptance": "required",
+      "usedBy": "docs/experiments/litert-accelerators.md (llama.cpp comparator, accelerator-v1)",
+      "sha256Source": "huggingface_hub download metadata (ETag) of the local copy at this revision; the size matches the repository tree at this revision. The gated repository does not expose LFS hashes without authentication."
+    },
+    {
+      "id": "llama32-1b-instruct-q4_0",
+      "repo": "bartowski/Llama-3.2-1B-Instruct-GGUF",
+      "revision": "067b946cf014b7c697f3654f621d577a3e3afd1c",
+      "file": "Llama-3.2-1B-Instruct-Q4_0.gguf",
+      "size": 773025920,
+      "sha256": "fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8",
+      "baseModel": "meta-llama/Llama-3.2-1B-Instruct",
+      "license": "Llama 3.2 Community License",
+      "licenseUrl": "https://www.llama.com/llama3_2/license/",
+      "gated": false,
+      "licenseAcceptance": "required",
+      "usedBy": "xebenchapp/configs/f8-llama32-hexagon-check-v1.json (the Q4_0 file of the legacy Hexagon board row)",
+      "sha256Source": "Hugging Face LFS oid at this revision (the same revision as the pinned reference Q4_K_M)"
+    }
+  ]
+}

@@ -297,6 +297,27 @@ class CommittedManifestTests(unittest.TestCase):
             if 'modelSha256' in run:
                 self.assertEqual(run['modelSha256'], model['sha256'])
 
+    def test_experimental_gemma_gguf_is_pinned_and_matches_the_accelerator_configs(self):
+        manifest = ROOT / 'configs/models/experimental-models.json'
+        models = {model['file']: model for model in stage_model.load_manifest(manifest)}
+        model = models['gemma-3-1b-it-q4_0.gguf']
+        q40 = models['Llama-3.2-1B-Instruct-Q4_0.gguf']
+        self.assertEqual((q40['repo'], q40['revision'], q40['size'], q40['sha256']),
+                         ('bartowski/Llama-3.2-1B-Instruct-GGUF', '067b946cf014b7c697f3654f621d577a3e3afd1c',
+                          773025920, 'fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8'))
+        self.assertEqual((model['repo'], model['revision']),
+                         ('google/gemma-3-1b-it-qat-q4_0-gguf', 'd1be121d36172a4b0b964657e2ee859d61138593'))
+        self.assertEqual((model['size'], model['sha256']),
+                         (1003541152, '95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a'))
+        self.assertTrue(model['gated'])
+        for name in ('f8-gemma3-accelerators-v1.json', 's23-gemma3-accelerators-v1.json'):
+            config = json.loads((ROOT / 'xebenchapp/configs' / name).read_text())
+            self.assertEqual({run['modelFile'] for run in config['runs'] if run['engine'] == 'llama.cpp'},
+                             {model['file']})
+        text = (ROOT / 'MODELS.md').read_text()
+        for value in (model['repo'], model['revision'], model['file'], model['sha256'], str(model['size'])):
+            self.assertIn(value, text)
+
     def test_models_md_documents_the_manifest_values(self):
         [model] = stage_model.load_manifest(stage_model.MANIFEST)
         text = (ROOT / 'MODELS.md').read_text()

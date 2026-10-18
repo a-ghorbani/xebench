@@ -97,6 +97,39 @@ reference results.
 | ExecuTorch (rn-executorch) | `llama-3.2-1B-spinquant.pte` | SpinQuant 4-bit | HF: `software-mansion/react-native-executorch-llama-3.2` |
 | ExecuTorch | `tokenizer.json`, `tokenizer_config.json` | — | from the same Llama 3.2 1B repo (HF tokenizers format) |
 
+### LiteRT accelerator experiment (accelerator-v1)
+
+[docs/experiments/litert-accelerators.md](docs/experiments/litert-accelerators.md) compares
+LiteRT-LM with llama.cpp on Gemma 3 1B. These are not reference models either.
+
+- **llama.cpp comparator, pinned.** `gemma-3-1b-it-q4_0.gguf` comes from the gated HF repo
+  `google/gemma-3-1b-it-qat-q4_0-gguf` at revision `d1be121d36172a4b0b964657e2ee859d61138593`,
+  1003541152 bytes, sha256 `95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a`.
+  It is licensed under the Gemma Terms of Use. The pin lives in
+  [`configs/models/experimental-models.json`](configs/models/experimental-models.json). The
+  SHA-256 is the huggingface_hub download ETag of our copy at that revision; the gated repository
+  does not show LFS hashes without authentication. Stage it the same way as the reference model:
+  `python3 scripts/stage_model.py --manifest configs/models/experimental-models.json --serial <serial> <file>`.
+- **Legacy-row comparator, pinned.** `Llama-3.2-1B-Instruct-Q4_0.gguf` (the Q4_0 file of the
+  legacy llama.cpp Hexagon board row) comes from `bartowski/Llama-3.2-1B-Instruct-GGUF` at
+  revision `067b946cf014b7c697f3654f621d577a3e3afd1c`, the same revision as the reference
+  Q4_K_M: 773025920 bytes, sha256
+  `fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8`, which equals the HF LFS
+  hash at that revision. It is listed in the same manifest.
+- **LiteRT-LM artifacts: bytes pinned, source revision unknown.** The accelerator
+  configurations pin each file's SHA-256 as `modelSha256` (a different file is recorded
+  unmeasured with `stopReason: model-hash-mismatch`). The Hugging Face source revisions these
+  copies were downloaded from are not recorded:
+
+  | File | Used for | SHA-256 |
+  |---|---|---|
+  | `gemma3-1b-it-int4.litertlm` | LiteRT-LM CPU/GPU | `1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be` |
+  | `Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm` | LiteRT-LM NPU, F8 Ultra | `fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f` |
+  | `Gemma3-1B-IT_sm8550.litertlm` | LiteRT-LM NPU, S23 (bug reproduction) | `29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af` |
+
+  The S23 file has the size (690143232 bytes) of `Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm` in
+  the `litert-community/Gemma3-1B-IT` tree; it is staged under the shorter name.
+
 The experimental adapters take absolute paths in their options
 (`LlamaRnAdapterOptions.modelPath`, `ExecutorchAdapterOptions.modelSource`). To stage
 these files manually, push them to the app's external files directory and point the

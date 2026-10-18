@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "id": "f8-gemma3-litert-cpu-rerun-v1",
+  "nColdRuns": 10,
+  "cooldownSec": 30,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "gemma3",
+  "orderSeed": 20261020,
+  "runs": [
+    {
+      "id": "litert-cpu",
+      "engine": "litert-lm",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Gemma 3 1B",
+      "modelFile": "gemma3-1b-it-int4.litertlm",
+      "quant": "int4 (litertlm)",
+      "nThreads": 4,
+      "nCtx": null,
+      "referenceRunId": null,
+      "modelSha256": "1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be"
+    }
+  ]
+}

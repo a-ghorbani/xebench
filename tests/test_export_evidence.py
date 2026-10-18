@@ -344,7 +344,13 @@ class FailClosedTests(unittest.TestCase):
         # Field names and typeof checks are not enumerated values.
         literals -= {"id", "model", "quant", "runs", "status", "order", "string", "number", "boolean", "object",
                      "react-native", "react-native-executorch", "xebench-raw", "artifact", "init",
-                     "gpu", "devices"}  # LlamaContext field names in the Pick<> guard
+                     "gpu", "devices",  # LlamaContext field names in the Pick<> guard
+                     # accelerator-v1 field names, and gate probe IDs/expected answers (exported as labels).
+                     "backend", "purpose", "reasons", "libraries", "phase", "role", "report", "kind",
+                     "source", "summary", "paris", "pelican", "short-capital", "long-fact-first", "long-fact-last",
+                     "long-fact-middle", "measured-prompt",
+                     # runRepetitions' internal executionReports option, never recorded.
+                     "always", "when-reported"}
         self.assertGreater(len(literals), 30)
         self.assertEqual(literals - evidence.ENUM.values - evidence.REASON.values, set())
         self.assertIn("fresh engine instance in warm app process; artifact hashing warms OS file cache",
@@ -849,6 +855,159 @@ class IdentityV3ExportTests(unittest.TestCase):
             _, out, _ = self.export_one(record, root)
         self.assertEqual(out["protocol"]["version"], "cpu-reference-v2")
         self.assertNotIn("build", out)
+
+
+ACCEL = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted-accelerator.json").read_text())["records"]
+# Frozen pre-port accelerator-v1 records (no build/execution identity); they export and verify too.
+ACCEL_V1 = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted-accelerator-v1.json").read_text())["records"]
+
+
+class AcceleratorExportTests(unittest.TestCase):
+    """accelerator-v1 app records -> capture -> raw_session -> export -> verify."""
+
+    def export(self, root):
+        named = []
+        for index, name in enumerate(sorted(ACCEL)):
+            record = copy.deepcopy(ACCEL[name])
+            record["runId"] = f"1767225600000-{index}-accel"
+            # The f8-* records come from one configuration invocation; every other fixture record
+            # is the only one kept from its invocation, so give it its own configuration.
+            if not name.startswith("f8-"):
+                record["configuration"]["id"] = f"fixture-{name}"
+            named.append((name, record))
+        directory = make_capture(Path(root) / "results", [record for _, record in named])
+        return named, evidence.export([directory], Path(root) / "out")
+
+    def test_records_export_with_only_text_withheld_and_verify(self):
+        with tempfile.TemporaryDirectory() as root:
+            named, report = self.export(root)
+            record_drops = [item for item in report["dropped"] if "/raw-" in item["source"]]
+            self.assertEqual({item["kind"] for item in record_drops}, {"excluded"}, record_drops)
+            # Prompts, model outputs and free engine text stay in local raw evidence only.
+            self.assertEqual({item["path"].rsplit("/", 1)[-1] for item in record_drops},
+                             {"prompt", "message", "output", "reasonNoGpu", "signingCertSha256"})
+            result = evidence.verify(report["bundle"], report["evidence"]["bundleSha256"])
+            self.assertTrue(result["valid"], result["errors"])
+            bundle = Path(report["bundle"])
+            data = b"".join(bundle_bytes(report["bundle"]).values())
+            self.assertNotIn(b"PELICAN", data)
+            for name, record in named:
+                exported = json.loads((bundle / f"sessions/{record['runId']}.json").read_text())["record"]
+                with self.subTest(name=name):
+                    for key in ("backend", "observedBackend", "purpose", "comparison", "modelFile"):
+                        self.assertEqual(exported[key], record[key])
+                    self.assertEqual(exported["correctness"]["status"], record["correctness"]["status"])
+                    for raw, out in zip(record["correctness"]["probes"], exported["correctness"]["probes"]):
+                        self.assertEqual(out["passed"], raw["passed"])
+                        self.assertEqual(out["outputSha256"], None if raw["output"] is None else sha(raw["output"]))
+                        self.assertEqual(out["promptSha256"], sha(raw["prompt"]))
+                    for raw, out in zip(record["coldRuns"], exported["coldRuns"]):
+                        self.assertEqual(out.get("observedBackend") is None, raw.get("observedBackend") is None)
+                    self.assertEqual(evidence.privacy_findings(exported), [])
+
+    def test_candidate_reference_must_match_the_reference_session(self):
+        with tempfile.TemporaryDirectory() as root:
+            named, report = self.export(root)
+            self.assertTrue(evidence.verify(report["bundle"])["valid"])
+            bundle = Path(report["bundle"])
+            path = f"sessions/{dict(named)['f8-litert-gpu']['runId']}.json"
+            document = json.loads((bundle / path).read_text())
+            document["record"]["correctness"]["probes"][1]["reference"]["outputSha256"] = "e" * 64
+            data = evidence.canonical(document)
+            (bundle / path).write_bytes(data)
+            manifest = json.loads((bundle / "manifest.json").read_text())
+            for item in manifest["files"]:
+                if item["path"] == path:
+                    item.update(sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
+            (bundle / "manifest.json").write_bytes(evidence.canonical(manifest))
+            renamed = bundle.parent / hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+            bundle.rename(renamed)
+            result = evidence.verify(renamed)
+            self.assertFalse(result["valid"])
+            self.assertTrue(any("reference session" in error for error in result["errors"]), result["errors"])
+
+    def forged(self, root, name, change):
+        """Export the fixtures, apply change(record) to one session and re-hash the bundle consistently."""
+        named, report = self.export(root)
+        bundle = Path(report["bundle"])
+        path = f"sessions/{dict(named)[name]['runId']}.json"
+        document = json.loads((bundle / path).read_text())
+        change(document["record"])
+        data = evidence.canonical(document)
+        (bundle / path).write_bytes(data)
+        manifest = json.loads((bundle / "manifest.json").read_text())
+        for item in manifest["files"]:
+            if item["path"] == path:
+                item.update(sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
+        (bundle / "manifest.json").write_bytes(evidence.canonical(manifest))
+        renamed = bundle.parent / hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+        bundle.rename(renamed)
+        return evidence.verify(renamed)
+
+    def test_bundle_cannot_relabel_a_run_against_its_configuration(self):
+        def own_run(record):
+            return next(run for run in record["configuration"]["runs"] if run["id"] == record["configurationRunId"])
+
+        def relabel_purpose(record):
+            record["purpose"] = "bug-repro"
+            record["comparison"] = {"status": "invalid", "reasons": ["bug-repro"]}
+
+        def relabel_everywhere(record):
+            relabel_purpose(record)
+            own_run(record)["purpose"] = "bug-repro"
+
+        def swap_reference(record):
+            record["correctness"]["reference"]["configurationRunId"] = "llama-cpu"
+
+        cases = {
+            "record purpose differs from its configured run": (relabel_purpose, "disagrees with the configured run"),
+            "configuration edited in one session of a capture": (relabel_everywhere, "disagree on configuration"),
+            "reference is not the configured CPU run": (swap_reference, "not the configured CPU run"),
+        }
+        for label, (change, message) in cases.items():
+            with self.subTest(label), tempfile.TemporaryDirectory() as root:
+                result = self.forged(root, "f8-litert-gpu", change)
+                self.assertFalse(result["valid"])
+                self.assertTrue(any(message in error for error in result["errors"]), result["errors"])
+
+    def test_frozen_accelerator_v1_records_export_and_verify(self):
+        with tempfile.TemporaryDirectory() as root:
+            named = []
+            for index, name in enumerate(sorted(ACCEL_V1)):
+                record = copy.deepcopy(ACCEL_V1[name])
+                record["runId"] = f"1767225600000-{index}-accelv1"
+                if not name.startswith("f8-"):
+                    record["configuration"]["id"] = f"fixture-{name}"
+                named.append(record)
+            directory = make_capture(Path(root) / "results", named)
+            report = evidence.export([directory], Path(root) / "out")
+            result = evidence.verify(report["bundle"], report["evidence"]["bundleSha256"])
+            self.assertTrue(result["valid"], result["errors"])
+            self.assertEqual(len(result["sessions"]), len(named))
+            exported = json.loads((Path(report["bundle"]) / f"sessions/{named[0]['runId']}.json").read_text())["record"]
+            self.assertEqual(exported["protocol"]["version"], "accelerator-v1")
+            self.assertNotIn("build", exported)
+
+    def test_rehashed_comparison_claims_still_fail_verification(self):
+        with tempfile.TemporaryDirectory() as root:
+            named, report = self.export(root)
+            bundle = Path(report["bundle"])
+            run_id = dict(named)["f8-litert-npu"]["runId"]
+            path = f"sessions/{run_id}.json"
+            document = json.loads((bundle / path).read_text())
+            document["record"]["comparison"] = {"status": "valid", "reasons": []}
+            data = evidence.canonical(document)
+            (bundle / path).write_bytes(data)
+            manifest = json.loads((bundle / "manifest.json").read_text())
+            for item in manifest["files"]:
+                if item["path"] == path:
+                    item.update(sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
+            (bundle / "manifest.json").write_bytes(evidence.canonical(manifest))
+            renamed = bundle.parent / hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest()
+            bundle.rename(renamed)
+            result = evidence.verify(renamed)
+            self.assertFalse(result["valid"])
+            self.assertTrue(any("/comparison" in error for error in result["errors"]), result["errors"])
 
 
 class CommandLineTests(unittest.TestCase):

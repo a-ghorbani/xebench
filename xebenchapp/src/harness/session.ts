@@ -1,5 +1,6 @@
-import type {EngineAdapter, ExecutionReport, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
+import type {BenchOnceConfig, EngineAdapter, ExecutionReport, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
 import type {BuildIdentity} from './build';
+import type {BackendEvidence} from './backend';
 import type {Aggregate, SingleRunMetrics} from './types';
 import type {ReferenceConfig, ReferenceRun} from './config';
 import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
@@ -19,6 +20,8 @@ type CleanupError = {phase: 'release'; message: string};
 /** Random per JS process (not a device identifier): separates process restarts in records. */
 export const PROCESS_INSTANCE_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 let modelLoadsInProcess = 0;
+/** Count a model load outside the repetition loop (the correctness gate) and return the prior count. */
+export const noteModelLoad = () => modelLoadsInProcess++;
 
 export interface InstanceIdentity {
   /** Every measured request in this protocol is the first on a freshly loaded model instance. */
@@ -48,6 +51,8 @@ type AttemptBase = {
   readiness: ReadinessResult;
   instance: InstanceIdentity | null;
   conditions: AttemptConditions;
+  /** accelerator-v1 only: backend evidence after this repetition's load (null if it never loaded). */
+  observedBackend?: BackendEvidence | null;
 };
 
 export type Attempt = AttemptBase & ({status: 'complete'} & SingleRunMetrics | {
@@ -56,7 +61,9 @@ export type Attempt = AttemptBase & ({status: 'complete'} & SingleRunMetrics | {
 } | {status: 'skipped'; reason: 'readiness-timeout' | 'charging'});
 
 export type StopReason = 'repetition-failed' | 'readiness-timeout' | 'condition-probe-pending' |
-  'cleanup-failed' | 'configuration-aborted' | 'setup-failed' | 'model-hash-mismatch';
+  'cleanup-failed' | 'configuration-aborted' | 'setup-failed' | 'model-hash-mismatch' |
+  // accelerator-v1 only (accelerator.ts):
+  'engine-unavailable' | 'gate-cleanup-failed';
 
 /** Where the parsed configuration came from, and the SHA-256 of that file's bytes. */
 export interface ConfigurationSource {
@@ -142,7 +149,7 @@ export interface ReferenceSession extends Omit<SessionIdentity, 'artifact'> {
   guardNotes: string[];
 }
 
-const BACKEND_NOTE = 'Actual backend execution has not been verified';
+export const BACKEND_NOTE = 'Actual backend execution has not been verified';
 
 /** Linear interpolation at (n-1)*p; publish this definition with the statistic. */
 export function aggregate(values: number[]): Aggregate | null {
@@ -299,6 +306,47 @@ export async function runSession(
     throw new Error('Adapter does not match the configured CPU reference run');
   }
   const record = createSession(adapter, config, run, identity, context.runOrder ?? null);
+  return runRepetitions(record, adapter, {nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec,
+    readinessTimeoutSec: config.readinessTimeoutSec, maxBatteryTempRiseC: config.maxBatteryTempRiseC,
+    bench: {prompt: STANDARD_PROMPT, maxDecodeTokens: config.maxDecodeTokens},
+    update: updateVerdict, executionReports: 'always'}, persist, sleep, context);
+}
+
+/** The session fields the repetition loop writes; shared by cpu-reference-v2 and accelerator-v1. */
+export interface RepetitionRecord {
+  coldRuns: Attempt[];
+  summary: ReferenceSession['summary'];
+  status: ReferenceSession['status'];
+  stopReason: StopReason | null;
+  chargingPolicy: ChargingPolicy;
+  executionReports: ExecutionLoadReport[];
+}
+
+export interface RepetitionSpec<R extends RepetitionRecord> {
+  nColdRuns: number;
+  cooldownSec: number;
+  readinessTimeoutSec: number;
+  maxBatteryTempRiseC: number;
+  bench: BenchOnceConfig;
+  /** Recompute verdicts and notes after every attempt, before it is persisted. */
+  update: (record: R) => void;
+  /** accelerator-v1: read backend evidence right after each load. */
+  observe?: () => BackendEvidence;
+  /**
+   * always: one execution report per successful load, all-null when the adapter cannot report
+   * (cpu-reference-v3). when-reported: only adapters that report (accelerator-v1; LiteRT-LM has none).
+   */
+  executionReports: 'always' | 'when-reported';
+}
+
+/** Readiness-gated, sampled fresh-instance repetitions (run-conditions-v2), persisted at every checkpoint. */
+export async function runRepetitions<R extends RepetitionRecord>(
+  record: R, adapter: EngineAdapter, spec: RepetitionSpec<R>, persist: (record: R) => Promise<void>,
+  sleep: (ms: number) => Promise<void> = ms => new Promise(resolve => setTimeout(resolve, ms)),
+  context: SessionContext = {},
+): Promise<R> {
+  const config = spec;
+  const update = spec.update;
   const baseline = context.baseline ?? {batteryTempC: null};
   for (let runIndex = 0; runIndex < config.nColdRuns; runIndex++) {
     // The protocol cooldown precedes every repetition, the first included (after hashing).
@@ -316,7 +364,7 @@ export async function runSession(
           charging: assessCharging(chargingCounts({before, during: null, after: null}, false))}});
       record.status = 'failed';
       record.stopReason = 'readiness-timeout';
-      updateVerdict(record);
+      update(record);
       await persist(record);
       break;
     }
@@ -327,6 +375,7 @@ export async function runSession(
     let metrics: SingleRunMetrics | null = null;
     let error: {phase: Phase; message: string} | null = null;
     let cleanupError: CleanupError | null = null;
+    let observed: BackendEvidence | null = null;
     try {
       if (readiness.status === 'probe-pending') throw new Error('Condition probe still running');
       monitorStart = await startMonitor();
@@ -335,9 +384,12 @@ export async function runSession(
       base.instance = {kind: 'fresh-instance', request: 'first-request-on-instance',
         processInstanceId: PROCESS_INSTANCE_ID, modelLoadsBeforeInProcess: modelLoadsInProcess++};
       const loadMs = await adapter.load();
-      record.executionReports.push({runIndex, ...(adapter.executionReport?.() ?? UNREPORTED)});
+      if (adapter.executionReport || spec.executionReports === 'always') {
+        record.executionReports.push({runIndex, ...(adapter.executionReport?.() ?? UNREPORTED)});
+      }
+      if (spec.observe) observed = spec.observe();
       phase = 'inference';
-      metrics = {...await adapter.benchOnce({prompt: STANDARD_PROMPT, maxDecodeTokens: config.maxDecodeTokens}), loadMs};
+      metrics = {...await adapter.benchOnce(spec.bench), loadMs};
       validateMetrics(metrics);
     } catch (failure) {
       error = {phase, message: message(failure)};
@@ -365,9 +417,10 @@ export async function runSession(
       duringAssessment: during && after ? assessDuring(during, before, after) : null,
       after, afterAssessment: after ? assessConditions(after) : null,
       charging: assessCharging(chargingCounts({before, during, after}, true))};
-    record.coldRuns.push(error ? {...base, conditions, status: 'failed', error, metrics,
+    const evidence = spec.observe ? {observedBackend: observed} : {};
+    record.coldRuns.push(error ? {...base, conditions, ...evidence, status: 'failed', error, metrics,
       ...(cleanupError ? {cleanupError} : {})} :
-      {...base, conditions, status: 'complete', ...metrics!});
+      {...base, conditions, ...evidence, status: 'complete', ...metrics!});
     const complete = record.coldRuns.filter((item): item is Attempt & SingleRunMetrics => item.status === 'complete');
     for (const metric of ['loadMs', 'ttftMs', 'prefillTps', 'decodeTps'] as const) {
       record.summary[metric] = aggregate(complete.map(item => item[metric]));
@@ -377,7 +430,7 @@ export async function runSession(
     record.status = error ? 'failed' : runIndex === config.nColdRuns - 1 ? 'complete' : 'running';
     record.stopReason = cleanupError ? 'cleanup-failed' : pending ? 'condition-probe-pending' :
       error ? 'repetition-failed' : null;
-    updateVerdict(record);
+    update(record);
     // Each checkpoint is persisted before cooldown or the next native call.
     await persist(record);
     if (cleanupError) {

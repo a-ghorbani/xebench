@@ -64,5 +64,28 @@ export const STANDARD_PROMPT_LABEL = 'std-pp512-v1';
 export const SUSTAINED_PROMPT = LLAMA32_HEADER + SHORT_BODY + LLAMA32_FOOTER;
 export const SUSTAINED_PROMPT_LABEL = 'sustained-short-v1';
 
+/**
+ * Accelerator protocol (accelerator-v1): the same ~430-word body as a single user turn.
+ * Each engine wraps it in its artifact's chat template (LiteRT-LM: the .litertlm's own
+ * template via Conversation; llama.cpp: the identical Gemma 3 turn below, built here
+ * because llama.rn receives a raw prompt). Both engines record their own token counts.
+ */
+export const ACCELERATOR_PROMPT = LONG_BODY;
+export const ACCELERATOR_PROMPT_LABEL = 'std-chat-v1';
+
+/** Gemma 3 instruction-tuned single user turn. BOS is added by the tokenizer, not here. */
+export const gemma3Turn = (text: string) =>
+  `<start_of_turn>user\n${text}<end_of_turn>\n<start_of_turn>model\n`;
+
+/** Llama 3.2 instruct single user turn, no system message. BOS is added by the tokenizer. */
+export const llama32Turn = (text: string) =>
+  `<|start_header_id|>user<|end_header_id|>\n\n${text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
+
+export type ChatTemplate = 'gemma3' | 'llama32';
+export const CHAT_TEMPLATES = ['gemma3', 'llama32'] as const;
+/** The raw single-turn prompt for engines that take a pre-templated string (llama.cpp). */
+export const chatTurn = (template: ChatTemplate, text: string) =>
+  template === 'llama32' ? llama32Turn(text) : gemma3Turn(text);
+
 /** Decode budget per run — comparable to llama-bench tg128 convention. */
 export const MAX_DECODE_TOKENS = 128;

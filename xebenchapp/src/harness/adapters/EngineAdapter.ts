@@ -1,8 +1,11 @@
 import type { BackendId, EngineId, SingleRunMetrics } from '../types';
+import type { BackendEvidence } from '../backend';
 
 export interface BenchOnceConfig {
   /** Fully chat-templated raw prompt string — identical across engines. */
   prompt: string;
+  /** The same request as a plain user message, for engines that apply their own template. */
+  text?: string;
   maxDecodeTokens: number;
 }
 
@@ -71,4 +74,8 @@ export interface EngineAdapter {
   load(): Promise<number>; // returns loadMs
   benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics>;
   release(): Promise<void>;
+  /** Greedy generation on the loaded instance, returning the reply text (correctness gate). */
+  generate?(cfg: BenchOnceConfig): Promise<string>;
+  /** What the engine or process reported about the backend after the last load(). */
+  backendEvidence?(): BackendEvidence;
 }

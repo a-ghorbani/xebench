@@ -146,6 +146,19 @@ class ReferenceApkTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'unexpected classes'):
                     self.check('reference', dex=descriptor)
 
+    def test_experimental_npu_build_requires_dispatch_and_staged_qnn_libs(self):
+        self.assertIn('lib/arm64-v8a/libLiteRtDispatch_Qualcomm.so', apk_check.FLAVORS['experimental']['required'])
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'fixture.apk'
+            write_apk(path, 'experimental')
+            apk_check.check_apk(path, 'experimental')
+            with self.assertRaisesRegex(ValueError, 'missing .*libQnnHtpV81Skel.so'):
+                apk_check.check_apk(path, 'experimental', require_qnn=True)
+            write_apk(path, 'experimental', extra=sorted(apk_check.QNN_NPU_LIBS))
+            apk_check.check_apk(path, 'experimental', require_qnn=True)
+            with self.assertRaisesRegex(ValueError, 'only to the experimental'):
+                apk_check.check_apk(path, 'reference', require_qnn=True)
+
 
 if __name__ == '__main__':
     unittest.main()
