@@ -59,11 +59,19 @@ jobs:
           done
           echo "$n bundle(s) verified"
       - name: Published bundles are never modified or removed
-        if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
-          base="origin/${{ github.base_ref }}"
-          changed=$(git diff --name-status --no-renames --diff-filter=DMT "$base"...HEAD -- 'evidence/*/**')
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            before="${{ github.event.before }}"
+            if [ -z "$before" ] || [ "$before" = 0000000000000000000000000000000000000000 ]; then
+              echo "no previous commit to compare against"
+              exit 0
+            fi
+            range="$before..HEAD"
+          fi
+          changed=$(git diff --name-status --no-renames --diff-filter=DMT "$range" -- 'evidence/*/**')
           if [ -n "$changed" ]; then
             echo "::error::bundles are immutable; a new export is a new directory. Changed or removed:"
             echo "$changed"
