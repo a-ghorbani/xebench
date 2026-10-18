@@ -15,8 +15,7 @@
  * 0.13.0-rc.7 on the same phone gave correct output for Llama 3.2 1B. The row
  * stays failed; the next measurement will be a separate Q4_K_M row (the pinned reference
  * model). Source: "Legacy Hexagon row check" in
- * docs/experiments/litert-accelerators.md at a85f28659da8459744ae7a871373abc07f29301a
- * (branch feat/litert-accelerators).
+ * docs/experiments/litert-accelerators.md (on main since aab0721).
  *
  * The correction sets that row's validation to "failed" and appends CORRECTION_NOTE
  * to its asStated. Its numbers stay as published (history is preserved); every

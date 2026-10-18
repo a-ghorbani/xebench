@@ -121,7 +121,11 @@
       "sources": [
         {
           "label": "Legacy Hexagon row check (experiment notes)",
-          "url": "https://github.com/a-ghorbani/xebench/blob/a85f28659da8459744ae7a871373abc07f29301a/docs/experiments/litert-accelerators.md"
+          "url": "https://github.com/a-ghorbani/xebench/blob/aab0721e0c2f183c789cbb7ac325657296254ce7/docs/experiments/litert-accelerators.md#legacy-hexagon-row-check-poco-f8-ultra-llama-32-1b-2026-10-17"
+        },
+        {
+          "label": "llama.rn 0.13.0-rc.7 re-check (experiment notes)",
+          "url": "https://github.com/a-ghorbani/xebench/blob/aab0721e0c2f183c789cbb7ac325657296254ce7/docs/experiments/litert-accelerators.md#llamarn-0130-rc7-re-check-poco-f8-ultra-2026-10-18"
         }
       ],
       "verifiedAt": "2026-10-18",
