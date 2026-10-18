@@ -285,7 +285,8 @@ class StageModelTests(unittest.TestCase):
 
 class CommittedManifestTests(unittest.TestCase):
     def test_reference_model_is_pinned_and_matches_the_bundled_config(self):
-        [model] = stage_model.load_manifest(stage_model.MANIFEST)
+        model = stage_model.load_manifest(stage_model.MANIFEST)[0]
+        self.assertEqual(model['file'], 'Llama-3.2-1B-Instruct-Q4_K_M.gguf', 'the first entry is the default')
         self.assertEqual(model['repo'], 'bartowski/Llama-3.2-1B-Instruct-GGUF')
         self.assertEqual(model['revision'], '067b946cf014b7c697f3654f621d577a3e3afd1c')
         self.assertEqual(model['sha256'], '6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83')
@@ -321,12 +322,55 @@ class CommittedManifestTests(unittest.TestCase):
             self.assertIn(value, text)
 
     def test_models_md_documents_the_manifest_values(self):
-        [model] = stage_model.load_manifest(stage_model.MANIFEST)
         text = (ROOT / 'MODELS.md').read_text()
-        for value in (model['repo'], model['revision'], model['file'], model['sha256'], str(model['size'])):
-            self.assertIn(value, text)
+        for model in stage_model.load_manifest(stage_model.MANIFEST):
+            for value in (model['repo'], model['revision'], model['file'], model['sha256'], str(model['size'])):
+                with self.subTest(model=model['id'], value=value):
+                    self.assertIn(value, text)
         self.assertIn(stage_model.DEVICE_DIR, text)
         self.assertNotIn('/data/local/tmp', text)
+
+
+class ReferenceV3ManifestTests(unittest.TestCase):
+    def test_cpu_reference_v3_runs_are_the_reference_manifest_pins(self):
+        """Every cpu-reference-v3 run pins the bytes reference-models.json lists for its file, all
+        from bartowski's repository at the reference revision."""
+        models = {model['file']: model for model in stage_model.load_manifest(stage_model.MANIFEST)}
+        self.assertEqual(sorted(models), ['Llama-3.2-1B-Instruct-Q4_0.gguf', 'Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+                                          'Llama-3.2-1B-Instruct-Q8_0.gguf'])
+        self.assertEqual((models['Llama-3.2-1B-Instruct-Q8_0.gguf']['size'],
+                          models['Llama-3.2-1B-Instruct-Q8_0.gguf']['sha256']),
+                         (1321083008, '432f310a77f4650a88d0fd59ecdd7cebed8d684bafea53cbff0473542964f0c3'))
+        config = json.loads((ROOT / 'xebenchapp/configs/cpu-reference-v3.json').read_text())
+        self.assertEqual([(run['modelFile'], run['quant']) for run in config['runs']],
+                         [('Llama-3.2-1B-Instruct-Q4_K_M.gguf', 'Q4_K_M'), ('Llama-3.2-1B-Instruct-Q4_0.gguf', 'Q4_0'),
+                          ('Llama-3.2-1B-Instruct-Q8_0.gguf', 'Q8_0')])
+        for run in config['runs']:
+            model = models[run['modelFile']]
+            self.assertEqual(run['modelSha256'], model['sha256'])
+            self.assertEqual((model['repo'], model['revision'], model['gated']),
+                             ('bartowski/Llama-3.2-1B-Instruct-GGUF', '067b946cf014b7c697f3654f621d577a3e3afd1c', False))
+
+    def test_a_file_pinned_in_two_manifests_has_one_pin(self):
+        """Q4_0 is pinned in both manifests (the reference v3 run and the legacy Hexagon check)."""
+        pins = {}
+        for path in sorted((ROOT / 'configs/models').glob('*-models.json')):
+            for model in stage_model.load_manifest(path):
+                pins.setdefault(model['file'], set()).add((model['repo'], model['revision'], model['size'],
+                                                           model['sha256']))
+        self.assertEqual({file: len(values) for file, values in pins.items() if len(values) != 1}, {})
+        self.assertIn('Llama-3.2-1B-Instruct-Q4_0.gguf', pins)
+
+    def test_staging_selects_the_model_the_local_file_names(self):
+        models = stage_model.load_manifest(stage_model.MANIFEST)
+        self.assertEqual(stage_model.select(models)['file'], 'Llama-3.2-1B-Instruct-Q4_K_M.gguf')
+        for model in models:
+            self.assertEqual(stage_model.select(models, file=Path('models') / model['file']), model)
+            self.assertEqual(stage_model.select(models, model_id=model['id']), model)
+        # An unlisted name falls back to the first model, whose stage() then refuses the name.
+        self.assertEqual(stage_model.select(models, file=Path('other.gguf')), models[0])
+        with self.assertRaises(stage_model.StageError):
+            stage_model.select(models, model_id='no-such-model')
 
 
 if __name__ == '__main__':

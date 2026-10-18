@@ -2,20 +2,34 @@
 
 The default app runs the versioned configuration in
 [`cpu-reference-v2.json`](../xebenchapp/configs/cpu-reference-v2.json), which every flavor
-bundles. [`cpu-reference-v1.json`](../xebenchapp/configs/cpu-reference-v1.json) runs as a
-staged configuration. Both record sessions of protocol `cpu-reference-v3`; the
+bundles. [`cpu-reference-v3.json`](../xebenchapp/configs/cpu-reference-v3.json), the
+configuration chosen for the board's llama.cpp CPU rows, and
+[`cpu-reference-v1.json`](../xebenchapp/configs/cpu-reference-v1.json) run as staged
+configurations. All three record sessions of protocol `cpu-reference-v3`; the
 configuration IDs are separate from the protocol versions of the same names described
 under [Host validation](#host-validation). This first reference path supports
 **llama.cpp CPU**.
 
-The two configurations differ only in how llama.rn loads the model and computes attention:
+cpu-reference-v1 and v2 run one model file, Llama 3.2 1B Instruct Q4_K_M. cpu-reference-v3
+runs three: Q4_K_M, Q4_0 and Q8_0 of the same model, from the same pinned revision
+([MODELS.md](../MODELS.md)). The configurations differ in how llama.rn loads the model and
+computes attention:
 
-| Run field | llama.rn parameter | cpu-reference-v1 | cpu-reference-v2 |
+| Run field | llama.rn parameter | cpu-reference-v1 | cpu-reference-v2 | cpu-reference-v3 |
+| --- | --- | --- | --- | --- |
+| `useMmap` | `use_mmap` | not set (`true`) | `false` | `false` |
+| `useMlock` | `use_mlock` | not set (`false`) | `false` | `false` |
+| `noExtraBufts` | `no_extra_bufts` | not set (`false`, weight repacking on) | `false` | `false` |
+| `flashAttnType` | `flash_attn_type` | not set (`auto`) | `off` | `auto` |
+
+Two configuration fields also differ. One cpu-reference-v3 invocation runs 9 repetitions
+against one battery-temperature baseline, so it cools longer between repetitions and waits
+longer for readiness; the 2 °C rise bound (`maxBatteryTempRiseC`) is the same in all three.
+
+| Configuration field | cpu-reference-v1 | cpu-reference-v2 | cpu-reference-v3 |
 | --- | --- | --- | --- |
-| `useMmap` | `use_mmap` | not set (`true`) | `false` |
-| `useMlock` | `use_mlock` | not set (`false`) | `false` |
-| `noExtraBufts` | `no_extra_bufts` | not set (`false`, weight repacking on) | `false` |
-| `flashAttnType` | `flash_attn_type` | not set (`auto`) | `off` |
+| `cooldownSec` | 30 | 30 | 120 |
+| `readinessTimeoutSec` | 180 | 180 | 900 |
 
 A run field that is not set takes the harness default in parentheses
 (`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).
@@ -42,6 +56,13 @@ change nothing. llama.rn's own `n_parallel` default is also 1. With one sequence
 cache has one stream and a 2048-token context per sequence, unified or not. The prompt state
 cache only reuses state across turns on recurrent, hybrid or SWA models. Llama 3.2 is none of
 these, and every repetition loads a fresh instance.
+
+cpu-reference-v3 keeps PocketPal's load settings (no memory map, no mlock, repacking on) and
+sets flash attention to `auto`. With llama.rn 0.13.0-rc.7 and Llama 3.2 1B Q4_K_M on 4 CPU
+threads, cpu-reference-v2 prefills 18–31% slower than cpu-reference-v1 on the POCO F8 Ultra,
+Galaxy S23 and Pixel 9. On the F8, flash attention off accounts for
+all of it, and the load mode changes only the load time
+([reference-config-v2](experiments/reference-config-v2.md#cpu-reference-v3)).
 
 Other engine adapters remain experimental; expanding reference coverage is a follow-up in
 issue #3.
@@ -124,8 +145,13 @@ To customize a run, copy the bundled JSON and edit its model basename, quant
 label, threads/context, load settings (`useMmap`, `useMlock`, `noExtraBufts`,
 `flashAttnType`), repetition, cooldown, readiness timeout
 (`readinessTimeoutSec`) or battery-rise bound (`maxBatteryTempRiseC`) settings, or
-add `orderSeed` to reproduce a recorded run order. To run cpu-reference-v1, stage the
-committed file byte for byte, so the recorded `configurationSource` hash names it. A run
+add `orderSeed` to reproduce a recorded run order. To run cpu-reference-v1 or
+cpu-reference-v3, stage the committed file byte for byte, so the recorded
+`configurationSource` hash names it. cpu-reference-v3 also needs its three model files on
+the device (`stage_model.py --serial <serial> models/<file>` for each, [MODELS.md](../MODELS.md)),
+and one invocation runs 9 repetitions with a 120 s cooldown and up to 900 s of readiness
+wait each, so give `capture_app_run.sh` a timeout well above the default 900 s (at least
+3600 s; the worst case is longer). A run
 may pin `modelSha256` (64 lowercase hex); the bundled configuration pins the reference
 GGUF from the manifest. `stage_model.py` stages only models listed in the manifest. Push any other
 GGUF with `adb` yourself, and remove or replace its `modelSha256`; runs with it are

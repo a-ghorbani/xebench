@@ -2,6 +2,7 @@ import {parseConfig} from '../src/harness/config';
 import bundled from '../configs/cpu-reference-v2.json';
 import v1 from '../configs/cpu-reference-v1.json';
 import experiment from '../configs/experiment-charging-ab-v1.json';
+import v3 from '../configs/cpu-reference-v3.json';
 
 test('bundled CPU reference configuration is valid', () => {
   expect(parseConfig(bundled)).toEqual(bundled);
@@ -19,6 +20,29 @@ test('cpu-reference-v2 is cpu-reference-v1 with PocketPal\'s Android load defaul
   expect({useMmap, useMlock, noExtraBufts, flashAttnType})
     .toEqual({useMmap: false, useMlock: false, noExtraBufts: false, flashAttnType: 'off'});
   expect({...bundled, id: v1.id, runs: [run]}).toEqual(v1);
+});
+
+test('cpu-reference-v3 runs Q4_K_M, Q4_0 and Q8_0 with v2 settings except flash attention auto and longer cooling', () => {
+  expect(parseConfig(v3)).toEqual(v3);
+  expect(v3.runs.map(run => [run.quant, run.modelFile])).toEqual([
+    ['Q4_K_M', 'Llama-3.2-1B-Instruct-Q4_K_M.gguf'], ['Q4_0', 'Llama-3.2-1B-Instruct-Q4_0.gguf'],
+    ['Q8_0', 'Llama-3.2-1B-Instruct-Q8_0.gguf']]);
+  const {runs, id, ...rest} = v3;
+  const {runs: v2Runs, id: v2Id, ...v2Rest} = bundled;
+  expect([id, v2Id]).toEqual(['cpu-reference-v3', 'cpu-reference-v2']);
+  // Nine repetitions share one battery-temperature baseline: a longer cooldown and readiness
+  // wait let the phone cool back within the 2 °C bound instead of skipping a repetition.
+  expect(rest).toEqual({...v2Rest, cooldownSec: 120, readinessTimeoutSec: 900});
+  expect(rest.maxBatteryTempRiseC).toBe(2);
+  const identity = ['id', 'modelFile', 'quant', 'modelSha256'];
+  const others = (run: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(run).filter(([key]) => !identity.includes(key)));
+  for (const run of runs) {
+    expect(run.id).toMatch(/^llama32-q[0-9a-z]+-cpu$/);
+    expect(run.modelSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(run.modelFile.endsWith(`-${run.quant}.gguf`)).toBe(true);
+    expect(others(run)).toEqual({...others(v2Runs[0]), flashAttnType: 'auto'});
+  }
 });
 
 test.each([
