@@ -32,7 +32,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '../..');
 const FIXTURE = path.join(ROOT, 'tests/fixtures/raw-session/app-emitted-accelerator.json');
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, 'schemas/raw-session-v1.json'), 'utf8'));
-const SESSION = SCHEMA.$defs.sessionV3;
+const SESSION = SCHEMA.$defs.sessionAcceleratorV1;
 
 const healthy = {timestampMs: 1767225600000, elapsedMs: 5000, batteryPct: 80, batteryTempC: 30.5, charging: true,
   batteryStatus: 4, plugged: 2, currentNowUa: -1500,
@@ -48,6 +48,12 @@ beforeEach(() => {
   jest.spyOn(conditions, 'stopMonitor').mockImplementation(async () => conditions.normalizeMonitor(monitor));
 });
 afterEach(() => jest.restoreAllMocks());
+
+// The experimental flavor's identity, as BuildInfo reports it (cpu-reference-v3 fields).
+const BUILD = {status: 'reported' as const, gitCommit: '0123456789abcdef0123456789abcdef01234567', gitDirty: false,
+  flavor: 'experimental' as const, buildType: 'release' as const, versionName: '1.0-experimental', versionCode: 1,
+  signingCertSha256: ['fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c']};
+const SOURCE = {kind: 'staged' as const, sha256: 'e'.repeat(64)};
 
 const CORRECT: Record<string, string> = {
   'short-capital': 'Paris', 'long-fact-last': 'PELICAN', 'long-fact-first': 'PELICAN',
@@ -72,7 +78,7 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
     engine: run.engine, backend: run.backend, modelLabel: run.model, quantLabel: run.quant, modelFile: run.modelFile,
     loads: 0,
     engineVersion: () => run.engine === 'litert-lm' ? liteRtEngineVersion(run.backend) :
-      `llama.rn 0.0.0-fixture (${run.backend})`,
+      `llama.rn 0.0.0-fixture${run.backend === 'cpu' ? '' : ` (${run.backend})`}`,
     settings: () => ({nThreads: run.nThreads, nCtx: run.nCtx}),
     load: async () => {
       adapter.loads++;
@@ -94,9 +100,7 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
         prefillMethod: 'engine-timings', decodeMethod: 'engine-timings'};
     },
     backendEvidence: () => {
-      const report = run.engine === 'llama.cpp' ? {gpu: options.gpu ?? run.backend !== 'cpu',
-        devices: options.devices === undefined ? (run.devices ?? (run.backend === 'gpu' ? ['GPUOpenCL'] : [])) :
-          options.devices, androidLib: 'rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl', reasonNoGpu: null} : null;
+      const report = run.engine === 'llama.cpp' ? llamaReport() : null;
       // The first load maps the accelerator runtime; it stays mapped for later loads.
       const markers = run.backend === 'npu' ? ['libLiteRtDispatch_Qualcomm.so', 'libQnnHtp.so'] :
         run.backend === 'gpu' ? ['libOpenCL.so'] : [];
@@ -106,6 +110,29 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
         source: report ? 'engine-report' as const : 'process-libraries' as const, report, libraries};
     },
   };
+  // What llama.rn reports after a load, as LlamaRnAdapter.executionReport() returns it.
+  const llamaReport = () => ({gpu: options.gpu ?? run.backend !== 'cpu',
+    devices: options.devices === undefined ? (run.devices ?? (run.backend === 'gpu' ? ['GPUOpenCL'] : [])) :
+      options.devices, androidLib: 'rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl', reasonNoGpu: null});
+  if (run.engine === 'llama.cpp') {
+    Object.assign(adapter, {
+      effectiveSettings: ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
+        init: {n_ctx: run.nCtx!, n_batch: 512, n_ubatch: 512, n_threads: run.nThreads, n_gpu_layers: run.nGpuLayers ?? 0,
+          use_mmap: true, use_mlock: false, flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const,
+          cache_type_v: 'f16' as const, ...(run.devices ? {devices: [...run.devices]} : {})},
+        completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const,
+        distribution: {source: 'npm' as const, package: 'llama.rn' as const, version: '0.0.0-fixture',
+          patches: [] as []}}),
+      executionReport: () => {
+        const report = llamaReport();
+        return {gpu: report.gpu, reasonNoGPU: report.gpu ? null : 'GPU backend is available but was not selected',
+          devices: report.devices, androidLib: report.androidLib,
+          systemInfo: 'system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ',
+          nativeLibraries: [{name: 'librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so', buildId: 'c'.repeat(40)},
+            {name: 'librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so', buildId: 'd'.repeat(40)}]};
+      },
+    });
+  }
   return adapter;
 }
 
@@ -123,7 +150,8 @@ async function runConfiguration(config: AcceleratorConfig, options: Record<strin
     artifact: async run => ({sha256: SHA(run), sizeBytes: 600000000}),
     adapter: run => fake(run, options[run.id]),
     identity: () => ({runId: `1767225600000-${sequence++}-accel`, timestampIso: '2026-01-01T00:00:00.000Z',
-      deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: null}),
+      deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: null, build: BUILD,
+      configurationSource: SOURCE}),
     persister: run => async record => {records[run.id] = JSON.parse(JSON.stringify(record));},
     log: () => {},
     sleep: async () => {},
@@ -322,7 +350,8 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
   const run = bug.runs[1];
   out['setupFailed-npu'] = unmeasuredAcceleratorSession(fake(run), small(bug), run,
     {runId: '1767225600000-99-accel', timestampIso: '2026-01-01T00:00:00.000Z',
-      deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: null}, null, 'setup-failed',
+      deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: null, build: BUILD,
+      configurationSource: SOURCE}, null, 'setup-failed',
     {correctness: gateNotRun(run, small(bug)), gateBackend: null});
   return JSON.parse(JSON.stringify(out));
 }

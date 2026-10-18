@@ -1,18 +1,20 @@
 /**
  * accelerator-v1: LiteRT-LM and llama.cpp on CPU, GPU and NPU, with an output-correctness
  * gate and observed-backend evidence. Repetitions, readiness, sampling, cooldown, run
- * order and the condition verdict are exactly those of cpu-reference-v2 (session.ts).
+ * order, the condition verdict and the build/configuration/engine identity evidence are those
+ * of cpu-reference-v3 (session.ts).
  * Design and result template: docs/experiments/litert-accelerators.md.
  */
-import type {EngineAdapter} from './adapters/EngineAdapter';
+import type {EngineAdapter, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
 import type {AcceleratorConfig, AcceleratorRun} from './config';
 import {ACCELERATOR_PROMPT, ACCELERATOR_PROMPT_LABEL, chatTurn} from './prompts';
 import type {ChatTemplate} from './prompts';
 import {CHARGING_POLICY, CONDITION_POLICY} from './conditions';
 import {
-  Attempt, BACKEND_NOTE, conditionVerdict, ConditionVerdict, noteModelLoad, runRepetitions, SessionContext,
-  SessionIdentity, StopReason,
+  Attempt, BACKEND_NOTE, conditionVerdict, ConditionVerdict, ExecutionLoadReport, noteModelLoad, runRepetitions,
+  SessionContext, SessionIdentity, StopReason,
 } from './session';
+import type {ChargingPolicy} from './conditions';
 import type {Aggregate} from './types';
 import type {RunOrder} from './order';
 import type {ReadinessBaseline} from './readiness';
@@ -32,7 +34,9 @@ export const ACCELERATOR_UNMEASURED_NOTES = {
 } as const;
 export type UnmeasuredReason = keyof typeof ACCELERATOR_UNMEASURED_NOTES;
 
-export interface AcceleratorSession extends SessionIdentity {
+export interface AcceleratorSession extends Omit<SessionIdentity, 'artifact'> {
+  /** Bytes hashed before measurement; accelerator configurations name no expected hash (null). */
+  artifact: {sha256: string; sizeBytes: number; expectedSha256: null} | null;
   schema: 'xebench-raw';
   schemaVersion: 1;
   harnessVersion: 'xebench-0.7-accelerator';
@@ -42,6 +46,10 @@ export interface AcceleratorSession extends SessionIdentity {
   backend: AcceleratorRun['backend'];
   /** Summary of per-repetition evidence; null until a repetition has loaded the engine. */
   observedBackend: ReturnType<typeof summarizeBackend>;
+  /** llama.cpp runs: every parameter passed to llama.rn (as cpu-reference-v3). LiteRT-LM: null. */
+  effectiveSettings: LlamaRnEffectiveSettings | null;
+  /** llama.rn's report after each successful load; LiteRT-LM reports none (empty). */
+  executionReports: ExecutionLoadReport[];
   platform: 'android';
   model: string;
   quant: string;
@@ -64,7 +72,7 @@ export interface AcceleratorSession extends SessionIdentity {
   coldRuns: Attempt[];
   summary: Record<'loadMs' | 'ttftMs' | 'prefillTps' | 'decodeTps', Aggregate | null>;
   conditionPolicy: typeof CONDITION_POLICY;
-  chargingPolicy: typeof CHARGING_POLICY;
+  chargingPolicy: ChargingPolicy;
   conditionVerdict: ConditionVerdict;
   guardsPassed: false | null;
   guardNotes: string[];
@@ -109,11 +117,15 @@ export function gateNotRun(run: AcceleratorRun, config: AcceleratorConfig): Corr
       artifactSha256: null, sameArtifact: null, status: null} : null};
 }
 
-export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion'> | null,
+export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion' | 'effectiveSettings'> | null,
   config: AcceleratorConfig, run: AcceleratorRun, identity: SessionIdentity, runOrder: RunOrder | null,
   gate: SessionGate): AcceleratorSession {
   const record: AcceleratorSession = {
-    ...identity, schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.7-accelerator',
+    ...identity, artifact: identity.artifact && {...identity.artifact, expectedSha256: null},
+    schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.7-accelerator',
+    effectiveSettings: adapter?.effectiveSettings ? adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens}) :
+      null,
+    executionReports: [],
     engine: run.engine, engineVersion: adapter ? adapter.engineVersion() : 'unavailable', backend: run.backend,
     observedBackend: null, platform: 'android', model: run.model, quant: run.quant, modelFile: run.modelFile,
     purpose: run.purpose, configuration: config, configurationRunId: run.id, runOrder,
@@ -137,7 +149,7 @@ export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' |
   return record;
 }
 
-export function unmeasuredAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion'> | null,
+export function unmeasuredAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion' | 'effectiveSettings'> | null,
   config: AcceleratorConfig, run: AcceleratorRun, identity: SessionIdentity, runOrder: RunOrder | null,
   stopReason: UnmeasuredReason, gate: SessionGate = {correctness: gateNotRun(run, config), gateBackend: null},
 ): AcceleratorSession {
@@ -169,7 +181,7 @@ export async function runAcceleratorSession(
     maxBatteryTempRiseC: config.maxBatteryTempRiseC,
     bench: {prompt: chatTurn(config.chatTemplate, ACCELERATOR_PROMPT), text: ACCELERATOR_PROMPT,
       maxDecodeTokens: config.maxDecodeTokens},
-    update: updateAcceleratorVerdict,
+    update: updateAcceleratorVerdict, executionReports: 'when-reported',
     observe: () => adapter.backendEvidence ? adapter.backendEvidence() :
       {status: 'unknown', source: 'none', report: null, libraries: null},
   }, persist, sleep, context);

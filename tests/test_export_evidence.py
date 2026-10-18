@@ -348,7 +348,9 @@ class FailClosedTests(unittest.TestCase):
                      # accelerator-v1 field names, and gate probe IDs/expected answers (exported as labels).
                      "backend", "purpose", "reasons", "libraries", "phase", "role", "report", "kind",
                      "source", "summary", "paris", "pelican", "short-capital", "long-fact-first", "long-fact-last",
-                     "long-fact-middle", "measured-prompt"}
+                     "long-fact-middle", "measured-prompt",
+                     # runRepetitions' internal executionReports option, never recorded.
+                     "always", "when-reported"}
         self.assertGreater(len(literals), 30)
         self.assertEqual(literals - evidence.ENUM.values - evidence.REASON.values, set())
         self.assertIn("fresh engine instance in warm app process; artifact hashing warms OS file cache",
@@ -881,7 +883,7 @@ class AcceleratorExportTests(unittest.TestCase):
             self.assertEqual({item["kind"] for item in record_drops}, {"excluded"}, record_drops)
             # Prompts, model outputs and free engine text stay in local raw evidence only.
             self.assertEqual({item["path"].rsplit("/", 1)[-1] for item in record_drops},
-                             {"prompt", "message", "output", "reasonNoGpu"})
+                             {"prompt", "message", "output", "reasonNoGpu", "signingCertSha256"})
             result = evidence.verify(report["bundle"], report["evidence"]["bundleSha256"])
             self.assertTrue(result["valid"], result["errors"])
             bundle = Path(report["bundle"])

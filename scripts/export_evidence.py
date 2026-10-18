@@ -242,7 +242,7 @@ REJECTION_CODES = Vocab((
     "readiness.recomputed", "record.unprocessable", "status.artifact",
     # cpu-reference-v3 identity checks (raw_session._semantic_v3).
     "artifact.expected", "build.inconsistent", "configuration.source", "execution.inconsistent",
-    "settings.protocol-mismatch", "settings.distribution",
+    "settings.protocol-mismatch", "settings.distribution", "settings.engine",
     # accelerator-v1 cross-field checks (raw_session._semantic_accelerator).
     "backend.inconsistent", "backend.recomputed", "comparison.recomputed", "configuration.run-invalid",
     "correctness.inconsistent", "correctness.probe-set", "correctness.recomputed", "protocol.prompt",
@@ -426,7 +426,9 @@ EFFECTIVE_SETTINGS = Obj({
     "binding": Vocab(("llama.rn",)), "unlisted": ENUM,
     "init": Obj({"n_ctx": COUNT, "n_batch": COUNT, "n_ubatch": COUNT, "n_threads": N_COUNT, "n_gpu_layers": INT,
                  "use_mmap": BOOL, "use_mlock": BOOL, "flash_attn_type": ENUM, "cache_type_k": CACHE_TYPE,
-                 "cache_type_v": CACHE_TYPE}, required=("n_ctx", "n_batch", "n_threads", "n_gpu_layers")),
+                 "cache_type_v": CACHE_TYPE,
+                 # accelerator-v1 llama.cpp runs (ggml device names, e.g. HTP0).
+                 "devices": Arr(LABEL, max_items=4)}, required=("n_ctx", "n_batch", "n_threads", "n_gpu_layers")),
     "completion": Obj({"n_predict": COUNT, "temperature": NONNEG, "seed": COUNT},
                       required=("n_predict", "temperature", "seed")),
     "distribution": Obj({"source": Vocab(("npm",)), "package": Vocab(("llama.rn",)),

@@ -1134,7 +1134,7 @@ def comparison_status(purpose, correctness, backend_mismatch=False):
             "reasons": reasons}
 
 
-def _configuration_v3(config):
+def _configuration_accelerator(config):
     """config.ts parseAcceleratorConfig rules beyond the schema."""
     errors, runs = [], config["runs"]
     for index, run in enumerate(runs):
@@ -1167,7 +1167,7 @@ def _configuration_v3(config):
     return errors
 
 
-def _correctness_v3(record, run, runs):
+def _correctness_accelerator(record, run, runs):
     errors, correctness = [], record["correctness"]
     protocol, stop = record["protocol"], record["stopReason"]
     probes, role, error = correctness["probes"], correctness["role"], correctness["error"]
@@ -1260,13 +1260,25 @@ def backend_evidence_errors(engine, backend, observed, where):
 
 def _semantic_accelerator(record):
     config, protocol = record["configuration"], record["protocol"]
-    errors = _configuration_v3(config)
+    errors = _configuration_accelerator(config)
     run = next((item for item in config["runs"] if item["id"] == record["configurationRunId"]), None)
     if run is not None:
         for key in ("backend", "purpose"):
             if run[key] != record[key]:
                 errors.append(reason("configuration.run-mismatch", f"/{key}",
                                      f"Record {key} disagrees with the configured run"))
+    # llama.cpp runs state every llama.rn parameter; LiteRT-LM runs have neither settings nor reports.
+    settings = record["effectiveSettings"]
+    if record["engine"] == "litert-lm":
+        if settings is not None or record["executionReports"]:
+            errors.append(reason("settings.engine", "/effectiveSettings",
+                                 "LiteRT-LM records have no effectiveSettings and no executionReports"))
+    elif settings is None:
+        errors.append(reason("settings.engine", "/effectiveSettings", "llama.cpp records state their llama.rn settings"))
+    elif run is not None and (settings["init"]["n_gpu_layers"] != run.get("nGpuLayers")
+                              or settings["init"].get("devices") != run.get("devices")):
+        errors.append(reason("settings.protocol-mismatch", "/effectiveSettings/init",
+                             "n_gpu_layers/devices disagree with the configured run"))
     if protocol["promptLabel"] != ACCELERATOR_PROMPT_LABEL or text_sha256(protocol["prompt"]) != ACCELERATOR_PROMPT_SHA256:
         errors.append(reason("protocol.prompt", "/protocol/prompt",
                              "accelerator-v1 measures the std-chat-v1 prompt (prompts.ts ACCELERATOR_PROMPT)"))
@@ -1292,7 +1304,7 @@ def _semantic_accelerator(record):
     if record["observedBackend"] != summary:
         errors.append(reason("backend.recomputed", "/observedBackend",
                              f"Recorded {record['observedBackend']} but the repetitions give {summary}"))
-    return errors + _correctness_v3(record, run, config["runs"])
+    return errors + _correctness_accelerator(record, run, config["runs"])
 
 
 def validate(record):

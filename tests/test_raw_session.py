@@ -768,7 +768,19 @@ class AcceleratorRecordTests(unittest.TestCase):
         def other_prompt(record):
             record["protocol"]["prompt"] = record["protocol"]["prompt"] + " Be brief."
 
+        def litert_settings(record):
+            record["effectiveSettings"] = copy.deepcopy(ACCEL["f8-llama-cpu"]["effectiveSettings"])
+
+        def llama_without_settings(record):
+            record["effectiveSettings"] = None
+
+        def offload_mismatch(record):
+            record["effectiveSettings"]["init"]["n_gpu_layers"] = 0
+
         cases = (
+            ("f8-litert-gpu", litert_settings, "settings.engine"),
+            ("f8-llama-hexagon", llama_without_settings, "settings.engine"),
+            ("f8-llama-hexagon", offload_mismatch, "settings.protocol-mismatch"),
             ("f8-litert-gpu", keep_only_agreement, "correctness.probe-set"),
             ("f8-litert-gpu", easier_prompt, "correctness.probe-set"),
             ("f8-litert-gpu", reference_passed_without_output, "correctness.recomputed"),

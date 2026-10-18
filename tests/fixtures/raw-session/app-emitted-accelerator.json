@@ -10,11 +10,30 @@
       },
       "artifact": {
         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -737,13 +756,95 @@
       },
       "artifact": {
         "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 1,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        }
+      ],
       "engine": "llama.cpp",
-      "engineVersion": "llama.rn 0.0.0-fixture (cpu)",
+      "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
       "observedBackend": {
         "status": "confirmed",
@@ -1427,11 +1528,93 @@
       },
       "artifact": {
         "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 99,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 1,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        }
+      ],
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture (gpu)",
       "backend": "gpu",
@@ -2143,11 +2326,30 @@
       },
       "artifact": {
         "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 (cpu)",
       "backend": "cpu",
@@ -2829,11 +3031,100 @@
       },
       "artifact": {
         "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 99,
+          "use_mmap": true,
+          "use_mlock": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16",
+          "devices": [
+            "HTP0"
+          ]
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": true,
+          "reasonNoGPU": null,
+          "devices": [
+            "HTP0"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 1,
+          "gpu": true,
+          "reasonNoGPU": null,
+          "devices": [
+            "HTP0"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        }
+      ],
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture (npu)",
       "backend": "npu",
@@ -3547,11 +3838,30 @@
       },
       "artifact": {
         "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 (gpu)",
       "backend": "gpu",
@@ -4265,11 +4575,30 @@
       },
       "artifact": {
         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -4917,11 +5246,30 @@
       },
       "artifact": {
         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -5555,9 +5903,27 @@
         "androidRelease": "16"
       },
       "artifact": null,
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "unavailable",
       "backend": "cpu",
@@ -5737,11 +6103,30 @@
       },
       "artifact": {
         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "sizeBytes": 600000000
+        "sizeBytes": 600000000,
+        "expectedSha256": null
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -6398,9 +6783,27 @@
         "androidRelease": "16"
       },
       "artifact": null,
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 (cpu)",
       "backend": "cpu",
@@ -6651,9 +7054,27 @@
         "androidRelease": "16"
       },
       "artifact": null,
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -6840,9 +7261,27 @@
         "androidRelease": "16"
       },
       "artifact": null,
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -7119,9 +7558,27 @@
         "androidRelease": "16"
       },
       "artifact": null,
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
       "schema": "xebench-raw",
       "schemaVersion": 1,
       "harnessVersion": "xebench-0.7-accelerator",
+      "effectiveSettings": null,
+      "executionReports": [],
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
