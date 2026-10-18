@@ -1,4 +1,5 @@
 import type { BackendId, EngineId, SingleRunMetrics } from '../types';
+import type { RuntimeVersions } from '../runtime';
 import type { BackendEvidence } from '../backend';
 
 export interface BenchOnceConfig {
@@ -71,6 +72,8 @@ export interface EngineAdapter {
   effectiveSettings?(request: Pick<BenchOnceConfig, 'maxDecodeTokens'>): LlamaRnEffectiveSettings;
   /** What the engine reported about the context created by the last successful load(). */
   executionReport?(): ExecutionReport;
+  /** Versions of the runtimes this adapter runs on, from the shipped artifacts (runtime.ts). */
+  runtimeVersions?(): RuntimeVersions;
   load(): Promise<number>; // returns loadMs
   benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics>;
   release(): Promise<void>;

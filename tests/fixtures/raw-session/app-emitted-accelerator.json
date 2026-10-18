@@ -34,6 +34,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": "2.3.0",
+        "qairt": "2.50.0.260828221209",
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -849,6 +857,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture",
       "backend": "cpu",
@@ -1627,6 +1646,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture (gpu)",
       "backend": "gpu",
@@ -2368,6 +2398,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 (cpu)",
       "backend": "cpu",
@@ -3149,6 +3187,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "engine": "llama.cpp",
       "engineVersion": "llama.rn 0.0.0-fixture (npu)",
       "backend": "npu",
@@ -3892,6 +3941,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 (gpu)",
       "backend": "gpu",
@@ -4635,6 +4692,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": "2.3.0",
+        "qairt": "2.50.0.260828221209",
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -5308,6 +5373,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": "2.3.0",
+        "qairt": "2.50.0.260828221209",
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -5964,6 +6037,7 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": null,
       "engine": "litert-lm",
       "engineVersion": "unavailable",
       "backend": "cpu",
@@ -6169,6 +6243,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": "2.3.0",
+        "qairt": "2.50.0.260828221209",
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -6848,6 +6930,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 (cpu)",
       "backend": "cpu",
@@ -7121,6 +7211,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": "2.3.0",
+        "qairt": "2.50.0.260828221209",
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -7330,6 +7428,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": "2.3.0",
+        "qairt": "2.50.0.260828221209",
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -7633,6 +7739,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": "2.3.0",
+        "qairt": "2.50.0.260828221209",
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",
@@ -7903,6 +8017,14 @@
       "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": null,
+        "llamaRn": null,
+        "litertLm": "0.18.0",
+        "litertNpuRuntimeQualcomm": "2.3.0",
+        "qairt": "2.50.0.260828221209",
+        "genie": null
+      },
       "engine": "litert-lm",
       "engineVersion": "LiteRT-LM litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 (npu)",
       "backend": "npu",

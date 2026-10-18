@@ -14,7 +14,8 @@ import {
   answerPassed, commonPrefix, comparisonStatus, correctnessStatus, PROBES, probeResult, referenceCorrectness,
 } from '../src/harness/gate';
 import {assessBackend, summarizeBackend} from '../src/harness/backend';
-import {liteRtEngineVersion} from '../src/harness/adapters/LiteRtAdapter';
+import {liteRtEngineVersion, liteRtRuntimeVersions} from '../src/harness/adapters/LiteRtAdapter';
+import {NO_RUNTIME_VERSIONS} from '../src/harness/runtime';
 import type {EngineAdapter} from '../src/harness/adapters/EngineAdapter';
 import type {SingleRunMetrics} from '../src/harness/types';
 import * as conditions from '../src/harness/conditions';
@@ -74,11 +75,16 @@ interface FakeOptions {
 function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {loads: number} {
   const answers = {...CORRECT, ...options.answers};
   let measured = 0;
+  // What the engines report from the APK: llama.rn's BuildInfo, LiteRtBenchModule's constants.
+  const versions = () => run.engine === 'litert-lm' ? liteRtRuntimeVersions({litertLmVersion: '0.18.0',
+    litertNpuRuntimeQualcommVersion: '2.3.0', qairtVersion: '2.50.0.260828221209'}, run.backend) :
+    {...NO_RUNTIME_VERSIONS, llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'}, llamaRn: '0.0.0-fixture'};
   const adapter = {
     engine: run.engine, backend: run.backend, modelLabel: run.model, quantLabel: run.quant, modelFile: run.modelFile,
     loads: 0,
-    engineVersion: () => run.engine === 'litert-lm' ? liteRtEngineVersion(run.backend) :
+    engineVersion: () => run.engine === 'litert-lm' ? liteRtEngineVersion(run.backend, versions()) :
       `llama.rn 0.0.0-fixture${run.backend === 'cpu' ? '' : ` (${run.backend})`}`,
+    runtimeVersions: () => versions(),
     settings: () => ({nThreads: run.nThreads, nCtx: run.nCtx}),
     load: async () => {
       adapter.loads++;

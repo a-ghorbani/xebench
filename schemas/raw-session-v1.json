@@ -669,7 +669,8 @@
           "maxItems": 20,
           "items": {"$ref": "#/$defs/executionReport"},
           "description": "One engine report per successful model load, in load order. Reports are what the engine said, not verified execution; observedBackend stays null."
-        }
+        },
+        "runtimeVersions": {"$ref": "#/$defs/runtimeVersions"}
       },
       "description": "Protocol cpu-reference-v3 (harness xebench-0.7-reference): the cpu-reference-v2 measurement procedure plus build identity, configuration source and hash, the engine's effective settings, per-load engine reports and the configured model hash (docs/REFERENCE-RUNS.md)."
     },
@@ -1972,6 +1973,7 @@
           "items": {"$ref": "#/$defs/executionReport"},
           "description": "One engine report per successful model load, in load order. Reports are what the engine said, not verified execution; observedBackend stays null."
         },
+        "runtimeVersions": {"$ref": "#/$defs/runtimeVersions"},
         "purpose": {"enum": ["measurement", "bug-repro"]},
         "correctness": {"$ref": "#/$defs/correctness"},
         "comparison": {"$ref": "#/$defs/comparison"},
@@ -1981,6 +1983,44 @@
         }
       },
       "description": "Protocol accelerator-v2 (harness xebench-0.8-accelerator): cpu-reference-v3 repetitions, conditions and identity evidence for llama.cpp and LiteRT-LM on cpu/gpu/npu, with observed-backend evidence and the output-gate-v1 correctness gate (docs/experiments/litert-accelerators.md)."
+    },
+    "runtimeVersions": {
+      "description": "Versions of the runtimes the engine ran on, from the shipped artifacts: llama.rn's exported BuildInfo (vendored llama.cpp build number and commit) and package version; the LiteRT-LM and Qualcomm NPU runtime AARs as Gradle resolved them; the QAIRT build string in the packaged libQnnHtp.so; geniex-android. null for a runtime the session does not use or that reports nothing usable. Absent in records from apps built before it was recorded.",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["llamaCpp", "llamaRn", "litertLm", "litertNpuRuntimeQualcomm", "qairt", "genie"],
+          "additionalProperties": false,
+          "properties": {
+            "llamaCpp": {
+              "oneOf": [
+                {"type": "null"},
+                {
+                  "type": "object",
+                  "required": ["buildNumber", "commit"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "buildNumber": {"type": "integer", "minimum": 1, "maximum": 999999999},
+                    "commit": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"}
+                  }
+                }
+              ]
+            },
+            "llamaRn": {
+              "oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]
+            },
+            "litertLm": {
+              "oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]
+            },
+            "litertNpuRuntimeQualcomm": {
+              "oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]
+            },
+            "qairt": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]},
+            "genie": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]}
+          }
+        }
+      ]
     }
   }
 }

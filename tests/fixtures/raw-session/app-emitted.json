@@ -83,6 +83,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -542,6 +553,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -1465,6 +1487,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -2026,6 +2059,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -2427,6 +2471,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -3025,6 +3080,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -3599,6 +3665,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -3974,6 +4051,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -4326,6 +4414,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -4616,6 +4715,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -4886,6 +4996,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -5123,6 +5244,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -5412,6 +5544,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -5757,6 +5900,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -6125,6 +6279,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -6489,6 +6654,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -6860,6 +7036,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -7137,6 +7324,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -7537,6 +7735,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -7914,6 +8123,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -8168,6 +8388,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -8576,6 +8807,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -8972,6 +9214,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -9350,6 +9603,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -9624,6 +9888,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -10190,6 +10465,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -10410,6 +10696,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -10776,6 +11073,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -11110,6 +11418,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -11514,6 +11833,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -11967,6 +12297,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -12367,6 +12708,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -12676,6 +13028,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -13665,6 +14028,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -13865,6 +14239,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -14241,6 +14626,17 @@
         }
       },
       "executionReports": [],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -14441,6 +14837,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -14835,6 +15242,17 @@
           ]
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",
@@ -15222,6 +15640,17 @@
           "nativeLibraries": null
         }
       ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
       "platform": "android",
       "model": "Llama 3.2 1B",
       "quant": "Q4_K_M",

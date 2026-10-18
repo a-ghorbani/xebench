@@ -5,6 +5,7 @@
  * of cpu-reference-v3 (session.ts).
  * Design and result template: docs/experiments/litert-accelerators.md.
  */
+import type {RuntimeVersions} from './runtime';
 import type {EngineAdapter, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
 import type {AcceleratorConfig, AcceleratorRun} from './config';
 import {ACCELERATOR_PROMPT, ACCELERATOR_PROMPT_LABEL, chatTurn} from './prompts';
@@ -51,6 +52,8 @@ export interface AcceleratorSession extends Omit<SessionIdentity, 'artifact'> {
   effectiveSettings: LlamaRnEffectiveSettings | null;
   /** llama.rn's report after each successful load; LiteRT-LM reports none (empty). */
   executionReports: ExecutionLoadReport[];
+  /** Versions of the runtimes the engine runs on, from the shipped artifacts (runtime.ts). */
+  runtimeVersions: RuntimeVersions | null;
   platform: 'android';
   model: string;
   quant: string;
@@ -118,7 +121,7 @@ export function gateNotRun(run: AcceleratorRun, config: AcceleratorConfig): Corr
       artifactSha256: null, sameArtifact: null, status: null} : null};
 }
 
-export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion' | 'effectiveSettings'> | null,
+export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion' | 'effectiveSettings' | 'runtimeVersions'> | null,
   config: AcceleratorConfig, run: AcceleratorRun, identity: SessionIdentity, runOrder: RunOrder | null,
   gate: SessionGate): AcceleratorSession {
   const record: AcceleratorSession = {
@@ -126,7 +129,7 @@ export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' |
     schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.8-accelerator',
     effectiveSettings: adapter?.effectiveSettings ? adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens}) :
       null,
-    executionReports: [],
+    executionReports: [], runtimeVersions: adapter?.runtimeVersions ? adapter.runtimeVersions() : null,
     engine: run.engine, engineVersion: adapter ? adapter.engineVersion() : 'unavailable', backend: run.backend,
     observedBackend: null, platform: 'android', model: run.model, quant: run.quant, modelFile: run.modelFile,
     purpose: run.purpose, configuration: config, configurationRunId: run.id, runOrder,
@@ -150,7 +153,7 @@ export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' |
   return record;
 }
 
-export function unmeasuredAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion' | 'effectiveSettings'> | null,
+export function unmeasuredAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion' | 'effectiveSettings' | 'runtimeVersions'> | null,
   config: AcceleratorConfig, run: AcceleratorRun, identity: SessionIdentity, runOrder: RunOrder | null,
   stopReason: UnmeasuredReason, gate: SessionGate = {correctness: gateNotRun(run, config), gateBackend: null},
 ): AcceleratorSession {

@@ -183,8 +183,10 @@ Sessions are `xebench-raw` schemaVersion 1 records configured by schemaVersion 2
 - **accelerator-v2** (`sessionAcceleratorV2`, harness `xebench-0.8-accelerator`), written by new
   builds. It is accelerator-v1 plus the identity evidence of `cpu-reference-v3`: `build`
   (BuildInfo), `configurationSource`,
-`artifact.expectedSha256` (always null: accelerator configurations name no expected hash),
-`effectiveSettings` and `executionReports`. llama.cpp runs record every llama.rn parameter
+`artifact.expectedSha256` (the run's configured `modelSha256`), `effectiveSettings`,
+`executionReports` and `runtimeVersions` (llama.cpp build number and commit and llama.rn
+version for llama.cpp runs; LiteRT-LM, and on NPU runs the Qualcomm NPU runtime and QAIRT
+versions, for LiteRT-LM runs; all from the shipped artifacts). llama.cpp runs record every llama.rn parameter
 (including `n_gpu_layers` and `devices`) and one llama.rn execution report per load, with the
 loaded native libraries' ELF build IDs; their backend evidence is derived from that report.
 LiteRT-LM runs record `effectiveSettings: null` and no execution reports; LiteRT-LM reports

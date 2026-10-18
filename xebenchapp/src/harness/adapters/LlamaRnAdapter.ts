@@ -1,4 +1,4 @@
-import { initLlama, LlamaContext } from 'llama.rn';
+import { BuildInfo, initLlama, LlamaContext } from 'llama.rn';
 import type { BackendId, SingleRunMetrics } from '../types';
 import type {
   BenchOnceConfig, EngineAdapter, ExecutionReport, LlamaRnEffectiveSettings,
@@ -6,6 +6,7 @@ import type {
 import {monotonicNow} from '../clock';
 import {readNativeLibraries} from '../build';
 import {backendEvidence, BackendEvidence} from '../backend';
+import {llamaCppBuild, NO_RUNTIME_VERSIONS, RuntimeVersions, version} from '../runtime';
 
 import {version as LLAMA_RN_VERSION} from 'llama.rn/package.json';
 
@@ -88,6 +89,11 @@ export class LlamaRnAdapter implements EngineAdapter {
   engineVersion(): string {
     const be = this.backend === 'gpu' ? ' (OpenCL)' : this.backend === 'npu' ? ` (Hexagon ${this.opts.devices?.join(',')})` : '';
     return `llama.rn ${LLAMA_RN_VERSION}${be}`;
+  }
+
+  /** llama.cpp as vendored by this llama.rn (its exported BuildInfo) and llama.rn itself. */
+  runtimeVersions(): RuntimeVersions {
+    return {...NO_RUNTIME_VERSIONS, llamaCpp: llamaCppBuild(BuildInfo), llamaRn: version(LLAMA_RN_VERSION)};
   }
 
   settings() {

@@ -342,7 +342,7 @@ class FailClosedTests(unittest.TestCase):
         source = "".join(path.read_text() for path in (ROOT / "xebenchapp/src/harness").rglob("*.ts"))
         literals = {word for word in re.findall(r"['`]([a-z][a-z-]{0,63})['`]", source) if not word.endswith("-")}
         # Field names and typeof checks are not enumerated values.
-        literals -= {"id", "model", "quant", "runs", "status", "order", "string", "number", "boolean", "object",
+        literals -= {"id", "model", "quant", "runs", "status", "order", "string", "number", "boolean", "object", "function",
                      "react-native", "react-native-executorch", "xebench-raw", "artifact", "init",
                      "gpu", "devices",  # LlamaContext field names in the Pick<> guard
                      # accelerator-v1 field names, and gate probe IDs/expected answers (exported as labels).
@@ -894,7 +894,7 @@ class AcceleratorExportTests(unittest.TestCase):
             for name, record in named:
                 exported = json.loads((bundle / f"sessions/{record['runId']}.json").read_text())["record"]
                 with self.subTest(name=name):
-                    for key in ("backend", "observedBackend", "purpose", "comparison", "modelFile"):
+                    for key in ("backend", "observedBackend", "purpose", "comparison", "modelFile", "runtimeVersions"):
                         self.assertEqual(exported[key], record[key])
                     self.assertEqual(exported["correctness"]["status"], record["correctness"]["status"])
                     for raw, out in zip(record["correctness"]["probes"], exported["correctness"]["probes"]):
