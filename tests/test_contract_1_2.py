@@ -61,6 +61,8 @@ class Contract12Tests(Workspace):
             # name, version and shape of each runtime
             'unknown-name': (build(llama, runtimes=[{'name': 'ggml', 'version': '0.9.4'}]), 'is not one of', True),
             'name-case': (build(llama, runtimes=[{'name': 'Llama.cpp', 'version': 'b11385'}]), 'is not one of', True),
+            # what GENIE-X records is the geniex-android AAR, not Qualcomm's Genie runtime
+            'genie-name': (build(llama, runtimes=[{'name': 'Genie', 'version': '0.3.1'}]), 'is not one of', True),
             'free-text-version': (build(litert, runtimes=[{'name': 'LiteRT-LM', 'version': '0.18.0 (Maven)'}]),
                                   'does not match', True),
             'v-prefix': (build(litert, runtimes=[{'name': 'LiteRT-LM', 'version': 'v0.18.0'}]), 'does not match', True),
@@ -83,6 +85,7 @@ class Contract12Tests(Workspace):
             'engine-long-commit': (build(llama, engineVersion='llama.cpp b11385 (bf9a0cc0123)'), 'engineVersion',
                                    True),
             'engine-free-text': (build(litert, engineVersion='LiteRT-LM 0.18.0 from Maven'), 'engineVersion', True),
+            'engine-genie': (build(litert, engineVersion='Genie 0.3.1'), 'engineVersion', True),
             'binding-free-text': (build(llama, bindingVersion='llama.rn latest'), 'bindingVersion', True),
         }
         for name, (bad, reason, schema_alone) in cases.items():
@@ -149,9 +152,10 @@ class Contract12Tests(Workspace):
                          {'name': 'QAIRT', 'version': '2.50.0.260828221209'}]}})
         cpu = {**LITERT_NPU_VERSIONS, 'litertNpuRuntimeQualcomm': None, 'qairt': None}
         self.assertEqual(self.build_for('litert-lm', cpu)['ok']['runtimes'], [{'name': 'LiteRT-LM', 'version': '0.18.0'}])
-        genie = {key: None for key in LLAMA_VERSIONS} | {'genie': '1.19.0'}
-        self.assertEqual(self.build_for('genie-x', genie),
-                         {'ok': {'engineVersion': 'Genie 1.19.0', 'runtimes': [{'name': 'Genie', 'version': '1.19.0'}]}})
+        # The raw genie field is the geniex-android AAR version, published under that name.
+        genie = {key: None for key in LLAMA_VERSIONS} | {'genie': '0.3.1'}
+        self.assertEqual(self.build_for('genie-x', genie, 'npu'), {'ok': {
+            'engineVersion': 'geniex-android 0.3.1', 'runtimes': [{'name': 'geniex-android', 'version': '0.3.1'}]}})
 
     def test_build_from_session_never_invents(self):
         # No runtimeVersions (older apps) or nothing reported: no build at all.
