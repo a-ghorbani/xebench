@@ -139,9 +139,12 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
 
     **Not PocketPal's binary.** PocketPal ships llama.rn 0.13.0-rc.7 with its own
     patch (`patches/llama.rn+0.13.0-rc.7.patch`, patch-package, 1034 lines). The patch
-    changes the JSI layer (`cpp/jsi/*`) and the completion loop (`cpp/rn-completion.*`)
-    and does not touch the vendored llama.cpp/ggml backends. Kernel and backend behaviour
-    should therefore match PocketPal's app, but TTFT and decode bookkeeping may differ.
+    changes the JSI layer (`cpp/jsi/*`), the completion loop (`cpp/rn-completion.*`),
+    context abort handling (`cpp/rn-llama.*`, which installs an abort callback that
+    ggml checks between graph nodes), multimodal prompt bookkeeping (`cpp/rn-mtmd.hpp`)
+    and stop handling in `src/index.ts`. It does not touch the vendored llama.cpp/ggml
+    sources. Kernels should therefore match PocketPal's app, but TTFT and decode timing
+    may differ slightly.
     PocketPal's Android defaults also differ from the reference settings: `use_mmap: false`
     with weight repacking on (`no_extra_bufts: false`), `flash_attn_type: off`,
     `n_gpu_layers: 99` with automatic devices, and `kv_unified: true`. The reference

@@ -32,13 +32,17 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
-// Reference-only builds (every requested build task names the reference flavor; helper
-// tasks such as `help` or `dependencies` do not count) compile only llama.rn's CPU
+// Reference-only builds (every requested task names the reference flavor; only helper
+// tasks such as `help` or `dependencies` are exempt) compile only llama.rn's CPU
 // variants: the reference APK excludes the Hexagon/OpenCL variant anyway, and building it
-// would also start the Hexagon DSP build whenever a Hexagon SDK is installed.
+// would also start the Hexagon DSP build whenever a Hexagon SDK is installed. Any other
+// task (another flavor, a flavorless or abbreviated name such as `assembleRelease`,
+// `packageExperimentalRelease` or `aER`) keeps every variant, so a mixed task list can
+// never strip variants from experimental or geniex.
 // llama.rn reads rnllamaVariants as a project property (RNLLAMA_ANDROID_VARIANTS).
-def buildTasks = gradle.startParameter.taskNames.findAll { it =~ /(?i)(assemble|bundle|install|build|lint|test)/ }
-def referenceOnly = !buildTasks.isEmpty() && buildTasks.every { it.toLowerCase().contains("reference") }
+def helperTask = /(?i)^(:?[A-Za-z0-9_.-]+:)*(help|tasks|dependencies|dependencyInsight|properties|projects|buildEnvironment|clean|wrapper)$/
+def requestedTasks = gradle.startParameter.taskNames.findAll { !(it ==~ helperTask) }
+def referenceOnly = !requestedTasks.isEmpty() && requestedTasks.every { it.toLowerCase().contains("reference") }
 if (referenceOnly) {
     def cpu = ["", "_v8", "_v8_2", "_v8_2_dotprod", "_v8_2_i8mm", "_v8_2_dotprod_i8mm"]
     def variants = (cpu.collect { "rnllama${it}" } + cpu.collect { "rnllama_jni${it}" }).join(",")
