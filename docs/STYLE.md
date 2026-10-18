@@ -1,7 +1,7 @@
 # Style rules for public copy
 
-Applies to everything a visitor reads: `data/findings.json` (rendered verbatim on
-pocketpal.dev), README.md, ENGINES.md and METHODOLOGY.md. Lab notes under `docs/experiments/` may
+Applies to everything a visitor reads: `data/findings.json` (headline, deck and details link
+rendered verbatim on pocketpal.dev), README.md, ENGINES.md and METHODOLOGY.md. Lab notes under `docs/experiments/` may
 narrate how a result was reached.
 
 1. **The board shows the final state.** Findings are a short title, at most two sentences and a
