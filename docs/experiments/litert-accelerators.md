@@ -15,6 +15,73 @@ published Gemma 3 NPU bundles can report fast tok/s while producing wrong text
 | POCO F8 Ultra | SM8850 (Hexagon v81) | CPU, GPU, NPU | CPU, OpenCL, Hexagon |
 | Galaxy S23 | SM8550 (Hexagon v73) | CPU, GPU (+ NPU as bug reproduction only) | CPU, OpenCL |
 
+## Board findings
+
+The leaderboard shows each finding as a title, at most two sentences and a link here. This
+section holds what the board leaves out: scope, the pass/fail steps, the evidence and the
+correction date. The full results follow below.
+
+### LiteRT-LM on NPU
+
+Finding `litert-lm-npu-integration` in [`data/findings.json`](../../data/findings.json).
+Corrected 2026-10-17; see [CORRECTIONS.md](../CORRECTIONS.md).
+
+- **Scope:** Gemma 3 1B on the POCO F8 Ultra (Snapdragon SM8850, Hexagon v81) and the Galaxy S23
+  (Snapdragon SM8550, Hexagon v73). `litertlm-android` 0.18.0,
+  `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` 2.3.0, QAIRT 2.50.0.260828.
+- **What it needs:** the `litertlm-android` AAR; Google's NPU runtime
+  `litert-npu-runtime-qualcomm`, which provides `libLiteRtDispatch_Qualcomm.so` (per-architecture
+  copies are also attached to [LiteRT releases](https://github.com/google-ai-edge/LiteRT/releases));
+  a QAIRT version that matches the release's `LITERT_REF`; and `<uses-native-library>` manifest
+  declarations (see [Build](#build)). `libGemmaModelConstraintProvider.so` is in
+  [LiteRT-LM `prebuilt/android_arm64`](https://github.com/google-ai-edge/LiteRT-LM/tree/main/prebuilt/android_arm64).
+  A version mismatch logs `Unsupported dispatch runtime version`; the Kotlin API reports only
+  `Failed to create engine`. The GPU path needs the declarations from
+  [LiteRT-LM#1860](https://github.com/google-ai-edge/LiteRT-LM/issues/1860).
+
+| Step | Status |
+|---|---|
+| Google's NPU runtime is published | ok |
+| F8 Ultra, SM8850 bundle: output correct | ok |
+| S23, [SM8550 bundle](https://huggingface.co/litert-community/Gemma3-1B-IT): wrong answers when the fact is past the first 128-token prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) | fail |
+| LiteRT-LM NPU row on the board | missing |
+
+LiteRT-LM CPU and GPU output also passes the correctness gate on both phones. Gate-passing NPU
+rows are pending publication; the S23 waits for a fixed SM8550 bundle.
+
+Evidence: [F8 Ultra Gemma 3 runs](../../evidence/c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972/),
+[S23 Gemma 3 runs](../../evidence/1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403/).
+Results: [POCO F8 Ultra](#poco-f8-ultra-sm8850-measured-2026-10-17),
+[Galaxy S23](#galaxy-s23-sm8550-measured-2026-10-18).
+
+### llama.cpp on NPU (Hexagon)
+
+Finding `llama-cpp-hexagon-output` in [`data/findings.json`](../../data/findings.json).
+Corrected 2026-10-17; see [CORRECTIONS.md](../CORRECTIONS.md).
+
+- **Scope:** POCO F8 Ultra (Snapdragon SM8850, Hexagon v81); llama.cpp's Hexagon backend (`HTP0`)
+  through llama.rn 0.12.4 and 0.13.0-rc.7; Llama 3.2 1B (Q4_K_M, Q4_0) and Gemma 3 1B (QAT
+  Q4_0). Each Hexagon run is gated against llama.cpp on CPU with the same model file.
+
+| Step | Status |
+|---|---|
+| llama.rn 0.12.4, Llama 3.2 1B: every tested prompt over ~128 tokens degenerates into repeated fragments | fail |
+| llama.rn 0.12.4, Gemma 3 1B: even the short prompt fails | fail |
+| llama.rn 0.13.0-rc.7: Llama 3.2 1B Q4_K_M and Gemma 3 1B pass every answer probe (Q4_0 passes the same probes as its CPU reference, which misses one) | ok |
+| Q4_K_M board row with a passing llama.rn version | missing |
+
+On CPU, the same Q4_K_M and Gemma files pass every answer probe with 0.12.4. The board's llama.cpp
+NPU row (Llama 3.2 1B Q4_0) was measured while the harness locked llama.rn 0.12.4, on a
+~512-token prompt with no output check; it is marked `failed` and its numbers are kept. Its
+replacement, a Q4_K_M row, is not yet measured, and no 0.13.0-rc.7 speed is on the board.
+
+Evidence: [Llama 3.2, 0.12.4](../../evidence/7cd4368bf08f339b78e731c2eed789768de44f736f338ad38f06ee154c3ae478/),
+[Gemma 3, 0.12.4](../../evidence/c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972/),
+[Llama 3.2, rc.7](../../evidence/20009fec0a56fe4bcb2b0046a2e160e3fca5c9263de1fef8a364dc62674ca210/),
+[Gemma 3, rc.7](../../evidence/beb9a67ced8709bf195a64d048be0d8529505f5b76e24ee612de2d8867046bd2/).
+Results: [Legacy Hexagon row check](#legacy-hexagon-row-check-poco-f8-ultra-llama-32-1b-2026-10-17),
+[llama.rn 0.13.0-rc.7 re-check](#llamarn-0130-rc7-re-check-poco-f8-ultra-2026-10-18).
+
 ## What is and is not the same
 
 The two engines run **different artifacts of the same model**. Rows are labelled by artifact and
