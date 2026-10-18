@@ -144,12 +144,20 @@ cold definition in each record says so.
 
 ### Records, validation and export
 
-Sessions are `xebench-raw` schemaVersion 1 records on the new `sessionV3` branch of
+Sessions are `xebench-raw` schemaVersion 1 records on the `sessionAcceleratorV1` branch of
 `schemas/raw-session-v1.json` (harness `xebench-0.7-accelerator`, protocol `accelerator-v1`),
 configured by schemaVersion 2 configurations (`config.ts parseAcceleratorConfig`). The change is
-additive: `cpu-reference-v1/v2` records validate as before. `scripts/raw_session.py` additionally
-checks the configuration rules, the record against its run, every backend status, every probe
-verdict, the correctness and comparison status and `sameArtifact`.
+additive: `cpu-reference-v1/v2/v3` records validate as before. Accelerator records carry the same
+identity evidence as `cpu-reference-v3`: `build` (BuildInfo), `configurationSource`,
+`artifact.expectedSha256` (always null: accelerator configurations name no expected hash),
+`effectiveSettings` and `executionReports`. llama.cpp runs record every llama.rn parameter
+(including `n_gpu_layers` and `devices`) and one llama.rn execution report per load, with the
+loaded native libraries' ELF build IDs; their backend evidence is derived from that report.
+LiteRT-LM runs record `effectiveSettings: null` and no execution reports; LiteRT-LM reports
+neither, and its parameters are fixed in `LiteRtBenchModule.kt`. `scripts/raw_session.py` applies
+the `cpu-reference-v3` identity checks and additionally checks the configuration rules, the record
+against its run, the engine/settings pairing, every backend status, every probe verdict, the
+correctness and comparison status and `sameArtifact`.
 `scripts/export_evidence.py` exports the new fields. Probe prompts, model outputs and llama.rn's
 free-text `reasonNoGPU` stay in local raw evidence; the bundle carries their SHA-256 instead, and
 `verify` re-derives the correctness and comparison status from the exported probe verdicts.
