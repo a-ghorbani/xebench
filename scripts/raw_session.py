@@ -949,7 +949,19 @@ def runtime_versions_errors(record):
     if distribution is not None and runtimes["llamaRn"] is not None and runtimes["llamaRn"] != distribution["version"]:
         errors.append(reason("runtime.inconsistent", "/runtimeVersions/llamaRn",
                              "llama.rn version disagrees with effectiveSettings.distribution"))
+    if record["engine"] == "litert-lm" and record.get("engineVersion") != litert_engine_version(record["backend"], runtimes):
+        errors.append(reason("runtime.inconsistent", "/engineVersion",
+                             "LiteRT-LM engineVersion disagrees with runtimeVersions"))
     return errors
+
+
+def litert_engine_version(backend, runtimes):
+    """The engineVersion LiteRtAdapter derives from runtimeVersions (liteRtEngineVersion)."""
+    litert = f"litertlm-android {runtimes['litertLm'] or 'unknown'}"
+    if backend == "npu":
+        return (f"LiteRT-LM {litert} + litert-npu-runtime-qualcomm "
+                f"{runtimes['litertNpuRuntimeQualcomm'] or 'unknown'} (npu)")
+    return f"LiteRT-LM {litert} ({backend})"
 
 
 def _semantic_v3(record):

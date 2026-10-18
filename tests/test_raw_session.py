@@ -884,6 +884,12 @@ class RuntimeVersionsTests(unittest.TestCase):
         def string_build_number(record):
             record["runtimeVersions"]["llamaCpp"]["buildNumber"] = "11385"
 
+        def litert_engine_version_disagrees(record):
+            record["runtimeVersions"]["litertLm"] = "0.19.0"
+
+        def npu_runtime_version_disagrees(record):
+            record["runtimeVersions"]["litertNpuRuntimeQualcomm"] = "2.4.0"
+
         cases = (
             (APP, "complete", stray_litert, "runtime.inconsistent"),
             (ACCEL, "f8-litert-gpu", npu_runtime_on_gpu, "runtime.inconsistent"),
@@ -891,6 +897,8 @@ class RuntimeVersionsTests(unittest.TestCase):
             (ACCEL, "f8-litert-npu", free_text_version, "schema.pattern"),
             (APP, "complete", short_commit, "schema.pattern"),
             (APP, "complete", string_build_number, "schema.type"),
+            (ACCEL, "f8-litert-gpu", litert_engine_version_disagrees, "runtime.inconsistent"),
+            (ACCEL, "f8-litert-npu", npu_runtime_version_disagrees, "runtime.inconsistent"),
         )
         for source, name, change, code in cases:
             with self.subTest(name=name, change=change.__name__):
