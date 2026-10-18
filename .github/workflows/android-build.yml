@@ -8,7 +8,8 @@ permissions:
 jobs:
   reference-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # llama.rn 0.13.0-rc.7 compiles its native core from source: ~40 min on a hosted runner.
+    timeout-minutes: 90
     steps:
       # Build the PR head commit, not GitHub's merge commit, so the APK's embedded commit
       # (BuildConfig.XEBENCH_GIT_COMMIT) is one a local checkout can rebuild and compare.
