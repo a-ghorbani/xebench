@@ -535,7 +535,8 @@ function readBundles(schemas) {
         const capture = bound.file(`captures/${doc.captureId}.json`);
         const entry = {
           bundleSha256: bundle.sha, dir, hosted, sessionId: item.sessionId, timestampIso: doc.record.timestampIso,
-          protocolVersion: doc.record.protocol.version, decision: item.decision, facts: item.facts, row: null,
+          protocolVersion: doc.record.protocol.version, configurationId: doc.record.configuration?.id ?? null,
+          decision: item.decision, facts: item.facts, row: null,
         };
         if (item.decision.publishable) {
           const row = bundleRow({ doc, capture, decision: item.decision, facts: item.facts, bundleSha256: bundle.sha });
@@ -604,15 +605,16 @@ function printDryRun(bundles, sessions, plan, planError, schemaVersion) {
     const hosted = bundle.sha && isHosted(bundle.dir, ROOT, bundle.sha) ? 'yes' : 'no';
     lines.push(`| ${short(bundle.sha)} | ${bundle.sessions} | ${bundle.valid ? 'yes' : `no: ${cell(bundle.errors.join(' '))}`} | ${hosted} |`);
   }
-  lines.push('', '| Bundle | Session | Protocol | Row | n | pp / tg tok/s | Validation | Checks not passed |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- |');
+  lines.push('', '| Bundle | Session | Protocol | Configuration | Row | n | pp / tg tok/s | Validation | Checks not passed |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const session of sessions) {
     const { row, decision } = session;
     const label = row
       ? `${row.engine} ${row.backend} · ${row.device} · ${row.model}${row.quant ? ` ${row.quant}` : ''}`
       : `${session.facts.engine} ${session.facts.backend}`;
     const validation = decision.publishable ? decision.validation : `not publishable (${decision.refusal})`;
-    lines.push(`| ${short(session.bundleSha256)} | ${session.sessionId} | ${session.protocolVersion} | ${cell(label)} | ` +
+    lines.push(`| ${short(session.bundleSha256)} | ${session.sessionId} | ${session.protocolVersion} | ` +
+      `${cell(String(session.configurationId ?? '—'))} | ${cell(label)} | ` +
       `${row ? row.sampleCount : session.facts.measured} | ${row ? `${row.ppTps} / ${row.tgTps}` : '—'} | ${cell(validation)} | ` +
       `${cell(decision.publishable ? openChecks(decision) : '—')} |`);
   }

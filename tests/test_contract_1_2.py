@@ -110,6 +110,32 @@ class Contract12Tests(Workspace):
         self.assert_valid(envelope_with(loose, schemaVersion='1.2'))
         self.assert_valid(envelope_with(loose, schemaVersion='1.1'))
 
+    def test_configuration_fields_need_1_2_and_an_evidence_bundle(self):
+        """configurationId/configurationSha256: top-level, measured rows from bundles only, 1.2 files only."""
+        row = fixture_row('configuration.json')
+        self.assert_valid(envelope_with(row, schemaVersion='1.2'))
+        no_sha = {key: value for key, value in row.items() if key != 'configurationSha256'}
+        self.assert_valid(envelope_with(no_sha, schemaVersion='1.2'))
+        for version in ('1.0', '1.1'):
+            with self.subTest(schemaVersion=version):
+                self.assert_invalid(envelope_with(row, schemaVersion=version), 'configurationId needs schemaVersion 1.2')
+        no_id = {key: value for key, value in row.items() if key != 'configurationId'}
+        self.assert_invalid(envelope_with(no_id, schemaVersion='1.2'), 'configurationSha256 requires configurationId')
+        no_evidence = {key: value for key, value in row.items() if key != 'evidence'}
+        self.assert_invalid(envelope_with(no_evidence, schemaVersion='1.2'), 'requires evidence')
+        legacy = load(ROOT / 'tests/fixtures/contract-1.1/legacy.json')['rows'][0]
+        self.assert_invalid(envelope_with({**legacy, 'configurationId': 'cpu-reference-v2'}, schemaVersion='1.2'),
+                            'legacy rows carry no configurationId')
+        vendor = load(ROOT / 'tests/fixtures/contract-1.1/vendor.json')['rows'][0]
+        self.assert_invalid(envelope_with({**vendor, 'configurationId': 'cpu-reference-v2'}, schemaVersion='1.2'),
+                            'configurationId is only valid on provenance=measured rows')
+        for field, value in (('configurationId', 'CPU Reference v2'), ('configurationId', '-v2'),
+                             ('configurationId', 'a' * 65), ('configurationSha256', 'A' * 64),
+                             ('configurationSha256', 'a' * 63)):
+            with self.subTest(field=field, value=value):
+                self.assertTrue(self.schema_errors({**row, field: value}))
+        self.assertEqual(self.module("p.contractVersionFor([{configurationId: 'cpu-reference-v2'}], '1.1')"), {'ok': '1.2'})
+
     def test_accepted_runtime_versions(self):
         litert = fixture_row('litert-npu-runtimes.json')
         for version in ('b11385', 'b1', '0.13.0-rc.7', '0.18.0', '2.3.0', '2.50.0.260828221209', '1.19.0', '1.0'):

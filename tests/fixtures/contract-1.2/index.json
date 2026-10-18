@@ -1,6 +1,6 @@
 {
   "contract": "1.2",
-  "description": "Fixtures for the xebench benchmarks contract 1.2 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): build.runtimes, engineVersion and bindingVersion. Each file is a complete envelope. producerMustNotEmit=true marks a file that breaks a producer rule: scripts/validate_data.mjs refuses it, so xebench never publishes it. consumerExpectation is what the website does with the file: consumers degrade per entry and fall back to the whole file only for an unknown major version, malformed JSON or no valid rows, none of which these files are. tests/test_contract_1_2.py checks producerMustNotEmit against scripts/validate_data.mjs.",
+  "description": "Fixtures for the xebench benchmarks contract 1.2 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): build.runtimes, engineVersion and bindingVersion, and the row configuration fields configurationId and configurationSha256. Each file is a complete envelope. producerMustNotEmit=true marks a file that breaks a producer rule: scripts/validate_data.mjs refuses it, so xebench never publishes it. consumerExpectation is what the website does with the file: consumers degrade per entry and fall back to the whole file only for an unknown major version, malformed JSON or no valid rows, none of which these files are. tests/test_contract_1_2.py checks producerMustNotEmit against scripts/validate_data.mjs.",
   "fixtures": [
     {
       "file": "llama-cpp-runtimes.json",
@@ -55,6 +55,48 @@
       "producerMustNotEmit": true,
       "producerRule": "build, including runtimes, is measured-only",
       "consumerExpectation": "ignored"
+    },
+    {
+      "file": "configuration.json",
+      "producerMustNotEmit": false,
+      "notes": "configurationId and configurationSha256 from an evidence bundle",
+      "consumerExpectation": "rendered: configurationId shown as the row's configuration"
+    },
+    {
+      "file": "configuration-in-1.1.json",
+      "producerMustNotEmit": true,
+      "producerRule": "configurationId and configurationSha256 need schemaVersion 1.2",
+      "consumerExpectation": "rendered; the configuration fields are harmless"
+    },
+    {
+      "file": "configuration-on-vendor-row.json",
+      "producerMustNotEmit": true,
+      "producerRule": "configuration fields are on measured rows from bundles only",
+      "consumerExpectation": "ignored"
+    },
+    {
+      "file": "configuration-on-legacy-row.json",
+      "producerMustNotEmit": true,
+      "producerRule": "legacy rows carry no configuration fields",
+      "consumerExpectation": "ignored"
+    },
+    {
+      "file": "configuration-without-evidence.json",
+      "producerMustNotEmit": true,
+      "producerRule": "configurationId comes from an evidence bundle (requires evidence)",
+      "consumerExpectation": "rendered; the configuration is shown"
+    },
+    {
+      "file": "configuration-sha-without-id.json",
+      "producerMustNotEmit": true,
+      "producerRule": "configurationSha256 comes with configurationId",
+      "consumerExpectation": "rendered; the hash alone is not shown"
+    },
+    {
+      "file": "bad-configuration-id.json",
+      "producerMustNotEmit": true,
+      "producerRule": "configurationId matches ^[a-z0-9][a-z0-9.-]{0,63}$",
+      "consumerExpectation": "that field is dropped by the id form check; the rest of the row renders"
     }
   ]
 }

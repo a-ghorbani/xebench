@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "generatedAt": "2026-10-18T00:00:00Z",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Consumer fixture: rows published from SYNTHETIC evidence bundles built from the app-emitted test fixtures. Evidence URLs name the fixture bundles' real hashes but do not resolve.",
@@ -26,6 +26,8 @@
       "guardsPassed": true,
       "conditionPolicy": "run-conditions-v2",
       "protocolVersion": "accelerator-v2",
+      "configurationId": "f8-gemma3-accelerators-v1",
+      "configurationSha256": "62001ce3ad9974a9ee3e448b1c1893c006005e300f77ba145bc044d77d6a749c",
       "timingMethod": "engine-timings",
       "dispersion": {
         "ppTps": {
@@ -72,6 +74,8 @@
       "guardsPassed": null,
       "conditionPolicy": "run-conditions-v2",
       "protocolVersion": "cpu-reference-v3",
+      "configurationId": "cpu-reference-v2",
+      "configurationSha256": "df5d28855b5c31ecb3de86539df7ffc0b35c7870c6ee6c7110afd35dc55294f7",
       "timingMethod": "engine-timings",
       "dispersion": {
         "ppTps": {
@@ -118,6 +122,8 @@
       "guardsPassed": false,
       "conditionPolicy": "run-conditions-v2",
       "protocolVersion": "cpu-reference-v3",
+      "configurationId": "cpu-reference-v2",
+      "configurationSha256": "dde59e8b4b2e98ea5cf45ac4e6f67efc8907c6a6c9745293effa4f88e08f6b7a",
       "timingMethod": "engine-timings",
       "dispersion": {
         "ppTps": {
@@ -179,6 +185,8 @@
       "guardsPassed": true,
       "conditionPolicy": "run-conditions-v2",
       "protocolVersion": "cpu-reference-v3",
+      "configurationId": "cpu-reference-v2",
+      "configurationSha256": "82750e8dfefd30352d0aa3df19d6e1b8a3e4c44b4bc45297a2edd3ba959c639e",
       "timingMethod": "engine-timings",
       "dispersion": {
         "ppTps": {

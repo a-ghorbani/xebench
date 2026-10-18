@@ -12,7 +12,7 @@
       "file": "board-1.2.json",
       "kind": "board",
       "producerMustNotEmit": false,
-      "consumerExpectation": "rendered: verified, unverified, failed and vendor rows (the legacy row is replaced); build.runtimes shown; failed rows not shown as normal measurements"
+      "consumerExpectation": "rendered: verified, unverified, failed and vendor rows (the legacy row is replaced); build.runtimes shown; configurationId shown as the row's configuration; failed rows not shown as normal measurements"
     },
     {
       "file": "sessions-1.2.json",
@@ -21,13 +21,13 @@
       "consumerExpectation": "optional: history links per row key; the displayed session equals the board row"
     },
     {
-      "file": "board-1.1.json",
+      "file": "board-1.2-without-runtimes.json",
       "kind": "board",
       "producerMustNotEmit": false,
-      "consumerExpectation": "rendered like board-1.2.json; sessions without runtimeVersions give a 1.1 file with no build.runtimes"
+      "consumerExpectation": "rendered like board-1.2.json; sessions without runtimeVersions give rows with no build.runtimes"
     },
     {
-      "file": "sessions-1.1.json",
+      "file": "sessions-1.2-without-runtimes.json",
       "kind": "sessions",
       "producerMustNotEmit": false,
       "consumerExpectation": "as sessions-1.2.json"

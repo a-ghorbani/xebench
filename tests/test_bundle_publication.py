@@ -129,9 +129,10 @@ class DryRunTests(Workspace):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.digests(), before)
         self.no_leftovers()
-        # The session table has eight columns; the board plan below it has five.
+        # The session table has nine columns; the board plan below it has five.
         lines = {line.split(" | ")[1]: line for line in result.stdout.splitlines()
-                 if "-dry |" in line and line.count(" | ") == 7}
+                 if "-dry |" in line and line.count(" | ") == 8}
+        self.assertIn("| cpu-reference-v2 |", lines["1767225600000-0-dry"])
         self.assertIn("| verified | — |", lines["1767225600000-0-dry"])
         self.assertIn("| failed |", lines["1767225600000-1-dry"])
         self.assertIn("| unverified | artifact unknown", lines["1767225600000-2-dry"])
@@ -209,12 +210,15 @@ class VerifiedPublicationTests(Workspace):
         self.assert_valid_data()
         self.no_leftovers()
 
-    def test_contract_1_1_without_runtime_versions(self):
+    def test_rows_without_runtime_versions(self):
+        """A session without runtimeVersions gives no build.runtimes; its configuration
+        fields still make the file 1.2."""
         self.bundle(fx.cpu_record("complete", "1767225600000-0-v11", device="Fixture Phone", runtimes=False),
                     apks=[{"name": "base.apk", "sha256": "d" * 64}])
         self.publish("1767225600000-0-v11")
         data = load(self.canonical)
-        self.assertEqual(data["schemaVersion"], "1.1")
+        self.assertEqual(data["schemaVersion"], "1.2")
+        self.assertEqual(self.row()["configurationId"], "cpu-reference-v2")
         build = self.row()["build"]
         self.assertNotIn("runtimes", build)
         self.assertNotIn("engineVersion", build, "no runtime versions: the engine version stays unknown")
@@ -637,7 +641,8 @@ def consumer_fixtures(test):
     vendor = next(row for row in real["rows"] if row["provenance"] == "vendor")
     legacy = next(row for row in real["rows"] if key_of(row) == LEGACY_KEY)
     outputs = {}
-    for version, runtimes in (("1.2", True), ("1.1", False)):
+    # Every bundle row carries configurationId (1.2); the second pair has no build.runtimes.
+    for name, runtimes in (("1.2", True), ("1.2-without-runtimes", False)):
         test.tearDown()
         test.setUp()
         start = {"schemaVersion": "1.1", "generatedAt": "2026-10-18T00:00:00Z",
@@ -658,10 +663,10 @@ def consumer_fixtures(test):
                      "1767225600000-3-tablet", "1767225600000-4-npu", flags=["--replace-legacy"])
         test.assert_valid_data()  # every published row reproduces from its hosted bundle
         board = load(test.canonical)
-        test.assertEqual(board["schemaVersion"], version)
+        test.assertEqual(board["schemaVersion"], "1.2")
         board["generatedAt"] = "2026-10-18T00:00:00Z"
-        outputs[f"board-{version}.json"] = json.dumps(board, indent=2) + "\n"
-        outputs[f"sessions-{version}.json"] = test.index.read_text()
+        outputs[f"board-{name}.json"] = json.dumps(board, indent=2) + "\n"
+        outputs[f"sessions-{name}.json"] = test.index.read_text()
     return outputs
 
 
@@ -684,10 +689,14 @@ class ConsumerFixtureTests(Workspace):
             if item["kind"] == "board":
                 result = self.node("validate_data.mjs", FIXTURES / item["file"])
                 self.assertEqual(result.returncode, 0, result.stderr)
-        for version in ("1.1", "1.2"):
-            board, sessions = load(FIXTURES / f"board-{version}.json"), load(FIXTURES / f"sessions-{version}.json")
+        for name in ("1.2", "1.2-without-runtimes"):
+            board, sessions = load(FIXTURES / f"board-{name}.json"), load(FIXTURES / f"sessions-{name}.json")
             validations = {row.get("validation") for row in board["rows"]}
             self.assertEqual(validations, {None, "verified", "unverified", "failed"})
+            # Bundle rows name their configuration; the vendor and legacy rows do not.
+            for row in board["rows"]:
+                self.assertEqual("configurationId" in row, "evidence" in row, row)
+            self.assertEqual(any("runtimes" in row.get("build", {}) for row in board["rows"]), name == "1.2")
             history = next(entry for entry in sessions["keys"] if entry["key"] == LEGACY_KEY)
             self.assertEqual([s["validation"] for s in history["sessions"]], ["verified", "failed"])
             self.assertEqual((history["displayed"], history["rule"]), ("1767225600000-0-pixel", "newest-verified"))
