@@ -1310,6 +1310,15 @@ def _semantic_accelerator(record, identity=True):
             continue
         evidence.append(observed)
         errors += backend_evidence_errors(record["engine"], record["backend"], observed, where)
+        # accelerator-v2 llama.cpp: the evidence is derived from that load's execution report.
+        report = observed.get("report")
+        if identity and report is not None:
+            loads = [item for item in record["executionReports"] if item["runIndex"] == attempt["runIndex"]]
+            if len(loads) != 1 or any(report[key] != loads[0][source] for key, source in (
+                    ("gpu", "gpu"), ("devices", "devices"), ("androidLib", "androidLib"),
+                    ("reasonNoGpu", "reasonNoGPU"))):
+                errors.append(reason("backend.inconsistent", f"{where}/report",
+                                     "Backend evidence must restate the execution report of the same load"))
     summary = summarize_backend(evidence)
     if record["observedBackend"] != summary:
         errors.append(reason("backend.recomputed", "/observedBackend",

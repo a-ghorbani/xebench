@@ -1162,7 +1162,7 @@
               "gpu": false,
               "devices": [],
               "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
-              "reasonNoGpu": null
+              "reasonNoGpu": "GPU backend is available but was not selected"
             },
             "libraries": null
           },
@@ -1340,7 +1340,7 @@
               "gpu": false,
               "devices": [],
               "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
-              "reasonNoGpu": null
+              "reasonNoGpu": "GPU backend is available but was not selected"
             },
             "libraries": null
           },
@@ -1452,7 +1452,7 @@
           "gpu": false,
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
-          "reasonNoGpu": null
+          "reasonNoGpu": "GPU backend is available but was not selected"
         },
         "libraries": null
       },
@@ -1940,7 +1940,7 @@
               "gpu": false,
               "devices": [],
               "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
-              "reasonNoGpu": null
+              "reasonNoGpu": "GPU backend is available but was not selected"
             },
             "libraries": null
           },
@@ -2118,7 +2118,7 @@
               "gpu": false,
               "devices": [],
               "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
-              "reasonNoGpu": null
+              "reasonNoGpu": "GPU backend is available but was not selected"
             },
             "libraries": null
           },
@@ -2232,7 +2232,7 @@
           "gpu": false,
           "devices": [],
           "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
-          "reasonNoGpu": null
+          "reasonNoGpu": "GPU backend is available but was not selected"
         },
         "libraries": null
       },

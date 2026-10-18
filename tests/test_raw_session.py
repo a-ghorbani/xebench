@@ -777,6 +777,10 @@ class AcceleratorRecordTests(unittest.TestCase):
         def drop_expected_hash(record):
             record["artifact"]["expectedSha256"] = None
 
+        def report_disagrees(record):
+            record["coldRuns"][0]["observedBackend"]["report"]["devices"] = ["HTP0"]
+            record["coldRuns"][0]["observedBackend"]["status"] = "mismatch"
+
         def keep_only_agreement(record):
             record["correctness"]["probes"] = [probe for probe in record["correctness"]["probes"]
                                                if probe["kind"] == "agreement"]
@@ -834,6 +838,7 @@ class AcceleratorRecordTests(unittest.TestCase):
             ("f8-litert-gpu", reference_passing, "correctness.recomputed"),
             ("hashMismatch-npu", hide_hash_mismatch, "artifact.expected"),
             ("f8-litert-npu", drop_expected_hash, "artifact.expected"),
+            ("f8-llama-opencl", report_disagrees, "backend.inconsistent"),
         )
         for name, change, code in cases:
             with self.subTest(name=name, change=change.__name__):

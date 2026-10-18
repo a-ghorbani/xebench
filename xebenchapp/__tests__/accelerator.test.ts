@@ -111,9 +111,12 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
     },
   };
   // What llama.rn reports after a load, as LlamaRnAdapter.executionReport() returns it.
-  const llamaReport = () => ({gpu: options.gpu ?? run.backend !== 'cpu',
-    devices: options.devices === undefined ? (run.devices ?? (run.backend === 'gpu' ? ['GPUOpenCL'] : [])) :
-      options.devices, androidLib: 'rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl', reasonNoGpu: null});
+  const llamaReport = () => {
+    const gpu = options.gpu ?? run.backend !== 'cpu';
+    return {gpu, devices: options.devices === undefined ? (run.devices ?? (run.backend === 'gpu' ? ['GPUOpenCL'] : [])) :
+      options.devices, androidLib: 'rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl',
+    reasonNoGpu: gpu ? null : 'GPU backend is available but was not selected'};
+  };
   if (run.engine === 'llama.cpp') {
     Object.assign(adapter, {
       effectiveSettings: ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
@@ -125,7 +128,7 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
           patches: [] as []}}),
       executionReport: () => {
         const report = llamaReport();
-        return {gpu: report.gpu, reasonNoGPU: report.gpu ? null : 'GPU backend is available but was not selected',
+        return {gpu: report.gpu, reasonNoGPU: report.reasonNoGpu,
           devices: report.devices, androidLib: report.androidLib,
           systemInfo: 'system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ',
           nativeLibraries: [{name: 'librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so', buildId: 'c'.repeat(40)},
