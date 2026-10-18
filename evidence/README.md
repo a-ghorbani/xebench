@@ -70,6 +70,10 @@ bundle file.
 
 | Bundle | Sessions | Devices | Cited by |
 |---|---|---|---|
+| [`a3ef19fae891…`](a3ef19fae8913867c1e131f53de4327bac4745896ccc85a583e9a17f97078479/) | 5 | POCO F8 Ultra | [cpu-reference-v2 vs v1](../docs/experiments/reference-config-v2.md#result-v1-vs-v2-on-three-phones) |
+| [`0d77346dfff7…`](0d77346dfff7b200512e57b50ce2d569ea33a9361e8467f9a678656701969054/) | 5 | Galaxy S23 | [cpu-reference-v2 vs v1](../docs/experiments/reference-config-v2.md#result-v1-vs-v2-on-three-phones) |
+| [`b5c69a2c8470…`](b5c69a2c8470ca4e9f815d05a050518017e2cfb33a48efff7a23d8fc57385d37/) | 5 | Pixel 9 | [cpu-reference-v2 vs v1](../docs/experiments/reference-config-v2.md#result-v1-vs-v2-on-three-phones) |
+| [`f19f34dbf418…`](f19f34dbf4189b31be348987ffabbb7fdf35bfaa31aeee25e8bdab442c7d5c12/) | 10 | POCO F8 Ultra | [cpu-reference-v2 factor split](../docs/experiments/reference-config-v2.md#result-one-factor-split-on-the-poco-f8-ultra) |
 | [`c5116d95007b…`](c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972/) | 7 | POCO F8 Ultra | [LiteRT accelerators, F8 Ultra](../docs/experiments/litert-accelerators.md#poco-f8-ultra-sm8850-measured-2026-10-17) |
 | [`1890e4b41626…`](1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403/) | 6 | Galaxy S23 | [LiteRT accelerators, Galaxy S23](../docs/experiments/litert-accelerators.md#galaxy-s23-sm8550-measured-2026-10-18) |
 | [`7cd4368bf08f…`](7cd4368bf08f339b78e731c2eed789768de44f736f338ad38f06ee154c3ae478/) | 4 | POCO F8 Ultra | [Legacy Hexagon row check](../docs/experiments/litert-accelerators.md#legacy-hexagon-row-check-poco-f8-ultra-llama-32-1b-2026-10-17) |
