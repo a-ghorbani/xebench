@@ -1,6 +1,6 @@
 # LiteRT-LM on CPU, GPU and NPU next to llama.cpp (accelerator-v1)
 
-Part of [#9](https://github.com/a-ghorbani/xebench/issues/9). Status: **POCO F8 Ultra measured (2026-10-17); Galaxy S23 pending.**
+Part of [#9](https://github.com/a-ghorbani/xebench/issues/9). Status: **POCO F8 Ultra (2026-10-17/18) and Galaxy S23 (2026-10-18) measured.** llama.cpp rows: see the llama.rn 0.13.0-rc.7 re-check, which supersedes the 0.12.4 rows for comparison with what PocketPal ships.
 
 ## Question
 
@@ -162,13 +162,14 @@ The drift fixture `tests/fixtures/raw-session/app-emitted-accelerator.json` is g
 |---|---|---|---|
 | `xebenchapp/configs/f8-gemma3-accelerators-v1.json` | LiteRT cpu, gpu, npu (sm8850); llama.cpp cpu, opencl, hexagon | 10 | 20261017 |
 | `xebenchapp/configs/f8-gemma3-litert-cpu-rerun-v1.json` | LiteRT cpu only, readiness timeout 900 s (rerun after a charging skip, see results) | 10 | 20261020 |
+| `xebenchapp/configs/f8-gemma3-llamacpp-rc7-v1.json` | llama.cpp cpu, opencl, hexagon (rc.7 re-check), readiness timeout 900 s | 10 | 20261022 |
 | `xebenchapp/configs/f8-llama32-hexagon-check-v1.json` | llama.cpp cpu + hexagon on Llama 3.2 1B Q4_K_M (pinned) and Q4_0 (legacy row), `chatTemplate: llama32` | 4 | 20261021 |
 | `xebenchapp/configs/s23-gemma3-accelerators-v1.json` | LiteRT cpu, gpu; llama.cpp cpu, opencl | 10 | 20261018 |
 | `xebenchapp/configs/s23-litert-npu-bugrepro-v1.json` | LiteRT cpu (reference), npu sm8550 (`bug-repro`) | 5 | 20261019 |
 
 The S23 NPU run is in its own configuration so that a native NPU failure cannot cost the main S23
 matrix, and its `bug-repro` purpose makes every one of its sessions invalid for comparison by
-construction. Cooldown 30 s, readiness timeout 300 s, battery-rise bound 2 °C, decode budget 128.
+construction. Cooldown 30 s, readiness timeout 300 s (900 s for the S23 configurations and the reruns), battery-rise bound 2 °C, decode budget 128.
 
 Run a configuration:
 
@@ -257,18 +258,37 @@ Build and evidence identity:
 The 1-repetition smoke runs used the earlier APK `070d0d19…dfc1`, whose only difference is that
 it recorded llama.cpp CPU with GPU devices attached as `mismatch`; they are not part of the results.
 
-### Galaxy S23 (SM8550)
+### Galaxy S23 (SM8550), measured 2026-10-18
 
-| Engine | Backend | Artifact | Prefill tok/s | Decode tok/s | TTFT ms | Load ms | n | Observed backend | Correctness | Comparison | Conditions | Bundle |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| LiteRT-LM | CPU | int4 litertlm | | | | | /10 | | | | | |
-| LiteRT-LM | GPU | int4 litertlm | | | | | /10 | | | | | |
-| llama.cpp | CPU | Q4_0 GGUF | | | | | /10 | | | | | |
-| llama.cpp | OpenCL | Q4_0 GGUF | | | | | /10 | | | | | |
-| LiteRT-LM | NPU (bug reproduction, invalid) | sm8550 q4 ekv1280 | | | | | /5 | | | invalid (bug-repro) | | |
+Same protocol and prompt as the F8 Ultra table. The build is the llama.rn 0.13.0-rc.7 APK
+(see the re-check section below). LiteRT-LM does not depend on llama.rn.
 
-Build identity to record with the results: APK SHA-256, `qairt-libs.json` hashes, artifact
-SHA-256 per model file, evidence bundle SHA-256 per capture.
+| Engine | Backend | Artifact | Prefill tok/s | Decode tok/s | TTFT ms | Load ms | n | Observed backend (gate) | Correctness | Comparison | Conditions |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| LiteRT-LM | CPU (4 threads) | int4 `.litertlm` | 229.8 (1.9) | 37.4 (0.3) | 2015 (17) | 322 (5) | 10/10 | consistent (consistent) | pass (reference) | valid | pass, charging satisfied |
+| LiteRT-LM | GPU | int4 `.litertlm` | 1158.1 (6.0) | 31.0 (0.1) | 908 (6) | 3470 (27) | 10/10 | unknown (unknown) | pass | valid | pass, charging satisfied |
+| llama.cpp 0.13.0-rc.7 | CPU (4 threads) | Q4_0 GGUF (QAT) | 253.1 (0.9) | 22.6 (0.1) | 1818 (35) | 703 (69) | 10/10 | consistent (consistent) | pass (reference) | valid | pass, charging satisfied |
+| llama.cpp 0.13.0-rc.7 | OpenCL | Q4_0 GGUF (QAT) | 64.6 (0.1) | 22.8 (0.1) | 6982 (15) | 3169 (286) | 10/10 | confirmed (confirmed) | pass | valid | pass, charging satisfied |
+| LiteRT-LM | NPU, **bug reproduction** | sm8550 q4 ekv1280 bundle | 3320.1 (26.5) | 63.0 (0.5) | 190 (4) | 388 (7) | 5/5 | unknown (consistent) | **fail** (answer-mismatch) | **invalid** (bug-repro, correctness-fail) | pass, charging satisfied |
+
+The bug-reproduction configuration (`s23-litert-npu-bugrepro-v1`) has its own LiteRT CPU
+reference: 233.9 (2.8) prefill, 38.0 (0.0) decode, 5/5, gate pass.
+
+- **LiteRT-LM#3508 reproduces in the harness.** The SM8550 NPU bundle answers the short probe and
+  the fact-first probe correctly. On fact-last and fact-middle it answers as if the question at
+  the end of the prompt were missing, e.g. "This question requires understanding of workplace
+  etiquette…". That is the pattern of lost prefill chunks after the first. It still reports
+  3320 tok/s prefill and 63 tok/s decode, which is why speed alone cannot be trusted.
+- **LiteRT-LM GPU** prefills 5× faster than LiteRT CPU on the S23, but decodes slower (31.0 vs 37.4).
+- **llama.cpp OpenCL on the S23** loads and runs on rc.7 (the 0.12.4-era hang did not recur), but
+  it is far slower than CPU on prefill (64.6 vs 253.1).
+- The S23 NPU file on the phone is named `Gemma3-1B-IT_sm8550.litertlm`. Its size (690143232
+  bytes) matches `Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm` in the HF `litert-community/Gemma3-1B-IT`
+  tree. SHA-256 `29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af`.
+
+Evidence bundle (main matrix + bug reproduction, 6 sessions, verified):
+`1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403`.
+APK `8f14f0ffba3d4f01ba63fef637ebe829dbc56d49aef7f0fe783c9a4ce6494b25`.
 
 ## Legacy Hexagon row check (POCO F8 Ultra, Llama 3.2 1B, 2026-10-17)
 
@@ -318,6 +338,64 @@ Findings:
   output correctness, or withdraw it, until a Hexagon build passes the gate.
 - Hexagon on Q4_K_M is not faster than CPU (213.6 vs 204.8 prefill, 39.6 vs 47.6 decode),
   consistent with the old note that Q4_K_M largely falls back on the DSP.
+
+## llama.rn 0.13.0-rc.7 re-check (POCO F8 Ultra, 2026-10-18)
+
+The llama.cpp rows above, and the legacy check, were measured with llama.rn 0.12.4, the
+version the harness pinned until now. PocketPal ships llama.rn 0.13.0-rc.7 (npm `latest`,
+2026-10-05). The llama.cpp rows were therefore re-run with rc.7 on the same phone, models,
+prompt and gate. LiteRT-LM rows are unaffected: LiteRT-LM does not use llama.rn.
+
+**Build.** APK `8f14f0ffba3d4f01ba63fef637ebe829dbc56d49aef7f0fe783c9a4ce6494b25` (branch commit
+`a66b65e`). llama.rn rc.7 sets `rnllamaBuildFromSource=true` in its own
+`android/gradle.properties` ("force from-source build until we ship new prebuilts"). Any app on
+rc.7 therefore compiles the core native library from the vendored llama.cpp sources; the npm
+prebuilts predate those sources. Here that was NDK 27.1.12297006, RelWithDebInfo, with the
+Hexagon SDK 6.4.0.2 present. The packaged `librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so` has ELF
+build ID `3b9a94783aa1b08315ecbe2b2d5a8e634421064c`. The DSP-side `libggml-htp-v81.so` is the npm
+prebuilt. Later runs align the toolchain with PocketPal (NDK 27.3.13750724); these runs did not.
+
+### Gemma 3 1B, llama.cpp rows (`f8-gemma3-llamacpp-rc7-v1`, 10 repetitions)
+
+| Backend | 0.12.4 prefill / decode | 0.12.4 gate | rc.7 prefill / decode (IQR) | rc.7 gate | rc.7 comparison |
+|---|---|---|---|---|---|
+| CPU | 394.9 / 50.6 | pass | 381.2 (0.6) / 51.3 (0.1) | pass (reference) | valid |
+| OpenCL | 342.9 / 27.9 | pass | 937.7 (3.2) / 38.1 (0.2) | pass | valid |
+| Hexagon (`HTP0`) | 256.5 / 71.0 | **fail (garbage)** | 1249.7 (19.2) / 24.0 (5.7) | **pass** | valid |
+
+All rc.7 sessions: 10/10, conditions pass, charging satisfied, backend confirmed for OpenCL and
+Hexagon. Bundle `beb9a67ced8709bf195a64d048be0d8529505f5b76e24ee612de2d8867046bd2`.
+
+### Llama 3.2 1B Hexagon check (`f8-llama32-hexagon-check-v1`, 4 repetitions)
+
+| Run | 0.12.4 prefill / decode | 0.12.4 long probes | rc.7 prefill / decode (IQR) | rc.7 answer probes (capital, last, first, middle) | rc.7 comparison |
+|---|---|---|---|---|---|
+| CPU Q4_K_M | 204.8 / 47.6 | pass | 207.2 (0.2) / 47.3 (0.6), n=3/4 | pass, pass, pass, pass | valid (reference) |
+| Hexagon Q4_K_M | 213.6 / 39.6 | **fail** | 4007.2 (43.5) / 57.7 (0.2) | pass, pass, pass, pass | **valid** |
+| CPU Q4_0 | 301.8 / 53.1 | one miss | 304.3 (0.2) / 52.5 (0.3) | pass, fail ("Peanut"), pass, pass | invalid (own gate failed) |
+| Hexagon Q4_0 | 1211.6 / 51.8 | **fail** | 4204.4 (53.8) / 64.2 (1.7) | pass, fail ("Peacock"), pass, pass | unverified (reference failed) |
+
+The rc.7 Q4_K_M CPU reference's fourth repetition was skipped because the battery did not cool
+back to within 2 °C of the baseline in 900 s. Its condition verdict is therefore `fail
+(readiness-timeout)`; the three measured repetitions are kept. Bundle
+`20009fec0a56fe4bcb2b0046a2e160e3fca5c9263de1fef8a364dc62674ca210`.
+
+### What changed
+
+- **llama.cpp Hexagon output is correct on rc.7** for Gemma 3 1B and Llama 3.2 1B Q4_K_M. Every probe
+  agrees with the CPU reference, including the multi-chunk ones. Llama 3.2 Q4_0 misses one probe
+  exactly where the Q4_0 CPU reference also misses it, so that is not a Hexagon fault. The
+  garbage output in the sections above is a property of llama.rn 0.12.4, not of the Hexagon path
+  in general.
+- **rc.7 Hexagon is much faster at prefill** (Llama 3.2: 4007–4204 tok/s against about 200 on CPU).
+  Decode is faster than CPU for Llama 3.2 (57.7–64.2 vs 47.3–52.5) but slower and noisier for
+  Gemma 3 (24.0, IQR 5.7, against 51.3 on CPU).
+- **rc.7 OpenCL** is much faster than 0.12.4 OpenCL on the F8 (937.7 vs 342.9 prefill).
+- **The legacy board row** (Llama 3.2 1B Q4_0, 197.6 / 38.6) matches neither version's Hexagon
+  numbers on today's prompt, and it was never output-checked. It remains unverified. rc.7 is the
+  version to measure going forward.
+- On this build llama.rn's default devices no longer include HTP (Hexagon is opt-in in rc.7), so
+  CPU runs attach only `GPUOpenCL`. Backend evidence for llama.cpp CPU stays `consistent`.
 
 ## Limitations and threats to validity
 
