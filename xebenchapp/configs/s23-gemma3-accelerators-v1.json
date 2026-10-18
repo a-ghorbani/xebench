@@ -3,7 +3,7 @@
   "id": "s23-gemma3-accelerators-v1",
   "nColdRuns": 10,
   "cooldownSec": 30,
-  "readinessTimeoutSec": 300,
+  "readinessTimeoutSec": 900,
   "maxBatteryTempRiseC": 2,
   "maxDecodeTokens": 128,
   "chatTemplate": "gemma3",
