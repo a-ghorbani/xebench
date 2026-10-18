@@ -567,7 +567,11 @@ class FactsFromBundlesTests(unittest.TestCase):
         cpu-reference-v1, named by the SHA-256 of that file's bytes, is a reviewed run. Its effective
         load settings must be the ones the file selects."""
         cases = (("referenceV2", "cpu-reference-v2.json", {"use_mmap": True, "flash_attn_type": "auto"}),
-                 ("referenceV1Staged", "cpu-reference-v1.json", {"use_mmap": False, "flash_attn_type": "off"}))
+                 ("referenceV1Staged", "cpu-reference-v1.json", {"use_mmap": False, "flash_attn_type": "off"}),
+                 # Each of cpu-reference-v3's three runs, from one staged invocation.
+                 ("referenceV3Staged-Q4_K_M", "cpu-reference-v3.json", {"flash_attn_type": "off"}),
+                 ("referenceV3Staged-Q4_0", "cpu-reference-v3.json", {"use_mmap": True}),
+                 ("referenceV3Staged-Q8_0", "cpu-reference-v3.json", {"flash_attn_type": "off"}))
         for index, (name, file, other_settings) in enumerate(cases):
             data = (ROOT / "xebenchapp/configs" / file).read_bytes()
             record = fx.cpu_record(name, f"1767225600000-{index}-anchor")

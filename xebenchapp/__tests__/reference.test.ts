@@ -3,6 +3,7 @@ import {initLlama, LlamaContext} from 'llama.rn';
 import {runReference} from '../src/harness/reference';
 import bundled from '../configs/cpu-reference-v2.json';
 import v1 from '../configs/cpu-reference-v1.json';
+import v3 from '../configs/cpu-reference-v3.json';
 import {seededOrder} from '../src/harness/order';
 import {NativeModules} from 'react-native';
 
@@ -243,6 +244,25 @@ test('a staged cpu-reference-v1 run keeps the harness defaults and its configura
     n_gpu_layers: 0, use_mmap: true, use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto',
     cache_type_k: 'f16', cache_type_v: 'f16'});
   expect(initLlama).toHaveBeenCalledWith(expect.objectContaining({use_mmap: true, flash_attn_type: 'auto'}));
+});
+
+test('a staged cpu-reference-v3 file runs all three quantizations with its load settings', async () => {
+  const staged = {...v3, nColdRuns: 1, cooldownSec: 0};
+  files.set('/fixture/xebench-config.json', JSON.stringify(staged));
+  const shas: Record<string, string> = Object.fromEntries(v3.runs.map(run => [run.modelFile, run.modelSha256]));
+  jest.mocked(FS.hash).mockImplementation(async path => path.endsWith('.gguf') ? shas[path.split('/').pop()!] :
+    createHash('sha256').update(files.get(path)!).digest('hex'));
+  await runReference(() => {});
+  const records = saved();
+  expect(records.map(record => record.quant).sort()).toEqual(['Q4_0', 'Q4_K_M', 'Q8_0']);
+  for (const record of records) {
+    expect(record).toMatchObject({status: 'complete', configuration: staged});
+    expect(record.artifact.expectedSha256).toBe(shas[record.modelFile]);
+    expect(record.effectiveSettings.init).toMatchObject({use_mmap: false, use_mlock: false, no_extra_bufts: false,
+      flash_attn_type: 'auto', n_gpu_layers: 0, n_threads: 4, n_ctx: 2048});
+  }
+  expect(jest.mocked(initLlama).mock.calls.map(([params]) => (params as {model: string}).model.split('/').pop()).sort())
+    .toEqual(v3.runs.map(run => run.modelFile).sort());
 });
 
 test('each configured load setting reaches initLlama on its own', async () => {

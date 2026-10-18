@@ -42,10 +42,12 @@ class AppEmittedRecordTests(unittest.TestCase):
             "chargingTimeout", "chargingUnknown", "inferenceFailedThenProbePending", "monitorStartTimeout",
             "cleanupFailedProbePending", "laterReadinessTimeout", "headroomUnavailable", "monitorStopError",
             "decimatedSamples", "onBattery", "riseOverride", "chargingRecordOnly", "noExpectedHash", "modelHashMismatch",
-            "stagedConfiguration", "buildUnavailable", "executionUnreported", "referenceV2", "referenceV1Staged"})
+            "stagedConfiguration", "buildUnavailable", "executionUnreported", "referenceV2", "referenceV1Staged",
+        "referenceV3Staged-Q4_K_M", "referenceV3Staged-Q4_0", "referenceV3Staged-Q8_0"})
         self.assertEqual(set(V2_FROZEN), set(APP) - {"noExpectedHash", "modelHashMismatch", "stagedConfiguration",
                                                      "buildUnavailable", "executionUnreported", "referenceV2",
-                                                 "referenceV1Staged"})
+                                                 "referenceV1Staged", "referenceV3Staged-Q4_K_M",
+                                                 "referenceV3Staged-Q4_0", "referenceV3Staged-Q8_0"})
         self.assertEqual({r["protocol"]["version"] for r in V2_FROZEN.values()}, {"cpu-reference-v2"})
         self.assertEqual({r["protocol"]["version"] for r in APP.values()}, {"cpu-reference-v3"})
         for records in (APP, LEGACY, V2_FROZEN):

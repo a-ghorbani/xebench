@@ -5,7 +5,10 @@
 The CPU reference configurations
 ([`cpu-reference-v2.json`](xebenchapp/configs/cpu-reference-v2.json), the default, and
 [`cpu-reference-v1.json`](xebenchapp/configs/cpu-reference-v1.json)) run exactly one
-artifact. Its expected values are committed in
+artifact, the Q4_K_M file below.
+[`cpu-reference-v3.json`](xebenchapp/configs/cpu-reference-v3.json) runs it and two more
+quantizations of the same model ([Q4_0 and Q8_0](#q4_0-and-q8_0-cpu-reference-v3)). The
+expected values are committed in
 [`configs/models/reference-models.json`](configs/models/reference-models.json), and
 [`scripts/stage_model.py`](scripts/stage_model.py) enforces them.
 
@@ -30,6 +33,31 @@ SHA-256 and size. The Hugging Face LFS digest of the file is the same at the pin
 revision and at the commit that uploaded it (`9971ce1bbba2f8b55de026a783323a808b3eeedb`,
 2024-09-25). The pinned revision was the repository's `main` when it was pinned. If
 `main` changes later, the pin still names these bytes.
+
+### Q4_0 and Q8_0 (cpu-reference-v3)
+
+cpu-reference-v3 also runs two other quantizations from the same repository, at the same
+pinned revision `067b946cf014b7c697f3654f621d577a3e3afd1c`. The same license and download
+rules apply. Each SHA-256 is the Hugging Face LFS oid at that revision.
+
+| File | Quant | Size | SHA-256 |
+|---|---|---|---|
+| `Llama-3.2-1B-Instruct-Q4_0.gguf` | Q4_0 | 773025920 bytes | `fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8` |
+| `Llama-3.2-1B-Instruct-Q8_0.gguf` | Q8_0 | 1321083008 bytes | `432f310a77f4650a88d0fd59ecdd7cebed8d684bafea53cbff0473542964f0c3` |
+
+The Q4_0 file is the same pin as the legacy-row comparator in
+[`configs/models/experimental-models.json`](configs/models/experimental-models.json) (see
+below). Download and stage each file by name:
+
+```bash
+hf download bartowski/Llama-3.2-1B-Instruct-GGUF Llama-3.2-1B-Instruct-Q8_0.gguf \
+  --revision 067b946cf014b7c697f3654f621d577a3e3afd1c --local-dir models
+python3 scripts/stage_model.py --serial <serial> models/Llama-3.2-1B-Instruct-Q8_0.gguf
+python3 scripts/stage_model.py --model-id llama32-1b-instruct-q8_0 --print-download
+```
+
+`stage_model.py` selects the manifest entry the local file names (or `--model-id`). Without
+either, it stages the Q4_K_M file.
 
 ### License
 
@@ -116,7 +144,8 @@ LiteRT-LM with llama.cpp on Gemma 3 1B. These are not reference models either.
   revision `067b946cf014b7c697f3654f621d577a3e3afd1c`, the same revision as the reference
   Q4_K_M: 773025920 bytes, sha256
   `fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8`, which equals the HF LFS
-  hash at that revision. It is listed in the same manifest.
+  hash at that revision. It is listed in the same manifest, and with the same values in
+  `configs/models/reference-models.json` for cpu-reference-v3.
 - **LiteRT-LM artifacts: bytes pinned, source revision unknown.** The accelerator
   configurations pin each file's SHA-256 as `modelSha256` (a different file is recorded
   unmeasured with `stopReason: model-hash-mismatch`). The Hugging Face source revisions these

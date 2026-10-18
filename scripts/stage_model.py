@@ -78,15 +78,17 @@ def load_manifest(path):
     return models
 
 
-def select(models, model_id=None):
-    if model_id is None:
-        if len(models) != 1:
-            raise StageError('the manifest lists several models; pass --model-id', 2)
-        return models[0]
-    for model in models:
-        if model['id'] == model_id:
-            return model
-    raise StageError(f'unknown model id {model_id!r}; known: {", ".join(m["id"] for m in models)}', 2)
+def select(models, model_id=None, file=None):
+    """The manifest model to stage: by --model-id, else the model whose file the local file
+    names, else the first model listed (in reference-models.json, the reference Q4_K_M; stage()
+    then refuses a local file with another name)."""
+    if model_id is not None:
+        for model in models:
+            if model['id'] == model_id:
+                return model
+        raise StageError(f'unknown model id {model_id!r}; known: {", ".join(m["id"] for m in models)}', 2)
+    named = [model for model in models if file is not None and model['file'] == Path(file).name]
+    return named[0] if len(named) == 1 else models[0]
 
 
 def download_url(model):
@@ -212,14 +214,15 @@ def main(argv=None):
     parser.add_argument('file', nargs='?', type=Path,
                         help='local model file (default: models/<manifest file> in the repository)')
     parser.add_argument('-s', '--serial', help='adb device serial (required unless --print-download)')
-    parser.add_argument('--model-id', help='manifest model id (default: the only model listed)')
+    parser.add_argument('--model-id', help='manifest model id (default: the model whose file the local file names, '
+                        'else the first model listed)')
     parser.add_argument('--manifest', type=Path, default=MANIFEST, help='model manifest (default: %(default)s)')
     parser.add_argument('--adb', default='adb', help='adb executable (default: %(default)s)')
     parser.add_argument('--print-download', action='store_true',
                         help='print the download command for the pinned revision and exit')
     args = parser.parse_args(argv)
     try:
-        model = select(load_manifest(args.manifest), args.model_id)
+        model = select(load_manifest(args.manifest), args.model_id, args.file)
         if args.print_download:
             print(download_help(model))
             return 0

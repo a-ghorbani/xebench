@@ -11,6 +11,7 @@ import {ReferenceSession, runSession, SessionContext, unmeasuredSession} from '.
 import {parseConfig} from '../src/harness/config';
 import configData from '../configs/cpu-reference-v2.json';
 import v1Data from '../configs/cpu-reference-v1.json';
+import v3Data from '../configs/cpu-reference-v3.json';
 import type {SingleRunMetrics} from '../src/harness/types';
 import * as conditions from '../src/harness/conditions';
 import {ORDER_METHOD, seededOrder} from '../src/harness/order';
@@ -278,6 +279,24 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
   }};
   records.referenceV1Staged = (await capture(persist => runSession(v1Engine, v1, v1.runs[0],
     {...identity, configurationSource: {kind: 'staged', sha256: 'f'.repeat(64)}}, persist, noSleep, context()))).pop()!;
+  // A staged cpu-reference-v3 invocation: each of its three runs (Q4_K_M, Q4_0, Q8_0) with its
+  // own pinned model bytes, the v3 load settings and the seeded run order the app records.
+  const v3 = parseConfig(v3Data);
+  const v3Order = seededOrder(v3.runs, 7).map(run => run.id);
+  const sizes: Record<string, number> = {'Q4_K_M': 807694464, 'Q4_0': 773025920, 'Q8_0': 1321083008};
+  for (const run of v3.runs) {
+    const engine = {...adapter(), modelLabel: run.model, quantLabel: run.quant, modelFile: run.modelFile,
+      effectiveSettings: (request: {maxDecodeTokens: number}) => {
+        const settings = effective(request);
+        return {...settings, init: {...settings.init, use_mmap: false, flash_attn_type: 'auto' as const}};
+      }};
+    const v3RunOrder = {method: ORDER_METHOD, seed: 7, seedSource: 'generated' as const, order: v3Order,
+      position: v3Order.indexOf(run.id)};
+    records[`referenceV3Staged-${run.quant}`] = (await capture(persist => runSession(engine, v3, run,
+      {...identity, artifact: {sha256: run.modelSha256!, sizeBytes: sizes[run.quant]},
+        configurationSource: {kind: 'staged', sha256: 'f'.repeat(64)}}, persist, noSleep,
+      context({runOrder: v3RunOrder})))).pop()!;
+  }
   const silent: Partial<ReturnType<typeof adapter>> = adapter();
   delete silent.executionReport;
   records.executionUnreported = await single(silent as ReturnType<typeof adapter>);
@@ -312,7 +331,12 @@ test('runSession records match the committed fixture validated by the host schem
     noExpectedHash: 'complete/null/pass', modelHashMismatch: 'failed/model-hash-mismatch/unverified',
     stagedConfiguration: 'complete/null/pass', buildUnavailable: 'complete/null/pass',
     executionUnreported: 'complete/null/pass', chargingRecordOnly: 'complete/null/pass',
-    referenceV2: 'complete/null/pass', referenceV1Staged: 'complete/null/pass'});
+    referenceV2: 'complete/null/pass', referenceV1Staged: 'complete/null/pass',
+    'referenceV3Staged-Q4_K_M': 'complete/null/pass', 'referenceV3Staged-Q4_0': 'complete/null/pass',
+    'referenceV3Staged-Q8_0': 'complete/null/pass'});
+  for (const quant of ['Q4_K_M', 'Q4_0', 'Q8_0']) {
+    expect(records[`referenceV3Staged-${quant}`].configuration).toEqual(v3Data);
+  }
   expect(records.referenceV2.configuration).toEqual(configData);
   expect(records.referenceV1Staged.configuration).toEqual(v1Data);
   expect(records.modelHashMismatch.artifact).toEqual({...MODEL, expectedSha256: 'c'.repeat(64)});
