@@ -11,8 +11,8 @@
  * xebenchapp/package-lock.json when this row was measured (the July build's own
  * version was not recorded), found llama.cpp's Hexagon output wrong on every tested
  * prompt longer than about 128 tokens; this row used a ~512-token prompt. This says
- * nothing about other llama.rn versions; a later re-check with llama.rn
- * 0.13.0-rc.7 on the same phone gave correct output for Llama 3.2 1B, so the row
+ * nothing about other llama.rn versions. A separate re-check with llama.rn
+ * 0.13.0-rc.7 on the same phone gave correct output for Llama 3.2 1B. The row
  * stays failed until a new measurement replaces it. Source: "Legacy Hexagon row check" in
  * docs/experiments/litert-accelerators.md at a85f28659da8459744ae7a871373abc07f29301a
  * (branch feat/litert-accelerators).
@@ -40,8 +40,9 @@ export const CORRECTION_NOTE =
   'Marked failed 2026-10-17: a re-check on this phone with llama.rn 0.12.4 (the version locked in our ' +
   'harness when this row was measured) found llama.cpp Hexagon output wrong on every tested prompt longer ' +
   'than ~128 tokens; this row used a ~512-token prompt and had no output check, so its speed cannot be ' +
-  'taken as correct inference. A re-check with llama.rn 0.13.0-rc.7 on this phone passed (Q4_K_M; Q4_0 ' +
-  'matched its CPU reference); a new measurement will replace this row.';
+  'taken as correct inference. A re-check with llama.rn 0.13.0-rc.7 on this phone gave correct output for ' +
+  'Llama 3.2 1B (Q4_K_M passed; Q4_0 passed the same probes as its CPU reference, gate unverified); a new ' +
+  'measurement will replace this row.';
 export const CORRECTED_AS_STATED = `${ORIGINAL_AS_STATED}; ${CORRECTION_NOTE}`;
 
 const args = process.argv.slice(2);
