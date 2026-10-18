@@ -23,12 +23,11 @@ IDENTITY = {'engine': 'llama.cpp', 'backend': 'npu', 'platform': 'android', 'dev
             'soc': 'SM8850', 'model': 'Llama 3.2 1B', 'quant': 'Q4_0', 'provenance': 'measured'}
 PUBLISHED = {'ppTps': 197.6, 'tgTps': 38.6, 'ttftMs': 2396, 'sampleCount': 3}
 ORIGINAL_AS_STATED = 'n=3 cold-run median; prompt std-pp512-v1; decode 128 tok'
-NOTE = ('Marked failed 2026-10-17: a re-check on this phone with llama.rn 0.12.4 (the version locked in our '
-        'harness when this row was measured) found llama.cpp Hexagon output wrong on every tested prompt longer '
-        'than ~128 tokens; this row used a ~512-token prompt and had no output check, so its speed cannot be '
-        'taken as correct inference. A re-check with llama.rn 0.13.0-rc.7 on this phone gave correct output for '
-        'Llama 3.2 1B (Q4_K_M passed; Q4_0 passed the same probes as its CPU reference, gate unverified). The '
-        'next measurement will be a separate Q4_K_M row (the pinned reference model); this Q4_0 row stays failed.')
+NOTE = ('Marked failed 2026-10-17. With llama.rn 0.12.4 (locked in our harness when this row was measured), '
+        'llama.cpp Hexagon output on this phone is wrong for every tested prompt longer than ~128 tokens; this '
+        'row used a ~512-token prompt and has no output check, so its speed does not represent correct '
+        'inference. With llama.rn 0.13.0-rc.7 the Llama 3.2 1B output is correct (Q4_K_M passes; Q4_0 passes '
+        'the same probes as its CPU reference, gate unverified). Successor: a separate Q4_K_M row.')
 CORRECTED_AS_STATED = f'{ORIGINAL_AS_STATED}; {NOTE}'
 
 

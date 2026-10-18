@@ -15,7 +15,8 @@
  * 0.13.0-rc.7 on the same phone gave correct output for Llama 3.2 1B. The row
  * stays failed; the next measurement will be a separate Q4_K_M row (the pinned reference
  * model). Source: "Legacy Hexagon row check" in
- * docs/experiments/litert-accelerators.md (on main since aab0721).
+ * docs/experiments/litert-accelerators.md (on main since aab0721); log entry in
+ * docs/CORRECTIONS.md.
  *
  * The correction sets that row's validation to "failed" and appends CORRECTION_NOTE
  * to its asStated. Its numbers stay as published (history is preserved); every
@@ -37,12 +38,11 @@ export const ROW_IDENTITY = Object.freeze({
 export const PUBLISHED_VALUES = Object.freeze({ ppTps: 197.6, tgTps: 38.6, ttftMs: 2396, sampleCount: 3 });
 export const ORIGINAL_AS_STATED = 'n=3 cold-run median; prompt std-pp512-v1; decode 128 tok';
 export const CORRECTION_NOTE =
-  'Marked failed 2026-10-17: a re-check on this phone with llama.rn 0.12.4 (the version locked in our ' +
-  'harness when this row was measured) found llama.cpp Hexagon output wrong on every tested prompt longer ' +
-  'than ~128 tokens; this row used a ~512-token prompt and had no output check, so its speed cannot be ' +
-  'taken as correct inference. A re-check with llama.rn 0.13.0-rc.7 on this phone gave correct output for ' +
-  'Llama 3.2 1B (Q4_K_M passed; Q4_0 passed the same probes as its CPU reference, gate unverified). The ' +
-  'next measurement will be a separate Q4_K_M row (the pinned reference model); this Q4_0 row stays failed.';
+  'Marked failed 2026-10-17. With llama.rn 0.12.4 (locked in our harness when this row was measured), ' +
+  'llama.cpp Hexagon output on this phone is wrong for every tested prompt longer than ~128 tokens; this ' +
+  'row used a ~512-token prompt and has no output check, so its speed does not represent correct ' +
+  'inference. With llama.rn 0.13.0-rc.7 the Llama 3.2 1B output is correct (Q4_K_M passes; Q4_0 passes ' +
+  'the same probes as its CPU reference, gate unverified). Successor: a separate Q4_K_M row.';
 export const CORRECTED_AS_STATED = `${ORIGINAL_AS_STATED}; ${CORRECTION_NOTE}`;
 
 const args = process.argv.slice(2);

@@ -388,7 +388,7 @@ Findings:
   The legacy figures are close to today's **Q4_K_M** Hexagon row (213.6 / 39.6), whose output is
   wrong. Whether the July build produced correct output cannot be established from the record.
   The board row is therefore marked `validation: "failed"` in `data/benchmarks.json`, with its
-  numbers kept for the record; see the finding [`llama-cpp-hexagon-output-0-12-4`](../../data/findings.json).
+  numbers kept for the record; see the finding [`llama-cpp-hexagon-output`](../../data/findings.json).
 - Hexagon on Q4_K_M is barely faster than CPU at prefill (213.6 vs 204.8) and slower at decode
   (39.6 vs 47.6),
   consistent with the old note that Q4_K_M largely falls back on the DSP.
@@ -448,7 +448,7 @@ back to within 2 °C of the baseline in 900 s. Its condition verdict is therefor
 - **rc.7 OpenCL** is much faster than 0.12.4 OpenCL on the F8 (937.7 vs 342.9 prefill).
 - **The legacy board row** (Llama 3.2 1B Q4_0, 197.6 / 38.6) matches neither version's Hexagon
   numbers on today's prompt, and it was never output-checked. It stays marked `failed` on the
-  board (finding [`llama-cpp-hexagon-output-0-12-4`](../../data/findings.json)). rc.7 is the version to measure going forward.
+  board (finding [`llama-cpp-hexagon-output`](../../data/findings.json)). rc.7 is the version to measure going forward.
 - As on 0.12.4, the recorded llama.cpp CPU runs attach only `GPUOpenCL`. Backend evidence for
   llama.cpp CPU stays `consistent`.
 
