@@ -31,12 +31,13 @@ export const ACCELERATOR_UNMEASURED_NOTES = {
   'setup-failed': 'Not run: the model artifact could not be read',
   'engine-unavailable': 'Not run: the engine is not linked in this build',
   'gate-cleanup-failed': 'Not run: the correctness gate could not release the engine',
+  'model-hash-mismatch': 'Not run: the model artifact does not match the configured SHA-256',
 } as const;
 export type UnmeasuredReason = keyof typeof ACCELERATOR_UNMEASURED_NOTES;
 
 export interface AcceleratorSession extends Omit<SessionIdentity, 'artifact'> {
-  /** Bytes hashed before measurement; accelerator configurations name no expected hash (null). */
-  artifact: {sha256: string; sizeBytes: number; expectedSha256: null} | null;
+  /** Bytes hashed before measurement, and the configured run's modelSha256 (null if none). */
+  artifact: {sha256: string; sizeBytes: number; expectedSha256: string | null} | null;
   schema: 'xebench-raw';
   schemaVersion: 1;
   harnessVersion: 'xebench-0.8-accelerator';
@@ -121,7 +122,7 @@ export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' |
   config: AcceleratorConfig, run: AcceleratorRun, identity: SessionIdentity, runOrder: RunOrder | null,
   gate: SessionGate): AcceleratorSession {
   const record: AcceleratorSession = {
-    ...identity, artifact: identity.artifact && {...identity.artifact, expectedSha256: null},
+    ...identity, artifact: identity.artifact && {...identity.artifact, expectedSha256: run.modelSha256 ?? null},
     schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.8-accelerator',
     effectiveSettings: adapter?.effectiveSettings ? adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens}) :
       null,
@@ -156,7 +157,9 @@ export function unmeasuredAcceleratorSession(adapter: Pick<EngineAdapter, 'engin
   // Without a session artifact there is nothing to compare the reference artifact with.
   const reference = gate.correctness.reference;
   const correctness = reference ? {...gate.correctness, reference: {...reference, sameArtifact: null}} : gate.correctness;
-  const record = createAcceleratorSession(adapter, config, run, {...identity, artifact: null}, runOrder,
+  // A hash mismatch keeps the bytes it hashed, so the record shows what was found.
+  const record = createAcceleratorSession(adapter, config, run,
+    {...identity, artifact: stopReason === 'model-hash-mismatch' ? identity.artifact : null}, runOrder,
     {...gate, correctness});
   record.status = 'failed';
   record.stopReason = stopReason;
@@ -218,6 +221,9 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
     }
     return artifacts.get(run.modelFile)!;
   };
+  /** A configured modelSha256 that the staged file does not match: never gated or measured. */
+  const mismatched = (run: AcceleratorRun, artifact: {sha256: string}) =>
+    run.modelSha256 !== undefined && artifact.sha256 !== run.modelSha256;
   const adapterOf = (run: AcceleratorRun) => {
     try {
       return io.adapter(run);
@@ -249,7 +255,8 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
   // References first, in configuration order, so every candidate can be compared.
   for (const run of config.runs.filter(item => item.backend === 'cpu')) {
     const adapter = adapterOf(run);
-    if (!adapter || !(await artifactOf(run))) continue;
+    const hashed = adapter ? await artifactOf(run) : null;
+    if (!adapter || !hashed || mismatched(run, hashed)) continue;
     const outcome = await gate(adapter, run, undefined, artifacts.get(run.modelFile)!);
     gates.set(run.id, outcome);
     io.log(`${run.id}: reference gate ${outcome.correctness.status}`);
@@ -264,8 +271,10 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
     const persist = io.persister(run, identity);
     const runOrder = runOrderFor(run, position);
     const adapter = adapterOf(run);
-    const recordUnmeasured = async (reason: UnmeasuredReason, decided?: SessionGate) => {
-      await persist(unmeasuredAcceleratorSession(adapter, config, run, identity, runOrder, reason, decided));
+    const recordUnmeasured = async (reason: UnmeasuredReason, decided?: SessionGate,
+      hashed: SessionIdentity['artifact'] = null) => {
+      await persist(unmeasuredAcceleratorSession(adapter, config, run, {...identity, artifact: hashed}, runOrder, reason,
+        decided));
       console.log(`XEBENCH_ERROR ${run.id}: ${reason}`);
     };
     const earlier = gates.get(run.id);
@@ -286,6 +295,10 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
       const artifact = await artifactOf(run);
       if (!artifact) {
         await recordUnmeasured('setup-failed');
+        continue;
+      }
+      if (mismatched(run, artifact)) {
+        await recordUnmeasured('model-hash-mismatch', undefined, artifact);
         continue;
       }
       let outcome = gates.get(run.id);

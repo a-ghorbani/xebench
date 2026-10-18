@@ -19,7 +19,8 @@
       "quant": "int4 (litertlm)",
       "nThreads": 4,
       "nCtx": null,
-      "referenceRunId": null
+      "referenceRunId": null,
+      "modelSha256": "1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be"
     }
   ]
 }

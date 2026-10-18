@@ -20,7 +20,8 @@
       "nThreads": 4,
       "nCtx": 2048,
       "nGpuLayers": 0,
-      "referenceRunId": null
+      "referenceRunId": null,
+      "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
     },
     {
       "id": "llama32-q4km-hexagon",
@@ -36,7 +37,8 @@
       "devices": [
         "HTP0"
       ],
-      "referenceRunId": "llama32-q4km-cpu"
+      "referenceRunId": "llama32-q4km-cpu",
+      "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
     },
     {
       "id": "llama32-q40-cpu",
@@ -49,7 +51,8 @@
       "nThreads": 4,
       "nCtx": 2048,
       "nGpuLayers": 0,
-      "referenceRunId": null
+      "referenceRunId": null,
+      "modelSha256": "fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8"
     },
     {
       "id": "llama32-q40-hexagon",
@@ -65,7 +68,8 @@
       "devices": [
         "HTP0"
       ],
-      "referenceRunId": "llama32-q40-cpu"
+      "referenceRunId": "llama32-q40-cpu",
+      "modelSha256": "fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8"
     }
   ]
 }

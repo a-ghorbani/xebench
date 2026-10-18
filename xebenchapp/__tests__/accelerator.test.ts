@@ -136,8 +136,9 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
   return adapter;
 }
 
-const SHA = (run: AcceleratorRun) => run.modelFile.startsWith('Gemma3') ? 'b'.repeat(64) :
-  run.modelFile.endsWith('.gguf') ? 'c'.repeat(64) : 'd'.repeat(64);
+/** The staged bytes match the configured pin unless a test says otherwise. */
+const SHA = (run: AcceleratorRun) => run.modelSha256 ?? (run.modelFile.startsWith('Gemma3') ? 'b'.repeat(64) :
+  run.modelFile.endsWith('.gguf') ? 'c'.repeat(64) : 'd'.repeat(64));
 
 async function runConfiguration(config: AcceleratorConfig, options: Record<string, FakeOptions> = {},
   extra: Partial<AcceleratorIO> = {}) {
@@ -192,6 +193,10 @@ test('versioned matrix configurations parse and pair every accelerator with a CP
     'npu<-llama32-q4km-cpu', 'cpu<-null', 'npu<-llama32-q40-cpu']);
   // The parsed configuration is exactly what is echoed into records.
   expect(f8).toEqual(f8Config);
+  // Every committed accelerator run pins its model bytes.
+  for (const config of [f8, s23, bug, parseAcceleratorConfig(llamaHexagonConfig)]) {
+    for (const run of config.runs) expect(run.modelSha256).toMatch(/^[0-9a-f]{64}$/);
+  }
 });
 
 test.each([
@@ -210,6 +215,7 @@ test.each([
   [{runs: [{...f8Config.runs[0], purpose: 'demo'}]}],
   [{runs: [{...f8Config.runs[0], modelFile: '../escape.litertlm'}]}],
   [{runs: [{...f8Config.runs[0], extra: 1}]}],
+  [{runs: [{...f8Config.runs[0], modelSha256: 'ABC'}]}],
 ])('invalid accelerator configuration %j is rejected', change => {
   const input = JSON.parse(JSON.stringify({...f8Config, ...change}));
   expect(() => parseAcceleratorConfig(input)).toThrow();
@@ -347,6 +353,12 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
   expect(leakingCandidate.error).not.toBeNull();
   out['gateCleanupFailedCandidate-npu'] = leakingCandidate.records['litert-npu-sm8550'];
 
+  // The staged NPU bundle is not the pinned file: recorded unmeasured with the bytes it found.
+  const wrong = await runConfiguration(small(f8, 1), {}, {
+    artifact: async run => ({sha256: run.id === 'litert-npu' ? 'e'.repeat(64) : SHA(run), sizeBytes: 600000000}),
+  });
+  out['hashMismatch-npu'] = wrong.records['litert-npu'];
+
   const run = bug.runs[1];
   out['setupFailed-npu'] = unmeasuredAcceleratorSession(fake(run), small(bug), run,
     {runId: '1767225600000-99-accel', timestampIso: '2026-01-01T00:00:00.000Z',
@@ -375,7 +387,11 @@ test('accelerator records match the committed fixture validated by the host sche
     'gateCleanupFailedCandidate-npu': 'failed/gate-cleanup-failed/unverified/invalid/null/consistent',
     'configurationAborted-npu': 'failed/configuration-aborted/unverified/invalid/null/null',
     'setupFailed-npu': 'failed/setup-failed/unverified/invalid/null/null',
+    'hashMismatch-npu': 'failed/model-hash-mismatch/unverified/unverified/null/null',
   });
+  expect(records['hashMismatch-npu'].artifact).toEqual({sha256: 'e'.repeat(64), sizeBytes: 600000000,
+    expectedSha256: 'fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f'});
+  expect(records['f8-litert-npu'].artifact!.expectedSha256).toBe(records['f8-litert-npu'].artifact!.sha256);
   for (const record of Object.values(records)) {
     const keys = Object.keys(record);
     expect(keys.filter(key => !(key in SESSION.properties))).toEqual([]);

@@ -1194,7 +1194,8 @@ def _correctness_accelerator(record, run, runs):
                                               else identity["artifactSha256"] == record["artifact"]["sha256"]):
             errors.append(reason("correctness.inconsistent", f"{where}/reference/sameArtifact",
                                  "sameArtifact must compare the reference and session artifact hashes"))
-    if not probes and stop not in ("configuration-aborted", "setup-failed", "engine-unavailable"):
+    if not probes and stop not in ("configuration-aborted", "setup-failed", "engine-unavailable",
+                                   "model-hash-mismatch"):
         errors.append(reason("correctness.inconsistent", f"{where}/probes",
                              "Only a run recorded without measurement may lack a correctness gate"))
     errors += probe_set_errors(probes, protocol["maxDecodeTokens"], lambda probe: text_sha256(probe["prompt"]), where)

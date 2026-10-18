@@ -1169,7 +1169,11 @@
           "maxItems": 4,
           "items": {"type": "string", "pattern": "^[A-Za-z0-9]{1,32}$"}
         },
-        "referenceRunId": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/label"}]}
+        "referenceRunId": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/label"}]},
+        "modelSha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "Expected SHA-256 of modelFile; a different file is recorded unmeasured with stopReason model-hash-mismatch."
+        }
       }
     },
     "configurationV2": {

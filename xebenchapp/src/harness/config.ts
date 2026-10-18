@@ -143,6 +143,8 @@ export interface AcceleratorRun {
   devices?: string[];
   /** The CPU run of the same engine whose gate outputs this run is checked against. */
   referenceRunId: string | null;
+  /** Expected SHA-256 of modelFile; a mismatch is recorded unmeasured (model-hash-mismatch). */
+  modelSha256?: string;
 }
 
 export interface AcceleratorConfig {
@@ -177,7 +179,7 @@ function nullableInteger(value: unknown, low: number, high: number): number | nu
 
 function acceleratorRun(item: unknown): AcceleratorRun {
   const run = object(item);
-  fields(run, [...RUN_FIELDS, 'nGpuLayers', 'devices']);
+  fields(run, [...RUN_FIELDS, 'nGpuLayers', 'devices', 'modelSha256']);
   if (RUN_FIELDS.some(key => !(key in run))) {
     throw new Error('Every accelerator run field is required');
   }
@@ -194,6 +196,12 @@ function acceleratorRun(item: unknown): AcceleratorRun {
     nThreads: nullableInteger(run.nThreads, 1, 32), nCtx: nullableInteger(run.nCtx, 1024, 32768),
     referenceRunId: run.referenceRunId === null ? null : label(run.referenceRunId),
   };
+  if (run.modelSha256 !== undefined) {
+    if (typeof run.modelSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(run.modelSha256)) {
+      throw new Error('modelSha256 must be 64 lowercase hex characters');
+    }
+    result.modelSha256 = run.modelSha256;
+  }
   if (engine === 'llama.cpp') {
     if (result.nThreads === null || result.nCtx === null) {
       throw new Error('llama.cpp runs need nThreads and nCtx');

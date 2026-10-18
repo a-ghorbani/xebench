@@ -19,7 +19,8 @@
       "quant": "int4 (litertlm)",
       "nThreads": 4,
       "nCtx": null,
-      "referenceRunId": null
+      "referenceRunId": null,
+      "modelSha256": "1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be"
     },
     {
       "id": "litert-gpu",
@@ -31,7 +32,8 @@
       "quant": "int4 (litertlm)",
       "nThreads": null,
       "nCtx": null,
-      "referenceRunId": "litert-cpu"
+      "referenceRunId": "litert-cpu",
+      "modelSha256": "1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be"
     },
     {
       "id": "llama-cpu",
@@ -44,7 +46,8 @@
       "nThreads": 4,
       "nCtx": 2048,
       "nGpuLayers": 0,
-      "referenceRunId": null
+      "referenceRunId": null,
+      "modelSha256": "95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a"
     },
     {
       "id": "llama-opencl",
@@ -57,7 +60,8 @@
       "nThreads": 4,
       "nCtx": 2048,
       "nGpuLayers": 99,
-      "referenceRunId": "llama-cpu"
+      "referenceRunId": "llama-cpu",
+      "modelSha256": "95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a"
     }
   ]
 }

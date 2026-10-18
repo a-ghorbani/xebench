@@ -19,7 +19,8 @@
       "quant": "int4 (litertlm)",
       "nThreads": 4,
       "nCtx": null,
-      "referenceRunId": null
+      "referenceRunId": null,
+      "modelSha256": "1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be"
     },
     {
       "id": "litert-npu-sm8550",
@@ -31,7 +32,8 @@
       "quant": "q4 ekv1280 (sm8550 NPU bundle)",
       "nThreads": null,
       "nCtx": null,
-      "referenceRunId": "litert-cpu"
+      "referenceRunId": "litert-cpu",
+      "modelSha256": "29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af"
     }
   ]
 }
