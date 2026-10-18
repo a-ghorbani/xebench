@@ -91,8 +91,8 @@ the engine or process reported, and a status derived by fixed rules (`backend.ts
 
 | Status | Meaning |
 |---|---|
-| `confirmed` | The engine reported executing on the requested backend. llama.rn reports its context `gpu` flag and used devices (`HTP0` for Hexagon). For a CPU run, `gpu: false`. |
-| `consistent` | Indirect evidence only. LiteRT-LM does not report its executing backend, so the record lists the accelerator libraries mapped in the process before and after engine creation (`/proc/self/maps`). NPU and GPU count only when that engine creation **newly** loaded `libLiteRtDispatch_Qualcomm.so` or `libOpenCL.so`; CPU counts when it loaded neither. A loaded runtime is not proof of execution. Also used for a llama.cpp CPU run (`nGpuLayers` 0) that reports `gpu: true`: on a build with OpenCL/Hexagon, llama.rn attaches the GPU devices to the model even when no layer is offloaded (seen on the F8 Ultra: `GPUOpenCL`, `HTP0`–`HTP5`), and neither backend implements op offload, so nothing indicates GPU execution but the report cannot prove CPU-only either. |
+| `confirmed` | The engine itself reported the requested backend: llama.rn's context `gpu` flag and the devices it placed the model on (`HTP0` for Hexagon). This is the engine's own report, not an independent measurement of where each operation ran. For a CPU run, `gpu: false`. |
+| `consistent` | Indirect evidence only. LiteRT-LM does not report its executing backend, so the record lists the accelerator libraries mapped in the process before and after engine creation (`/proc/self/maps`). NPU and GPU count only when that engine creation **newly** loaded `libLiteRtDispatch_Qualcomm.so` or `libOpenCL.so`; CPU counts when it loaded neither. A loaded runtime is not proof of execution. Also used for a llama.cpp CPU run (`nGpuLayers` 0) that reports `gpu: true`; see "Why a llama.cpp CPU run with `gpu: true` is `consistent`" below. |
 | `mismatch` | The engine reported a different backend (for example llama.rn `gpu: false` on an OpenCL run). |
 | `unknown` | No usable evidence. Unknown stays unknown. |
 
@@ -105,6 +105,31 @@ earlier run already mapped the library (for example llama.rn's OpenCL variant ma
 so a reader sees why. Sessions keep the note "Actual backend execution has not been verified"
 unless every repetition is `confirmed`, so LiteRT rows always carry it. An engine-reported
 `mismatch` (in the repetitions or the gate) makes the session invalid for comparison.
+
+#### Why a llama.cpp CPU run with `gpu: true` is `consistent`
+
+llama.rn's `gpu` flag is true when a GPU-type device is in the model's device list
+(`RNLlamaJSI.cpp`, `model->devices`), not when layers run there. With no devices requested,
+llama.cpp adds every GPU-type backend device by default, even at `n_gpu_layers: 0`. On the F8
+Ultra a CPU run therefore reports `gpu: true` with `GPUOpenCL` (and `HTP0`–`HTP5` on llama.rn
+0.12.4, where Hexagon was not yet opt-in). Such a device could still execute work only through
+ggml's op offload (the scheduler copying a large batch's CPU-resident op to a GPU backend). That
+requires the backend's `offload_op` callback, and both backends leave it `NULL`:
+`ggml-opencl.cpp` (`/* .offload_op = */ NULL`) and `ggml-hexagon.cpp`
+(`/* .offload_op = */ NULL, // ggml_backend_hexagon_device_offload_op`), in the llama.cpp
+vendored by llama.rn 0.12.4 and by 0.13.0-rc.7. With zero offloaded layers and no op offload, no
+graph node can be placed on those devices. The report still does not prove CPU-only execution, so
+the status is `consistent`, not `confirmed`.
+
+The rule cannot relabel a real GPU or NPU run. It applies only when the requested backend is
+`cpu`, which the configuration ties to `nGpuLayers: 0` and no `devices` (`config.ts`, re-checked
+by the validator against `effectiveSettings.init`). For requested `gpu`/`npu` runs
+(`nGpuLayers > 0`), `gpu: false` is `mismatch`, and `gpu: true` is `confirmed` only when the used
+devices match the request (no `HTP` device for `gpu`, only `HTP` devices for `npu`). Any other
+non-empty device list is `mismatch`, and a missing or empty list with `gpu: true` is only
+`consistent`. A CPU run's status is at most `confirmed` for CPU (`gpu: false`) or
+`consistent`; it is never reported as a GPU or NPU run. In the measurements the two are also
+distinguishable by speed: rc.7 OpenCL prefills Gemma 3 at 937.7 tok/s against 381.2 on CPU.
 
 ### 3. Output-correctness gate (output-gate-v1)
 
@@ -214,28 +239,35 @@ recorded condition verdict and charging eligibility.
 
 ### POCO F8 Ultra (SM8850), measured 2026-10-17
 
+**Build:** APK `3954b387…` (commit `501bd03`), llama.rn **0.12.4**, native code built with NDK
+27.1.12297006 (RelWithDebInfo). The llama.cpp rows in this table are superseded by the llama.rn
+0.13.0-rc.7 re-check below; the LiteRT-LM rows do not depend on llama.rn.
+
 Medians, IQR in parentheses, over successful repetitions; `n` is successful/planned. Every row ran
 the same prompt (447 prompt tokens on LiteRT-LM, 448 on llama.cpp: the BOS difference), greedy,
 up to 128 decode tokens. Conditions: run-conditions-v2 verdict and charging-policy-v3 eligibility.
 
 | Engine | Backend | Artifact | Prefill tok/s | Decode tok/s | TTFT ms | Load ms | n | Observed backend (gate) | Correctness | Comparison | Conditions |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| LiteRT-LM | CPU (4 threads) | int4 `.litertlm` | 675.9 (12.7) | 47.3 (0.3) | 723 (11) | 323 (7) | 10/10 | consistent (consistent) | pass (reference) | valid | pass, charging satisfied |
+| LiteRT-LM | CPU (4 threads) † | int4 `.litertlm` | 675.9 (12.7) | 47.3 (0.3) | 723 (11) | 323 (7) | 10/10 | consistent (consistent) | pass (reference) | valid | pass, charging satisfied |
 | LiteRT-LM | GPU | int4 `.litertlm` | 1976.3 (29.2) | 41.1 (0.1) | 655 (6) | 2301 (11) | 10/10 | unknown (unknown) | pass | valid | pass, charging satisfied |
 | LiteRT-LM | NPU | sm8850 q4 ekv1280 bundle | 5320.0 (125.6) | 65.0 (0.6) | 145 (5) | 399 (7) | 10/10 | unknown (consistent) | pass | valid | pass, charging satisfied |
 | llama.cpp | CPU (4 threads) | Q4_0 GGUF (QAT) | 394.9 (7.4) | 50.6 (0.9) | 1140 (22) | 551 (18) | 10/10 | consistent (consistent) | pass (reference) | valid | pass, charging satisfied |
 | llama.cpp | OpenCL | Q4_0 GGUF (QAT) | 342.9 (1.6) | 27.9 (0.1) | 1316 (9) | 1476 (41) | 10/10 | confirmed (confirmed) | pass | valid | pass, charging satisfied |
 | llama.cpp | Hexagon (`HTP0`) | Q4_0 GGUF (QAT) | 256.5 (0.2) | 71.0 (1.4) | 1761 (4) | 552 (5) | 10/10 | confirmed (confirmed) | **fail** (answer-mismatch) | **invalid** | pass, charging satisfied |
 
+† Separate invocation (`f8-gemma3-litert-cpu-rerun-v1`); see the notes below.
+
 What the rows show, within their limits:
 
 - **LiteRT-LM NPU** is the fastest path measured here on both prefill (5320 tok/s, about 8× LiteRT
   CPU) and decode (65 tok/s), and its output passed every gate probe, including the three that span
   several 128-token prefill chunks. On this bundle (SM8850) there is no sign of LiteRT-LM#3508.
-- **LiteRT-LM GPU** prefills about 3× faster than LiteRT CPU but decodes slightly slower (41.1 vs
-  47.3 tok/s), with the longest load (about 2.3 s, warm GPU caches).
+- **LiteRT-LM GPU** (requested `Backend.GPU()`; observed backend `unknown`, see below) prefills about
+  3× faster than LiteRT CPU but decodes slightly slower (41.1 vs 47.3 tok/s), with the longest load
+  (about 2.3 s, warm GPU caches). Nothing in the record confirms GPU execution.
 - **llama.cpp Hexagon produced garbage** on every probe (a repeated two-character token) while
-  reporting 71 tok/s decode. The engine confirmed it ran on `HTP0`. The same output appeared in a
+  reporting 71 tok/s decode. llama.rn reported `HTP0` as the model's device (`confirmed`). The same output appeared in a
   separate 1-repetition run with only llama.cpp in the process (no LiteRT-LM loaded), so it is not
   caused by LiteRT's QNN stack sharing the process. Its metrics are kept and marked invalid; it is
   the reason the gate exists.
@@ -252,7 +284,7 @@ Notes specific to these rows:
   invocation were gated against the main invocation's LiteRT CPU gate, which passed. In the
   1-repetition smoke run, LiteRT CPU in a process that had run llama.cpp first prefilled at
   521 tok/s against 676 here; process history matters for CPU numbers and is not controlled here.
-- **Observed backend for LiteRT GPU is `unknown` by design:** llama.rn's OpenCL variant had already
+- **Observed backend for LiteRT GPU is `unknown`, not confirmed:** llama.rn's OpenCL variant had already
   mapped `libOpenCL.so` before any LiteRT engine was created, so no LiteRT load could show it being
   loaded. The NPU gate saw `libLiteRtDispatch_Qualcomm.so`, `libQnnHtp.so`, `libQnnHtpV81Stub.so`
   and `libQnnSystem.so` newly loaded (`consistent`); the measured repetitions found them already
@@ -276,8 +308,11 @@ it recorded llama.cpp CPU with GPU devices attached as `mismatch`; they are not 
 
 ### Galaxy S23 (SM8550), measured 2026-10-18
 
-Same protocol and prompt as the F8 Ultra table. The build is the llama.rn 0.13.0-rc.7 APK
-(see the re-check section below). LiteRT-LM does not depend on llama.rn.
+Same protocol and prompt as the F8 Ultra table. **Build:** APK `8f14f0ff…` (commit `a66b65e`),
+llama.rn **0.13.0-rc.7** (vanilla npm), native code built with NDK 27.1.12297006
+(RelWithDebInfo), i.e. before the toolchain was aligned with PocketPal's NDK 27.3.13750724.
+LiteRT-LM does not depend on llama.rn. LiteRT GPU's observed backend is `unknown` here too (llama.rn's
+OpenCL variant maps `libOpenCL.so` first); nothing confirms GPU execution for that row.
 
 | Engine | Backend | Artifact | Prefill tok/s | Decode tok/s | TTFT ms | Load ms | n | Observed backend (gate) | Correctness | Comparison | Conditions |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -317,7 +352,8 @@ gate reference and llama.cpp Hexagon (`HTP0`, `nGpuLayers` 99), for both the pin
 SHA-256 below). It ran 4 repetitions each, with the same prompt text and probes as above, wrapped
 in the Llama 3.2 user turn (`chatTemplate: llama32`, no system message). It used APK
 `1cf22fb1845e567e84ab64cc74029b993d6d801acfc25ca47d38fb154b673919` (commit `e33ac64`) with
-llama.rn 0.12.4.
+llama.rn 0.12.4, native code built with NDK 27.1.12297006 (RelWithDebInfo). Superseded by the
+rc.7 re-check below.
 
 | Engine | Backend | Artifact | Prefill tok/s | Decode tok/s | TTFT ms | n | Observed backend | Answer probes (capital, fact last, first, middle) | Comparison |
 |---|---|---|---|---|---|---|---|---|---|
