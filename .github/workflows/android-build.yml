@@ -32,7 +32,7 @@ jobs:
           (yes || true) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
             "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" \
-            "ndk;27.1.12297006" "ndk;27.0.12077973" > /dev/null
+            "ndk;27.3.13750724" "ndk;27.0.12077973" > /dev/null
       # Install scripts must run: llama.rn downloads its checksum-verified native libraries then.
       - run: npm ci
         working-directory: xebenchapp

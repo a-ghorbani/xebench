@@ -4,6 +4,7 @@ import type {
   BenchOnceConfig, EngineAdapter, ExecutionReport, LlamaRnEffectiveSettings,
 } from './EngineAdapter';
 import {monotonicNow} from '../clock';
+import {readNativeLibraries} from '../build';
 
 import {version as LLAMA_RN_VERSION} from 'llama.rn/package.json';
 
@@ -28,8 +29,9 @@ function bounded(value: unknown, max: number): string | null {
   return typeof value === 'string' && value.length <= max && /^[\x20-\x7e]*$/.test(value) ? value : null;
 }
 
-/** Bounded copy of the context fields llama.rn 0.12 reports after initLlama(). */
-export function executionReport(ctx: Partial<Record<keyof ExecutionReport, unknown>>): ExecutionReport {
+/** Bounded copy of the context fields llama.rn reports after initLlama(), plus the mapped native libraries. */
+export function executionReport(ctx: Partial<Record<Exclude<keyof ExecutionReport, 'nativeLibraries'>, unknown>>,
+  nativeLibraries: ExecutionReport['nativeLibraries'] = null): ExecutionReport {
   const devices = Array.isArray(ctx.devices) && ctx.devices.length <= 16 &&
     ctx.devices.every(device => bounded(device, 64) !== null && device !== '') ? [...ctx.devices] as string[] : null;
   const lib = bounded(ctx.androidLib, 64);
@@ -39,6 +41,7 @@ export function executionReport(ctx: Partial<Record<keyof ExecutionReport, unkno
     devices,
     androidLib: lib !== null && /^[a-z0-9_]+$/.test(lib) ? lib : null,
     systemInfo: bounded(ctx.systemInfo, 2048),
+    nativeLibraries,
   };
 }
 
@@ -61,9 +64,11 @@ export class LlamaRnAdapter implements EngineAdapter {
     this.quantLabel = opts.quantLabel;
     this.modelLabel = opts.modelLabel;
     this.modelFile = opts.modelPath.split('/').pop() ?? opts.modelPath;
-    // Every setting is passed explicitly, including those equal to llama.rn 0.12.4 defaults
-    // (n_ubatch, use_mmap, use_mlock, flash_attn_type, cache types), so the record states them.
-    // n_batch 512 is the harness's choice (llama.cpp's default is 2048).
+    // Every setting is passed explicitly, so the record states them. Against llama.rn
+    // 0.13.0-rc.7 (vendored llama.cpp common.h): n_ubatch 512, flash_attn_type auto and f16 K/V
+    // caches equal its defaults. Loading differs: 0.13's default load_mode is AUTO (chosen per
+    // device), while use_mmap true / use_mlock false here select LLAMA_LOAD_MODE_MMAP, the
+    // 0.12.4 behaviour. n_batch 512 is the harness's choice (llama.cpp's default is 2048).
     this.init = {
       n_ctx: opts.nCtx ?? 2048,
       n_batch: 512,
@@ -93,7 +98,8 @@ export class LlamaRnAdapter implements EngineAdapter {
 
   effectiveSettings(request: Pick<BenchOnceConfig, 'maxDecodeTokens'>): LlamaRnEffectiveSettings {
     return {binding: 'llama.rn', init: {...this.init, ...(this.init.devices ? {devices: [...this.init.devices]} : {})},
-      completion: {n_predict: request.maxDecodeTokens, ...COMPLETION}, unlisted: 'binding-defaults'};
+      completion: {n_predict: request.maxDecodeTokens, ...COMPLETION}, unlisted: 'binding-defaults',
+      distribution: {source: 'npm', package: 'llama.rn', version: LLAMA_RN_VERSION, patches: []}};
   }
 
   executionReport(): ExecutionReport {
@@ -114,7 +120,7 @@ export class LlamaRnAdapter implements EngineAdapter {
     // Compile-time guard: if a llama.rn upgrade renames or drops these context fields,
     // tsc fails here instead of every report silently becoming null.
     const reported: Pick<LlamaContext, 'gpu' | 'reasonNoGPU' | 'devices' | 'androidLib' | 'systemInfo'> = this.ctx;
-    this.lastReport = executionReport(reported);
+    this.lastReport = executionReport(reported, await readNativeLibraries());
     return loadMs;
   }
 

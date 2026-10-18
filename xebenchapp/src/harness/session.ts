@@ -81,7 +81,8 @@ export interface ExecutionLoadReport extends ExecutionReport {
   runIndex: number;
 }
 
-const UNREPORTED: ExecutionReport = {gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null};
+const UNREPORTED: ExecutionReport = {gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null,
+  nativeLibraries: null};
 
 export interface ConditionVerdict {
   /** pass: every planned repetition was ready and every endpoint/sample check passed with measured evidence. */

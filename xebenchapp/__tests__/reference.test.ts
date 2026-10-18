@@ -23,7 +23,7 @@ jest.mock('react-native', () => {
       stopMonitor: async () => ({status: 'stopped', intervalMs: 1000, startedElapsedMs: 1000,
         stoppedElapsedMs: 1200, ticks: 1, dropped: 0, expired: false,
         maxSampleCostMs: 1, totalSampleCostMs: 1, samples: [sample]}),
-    }, BuildInfo: {identity: jest.fn()}},
+    }, BuildInfo: {identity: jest.fn(), nativeLibraries: jest.fn()}},
   };
 });
 jest.mock('llama.rn', () => ({initLlama: jest.fn()}));
@@ -36,10 +36,13 @@ const DEBUG_CERT = 'fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b833266759103
 const BUILD = {gitCommit: '0123456789abcdef0123456789abcdef01234567', gitDirty: false, flavor: 'reference',
   buildType: 'release', versionName: '1.0-reference', versionCode: 1, signingCertSha256: [DEBUG_CERT],
   bundledConfigSha256: 'b'.repeat(64)};
-// Fields llama.rn 0.12.4 sets on the LlamaContext returned by initLlama().
+// Fields llama.rn (0.12.4 and 0.13.0-rc.7) sets on the LlamaContext returned by initLlama().
 const CONTEXT = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices: [],
   androidLib: 'rnllama_jni_v8_2_dotprod_i8mm',
   systemInfo: 'system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | DOTPROD = 1 | '};
+// What BuildInfo.nativeLibraries() reports once llama.rn has loaded its library.
+const LIBRARIES = [{name: 'librnllama_jni_v8_2_dotprod_i8mm.so', buildId: 'c'.repeat(40)},
+  {name: 'librnllama_v8_2_dotprod_i8mm.so', buildId: 'd'.repeat(40)}];
 const saved = () => jest.mocked(FS.writeFile).mock.calls.map(([, text]) => JSON.parse(text));
 
 beforeEach(() => {
@@ -61,6 +64,7 @@ beforeEach(() => {
     release: jest.fn(async () => {}),
   } as unknown as LlamaContext);
   jest.mocked(NativeModules.BuildInfo.identity).mockResolvedValue(BUILD);
+  jest.mocked(NativeModules.BuildInfo.nativeLibraries).mockResolvedValue(LIBRARIES);
   output = jest.spyOn(console, 'log').mockImplementation(() => {});
 });
 
@@ -211,8 +215,11 @@ test('records the engine settings actually passed and what the loaded context re
   expect(record.effectiveSettings).toEqual({binding: 'llama.rn', unlisted: 'binding-defaults',
     init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: true, use_mlock: false,
       flash_attn_type: 'auto', cache_type_k: 'f16', cache_type_v: 'f16'},
-    completion: {n_predict: 128, temperature: 0, seed: 42}});
-  expect(record.executionReports).toEqual([{runIndex: 0, ...CONTEXT}]);
+    completion: {n_predict: 128, temperature: 0, seed: 42},
+    // Vanilla npm llama.rn, exactly the pinned version, no patches.
+    distribution: {source: 'npm', package: 'llama.rn', version: '0.13.0-rc.7', patches: []}});
+  expect(record.engineVersion).toBe('llama.rn 0.13.0-rc.7');
+  expect(record.executionReports).toEqual([{runIndex: 0, ...CONTEXT, nativeLibraries: LIBRARIES}]);
   // Engine reports are evidence, not verified execution: the observed backend stays unknown.
   expect(record.observedBackend).toBeNull();
   expect(record.protocol.version).toBe('cpu-reference-v3');
@@ -224,7 +231,8 @@ test('unreported or malformed context fields stay unknown', async () => {
     devices: ['CPU', '\u0000'], androidLib: '../librnllama.so', systemInfo: undefined} as unknown as LlamaContext);
   await runReference(() => {});
   expect(saved()[0].executionReports).toEqual([
-    {runIndex: 0, gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null}]);
+    {runIndex: 0, gpu: null, reasonNoGPU: null, devices: null, androidLib: null, systemInfo: null,
+      nativeLibraries: LIBRARIES}]);
 });
 
 // The bundled configuration has a 30 s cooldown; an unreadable model records without waiting.

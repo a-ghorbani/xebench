@@ -241,7 +241,7 @@ REJECTION_CODES = Vocab((
     "readiness.recomputed", "record.unprocessable", "status.artifact",
     # cpu-reference-v3 identity checks (raw_session._semantic_v3).
     "artifact.expected", "build.inconsistent", "configuration.source", "execution.inconsistent",
-    "settings.protocol-mismatch",
+    "settings.protocol-mismatch", "settings.distribution",
 ))
 
 # Condition signals and reason codes emitted by the app (xebenchapp/src/harness),
@@ -278,6 +278,7 @@ ENUM_WORDS = (
     "severe-thermal-state", "skipped", "snapshots-not-peak", "started", "stopped", "stuck", "tethered-not-charging",
     "thermal-headroom-low", "thermal-not-ready", "timeout", "total-time-derived", "ttft-derived", "unavailable",
     "unknown", "unverified", "vendor", "violated", "wait-then-skip", "wait-while-charging",
+    "npm",  # effectiveSettings.distribution.source
     # cpu-reference-v3 identity: model hash check, configuration source, build identity and settings.
     "model-hash-mismatch", "bundled", "staged", "reported", "reference", "experimental", "geniex", "debug",
     "binding-defaults", "auto", "on", "off",
@@ -409,11 +410,18 @@ EFFECTIVE_SETTINGS = Obj({
                  "cache_type_v": CACHE_TYPE}, required=("n_ctx", "n_batch", "n_threads", "n_gpu_layers")),
     "completion": Obj({"n_predict": COUNT, "temperature": NONNEG, "seed": COUNT},
                       required=("n_predict", "temperature", "seed")),
+    "distribution": Obj({"source": Vocab(("npm",)), "package": Vocab(("llama.rn",)),
+                         "version": _text(r"[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?", "package version"),
+                         "patches": Arr(LABEL, max_items=0)}, required=("source", "package", "version", "patches")),
 }, required=("binding", "init", "completion", "unlisted"))
-# Exact llama.rn 0.12 (RNLlamaJSI.cpp) strings; other text becomes "unrecognized".
+# Exact llama.rn RNLlamaJSI.cpp strings (unchanged from 0.12.4 to 0.13.0-rc.7); other text becomes "unrecognized".
 REASON_NO_GPU = Vocab(("", "GPU devices disabled by user", "GPU backend is available but was not selected",
                        "GPU backend is not available"))
-ENGINE_DEVICE = Vocab(("CPU", "GPUOpenCL", "HTP0", "HTP1", "HTP2", "HTP3", "Metal", "BLAS"))
+ENGINE_DEVICE = Vocab(("CPU", "GPUOpenCL", "HTP0", "HTP1", "HTP2", "HTP3", "HTP4", "HTP5", "HTP6", "HTP7", "Metal",
+                       "BLAS"))
+# llama.rn native library files (librnllama*.so) as mapped in the app process, with ELF build IDs.
+NATIVE_LIBRARY = Obj({"name": _text(r"librnllama[a-z0-9_]{0,60}\.so", "llama.rn library file"),
+                      "buildId": Nullable(_text(r"[0-9a-f]{40}", "ELF build ID"))}, required=("name", "buildId"))
 ANDROID_LIB = Vocab(("rnllama", "rnllama_jni", "rnllama_jni_v8", "rnllama_jni_v8_2", "rnllama_jni_v8_2_dotprod",
                      "rnllama_jni_v8_2_i8mm", "rnllama_jni_v8_2_dotprod_i8mm",
                      "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl", "rnllama_jni_x86_64"))
@@ -423,7 +431,9 @@ ENGINE_FEATURES = frozenset((
     "SSE3", "SSSE3", "AVX", "AVX_VNNI", "AVX2", "F16C", "FMA", "BMI2", "AVX512", "AVX512_VBMI", "AVX512_VNNI",
     "AVX512_BF16", "AMX_INT8", "NEON", "ARM_FMA", "FP16_VA", "MATMUL_INT8", "SVE", "DOTPROD", "SVE_CNT", "SME",
     "RISCV_V", "RVV_VLEN", "VSX", "VXE", "WASM_SIMD", "LLAMAFILE", "ACCELERATE", "CPU_HBM", "OPENMP", "KLEIDIAI",
-    "REPACK"))
+    "REPACK",
+    # llama.rn 0.13 (vendored ggml-cpu).
+    "SME2"))
 _SYSTEM_INFO = re.compile(r"system_info: n_threads = ([0-9]{1,4})(?: \(n_threads_batch = (-?[0-9]{1,4})\))?"
                           r" / ([0-9]{1,4}) \| (.*)")
 _SYSTEM_BACKEND = re.compile(r"([A-Za-z][A-Za-z0-9_]{0,31}) : ")
@@ -495,6 +505,7 @@ EXECUTION_REPORT = Obj({
     "runIndex": COUNT, "gpu": N_BOOL, "reasonNoGPU": Nullable(REASON_NO_GPU),
     "devices": Nullable(Arr(ENGINE_DEVICE, max_items=16)), "androidLib": Nullable(ANDROID_LIB),
     "systemInfo": Nullable(SystemInfo()),
+    "nativeLibraries": Nullable(Arr(NATIVE_LIBRARY, max_items=16)),
 }, required=("runIndex", "gpu", "reasonNoGPU", "devices", "androidLib", "systemInfo"))
 
 RUN_ORDER = Obj({"method": VERSION, "seed": _number(0, 2 ** 32 - 1, integer=True), "seedSource": ENUM,

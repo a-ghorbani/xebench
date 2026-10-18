@@ -129,12 +129,31 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
   - `effectiveSettings`: every llama.rn `initLlama` parameter (except the model
     path) and `completion` parameter (except the prompt) the harness passes, for
     example `n_batch`, `n_ubatch`, `use_mmap`, `flash_attn_type`, the KV cache types,
-    `temperature` and `seed`. Values equal to llama.rn 0.12.4 defaults are still passed
-    explicitly; anything unlisted is the binding default of `engineVersion`.
+    `temperature` and `seed`. Values equal to the binding's defaults are still passed
+    explicitly; anything unlisted is the binding default of `engineVersion`. With
+    llama.rn 0.13.0-rc.7, `use_mmap: true` / `use_mlock: false` select memory-mapped
+    loading, whereas 0.13's own default load mode is `AUTO`. `distribution` records
+    the binding as installed: `{source: npm, package: llama.rn, version, patches: []}`.
+    xebench uses the npm package as published, with no patches, so a third party can
+    rebuild it from public packages.
+
+    **Not PocketPal's binary.** PocketPal ships llama.rn 0.13.0-rc.7 with its own
+    patch (`patches/llama.rn+0.13.0-rc.7.patch`, patch-package, 1034 lines). The patch
+    changes the JSI layer (`cpp/jsi/*`) and the completion loop (`cpp/rn-completion.*`)
+    and does not touch the vendored llama.cpp/ggml backends. Kernel and backend behaviour
+    should therefore match PocketPal's app, but TTFT and decode bookkeeping may differ.
+    PocketPal's Android defaults also differ from the reference settings: `use_mmap: false`
+    with weight repacking on (`no_extra_bufts: false`), `flash_attn_type: off`,
+    `n_gpu_layers: 99` with automatic devices, and `kv_unified: true`. The reference
+    protocol keeps its own explicit, recorded settings.
   - `executionReports`: one per successful model load, with what llama.rn reported
     about that context: `gpu`, `reasonNoGPU`, `devices`, the loaded native library
     variant (`androidLib`) and llama.cpp's `systemInfo` line (threads in use and
-    compiled CPU features). Values that are missing or out of bounds are null.
+    compiled CPU features), plus `nativeLibraries`: each `librnllama*.so` mapped in
+    the process with its ELF GNU build ID, read by the BuildInfo module. llama.rn
+    0.13.0-rc.7 compiles its native core from source in every app, so the build ID,
+    not the npm version, names the binary. Values that are missing or out of bounds
+    are null.
     These are engine statements, not verified execution, so `observedBackend`
     stays null.
   - `artifact.expectedSha256`: the run's configured `modelSha256`, or null.

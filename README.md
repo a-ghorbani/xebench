@@ -120,10 +120,10 @@ files in the table). This list is the single source; CI
 | JDK | 17+ (CI: Temurin 21) | Byte-identical APKs need the same JDK major version. |
 | Gradle | 9.0.0 | Pinned by the wrapper, with `distributionSha256Sum`; use `./gradlew`. |
 | Android SDK | platform `android-36`, build-tools `36.0.0`, CMake `3.22.1` | Set `sdk.dir` in `android/local.properties` or `ANDROID_HOME`. |
-| Android NDK | `27.1.12297006` and `27.0.12077973` | The app's pin, and AGP's default (used by react-native-executorch). |
+| Android NDK | `27.3.13750724` and `27.0.12077973` | The app's pin (the same as PocketPal; llama.rn 0.13 compiles its native core with it), and AGP's default (used by react-native-executorch). |
 | Network | Maven Central, Google Maven, npm | Gradle and npm dependencies. |
 
-`sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;27.1.12297006" "ndk;27.0.12077973"`
+`sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;27.3.13750724" "ndk;27.0.12077973"`
 installs the SDK parts.
 
 **Pinned build inputs.** npm packages are pinned by `xebenchapp/package-lock.json`.

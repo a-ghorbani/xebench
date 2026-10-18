@@ -78,3 +78,30 @@ export async function readBuildInfo(): Promise<BuildInfo> {
     return normalizeBuildInfo(null);
   }
 }
+
+const LIBRARY_NAME = /^librnllama[a-z0-9_]{0,60}\.so$/;
+
+/** Bounded copy of BuildInfo.nativeLibraries(); null when unavailable or malformed. */
+export function normalizeNativeLibraries(raw: unknown): {name: string; buildId: string | null}[] | null {
+  if (!Array.isArray(raw) || raw.length > 16) {
+    return null;
+  }
+  const libraries = raw.map(item => {
+    const value = (item ?? {}) as Record<string, unknown>;
+    const name = match(value.name, LIBRARY_NAME);
+    return name === null ? null : {name, buildId: match(value.buildId, HEX40)};
+  });
+  return libraries.every(item => item !== null) ? libraries as {name: string; buildId: string | null}[] : null;
+}
+
+export async function readNativeLibraries(): Promise<{name: string; buildId: string | null}[] | null> {
+  const native = NativeModules.BuildInfo as {nativeLibraries?: () => Promise<unknown>} | undefined;
+  if (!native?.nativeLibraries) {
+    return null;
+  }
+  try {
+    return normalizeNativeLibraries(await native.nativeLibraries());
+  } catch {
+    return null;
+  }
+}
