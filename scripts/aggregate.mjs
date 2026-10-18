@@ -23,6 +23,12 @@
  * (scripts/migrate_contract_1_1.mjs) and writes schemaVersion 1.1 with an
  * ISO-8601 UTC generatedAt, or 1.2 once a row carries build.runtimes (contract
  * 1.2 build identity, from a session's runtimeVersions).
+ *
+ * A canonical row with validation "failed" (e.g. invalidated by a later
+ * correctness re-check, scripts/correct_hexagon_row.mjs) is never overwritten or
+ * downgraded by --update, with or without --allow-legacy: the run is refused and
+ * nothing is written. Pass --replace-failed to replace such a row explicitly;
+ * each replacement is logged.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -35,18 +41,21 @@ const USAGE =
   'usage:\n' +
   '  node scripts/aggregate.mjs <raw.jsonl> [...] [--pretty]                  # preview EngineBenchmarkRow[] on stdout\n' +
   '  node scripts/aggregate.mjs <raw.jsonl> [...] --update --allow-legacy    # upsert reviewed legacy rows into data/benchmarks.json\n' +
+  '  ... --update [--allow-legacy] --replace-failed                          # also replace rows marked validation=failed (logged)\n' +
   'exit codes: 0 ok, 1 rejected input/canonical data (nothing written), 2 usage';
 
-const FLAGS = new Set(['--pretty', '--update', '--allow-legacy']);
+const FLAGS = new Set(['--pretty', '--update', '--allow-legacy', '--replace-failed']);
 const args = process.argv.slice(2);
 const unknown = args.filter((a) => a.startsWith('--') && !FLAGS.has(a));
 const pretty = args.includes('--pretty');
 const update = args.includes('--update'); // upsert into the canonical data/benchmarks.json
 const allowLegacy = args.includes('--allow-legacy');
+const replaceFailed = args.includes('--replace-failed');
 const files = args.filter((a) => !a.startsWith('--'));
-if (files.length === 0 || unknown.length || (allowLegacy && !update)) {
+if (files.length === 0 || unknown.length || (allowLegacy && !update) || (replaceFailed && !update)) {
   if (unknown.length) console.error(`unknown option(s): ${unknown.join(' ')}`);
   if (allowLegacy && !update) console.error('--allow-legacy only applies to --update');
+  if (replaceFailed && !update) console.error('--replace-failed only applies to --update');
   console.error(USAGE);
   process.exit(2);
 }
@@ -384,9 +393,23 @@ function main() {
   // overwrite in place); every other row (vendor citations, other devices) is kept.
   const byKey = new Map(envelope.rows.map((r) => [rowKey(r), r]));
   const replaced = [];
-  for (const { row } of rows) {
-    if (byKey.has(rowKey(row))) replaced.push(rowKey(row));
-    byKey.set(rowKey(row), row);
+  const replacedFailed = [];
+  for (const { row, where } of rows) {
+    const key = rowKey(row);
+    const existing = byKey.get(key);
+    if (existing?.validation === 'failed') {
+      // A failed row records that a published number was invalidated; a re-run of
+      // the original record must not silently restore it as a normal measurement.
+      if (!replaceFailed) {
+        throw new PublicationError(
+          `${where}: refusing to overwrite row ${key}, which is marked validation=failed ` +
+            `(incoming validation=${row.validation}); pass --replace-failed to replace it explicitly`,
+        );
+      }
+      replacedFailed.push(`${key} (validation failed -> ${row.validation})`);
+    }
+    if (existing) replaced.push(key);
+    byKey.set(key, row);
   }
   const merged = [...byKey.values()].sort(compareRows);
   merged.forEach((row) => assertEmittable(row, `data/benchmarks.json row ${rowKey(row)}`));
@@ -398,6 +421,7 @@ function main() {
   assertBenchmarks(JSON.parse(text), schema, 'updated data/benchmarks.json');
   writeAtomic(DATA, text, before);
   for (const key of replaced) console.error(`replaced existing row ${key}`);
+  for (const entry of replacedFailed) console.error(`--replace-failed: replaced failed row ${entry}`);
   console.error(
     `merged ${rows.length} measured rows into data/benchmarks.json ` +
       `(+${rows.length - replaced.length} new, ${replaced.length} replaced; ${merged.length} total). Commit + push to publish.`,

@@ -1,0 +1,2 @@
+# Evidence bundles are content-addressed over their exact bytes: never normalise them.
+evidence/** -text

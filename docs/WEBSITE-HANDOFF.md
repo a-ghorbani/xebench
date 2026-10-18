@@ -52,7 +52,11 @@ validity of `generatedAt` and the 1.0-files rule; it was cross-checked with Ajv
 (2020-12, strict, ajv-formats). `scripts/lib/publication.mjs` enforces all of them; `node scripts/validate_data.mjs <file>` checks any
 envelope. The producer (`scripts/aggregate.mjs`) labels rows from legacy records
 `validation: "legacy"` and refuses to emit `verified` until an evidence
-pipeline exists, so 1.1 data currently contains legacy and vendor rows only.
+pipeline exists. 1.1 data currently contains legacy and vendor rows, plus one
+measured row with `validation: "failed"` and no `guardsPassed`: the llama.cpp
+Hexagon row, invalidated by a later output-correctness re-check
+(`scripts/correct_hexagon_row.mjs`). Consumers must not show a `failed` row as a
+normal measurement.
 
 Migration: `node scripts/migrate_contract_1_1.mjs` set `schemaVersion` "1.1",
 re-stamped `generatedAt`, and appended `validation: "legacy"` to each of the 26
