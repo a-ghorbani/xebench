@@ -351,10 +351,10 @@ class FactsFromBundlesTests(unittest.TestCase):
         accelerator = {
             "f8-llama-hexagon": ("verified", True, []),
             "f8-llama-cpu": ("verified", True, []),
-            # No .litertlm model is in a committed manifest, so LiteRT-LM artifacts stay unknown.
-            "f8-litert-cpu": ("unverified", True, ["artifact"]),
-            "f8-litert-gpu": ("unverified", True, ["artifact", "backend"]),
-            "f8-litert-npu": ("failed", True, ["artifact", "backend", "correctness", "comparison"]),
+            # The .litertlm files are pinned in experimental-models.json (pinnedArtifacts).
+            "f8-litert-cpu": ("verified", True, []),
+            "f8-litert-gpu": ("unverified", True, ["backend"]),
+            "f8-litert-npu": ("failed", True, ["backend", "correctness", "comparison"]),
             "f8-llama-opencl": ("failed", True, ["backend", "comparison"]),
             "bugRepro-npu": (None, False, None),
             "engineUnavailable-cpu": (None, False, None),
@@ -577,6 +577,25 @@ class FactsFromBundlesTests(unittest.TestCase):
             report = policy.bundle_report(directory, sha, root=Path(root) / "no-such-repo")
         self.assertFalse(report["valid"])
         self.assertTrue(any("reference data" in error for error in report["errors"]), report["errors"])
+
+    def test_litert_artifacts_are_pinned_without_a_source_revision(self):
+        manifest = json.loads((ROOT / "configs/models/experimental-models.json").read_text())
+        pinned = {entry["file"]: entry for entry in manifest["pinnedArtifacts"]}
+        self.assertEqual(sorted(pinned), ["Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm", "Gemma3-1B-IT_sm8550.litertlm",
+                                          "gemma3-1b-it-int4.litertlm"])
+        models_md = (ROOT / "MODELS.md").read_text()
+        configured = {run["modelFile"]: run["modelSha256"] for path in (ROOT / "xebenchapp/configs").glob("*.json")
+                      for run in json.loads(path.read_text())["runs"] if run["modelFile"].endswith(".litertlm")}
+        for name, entry in pinned.items():
+            self.assertEqual(entry["source"], "source revision unknown")
+            self.assertNotIn("revision", entry)
+            self.assertIn(entry["sha256"], models_md)
+            self.assertEqual(configured[name], entry["sha256"], "the configs pin the same bytes")
+        # Staging reads only models[]: the downloadable pins still load.
+        spec_ = importlib.util.spec_from_file_location("stage_model", ROOT / "scripts/stage_model.py")
+        stage_model = importlib.util.module_from_spec(spec_)
+        spec_.loader.exec_module(stage_model)
+        self.assertEqual(len(stage_model.load_manifest(ROOT / "configs/models/experimental-models.json")), 2)
 
     def test_committed_device_table_names_the_lab_phones(self):
         table = {entry["model"]: entry["soc"] for entry in json.loads((ROOT / "configs/devices.json").read_text())["devices"]}

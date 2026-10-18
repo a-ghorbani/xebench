@@ -129,6 +129,9 @@ LiteRT-LM with llama.cpp on Gemma 3 1B. These are not reference models either.
 
   The S23 file has the size (690143232 bytes) of `Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm` in
   the `litert-community/Gemma3-1B-IT` tree; it is staged under the shorter name.
+  `configs/models/experimental-models.json` lists the three files under `pinnedArtifacts`
+  with `"source": "source revision unknown"`. `stage_model.py` stages only `models`
+  entries, which have a pinned revision.
 
 The experimental adapters take absolute paths in their options
 (`LlamaRnAdapterOptions.modelPath`, `ExecutorchAdapterOptions.modelSource`). To stage

@@ -63,7 +63,10 @@ def load_reference(root=None):
                                                                           "config": path.name})
         manifests = {}
         for path in sorted((root / "configs/models").glob("*-models.json")):
-            for entry in json.loads(path.read_text(encoding="utf-8"))["models"]:
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+            # models[] are downloadable pins (stage_model.py); pinnedArtifacts[] pin bytes whose
+            # source revision is unknown (the LiteRT-LM files, MODELS.md).
+            for entry in manifest["models"] + manifest.get("pinnedArtifacts", []):
                 manifests.setdefault(entry["file"], set()).add(entry["sha256"])
         devices = {}
         for entry in json.loads((root / "configs/devices.json").read_text(encoding="utf-8"))["devices"]:

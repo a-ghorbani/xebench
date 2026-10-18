@@ -31,5 +31,29 @@
       "usedBy": "xebenchapp/configs/f8-llama32-hexagon-check-v1.json (the Q4_0 file of the legacy Hexagon board row)",
       "sha256Source": "Hugging Face LFS oid at this revision (the same revision as the pinned reference Q4_K_M)"
     }
+  ],
+  "pinnedArtifacts": [
+    {
+      "id": "gemma3-1b-it-int4-litertlm",
+      "file": "gemma3-1b-it-int4.litertlm",
+      "sha256": "1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be",
+      "source": "source revision unknown",
+      "usedBy": "LiteRT-LM CPU/GPU runs of the accelerator configurations (MODELS.md)"
+    },
+    {
+      "id": "gemma3-1b-it-q4-ekv1280-sm8850-litertlm",
+      "file": "Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm",
+      "sha256": "fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f",
+      "source": "source revision unknown",
+      "usedBy": "LiteRT-LM NPU runs on the POCO F8 Ultra (MODELS.md)"
+    },
+    {
+      "id": "gemma3-1b-it-sm8550-litertlm",
+      "file": "Gemma3-1B-IT_sm8550.litertlm",
+      "size": 690143232,
+      "sha256": "29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af",
+      "source": "source revision unknown",
+      "usedBy": "LiteRT-LM NPU bug reproduction on the Galaxy S23 (MODELS.md)"
+    }
   ]
 }

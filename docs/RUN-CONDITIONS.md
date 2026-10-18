@@ -266,7 +266,8 @@ as a whole.
 The policy also anchors each row to reviewed reference data in this repository: the
 run configurations under [`xebenchapp/configs/`](../xebenchapp/configs/) (except
 `experiment-*`), the model manifests
-[`configs/models/*-models.json`](../configs/models/) and the device table. Without
+[`configs/models/*-models.json`](../configs/models/) (their `models` and
+`pinnedArtifacts`) and the device table. Without
 that data no bundle is decided.
 
 A row earns `guardsPassed: true` and `validation: "verified"` only when every check
@@ -308,7 +309,9 @@ A published session is never rewritten, and CI re-derives every published row fr
 bundle with the current code. A change to the policy, the row format or its rounding
 therefore comes with a new policy version and a migration of the published index.
 
-Limits: the gate's probe verdicts are recomputed from model outputs by the raw-session
+Limits: for engines whose only timing source is the engine's own benchmark API
+(LiteRT-LM's `getBenchmarkInfo`), the counter cross-check does not apply: that API is the
+measurement, and no independent counter exists. The gate's probe verdicts are recomputed from model outputs by the raw-session
 validator at capture time; a bundle carries only their digests, so the publication
 check re-derives the gate status from the verdicts, not from the outputs. The policy
 does not establish cross-device comparability or quality beyond the gate.
