@@ -1,9 +1,38 @@
 import {parseConfig} from '../src/harness/config';
-import bundled from '../configs/cpu-reference-v1.json';
+import bundled from '../configs/cpu-reference-v2.json';
+import v1 from '../configs/cpu-reference-v1.json';
 import experiment from '../configs/experiment-charging-ab-v1.json';
 
 test('bundled CPU reference configuration is valid', () => {
   expect(parseConfig(bundled)).toEqual(bundled);
+});
+
+test('cpu-reference-v1 stays valid and sets no load settings', () => {
+  expect(parseConfig(v1)).toEqual(v1);
+  for (const key of ['useMmap', 'useMlock', 'noExtraBufts', 'flashAttnType']) {
+    expect(parseConfig(v1).runs[0]).not.toHaveProperty(key);
+  }
+});
+
+test('cpu-reference-v2 is cpu-reference-v1 with PocketPal\'s Android load defaults', () => {
+  const {useMmap, useMlock, noExtraBufts, flashAttnType, ...run} = bundled.runs[0];
+  expect({useMmap, useMlock, noExtraBufts, flashAttnType})
+    .toEqual({useMmap: false, useMlock: false, noExtraBufts: false, flashAttnType: 'off'});
+  expect({...bundled, id: v1.id, runs: [run]}).toEqual(v1);
+});
+
+test.each([
+  {useMmap: 'false'}, {useMmap: 0}, {useMmap: null}, {useMlock: 'true'}, {noExtraBufts: 1},
+  {flashAttnType: 'enabled'}, {flashAttnType: true}, {flashAttnType: null}, {flash_attn_type: 'off'},
+])('rejects invalid load setting %j', change => {
+  expect(() => parseConfig({...bundled, runs: [{...bundled.runs[0], ...change}]})).toThrow();
+});
+
+test('each load setting is kept exactly when set', () => {
+  for (const change of [{useMmap: true}, {useMlock: true}, {noExtraBufts: true}, {flashAttnType: 'auto'},
+    {flashAttnType: 'on'}]) {
+    expect(parseConfig({...v1, runs: [{...v1.runs[0], ...change}]}).runs[0]).toEqual({...v1.runs[0], ...change});
+  }
 });
 
 test.each([

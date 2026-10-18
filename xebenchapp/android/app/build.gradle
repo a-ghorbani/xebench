@@ -101,7 +101,7 @@ def gitOutput = { List<String> args ->
 def xebenchGitCommit = gitOutput(["rev-parse", "--verify", "HEAD"]) ?: ""
 def xebenchGitStatus = xebenchGitCommit ? gitOutput(["status", "--porcelain", "--untracked-files=normal"]) : null
 def xebenchGitDirty = xebenchGitStatus == null ? "" : (xebenchGitStatus.isEmpty() ? "false" : "true")
-def bundledConfig = file("$rootDir/../configs/cpu-reference-v1.json")
+def bundledConfig = file("$rootDir/../configs/cpu-reference-v2.json") // must match src/harness/reference.ts
 def xebenchBundledConfigSha256 = java.security.MessageDigest.getInstance("SHA-256")
         .digest(bundledConfig.bytes).encodeHex().toString()
 

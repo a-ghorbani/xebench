@@ -2,8 +2,9 @@
 
 ## Reference model
 
-The CPU reference configuration
-([`cpu-reference-v1.json`](xebenchapp/configs/cpu-reference-v1.json)) runs exactly one
+The CPU reference configurations
+([`cpu-reference-v2.json`](xebenchapp/configs/cpu-reference-v2.json), the default, and
+[`cpu-reference-v1.json`](xebenchapp/configs/cpu-reference-v1.json)) run exactly one
 artifact. Its expected values are committed in
 [`configs/models/reference-models.json`](configs/models/reference-models.json), and
 [`scripts/stage_model.py`](scripts/stage_model.py) enforces them.

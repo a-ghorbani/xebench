@@ -1,7 +1,8 @@
 import * as FS from '@dr.pogodin/react-native-fs';
 import {initLlama, LlamaContext} from 'llama.rn';
 import {runReference} from '../src/harness/reference';
-import bundled from '../configs/cpu-reference-v1.json';
+import bundled from '../configs/cpu-reference-v2.json';
+import v1 from '../configs/cpu-reference-v1.json';
 import {seededOrder} from '../src/harness/order';
 import {NativeModules} from 'react-native';
 
@@ -212,9 +213,10 @@ test('records the engine settings actually passed and what the loaded context re
   const passed = jest.mocked(initLlama).mock.calls[0][0] as unknown as Record<string, unknown>;
   // Exactly the recorded init settings plus the (unrecorded, private) model path.
   expect(passed).toEqual({model: '/fixture/Llama-3.2-1B-Instruct-Q4_K_M.gguf', ...record.effectiveSettings.init});
+  // cpu-reference-v2: PocketPal's Android load defaults (no mmap or mlock, repacking on, flash attention off).
   expect(record.effectiveSettings).toEqual({binding: 'llama.rn', unlisted: 'binding-defaults',
-    init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: true, use_mlock: false,
-      flash_attn_type: 'auto', cache_type_k: 'f16', cache_type_v: 'f16'},
+    init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: false, use_mlock: false,
+      no_extra_bufts: false, flash_attn_type: 'off', cache_type_k: 'f16', cache_type_v: 'f16'},
     completion: {n_predict: 128, temperature: 0, seed: 42},
     // Vanilla npm llama.rn, exactly the pinned version, no patches.
     distribution: {source: 'npm', package: 'llama.rn', version: '0.13.0-rc.7', patches: []}});
@@ -226,6 +228,34 @@ test('records the engine settings actually passed and what the loaded context re
   // Engine reports are evidence, not verified execution: the observed backend stays unknown.
   expect(record.observedBackend).toBeNull();
   expect(record.protocol.version).toBe('cpu-reference-v3');
+});
+
+test('a staged cpu-reference-v1 run keeps the harness defaults and its configuration verbatim', async () => {
+  const staged = {...v1, nColdRuns: 1, cooldownSec: 0};
+  const text = JSON.stringify(staged);
+  files.set('/fixture/xebench-config.json', text);
+  await runReference(() => {});
+  const [record] = saved();
+  expect(record.configuration).toEqual(staged);
+  expect(record.configuration.runs[0]).not.toHaveProperty('useMmap');
+  expect(record.configurationSource).toEqual({kind: 'staged', sha256: createHash('sha256').update(text).digest('hex')});
+  expect(record.effectiveSettings.init).toEqual({n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4,
+    n_gpu_layers: 0, use_mmap: true, use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto',
+    cache_type_k: 'f16', cache_type_v: 'f16'});
+  expect(initLlama).toHaveBeenCalledWith(expect.objectContaining({use_mmap: true, flash_attn_type: 'auto'}));
+});
+
+test('each configured load setting reaches initLlama on its own', async () => {
+  for (const [field, param, value] of [['useMmap', 'use_mmap', true], ['useMlock', 'use_mlock', true],
+    ['noExtraBufts', 'no_extra_bufts', true], ['flashAttnType', 'flash_attn_type', 'on']] as const) {
+    jest.mocked(initLlama).mockClear();
+    jest.mocked(FS.writeFile).mockClear();
+    files.set('/fixture/xebench-config.json', JSON.stringify({...bundled, nColdRuns: 1, cooldownSec: 0,
+      runs: [{...bundled.runs[0], [field]: value}]}));
+    await runReference(() => {});
+    expect(initLlama).toHaveBeenCalledWith(expect.objectContaining({[param]: value}));
+    expect(saved()[0].effectiveSettings.init[param]).toBe(value);
+  }
 });
 
 test('unreported or malformed context fields stay unknown', async () => {

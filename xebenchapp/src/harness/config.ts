@@ -11,7 +11,24 @@ export interface ReferenceRun {
   nCtx: number;
   /** Expected SHA-256 of the GGUF bytes; a mismatch fails the run and aborts the configuration. */
   modelSha256?: string;
+  /**
+   * llama.rn load and attention settings (cpu-reference-v2 sets each one). Absent means the
+   * harness default in LlamaRnAdapter (LLAMA_RN_DEFAULTS): use_mmap true, use_mlock false,
+   * no_extra_bufts false (weight repacking on), flash_attn_type auto. Kept only when the file
+   * sets them, so the configuration echoed into a record is exactly the file's content.
+   */
+  useMmap?: boolean;
+  useMlock?: boolean;
+  /** false: llama.cpp may repack weights into extra CPU buffer types (CPU_REPACK). */
+  noExtraBufts?: boolean;
+  flashAttnType?: FlashAttnType;
 }
+
+export const FLASH_ATTN_TYPES = ['auto', 'on', 'off'] as const;
+export type FlashAttnType = typeof FLASH_ATTN_TYPES[number];
+/** Optional run fields that select llama.rn initLlama() settings, with the parameter each sets. */
+export const LOAD_SETTINGS = {useMmap: 'use_mmap', useMlock: 'use_mlock', noExtraBufts: 'no_extra_bufts',
+  flashAttnType: 'flash_attn_type'} as const;
 
 export interface ReferenceConfig {
   schemaVersion: 1;
@@ -69,6 +86,26 @@ function label(value: unknown): string {
   return value;
 }
 
+function flag(value: unknown, name: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new Error(`${name} must be true or false`);
+  }
+  return value;
+}
+
+/** The load settings a run sets, validated; unset ones stay absent. */
+function loadSettings(run: Record<string, unknown>): Pick<ReferenceRun, keyof typeof LOAD_SETTINGS> {
+  const result: Pick<ReferenceRun, keyof typeof LOAD_SETTINGS> = {};
+  for (const key of Object.keys(run)) {
+    if (key === 'flashAttnType') {
+      result.flashAttnType = oneOf(run.flashAttnType, FLASH_ATTN_TYPES, 'flashAttnType');
+    } else if (key === 'useMmap' || key === 'useMlock' || key === 'noExtraBufts') {
+      result[key] = flag(run[key], key);
+    }
+  }
+  return result;
+}
+
 export function parseConfig(input: unknown): ReferenceConfig {
   const value = object(input);
   fields(value, ['schemaVersion', 'id', 'nColdRuns', 'cooldownSec', 'readinessTimeoutSec', 'maxBatteryTempRiseC',
@@ -81,7 +118,8 @@ export function parseConfig(input: unknown): ReferenceConfig {
   }
   const runs = value.runs.map(item => {
     const run = object(item);
-    fields(run, ['id', 'engine', 'model', 'modelFile', 'quant', 'nThreads', 'nCtx', 'modelSha256']);
+    fields(run, ['id', 'engine', 'model', 'modelFile', 'quant', 'nThreads', 'nCtx', 'modelSha256',
+      ...Object.keys(LOAD_SETTINGS)]);
     if (run.engine !== 'llama.cpp') {
       throw new Error('This reference protocol supports llama.cpp CPU only');
     }
@@ -97,6 +135,7 @@ export function parseConfig(input: unknown): ReferenceConfig {
       modelFile, quant: label(run.quant), nThreads: integer(run.nThreads, 1, 32),
       nCtx: integer(run.nCtx, 1024, 32768),
       ...(run.modelSha256 === undefined ? {} : {modelSha256: run.modelSha256 as string}),
+      ...loadSettings(run),
     };
   });
   if (new Set(runs.map(run => run.id)).size !== runs.length) {

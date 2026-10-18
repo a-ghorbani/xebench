@@ -21,7 +21,23 @@ export interface LlamaRnAdapterOptions {
   nGpuLayers?: number;
   /** Backend devices, e.g. ['HTP0'] for Hexagon NPU (SM8450+). Needs nGpuLayers>0. */
   devices?: string[];
+  /** Load and attention settings; each defaults to LLAMA_RN_DEFAULTS. */
+  useMmap?: boolean;
+  useMlock?: boolean;
+  /** false: weight repacking on (llama.cpp extra CPU buffer types). */
+  noExtraBufts?: boolean;
+  flashAttnType?: 'auto' | 'on' | 'off';
 }
+
+/**
+ * Harness defaults for the settings a configuration may set (config.ts LOAD_SETTINGS), as
+ * cpu-reference-v1 runs them. Against llama.rn 0.13.0-rc.7 (vendored llama.cpp
+ * common/common.h): flash_attn_type auto and no_extra_bufts false equal its defaults. Loading
+ * differs: 0.13's default load_mode is AUTO (chosen per device), while use_mmap true /
+ * use_mlock false select LLAMA_LOAD_MODE_MMAP, the 0.12.4 behaviour (cpp/jsi/JSIParams.cpp).
+ */
+export const LLAMA_RN_DEFAULTS = {use_mmap: true, use_mlock: false, no_extra_bufts: false,
+  flash_attn_type: 'auto'} as const;
 
 /** Greedy decoding: deterministic and free of sampling-cost skew. */
 const COMPLETION = {temperature: 0, seed: 42} as const;
@@ -67,19 +83,20 @@ export class LlamaRnAdapter implements EngineAdapter {
     this.modelLabel = opts.modelLabel;
     this.modelFile = opts.modelPath.split('/').pop() ?? opts.modelPath;
     // Every setting is passed explicitly, so the record states them. Against llama.rn
-    // 0.13.0-rc.7 (vendored llama.cpp common.h): n_ubatch 512, flash_attn_type auto and f16 K/V
-    // caches equal its defaults. Loading differs: 0.13's default load_mode is AUTO (chosen per
-    // device), while use_mmap true / use_mlock false here select LLAMA_LOAD_MODE_MMAP, the
-    // 0.12.4 behaviour. n_batch 512 is the harness's choice (llama.cpp's default is 2048).
+    // 0.13.0-rc.7 (vendored llama.cpp common.h): n_ubatch 512 and f16 K/V caches equal its
+    // defaults; n_batch 512 is the harness's choice (llama.cpp's default is 2048). Load and
+    // attention settings come from the configured run, else LLAMA_RN_DEFAULTS. use_mmap false
+    // with use_mlock false selects LLAMA_LOAD_MODE_NONE: the weights are read into memory.
     this.init = {
       n_ctx: opts.nCtx ?? 2048,
       n_batch: 512,
       n_ubatch: 512,
       n_threads: opts.nThreads ?? null, // null: llama.rn's own default (perf cores heuristic)
       n_gpu_layers: opts.nGpuLayers ?? 0, // >0 => GPU/NPU offload
-      use_mmap: true,
-      use_mlock: false,
-      flash_attn_type: 'auto',
+      use_mmap: opts.useMmap ?? LLAMA_RN_DEFAULTS.use_mmap,
+      use_mlock: opts.useMlock ?? LLAMA_RN_DEFAULTS.use_mlock,
+      no_extra_bufts: opts.noExtraBufts ?? LLAMA_RN_DEFAULTS.no_extra_bufts,
+      flash_attn_type: opts.flashAttnType ?? LLAMA_RN_DEFAULTS.flash_attn_type,
       cache_type_k: 'f16',
       cache_type_v: 'f16',
       ...(opts.devices ? {devices: [...opts.devices]} : {}), // ['HTP0'] => Hexagon NPU

@@ -802,6 +802,7 @@
           "n_gpu_layers": 0,
           "use_mmap": true,
           "use_mlock": false,
+          "no_extra_bufts": false,
           "flash_attn_type": "auto",
           "cache_type_k": "f16",
           "cache_type_v": "f16"
@@ -1591,6 +1592,7 @@
           "n_gpu_layers": 99,
           "use_mmap": true,
           "use_mlock": false,
+          "no_extra_bufts": false,
           "flash_attn_type": "auto",
           "cache_type_k": "f16",
           "cache_type_v": "f16"
@@ -3125,6 +3127,7 @@
           "n_gpu_layers": 99,
           "use_mmap": true,
           "use_mlock": false,
+          "no_extra_bufts": false,
           "flash_attn_type": "auto",
           "cache_type_k": "f16",
           "cache_type_v": "f16",

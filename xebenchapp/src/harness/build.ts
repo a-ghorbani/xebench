@@ -23,7 +23,7 @@ export interface BuildIdentity {
 /** BuildConfig values that are not part of the binary's identity record. */
 export interface BuildInfo {
   identity: BuildIdentity;
-  /** SHA-256 of configs/cpu-reference-v1.json as bundled into this build. */
+  /** SHA-256 of configs/cpu-reference-v2.json (the default configuration) as bundled into this build. */
   bundledConfigSha256: string | null;
 }
 

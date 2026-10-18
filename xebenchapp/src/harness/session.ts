@@ -68,7 +68,7 @@ export type StopReason = 'repetition-failed' | 'readiness-timeout' | 'condition-
 
 /** Where the parsed configuration came from, and the SHA-256 of that file's bytes. */
 export interface ConfigurationSource {
-  /** bundled: configs/cpu-reference-v1.json in the APK; staged: xebench-config.json in the app's files dir. */
+  /** bundled: configs/cpu-reference-v2.json in the APK; staged: xebench-config.json in the app's files dir. */
   kind: 'bundled' | 'staged';
   /** Staged: hash of the bytes read. Bundled: hash computed at build time; null if the build did not report it. */
   sha256: string | null;

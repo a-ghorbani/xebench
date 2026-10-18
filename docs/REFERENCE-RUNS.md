@@ -1,9 +1,50 @@
 # CPU reference runs
 
 The default app runs the versioned configuration in
-[`cpu-reference-v1.json`](../xebenchapp/configs/cpu-reference-v1.json).
-This first reference path supports **llama.cpp CPU**. Other engine adapters remain
-experimental; expanding reference coverage is a follow-up in issue #3.
+[`cpu-reference-v2.json`](../xebenchapp/configs/cpu-reference-v2.json), which every flavor
+bundles. [`cpu-reference-v1.json`](../xebenchapp/configs/cpu-reference-v1.json) runs as a
+staged configuration. Both record sessions of protocol `cpu-reference-v3`; the
+configuration IDs are separate from the protocol versions of the same names described
+under [Host validation](#host-validation). This first reference path supports
+**llama.cpp CPU**.
+
+The two configurations differ only in how llama.rn loads the model and computes attention:
+
+| Run field | llama.rn parameter | cpu-reference-v1 | cpu-reference-v2 |
+| --- | --- | --- | --- |
+| `useMmap` | `use_mmap` | not set (`true`) | `false` |
+| `useMlock` | `use_mlock` | not set (`false`) | `false` |
+| `noExtraBufts` | `no_extra_bufts` | not set (`false`, weight repacking on) | `false` |
+| `flashAttnType` | `flash_attn_type` | not set (`auto`) | `off` |
+
+A run field that is not set takes the harness default in parentheses
+(`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).
+With llama.rn 0.13.0-rc.7, `use_mmap: true` selects memory-mapped loading
+(`LLAMA_LOAD_MODE_MMAP`), and `use_mmap: false` with `use_mlock: false` reads the weights
+into memory (`LLAMA_LOAD_MODE_NONE`; `cpp/jsi/JSIParams.cpp`). `no_extra_bufts: false` lets
+llama.cpp repack weights into its extra CPU buffer types; it is also the binding's default.
+
+cpu-reference-v2's four values are PocketPal's Android defaults in
+[PocketPal](https://github.com/a-ghorbani/pocketpal-ai) 1.20.0 (commit `07ef06f`).
+`createDefaultContextInitParams()` in `src/utils/contextInitParamsVersions.ts` sets
+`use_mmap: 'false'` and `flash_attn_type: 'off'` on Android, `use_mlock: false` and
+`no_extra_bufts: false`. `ModelStore.getEffectiveContextInitParams()` in
+`src/store/ModelStore.ts` passes them to `initLlama()`, with `'false'` resolved to
+`use_mmap: false`. Every other setting stays the CPU reference's: `n_gpu_layers` 0,
+`n_threads` 4, `n_ctx` 2048, `n_batch` 512, `n_ubatch` 512, f16 K/V caches, greedy sampling,
+and the prompt and decode length of cpu-reference-v1. PocketPal's defaults for `n_ctx`,
+`n_batch`, `n_ubatch` and the K/V cache types are the same. Its other `initLlama()`
+parameters are not adopted, among them `n_gpu_layers: 99` with automatic devices,
+`kv_unified: true`, `n_parallel: 1`, `state_cache_budget_mb` and the per-device thread count
+it sets on first launch; the harness leaves the ones it does not list to the binding.
+For this single-sequence CPU run, `kv_unified`, `n_parallel` and `state_cache_budget_mb`
+change nothing. llama.rn's own `n_parallel` default is also 1. With one sequence, the KV
+cache has one stream and a 2048-token context per sequence, unified or not. The prompt state
+cache only reuses state across turns on recurrent, hybrid or SWA models. Llama 3.2 is none of
+these, and every repetition loads a fresh instance.
+
+Other engine adapters remain experimental; expanding reference coverage is a follow-up in
+issue #3.
 
 Build the `reference` flavor, which packages only llama.rn's CPU libraries. It
 needs no vendor SDK and no source or packaging edits; prerequisites are listed in
@@ -80,11 +121,13 @@ never downloads the model. [MODELS.md](../MODELS.md) gives the license terms and
 download command for the pinned revision.
 
 To customize a run, copy the bundled JSON and edit its model basename, quant
-label, threads/context, repetition, cooldown, readiness timeout
+label, threads/context, load settings (`useMmap`, `useMlock`, `noExtraBufts`,
+`flashAttnType`), repetition, cooldown, readiness timeout
 (`readinessTimeoutSec`) or battery-rise bound (`maxBatteryTempRiseC`) settings, or
-add `orderSeed` to reproduce a recorded run order. A run may pin `modelSha256`
-(64 lowercase hex); the bundled configuration pins the reference GGUF from the
-manifest. `stage_model.py` stages only models listed in the manifest. Push any other
+add `orderSeed` to reproduce a recorded run order. To run cpu-reference-v1, stage the
+committed file byte for byte, so the recorded `configurationSource` hash names it. A run
+may pin `modelSha256` (64 lowercase hex); the bundled configuration pins the reference
+GGUF from the manifest. `stage_model.py` stages only models listed in the manifest. Push any other
 GGUF with `adb` yourself, and remove or replace its `modelSha256`; runs with it are
 not reference runs. Then stage the configuration:
 
@@ -134,9 +177,9 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
     path) and `completion` parameter (except the prompt) the harness passes, for
     example `n_batch`, `n_ubatch`, `use_mmap`, `flash_attn_type`, the KV cache types,
     `temperature` and `seed`. Values equal to the binding's defaults are still passed
-    explicitly; anything unlisted is the binding default of `engineVersion`. With
-    llama.rn 0.13.0-rc.7, `use_mmap: true` / `use_mlock: false` select memory-mapped
-    loading, whereas 0.13's own default load mode is `AUTO`. `distribution` records
+    explicitly; anything unlisted is the binding default of `engineVersion`. The load
+    settings come from the configured run (see the table above); 0.13's own default load
+    mode is `AUTO`, which the harness never uses. `distribution` records
     the binding as installed: `{source: npm, package: llama.rn, version, patches: []}`.
     xebench uses the npm package as published, with no patches, so a third party can
     rebuild it from public packages.
@@ -149,10 +192,8 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
     and stop handling in `src/index.ts`. It does not touch the vendored llama.cpp/ggml
     sources. Kernels should therefore match PocketPal's app, but TTFT and decode timing
     may differ slightly.
-    PocketPal's Android defaults also differ from the reference settings: `use_mmap: false`
-    with weight repacking on (`no_extra_bufts: false`), `flash_attn_type: off`,
-    `n_gpu_layers: 99` with automatic devices, and `kv_unified: true`. The reference
-    protocol keeps its own explicit, recorded settings.
+    cpu-reference-v2 adopts PocketPal's Android load settings (above). PocketPal's
+    `n_gpu_layers: 99` with automatic devices and `kv_unified: true` are not adopted.
   - `runtimeVersions`: the versions of the runtimes the engine runs on, taken from the
     shipped artifacts, never typed by hand. For llama.cpp: `llamaCpp`
     (`{buildNumber, commit}` of the vendored llama.cpp, from llama.rn's exported
@@ -241,6 +282,10 @@ validator also checks that:
   differs. Such a run has no attempts but keeps its artifact;
 - the effective `n_ctx`, `n_threads` and `n_predict` agree with the protocol, and
   `n_gpu_layers` is 0;
+- the effective `use_mmap`, `use_mlock`, `no_extra_bufts` and `flash_attn_type` equal the
+  configured run's load settings, or the harness defaults for those it does not set.
+  Records from builds that did not pass `no_extra_bufts` omit it; that is accepted only
+  for a run that does not set `noExtraBufts`;
 - every successful load has exactly one execution report, in repetition order, and
   a failed load has none. A report of GPU devices is kept as evidence, not
   rejected: in the `experimental` flavor llama.rn registers OpenCL even with

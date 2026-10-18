@@ -291,11 +291,13 @@ class CommittedManifestTests(unittest.TestCase):
         self.assertEqual(model['sha256'], '6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83')
         self.assertEqual(model['size'], 807694464)
         self.assertEqual(model['license'], 'Llama 3.2 Community License')
-        config = json.loads((ROOT / 'xebenchapp/configs/cpu-reference-v1.json').read_text())
-        self.assertEqual({run['modelFile'] for run in config['runs']}, {model['file']})
-        for run in config['runs']:
-            if 'modelSha256' in run:
-                self.assertEqual(run['modelSha256'], model['sha256'])
+        # cpu-reference-v2 is the bundled default; cpu-reference-v1 still runs staged.
+        for name in ('cpu-reference-v2.json', 'cpu-reference-v1.json'):
+            with self.subTest(config=name):
+                config = json.loads((ROOT / 'xebenchapp/configs' / name).read_text())
+                self.assertEqual({run['modelFile'] for run in config['runs']}, {model['file']})
+                for run in config['runs']:
+                    self.assertEqual(run['modelSha256'], model['sha256'])
 
     def test_experimental_gemma_gguf_is_pinned_and_matches_the_accelerator_configs(self):
         manifest = ROOT / 'configs/models/experimental-models.json'
