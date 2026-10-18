@@ -22,5 +22,7 @@ jobs:
         run: node scripts/migrate_contract_1_1.mjs --check
       - name: Aggregation fail-closed tests
         run: python3 -m unittest discover -s tests -p 'test_*publication.py' -v
+      - name: Contract 1.2 tests
+        run: python3 -m unittest discover -s tests -p 'test_contract_1_2.py' -v
       - name: Canonical data is unchanged by the tests (no edits or leftover files)
         run: test -z "$(git status --porcelain -- data/ tests/fixtures/)"

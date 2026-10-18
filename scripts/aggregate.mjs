@@ -21,13 +21,14 @@
  * "failed". Nothing is ever emitted as "verified" until an evidence pipeline
  * exists. --update requires a canonical file already migrated to 1.1
  * (scripts/migrate_contract_1_1.mjs) and writes schemaVersion 1.1 with an
- * ISO-8601 UTC generatedAt.
+ * ISO-8601 UTC generatedAt, or 1.2 once a row carries build.runtimes (contract
+ * 1.2 build identity, from a session's runtimeVersions).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
-  assertBenchmarks, assertFinite, assertSchema, compareRows, CONTRACT_VERSION, isoNow, migrationNeeds,
-  PublicationError, readJson, rowInvariantErrors, rowKey, writeAtomic,
+  assertBenchmarks, assertFinite, assertSchema, buildFromSession, compareRows, CONTRACT_VERSION, contractVersionFor,
+  isoNow, migrationNeeds, PublicationError, readJson, rowInvariantErrors, rowKey, writeAtomic,
 } from './lib/publication.mjs';
 
 const USAGE =
@@ -283,6 +284,9 @@ function toRow({ rec, where }, warnings) {
       guardsPassed: rec.guardsPassed,
       protocolVersion: rec.protocol.version,
       conditionPolicy: nonEmpty(rec.conditionPolicy?.version) ? rec.conditionPolicy.version : undefined,
+      // Contract 1.2 build (engine, binding and runtime versions), from the session's
+      // runtimeVersions when the app recorded them.
+      build: buildFromSession(rec, where),
     };
   return {
     engine: rec.engine,
@@ -387,7 +391,8 @@ function main() {
   const merged = [...byKey.values()].sort(compareRows);
   merged.forEach((row) => assertEmittable(row, `data/benchmarks.json row ${rowKey(row)}`));
   const out = {
-    ...envelope, schemaVersion: CONTRACT_VERSION, generatedAt: isoNow(), rowCount: merged.length, rows: merged,
+    ...envelope, schemaVersion: contractVersionFor(merged, envelope.schemaVersion), generatedAt: isoNow(),
+    rowCount: merged.length, rows: merged,
   };
   const text = JSON.stringify(out, null, 2) + '\n';
   assertBenchmarks(JSON.parse(text), schema, 'updated data/benchmarks.json');

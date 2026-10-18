@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.2",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract 1.2 consumer fixture (reject): a runtime version that is free text.",
+  "rowCount": 1,
+  "rows": [
+    {
+      "engine": "litert-lm",
+      "backend": "npu",
+      "platform": "android",
+      "device": "Fixture Phone",
+      "soc": "Fixture SoC",
+      "model": "Fixture Model 1B",
+      "quant": "q4 ekv1280",
+      "ppTps": 5320.0,
+      "tgTps": 65.0,
+      "ttftMs": 145,
+      "memoryMb": 712.5,
+      "provenance": "measured",
+      "sourceName": "PocketPal R&D lab (xebench)",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sourceDate": "2026-10",
+      "sampleCount": 10,
+      "asStated": "SYNTHETIC FIXTURE; n=10 cold-run median; prompt std-chat-v1; decode 128 tok",
+      "validation": "unverified",
+      "guardsPassed": null,
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "accelerator-v2",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 125.6,
+          "min": 5100.0,
+          "max": 5450.0
+        },
+        "tgTps": {
+          "iqr": 0.6,
+          "min": 64.1,
+          "max": 65.9
+        }
+      },
+      "build": {
+        "engineVersion": "LiteRT-LM 0.18.0",
+        "apkSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "harnessCommit": "0000000000000000000000000000000000000000",
+        "runtimes": [
+          {
+            "name": "LiteRT-LM",
+            "version": "0.18.0 (Maven)"
+          }
+        ]
+      }
+    }
+  ]
+}

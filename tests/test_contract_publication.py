@@ -201,7 +201,7 @@ class MigrationTests(Workspace):
         measured['evidence'] = verified_row()['evidence']  # would become a legacy row with evidence
         cases = {
             'unsupported-major': dump({**old, 'schemaVersion': '2.0'}),
-            'unknown-minor': dump({**current, 'schemaVersion': '1.2'}),
+            'unknown-minor': dump({**current, 'schemaVersion': '1.3'}),
             'truncated': dump(old)[:300],
             'invalid-row': dump({**old, 'rows': [*old['rows'][:-1], {**old['rows'][-1], 'eligibility': 'x'}]}),
             'legacy-with-evidence': dump(smuggled),

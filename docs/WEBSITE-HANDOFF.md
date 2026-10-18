@@ -42,8 +42,8 @@ vendor and community rows never carry them.
 | `evidence` | `{ sessionIds, bundleSha256, url }` | Immutable sanitized evidence behind the row | `sessionIds`: non-empty array of unique non-empty strings; `bundleSha256`: 64-character lowercase hex; `url`: `https://` URL with a host, no credentials, printable ASCII only. Required when verified; absent on legacy rows. |
 | `build` | `{ engineVersion?, bindingVersion?, apkSha256?, harnessCommit? }` | Identity of the producing software | All values strings; no other keys. |
 
-There is no `eligibility` field in 1.1; it is deferred to 1.2 and rejected
-until then. Unknown row fields are rejected (`additionalProperties: false`), so
+There is no `eligibility` field in 1.1 or 1.2; it is rejected until a later
+minor defines it. Unknown row fields are rejected (`additionalProperties: false`), so
 a consumer that validates with this schema must also be updated before the
 producer publishes a later minor's fields.
 
@@ -73,9 +73,57 @@ lists each file and whether a consumer must accept or reject it:
 | `v1.0-date-only.json` | accept | Pre-migration 1.0 file with date-only `generatedAt` |
 | `unsupported-major.json` | reject | `schemaVersion` "2.0" |
 
+## Agreed contract 1.2
+
+Agreed by the website implementer and the PM. Contract 1.2 is additive over 1.1:
+every 1.0 and 1.1 file still validates, and no 1.1 field changes meaning. It adds
+one optional field, on measured rows only, that names each software component
+behind a row with its version. A file declares `schemaVersion` "1.2" only when a
+row carries it. The same rollout rule applies: the website accepts 1.2 in
+production before the producer publishes a 1.2 file.
+
+| Field | Type | Meaning | Invariants |
+| --- | --- | --- | --- |
+| `build.runtimes` | `[{ name, version }]` | Each component that ran, with its version | Measured rows only, in `schemaVersion` "1.2" files only. Non-empty; one entry per `name`. `name` is one of `llama.cpp`, `llama.rn`, `LiteRT-LM`, `litert-npu-runtime-qualcomm`, `QAIRT`, `Genie`. `version` is a llama.cpp build (`b11385`) or a dotted version with an optional pre-release (`0.13.0-rc.7`, `2.50.0.260828221209`): `^(b[0-9]{1,7}\|[0-9]{1,5}(\.[0-9]{1,12}){1,3}(-[0-9A-Za-z]{1,16}(\.[0-9A-Za-z]{1,16}){0,3})?)$`. No other keys. |
+| `build.engineVersion` | string | The engine's own version | With `runtimes`: `llama.cpp b<build> (<7-hex commit>)`, `LiteRT-LM <version>` or `Genie <version>`. Without `runtimes`, any string, as in 1.1. |
+| `build.bindingVersion` | string | The app binding the engine runs through | With `runtimes`: `llama.rn <version>`. Without `runtimes`, any string, as in 1.1. |
+
+Example (a llama.cpp row):
+
+```json
+"build": {
+  "engineVersion": "llama.cpp b11385 (bf9a0cc)",
+  "bindingVersion": "llama.rn 0.13.0-rc.7",
+  "runtimes": [{"name": "llama.cpp", "version": "b11385"}, {"name": "llama.rn", "version": "0.13.0-rc.7"}]
+}
+```
+
+A LiteRT-LM NPU row lists `LiteRT-LM`, `litert-npu-runtime-qualcomm` and
+`QAIRT` and has no `bindingVersion`. The schema expresses every 1.2 invariant
+except one entry per `name` (identical duplicate entries fail its
+`uniqueItems`); `scripts/lib/publication.mjs` enforces all of them. The producer
+fills `build` from the versions a session records (`runtimeVersions` in the raw
+session); a component the session does not report is absent, never guessed.
+
+Consumer fixtures are in
+[`tests/fixtures/contract-1.2/`](../tests/fixtures/contract-1.2/), listed in
+`index.json`:
+
+| Fixture | Expect | Covers |
+| --- | --- | --- |
+| `llama-cpp-runtimes.json` | accept | Synthetic llama.cpp row: engine build, llama.rn binding, both as runtimes |
+| `litert-npu-runtimes.json` | accept | Synthetic LiteRT-LM NPU row: LiteRT-LM, Qualcomm NPU dispatch runtime and QAIRT |
+| `v1.1-rows-in-1.2.json` | accept | A 1.2 file whose rows carry no 1.2 field |
+| `runtimes-in-1.1.json` | reject | `build.runtimes` in a file that declares 1.1 |
+| `duplicate-runtime.json` | reject | Two entries with the same `name` |
+| `unknown-runtime-name.json` | reject | A `name` outside the closed list |
+| `bad-runtime-version.json` | reject | A free-text `version` |
+| `engine-version-form.json` | reject | With `runtimes`, an `engineVersion` outside the fixed forms |
+| `runtimes-on-vendor-row.json` | reject | `build` on a vendor row |
+
 ## Contract and display
 
-Contract 1.1 above covers the first rows of this table. Agree further field
+Contracts 1.1 and 1.2 above cover the first rows of this table. Agree further field
 names and types in the versioned schema before implementation.
 
 | Data | Website requirement |

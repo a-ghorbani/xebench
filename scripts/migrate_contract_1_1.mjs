@@ -47,13 +47,13 @@ try {
       console.error(`data/benchmarks.json needs the 1.1 migration: ${needs.join('; ')}`);
       process.exit(1);
     }
-    console.error('data/benchmarks.json is at contract 1.1');
+    console.error('data/benchmarks.json is at contract 1.1 or later');
     process.exit(0);
   }
 
   const { envelope: out, touched, changed } = migrateTo11(envelope);
   if (!changed) {
-    console.error('data/benchmarks.json is already at contract 1.1; nothing to do');
+    console.error('data/benchmarks.json is already at contract 1.1 or later; nothing to do');
     process.exit(0);
   }
   const text = JSON.stringify(out, null, 2) + '\n';
