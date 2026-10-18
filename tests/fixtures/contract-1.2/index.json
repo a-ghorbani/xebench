@@ -1,0 +1,51 @@
+{
+  "contract": "1.2",
+  "description": "Consumer fixtures for the xebench benchmarks contract 1.2 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): build.runtimes, engineVersion and bindingVersion. Each file is a complete envelope. expect=accept files must load and render; expect=reject files must be refused as a whole, keeping the consumer's compatible fallback. tests/test_contract_1_2.py checks every entry against scripts/validate_data.mjs.",
+  "fixtures": [
+    {
+      "file": "llama-cpp-runtimes.json",
+      "expect": "accept",
+      "notes": "llama.cpp build plus llama.rn binding"
+    },
+    {
+      "file": "litert-npu-runtimes.json",
+      "expect": "accept",
+      "notes": "LiteRT-LM NPU with dispatch runtime and QAIRT; no binding"
+    },
+    {
+      "file": "v1.1-rows-in-1.2.json",
+      "expect": "accept",
+      "notes": "1.2 is additive: rows without runtimes are unchanged"
+    },
+    {
+      "file": "runtimes-in-1.1.json",
+      "expect": "reject",
+      "notes": "runtimes need schemaVersion 1.2"
+    },
+    {
+      "file": "duplicate-runtime.json",
+      "expect": "reject",
+      "notes": "one entry per runtime name"
+    },
+    {
+      "file": "unknown-runtime-name.json",
+      "expect": "reject",
+      "notes": "names come from a closed list"
+    },
+    {
+      "file": "bad-runtime-version.json",
+      "expect": "reject",
+      "notes": "versions are short version strings, never free text"
+    },
+    {
+      "file": "engine-version-form.json",
+      "expect": "reject",
+      "notes": "with runtimes, engineVersion is 'llama.cpp b<number> (<commit>)'"
+    },
+    {
+      "file": "runtimes-on-vendor-row.json",
+      "expect": "reject",
+      "notes": "build, including runtimes, is measured-only"
+    }
+  ]
+}

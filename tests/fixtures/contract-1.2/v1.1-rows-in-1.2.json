@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.2",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract 1.2 consumer fixture: a 1.2 file whose rows carry no 1.2 field (legacy and vendor rows as in 1.1).",
+  "rowCount": 2,
+  "rows": [
+    {
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Google Pixel 9",
+      "soc": "Tensor G4",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "ppTps": 144,
+      "tgTps": 24.1,
+      "ttftMs": 3282,
+      "memoryMb": null,
+      "provenance": "measured",
+      "sourceName": "PocketPal R&D lab (xebench)",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sampleCount": 3,
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "legacy"
+    },
+    {
+      "engine": "litert-lm",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Google Pixel 7 Pro",
+      "model": "FunctionGemma 270M",
+      "quant": "not stated",
+      "ppTps": 1916,
+      "tgTps": 142,
+      "asStated": "1916 tok/s prefill, 142 tok/s decode on CPU",
+      "sourceName": "Google Developers Blog (AI Edge Gallery)",
+      "sourceUrl": "https://developers.googleblog.com/on-device-function-calling-in-google-ai-edge-gallery/",
+      "sourceDate": "2026-02",
+      "provenance": "vendor"
+    }
+  ]
+}
