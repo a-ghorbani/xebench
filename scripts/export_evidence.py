@@ -972,7 +972,7 @@ def _check_record(record, where, errors):
         # A run recorded without measurement (cpu-reference-v2+, accelerator-v1): no attempts, and
         # no artifact unless it was hashed and found to differ from the configured hash.
         stop = record.get("stopReason")
-        accelerator = record["protocol"]["version"] == raw_session.ACCELERATOR_PROTOCOL
+        accelerator = record["protocol"]["version"] in raw_session.ACCELERATOR_PROTOCOLS
         unmeasured = raw_session.ACCELERATOR_UNMEASURED_NOTES if accelerator else raw_session.STOP_REASONS_UNMEASURED
         unhashed = raw_session.STOP_REASONS_UNHASHED + (
             ("engine-unavailable", "gate-cleanup-failed") if accelerator else ())
@@ -989,7 +989,7 @@ def _check_record(record, where, errors):
 
 def _check_correctness(record, where, errors):
     """accelerator-v1: workload, backend evidence, gate and comparison follow from the exported evidence."""
-    if record["protocol"]["version"] != raw_session.ACCELERATOR_PROTOCOL:
+    if record["protocol"]["version"] not in raw_session.ACCELERATOR_PROTOCOLS:
         return
     try:
         protocol, correctness = record["protocol"], record["correctness"]
@@ -1034,7 +1034,8 @@ def _check_correctness(record, where, errors):
 
 def _check_references(mine, errors):
     """accelerator-v1 within one capture: a candidate's copied reference matches the reference session."""
-    sessions = [doc for doc in mine if doc["record"].get("protocol", {}).get("version") == raw_session.ACCELERATOR_PROTOCOL]
+    sessions = [doc for doc in mine
+                if doc["record"].get("protocol", {}).get("version") in raw_session.ACCELERATOR_PROTOCOLS]
     for doc in sessions:
         try:
             correctness = doc["record"]["correctness"]

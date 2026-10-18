@@ -363,7 +363,7 @@ def _semantic(record):
                              f"{len(attempts)} attempts exceed the configured {expected}"))
     # cpu-reference-v3 keeps the v2 measurement procedure and adds identity evidence;
     # accelerator-v1 shares every v2/v3 rule and adds its own (_semantic_accelerator).
-    v2 = protocol["version"] in ("cpu-reference-v2", "cpu-reference-v3", ACCELERATOR_PROTOCOL)
+    v2 = protocol["version"] in ("cpu-reference-v2", "cpu-reference-v3") + ACCELERATOR_PROTOCOLS
     failed = [index for index, attempt in enumerate(attempts) if attempt["status"] == "failed"]
     if v2:
         pass  # Status, stop reason and skipped repetitions: see _semantic_v2.
@@ -400,8 +400,11 @@ def _semantic(record):
         errors += _semantic_v2(record)
         if protocol["version"] == "cpu-reference-v3":
             errors += _semantic_v3(record)
+        elif protocol["version"] == ACCELERATOR_PROTOCOL_V1:
+            # Frozen: records of the app built before the build/execution identity work.
+            errors += _semantic_accelerator(record, identity=False)
         elif protocol["version"] == ACCELERATOR_PROTOCOL:
-            errors += _semantic_v3(record) + _semantic_accelerator(record)
+            errors += _semantic_v3(record) + _semantic_accelerator(record, identity=True)
         return errors
     # Apps built before condition snapshots (PR #11) omit all condition evidence;
     # a mix of present and missing evidence is never valid.
@@ -475,7 +478,10 @@ UNMEASURED_NOTES = {"configuration-aborted": "Not run: an earlier run aborted th
                     "setup-failed": "Not run: the model artifact could not be read",
                     "model-hash-mismatch": "Not run: the model artifact does not match the configured SHA-256"}
 # accelerator-v1 (xebenchapp/src/harness/accelerator.ts) adds two ways a run is recorded unmeasured.
-ACCELERATOR_PROTOCOL = "accelerator-v1"
+# accelerator-v2 adds the cpu-reference-v3 build and execution identity to accelerator-v1.
+ACCELERATOR_PROTOCOL = "accelerator-v2"
+ACCELERATOR_PROTOCOL_V1 = "accelerator-v1"
+ACCELERATOR_PROTOCOLS = (ACCELERATOR_PROTOCOL_V1, ACCELERATOR_PROTOCOL)
 ACCELERATOR_UNMEASURED_NOTES = {**UNMEASURED_NOTES,
                                 "engine-unavailable": "Not run: the engine is not linked in this build",
                                 "gate-cleanup-failed": "Not run: the correctness gate could not release the engine"}
@@ -726,7 +732,7 @@ def _semantic_v2(record):
     errors = []
     protocol, config, attempts = record["protocol"], record["configuration"], record["coldRuns"]
     planned, status, stop = record["repetitionsPlanned"], record["status"], record["stopReason"]
-    accelerator = protocol["version"] == ACCELERATOR_PROTOCOL
+    accelerator = protocol["version"] in ACCELERATOR_PROTOCOLS
     unmeasured_notes = ACCELERATOR_UNMEASURED_NOTES if accelerator else UNMEASURED_NOTES
     if planned != protocol["nColdRuns"]:
         errors.append(reason("protocol.configuration-mismatch", "/repetitionsPlanned",
@@ -1258,7 +1264,7 @@ def backend_evidence_errors(engine, backend, observed, where):
     return errors
 
 
-def _semantic_accelerator(record):
+def _semantic_accelerator(record, identity=True):
     config, protocol = record["configuration"], record["protocol"]
     errors = _configuration_accelerator(config)
     run = next((item for item in config["runs"] if item["id"] == record["configurationRunId"]), None)
@@ -1267,9 +1273,12 @@ def _semantic_accelerator(record):
             if run[key] != record[key]:
                 errors.append(reason("configuration.run-mismatch", f"/{key}",
                                      f"Record {key} disagrees with the configured run"))
-    # llama.cpp runs state every llama.rn parameter; LiteRT-LM runs have neither settings nor reports.
-    settings = record["effectiveSettings"]
-    if record["engine"] == "litert-lm":
+    # accelerator-v2: llama.cpp runs state every llama.rn parameter; LiteRT-LM runs have neither
+    # settings nor reports. accelerator-v1 records predate both fields.
+    settings = record["effectiveSettings"] if identity else None
+    if not identity:
+        pass
+    elif record["engine"] == "litert-lm":
         if settings is not None or record["executionReports"]:
             errors.append(reason("settings.engine", "/effectiveSettings",
                                  "LiteRT-LM records have no effectiveSettings and no executionReports"))

@@ -1,5 +1,5 @@
 /**
- * accelerator-v1: LiteRT-LM and llama.cpp on CPU, GPU and NPU, with an output-correctness
+ * accelerator-v2 (accelerator-v1 plus build/execution identity): LiteRT-LM and llama.cpp on CPU, GPU and NPU, with an output-correctness
  * gate and observed-backend evidence. Repetitions, readiness, sampling, cooldown, run
  * order, the condition verdict and the build/configuration/engine identity evidence are those
  * of cpu-reference-v3 (session.ts).
@@ -39,7 +39,7 @@ export interface AcceleratorSession extends Omit<SessionIdentity, 'artifact'> {
   artifact: {sha256: string; sizeBytes: number; expectedSha256: null} | null;
   schema: 'xebench-raw';
   schemaVersion: 1;
-  harnessVersion: 'xebench-0.7-accelerator';
+  harnessVersion: 'xebench-0.8-accelerator';
   engine: string;
   engineVersion: string;
   /** Requested backend. */
@@ -59,7 +59,7 @@ export interface AcceleratorSession extends Omit<SessionIdentity, 'artifact'> {
   configurationRunId: string;
   runOrder: RunOrder | null;
   protocol: {
-    version: 'accelerator-v1'; nColdRuns: number; cooldownSec: number; readinessTimeoutSec: number;
+    version: 'accelerator-v2'; nColdRuns: number; cooldownSec: number; readinessTimeoutSec: number;
     maxBatteryTempRiseC: number;
     promptLabel: string; prompt: string; promptFormat: 'user-turn-chat-template'; chatTemplate: ChatTemplate;
     maxDecodeTokens: number; sampling: 'greedy'; nThreads: number | null; nCtx: number | null;
@@ -122,7 +122,7 @@ export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' |
   gate: SessionGate): AcceleratorSession {
   const record: AcceleratorSession = {
     ...identity, artifact: identity.artifact && {...identity.artifact, expectedSha256: null},
-    schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.7-accelerator',
+    schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.8-accelerator',
     effectiveSettings: adapter?.effectiveSettings ? adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens}) :
       null,
     executionReports: [],
@@ -130,7 +130,7 @@ export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' |
     observedBackend: null, platform: 'android', model: run.model, quant: run.quant, modelFile: run.modelFile,
     purpose: run.purpose, configuration: config, configurationRunId: run.id, runOrder,
     protocol: {
-      version: 'accelerator-v1', nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec,
+      version: 'accelerator-v2', nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec,
       readinessTimeoutSec: config.readinessTimeoutSec, maxBatteryTempRiseC: config.maxBatteryTempRiseC,
       promptLabel: ACCELERATOR_PROMPT_LABEL,
       prompt: ACCELERATOR_PROMPT, promptFormat: 'user-turn-chat-template', chatTemplate: config.chatTemplate,

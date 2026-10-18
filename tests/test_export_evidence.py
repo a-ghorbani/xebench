@@ -858,6 +858,8 @@ class IdentityV3ExportTests(unittest.TestCase):
 
 
 ACCEL = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted-accelerator.json").read_text())["records"]
+# Frozen pre-port accelerator-v1 records (no build/execution identity); they export and verify too.
+ACCEL_V1 = json.loads((ROOT / "tests/fixtures/raw-session/app-emitted-accelerator-v1.json").read_text())["records"]
 
 
 class AcceleratorExportTests(unittest.TestCase):
@@ -923,6 +925,24 @@ class AcceleratorExportTests(unittest.TestCase):
             result = evidence.verify(renamed)
             self.assertFalse(result["valid"])
             self.assertTrue(any("reference session" in error for error in result["errors"]), result["errors"])
+
+    def test_frozen_accelerator_v1_records_export_and_verify(self):
+        with tempfile.TemporaryDirectory() as root:
+            named = []
+            for index, name in enumerate(sorted(ACCEL_V1)):
+                record = copy.deepcopy(ACCEL_V1[name])
+                record["runId"] = f"1767225600000-{index}-accelv1"
+                if not name.startswith("f8-"):
+                    record["configuration"]["id"] = f"fixture-{name}"
+                named.append(record)
+            directory = make_capture(Path(root) / "results", named)
+            report = evidence.export([directory], Path(root) / "out")
+            result = evidence.verify(report["bundle"], report["evidence"]["bundleSha256"])
+            self.assertTrue(result["valid"], result["errors"])
+            self.assertEqual(len(result["sessions"]), len(named))
+            exported = json.loads((Path(report["bundle"]) / f"sessions/{named[0]['runId']}.json").read_text())["record"]
+            self.assertEqual(exported["protocol"]["version"], "accelerator-v1")
+            self.assertNotIn("build", exported)
 
     def test_rehashed_comparison_claims_still_fail_verification(self):
         with tempfile.TemporaryDirectory() as root:

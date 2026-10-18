@@ -31,7 +31,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -154,7 +154,7 @@
         "position": 0
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 300,
@@ -777,7 +777,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": {
         "binding": "llama.rn",
         "init": {
@@ -963,7 +963,7 @@
         "position": 1
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 300,
@@ -1549,7 +1549,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": {
         "binding": "llama.rn",
         "init": {
@@ -1735,7 +1735,7 @@
         "position": 2
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 300,
@@ -2347,7 +2347,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -2470,7 +2470,7 @@
         "position": 3
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 300,
@@ -3052,7 +3052,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": {
         "binding": "llama.rn",
         "init": {
@@ -3245,7 +3245,7 @@
         "position": 4
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 300,
@@ -3859,7 +3859,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -3982,7 +3982,7 @@
         "position": 5
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 300,
@@ -4596,7 +4596,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -4661,7 +4661,7 @@
         "position": 1
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 900,
@@ -5267,7 +5267,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -5332,7 +5332,7 @@
         "position": 1
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 3,
         "cooldownSec": 30,
         "readinessTimeoutSec": 900,
@@ -5921,7 +5921,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -5982,7 +5982,7 @@
         "position": 0
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 3,
         "cooldownSec": 30,
         "readinessTimeoutSec": 900,
@@ -6124,7 +6124,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -6189,7 +6189,7 @@
         "position": 1
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 900,
@@ -6801,7 +6801,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -6862,7 +6862,7 @@
         "position": 0
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 900,
@@ -7072,7 +7072,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -7133,7 +7133,7 @@
         "position": 1
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 900,
@@ -7279,7 +7279,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -7340,7 +7340,7 @@
         "position": 1
       },
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 900,
@@ -7576,7 +7576,7 @@
       },
       "schema": "xebench-raw",
       "schemaVersion": 1,
-      "harnessVersion": "xebench-0.7-accelerator",
+      "harnessVersion": "xebench-0.8-accelerator",
       "effectiveSettings": null,
       "executionReports": [],
       "engine": "litert-lm",
@@ -7628,7 +7628,7 @@
       "configurationRunId": "litert-npu-sm8550",
       "runOrder": null,
       "protocol": {
-        "version": "accelerator-v1",
+        "version": "accelerator-v2",
         "nColdRuns": 2,
         "cooldownSec": 30,
         "readinessTimeoutSec": 900,

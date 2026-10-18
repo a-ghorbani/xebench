@@ -32,7 +32,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '../..');
 const FIXTURE = path.join(ROOT, 'tests/fixtures/raw-session/app-emitted-accelerator.json');
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, 'schemas/raw-session-v1.json'), 'utf8'));
-const SESSION = SCHEMA.$defs.sessionAcceleratorV1;
+const SESSION = SCHEMA.$defs.sessionAcceleratorV2;
 
 const healthy = {timestampMs: 1767225600000, elapsedMs: 5000, batteryPct: 80, batteryTempC: 30.5, charging: true,
   batteryStatus: 4, plugged: 2, currentNowUa: -1500,

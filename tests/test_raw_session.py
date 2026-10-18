@@ -683,6 +683,9 @@ class SchemaAndCliTests(unittest.TestCase):
 
 # Produced by xebenchapp/__tests__/accelerator.test.ts through runAcceleratorConfiguration.
 ACCEL = json.loads((FIXTURES / "app-emitted-accelerator.json").read_text())["records"]
+# Frozen output of the pre-port accelerator-v1 app (feat/litert-accelerators a81441a): the measured
+# F8 Ultra and S23 rows are records of this shape and must keep validating unchanged.
+ACCEL_V1 = json.loads((FIXTURES / "app-emitted-accelerator-v1.json").read_text())["records"]
 
 
 class AcceleratorRecordTests(unittest.TestCase):
@@ -692,8 +695,30 @@ class AcceleratorRecordTests(unittest.TestCase):
         self.assertGreaterEqual(len(ACCEL), 13)
         for name, record in ACCEL.items():
             with self.subTest(name=name):
-                self.assertEqual(record["protocol"]["version"], "accelerator-v1")
+                self.assertEqual(record["protocol"]["version"], "accelerator-v2")
+                self.assertEqual(record["harnessVersion"], "xebench-0.8-accelerator")
                 self.assertEqual(raw_session.validate(record), [])
+
+    def test_frozen_accelerator_v1_records_stay_valid_without_identity_fields(self):
+        self.assertGreaterEqual(len(ACCEL_V1), 13)
+        for name, record in ACCEL_V1.items():
+            with self.subTest(name=name):
+                self.assertEqual((record["protocol"]["version"], record["harnessVersion"]),
+                                 ("accelerator-v1", "xebench-0.7-accelerator"))
+                for key in ("build", "configurationSource", "effectiveSettings", "executionReports"):
+                    self.assertNotIn(key, record)
+                self.assertEqual(raw_session.validate(record), [])
+        # The accelerator rules still apply to v1: a forged comparison is rejected.
+        forged = copy.deepcopy(ACCEL_V1["f8-litert-npu"])
+        forged["comparison"] = {"status": "valid", "reasons": []}
+        self.assertIn("comparison.recomputed", codes(forged))
+        # The branches are never mixed: v2 identity fields on a v1 record, or a v2 record without them.
+        mixed = copy.deepcopy(ACCEL_V1["f8-litert-cpu"])
+        mixed["build"] = copy.deepcopy(ACCEL["f8-litert-cpu"]["build"])
+        self.assertTrue(codes(mixed) & {"schema.one-of", "schema.additional-property", "schema.required"}, codes(mixed))
+        stripped = copy.deepcopy(ACCEL["f8-litert-cpu"])
+        del stripped["build"]
+        self.assertTrue(codes(stripped) & {"schema.one-of", "schema.additional-property", "schema.required"}, codes(stripped))
 
     def test_fixture_covers_the_decisions_that_matter(self):
         npu = ACCEL["f8-litert-npu"]
