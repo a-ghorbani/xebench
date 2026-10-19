@@ -13,7 +13,8 @@ The board is not a lab book. A visitor reads it cold, once, and must understand 
    else: no superseded, retired or failed rows, no "was" and no "will be". History lives in
    `data/sessions/index.json` and [CORRECTIONS.md](./CORRECTIONS.md).
 2. **No history or process narration.** Never "we previously", "marked failed", "withdrawn",
-   "superseded", "corrected", "pending", "not yet re-measured", "roadmapped". Say what is true now.
+   "superseded", "corrected", "pending", "not yet re-measured", "roadmapped", and no "yet" at all
+   ("not on the board yet" narrates a plan). Say what is true now.
 3. **No internal labels.** Never `legacy`, `harness`, `locked`, `gate`, `epoch`, `staged`,
    `retired`, `carryover`, policy ids, prompt ids or configuration names in prose. Name the thing
    a visitor knows: "the benchmark app", "an output check", "July 2026".

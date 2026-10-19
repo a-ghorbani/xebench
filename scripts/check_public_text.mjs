@@ -34,7 +34,7 @@ export const BANNED = Object.freeze([
   ['previously', 'history narration'],
   ['marked( as)? failed', 'history narration'],
   ['failed', 'status label: the board shows no failed row'],
-  ['not yet', 'process narration: say what is true now'],
+  ['yet', 'process narration ("not yet", "not on the board yet"): say what is true now'],
   ['re-?measur(e|es|ed|ing|ements?)', 'process narration'],
   ['invalidat(ed|es|ion)', 'history narration'],
   ['deprecat(ed|es|ion)', 'history narration'],
