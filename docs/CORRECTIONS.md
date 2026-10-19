@@ -13,9 +13,10 @@ Newest first.
   prefill / 38.6 decode tok/s) with `validation: "failed"` (see the 2026-10-17/18 entry below),
   and the finding `llama-cpp-hexagon-output`, headed "one result marked failed", explaining it.
 - **What is true.** The board shows only each engine's latest measurement set and never a failed
-  row ([RUN-CONDITIONS.md, Measurement sets](./RUN-CONDITIONS.md#measurement-sets)). This row is
-  not re-measured: its successor is a Q4_K_M NPU row measured with llama.rn 0.13.0-rc.7, because
-  the Q4_0 CPU reference misses a correctness probe.
+  row ([RUN-CONDITIONS.md, Measurement sets](./RUN-CONDITIONS.md#measurement-sets)). The Q4_0
+  setup is not measured again: its CPU reference misses a correctness probe, so the llama.cpp NPU
+  setup is Llama 3.2 1B Q4_K_M with llama.rn 0.13.0-rc.7, a new key. No llama.cpp NPU row is on
+  the board.
 - **What changed.**
   - `configs/board.json` lists the row's key in `retiredKeys` ("replaced by Q4_K_M; Q4_0 CPU
     reference misses a correctness probe", 2026-10-19). `data/benchmarks.json` no longer holds
@@ -28,6 +29,25 @@ Newest first.
   - The 20 July 2026 rows without versions carry their month (`sourceDate` 2026-07) and its basis
     (`dateBasis`): 18 from their run records, 2 from the first commit carrying them
     (`scripts/date_legacy_rows.mjs`). No version is backfilled.
+
+## 2026-10-19 — Board labels and vendor notes
+
+- **What the board showed.** Labels in several spellings for the same thing: LiteRT-LM `q8`, SoC
+  `sdm845`, `"not stated"` as a quant, quants carrying extra detail (`4-bit groupwise (g=128)`,
+  `BF16 (unquantized)`, `int4 QAT (529MB, ctx 2048)`), devices `Samsung S26 Ultra` and
+  `iPhone 17 Pro`, and vendor notes in lab jargon (XNNPACK, KleidiAI, cpufreq governor, adb).
+  It also showed a vendor row for a laptop browser: LiteRT-LM GPU, MacBook Pro (M4 Max, platform
+  `macos`), Gemma 4 E2B, 76 tok/s decode via WebGPU in a browser, Google Developers Blog
+  (LiteRT-LM), 2026.
+- **What is true.** The labels name the same quants, chips and phones; only the spelling changes.
+  The board compares phones, and the MacBook figure is a browser deployment, not a phone or a
+  native app.
+- **What changed.** `data/benchmarks.json` uses one vocabulary: `Q8`, `SDM845`, no quant when the
+  source states none, `4-bit groupwise`, `BF16`, `int4 QAT`, `Samsung Galaxy S26 Ultra`,
+  `Apple iPhone 17 Pro`; each vendor note is one plain sentence with the source's meaning. The
+  MacBook Pro row is dropped from the data (its values are above). Dropped quant details:
+  group size 128 and the Gemma 3 bundle's 529 MB size and 2048-token context, which do not change
+  how a row compares. `scripts/check_public_text.mjs` enforces the vocabulary in CI.
 
 ## 2026-10-17/18 — llama.cpp Hexagon board row and "functional" claim
 

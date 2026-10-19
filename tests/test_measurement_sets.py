@@ -31,7 +31,7 @@ def next_version(record):
 # The month of every July 2026 row without versions and what it rests on (scripts/date_legacy_rows.mjs).
 JULY_ROWS = {
     "executorch|cpu|android|Google Pixel 9|Llama 3.2 1B|SpinQuant 4-bit|measured": "measured",
-    "litert-lm|cpu|android|Google Pixel 9|Qwen2.5 1.5B|q8|measured": "measured",
+    "litert-lm|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8|measured": "measured",
     "llama.cpp|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8_0|measured": "measured",
     "executorch|cpu|android|OnePlus 6|Llama 3.2 1B|SpinQuant 4-bit|measured": "measured",
     "llama.cpp|cpu|android|OnePlus 6|Llama 3.2 1B|Q4_K_M|measured": "measured",
@@ -40,14 +40,14 @@ JULY_ROWS = {
     "llama.cpp|cpu|android|POCO F8 Ultra|Gemma 3 1B|Q4_0 (QAT)|measured": "measured",
     "executorch|cpu|android|POCO F8 Ultra|Llama 3.2 1B|SpinQuant 4-bit|measured": "measured",
     "genie-x|npu|android|POCO F8 Ultra|Llama 3.2 1B|W4A16|measured": "measured",
-    "litert-lm|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|q8|measured": "measured",
+    "litert-lm|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8|measured": "measured",
     "llama.cpp|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured": "measured",
     "llama.cpp|gpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured": "measured",
     "litert-lm|cpu|android|Samsung Galaxy S23|Gemma 3 1B|int4|measured": "first-published",
     "llama.cpp|cpu|android|Samsung Galaxy S23|Gemma 3 1B|Q4_0 (QAT)|measured": "first-published",
     "executorch|cpu|android|Samsung Galaxy S23|Llama 3.2 1B|SpinQuant 4-bit|measured": "measured",
     "genie-x|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured": "measured",
-    "litert-lm|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|q8|measured": "measured",
+    "litert-lm|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8|measured": "measured",
     "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured": "measured",
     "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured": "measured",
 }
@@ -134,6 +134,7 @@ class SetWorkspace(Workspace):
         """The board with llama.cpp's set moved to the next binding version."""
         board = copy.deepcopy(board)
         board["engines"]["llama.cpp"]["bindingVersion"] = "llama.rn 0.0.1-fixture"
+        board["engines"]["llama.cpp"]["carryover"]["bindingVersion"] = "llama.rn 0.0.1-fixture"
         return board
 
     def save(self, board):
@@ -283,14 +284,38 @@ class BackendGuardTests(SetWorkspace):
 
 
 class DisplayRuleTests(SetWorkspace):
-    def test_a_row_without_versions_of_another_month_is_refused(self):
-        data = load(self.canonical)
-        row = next(row for row in data["rows"] if row["engine"] == "executorch" and row["provenance"] == "measured")
-        row["sourceDate"] = "2026-06"
-        self.canonical.write_text(json.dumps(data, indent=2) + "\n")
+    def test_a_set_of_another_month_displays_no_july_row(self):
+        board = load(self.root / "configs/board.json")
+        board["engines"]["executorch"]["measured"] = "2026-06"
+        self.save(board)
         result = self.node("validate_data.mjs")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("is not in executorch: rows without versions, measured 2026-07", result.stderr)
+        self.assertIn("is not in executorch: rows without versions, measured 2026-06", result.stderr)
+
+    def test_rows_without_versions_are_frozen(self):
+        """Only the dated July 2026 rows, unchanged, are displayed without versions."""
+        data = load(self.canonical)
+        july = next(row for row in data["rows"] if row["engine"] == "executorch" and row["provenance"] == "measured")
+        made_up = {**july, "device": "Fake Phone", "ppTps": 999.0}
+        cases = {
+            "an unknown row": (made_up, "is not one of the July 2026 rows without versions"),
+            "an unknown row without validation": ({k: v for k, v in made_up.items() if k not in ("validation", "dateBasis")},
+                                                  "is not one of the July 2026 rows without versions"),
+            "unverified without evidence": ({k: v for k, v in {**made_up, "validation": "unverified"}.items() if k != "dateBasis"},
+                                            "is unverified but no published session backs it"),
+            "changed numbers": ({**july, "tgTps": 99.0}, "are not the dated"),
+            "no month basis": ({k: v for k, v in july.items() if k != "dateBasis"}, "does not carry its month"),
+        }
+        for name, (row, reason) in cases.items():
+            with self.subTest(name):
+                changed = copy.deepcopy(data)
+                rows = [r for r in changed["rows"] if key_of(r) != key_of(july)] if key_of(row) == key_of(july) else changed["rows"]
+                changed["rows"] = rows + [row]
+                changed["rowCount"] = len(changed["rows"])
+                self.canonical.write_text(json.dumps(changed, indent=2) + "\n")
+                result = self.node("validate_data.mjs")
+                self.assertEqual(result.returncode, 1, name)
+                self.assertIn(reason, result.stderr)
 
     def test_an_engine_without_a_set_is_refused(self):
         board = load(self.root / "configs/board.json")
@@ -330,6 +355,8 @@ class DisplayRuleTests(SetWorkspace):
             "carryover of another engine": lambda b: b["engines"]["llama.cpp"]["carryover"]["keys"].insert(
                 0, "executorch|cpu|android|OnePlus 6|Llama 3.2 1B|SpinQuant 4-bit|measured"),
             "schema 1": lambda b: b.update(schemaVersion=1),
+            "carryover of another set": lambda b: b["engines"]["llama.cpp"]["carryover"].update(
+                bindingVersion="llama.rn 9.9.9"),
         }
         for name, change in cases.items():
             with self.subTest(name):

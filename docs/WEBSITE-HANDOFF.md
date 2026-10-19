@@ -222,8 +222,11 @@ Proposed for the website implementer; the producer side is in this repository.
 an engine once it is re-measured, live only in `data/sessions/index.json`. The site needs no
 selection logic and no new field: it renders every row in `rows` and nothing else. This keeps the
 contract unchanged (removing rows is always valid: the site falls back to its bundled data only for
-an unknown major, malformed JSON or no valid rows) and makes a mixed or partial set impossible to
-render, because the producer refuses to write one.
+an unknown major, malformed JSON or no valid rows), and the producer refuses to write a partial
+set. One declared exception exists today: while the llama.rn 0.13.0-rc.7 campaign finishes,
+llama.cpp shows nine July 2026 rows (month only) next to nine rc.7 rows (versions and month). The
+row text itself tells them apart; the page should not present the two as one comparable series
+(for example, no single "llama.cpp" trend or ranking that mixes them).
 
 What the site renders:
 
@@ -233,7 +236,8 @@ What the site renders:
 | Rows without versions | Show the measurement month and no version. Never explain why, and never print `validation` ("legacy") or any placeholder such as "unknown version". |
 | Measurement month | On every row: `sourceDate` (`YYYY-MM`) as a month, e.g. "Jul 2026", "Oct 2026". `dateBasis` (contract 1.3) is data for readers of the file; do not render it. |
 | Status words | No "legacy", "failed", "retired", "superseded", "pending" or other lab-book label anywhere. `validation` is not rendered as a word; a verified row may show its evidence link. An `unverified` row needs a plain, self-explanatory label if it is marked at all. |
-| Vendor rows | In a separate "Vendor-reported" section, not mixed into lab rows; keep their `asStated`, `sourceName` and source link. |
+| Vendor rows | In a separate "Vendor-reported" section, not mixed into lab rows; keep their `asStated` (one plain sentence), `sourceName` and source link. |
+| Labels | `quant` may be absent when the source states none: the site words that itself. Labels follow one vocabulary (quant, upper-case SoC, "Brand model" devices, android/ios only), enforced by the lab-book gate. Speeds are "tok/s" in the data text. |
 | Lab row notes | Do not render `asStated` on measured rows: it is lab-book provenance (policy names, prompt ids). |
 | Findings | Render only `headline`, `deck` and the `detailsUrl` link, verbatim. Do not render `context` (for example `correctedAt`). The finding `llama-cpp-hexagon-output` is removed; the board does not explain the retired Hexagon row. |
 

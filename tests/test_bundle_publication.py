@@ -423,12 +423,9 @@ class FailClosedTests(Workspace):
         unrelated = self.root / "raw2.jsonl"
         unrelated.write_text(json.dumps(legacy_record()) + "\n")
         self.assert_rejected("a raw record cannot add a row to it", unrelated, "--update", "--allow-legacy")
-        # A row without versions of an engine whose set is its July 2026 rows still publishes
-        # and keeps the index consistent.
+        # Nor to an engine whose set is its July 2026 rows: those rows are frozen.
         unrelated.write_text(json.dumps(legacy_record(engine="executorch")) + "\n")
-        result = self.aggregate(unrelated, "--update", "--allow-legacy")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("executorch|cpu|android|Google Pixel 9|Test Model 1B|Q4_0|measured", self.rows())
+        self.assert_rejected("is not one of the July 2026 rows without versions", unrelated, "--update", "--allow-legacy")
         self.assert_valid_data()
 
 

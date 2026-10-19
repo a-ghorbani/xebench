@@ -29,6 +29,8 @@
       "bindingVersion": "llama.rn 0.13.0-rc.7",
       "measuredFrom": "2026-10-18",
       "carryover": {
+        "engineVersion": "llama.cpp b11385 (bf9a0cc)",
+        "bindingVersion": "llama.rn 0.13.0-rc.7",
         "measured": "2026-07",
         "reason": "July 2026 llama.cpp rows (no recorded version) stay displayed until the llama.rn 0.13.0-rc.7 campaign re-measures or retires each of them; the campaign publication empties this list.",
         "keys": [

@@ -25,6 +25,7 @@
  */
 import { compareRows, jsonEqual, PublicationError, rowKey } from './publication.mjs';
 import { PRE_VERSION, SESSIONS } from './board.mjs';
+import { legacyDateMismatch } from './legacy-dates.mjs';
 import {
   compareSessions, emptyIndex, isLegacy, RETIRED, selectSession, sessionEntry,
 } from './history.mjs';
@@ -45,6 +46,11 @@ function versionlessDisplay(row, key, set, engine) {
   if (row.validation === 'failed') {
     return { shown: false, error: `row ${key} is failed and is never displayed; list it in configs/board.json retiredKeys` };
   }
+  if (!isLegacy(row)) {
+    return { shown: false, error: `row ${key} is ${row.validation} but no published session backs it` };
+  }
+  const frozen = legacyDateMismatch(row);
+  if (frozen) return { shown: false, error: `row ${key} has no version and ${frozen}` };
   if (!set) return { shown: false, error: `row ${key}: configs/board.json declares no measurement set for ${engine}` };
   const month = row.sourceDate ?? 'an unknown month';
   if (set.set === PRE_VERSION) {

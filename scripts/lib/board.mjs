@@ -6,13 +6,14 @@
  * An engine's set is one of:
  *   {"set": "sessions", "configurations": [{"id": "...", "backends": ["cpu"]}, ...], "engineVersion": "...",
  *    "bindingVersion"?: "...", "measuredFrom": "YYYY-MM-DD",
- *    "carryover"?: {"measured": "YYYY-MM", "reason": "...", "keys": [...]}}
+ *    "carryover"?: {"engineVersion": "...", "bindingVersion"?: "...", "measured": "YYYY-MM", "reason": "...", "keys": [...]}}
  *       sessions published from evidence bundles whose row names one of `configurations` and runs
  *       one of that configuration's `backends`, whose build carries exactly this engineVersion and
  *       bindingVersion (absent when not declared), measured on or after measuredFrom (UTC). The
  *       backends keep a configuration's other runs off the board: an accelerator configuration's
- *       CPU reference run has the same row key as a CPU board row and must never replace it. `carryover` lists rows without versions (measured
- *       in that month) that stay displayed until a session of the set replaces them or they are
+ *       CPU reference run has the same row key as a CPU board row and must never replace it.
+ *       `carryover` names the set's own versions (so moving the set ends it) and lists July 2026 rows
+ *       without versions (scripts/lib/legacy-dates.mjs, measured in that month) that stay displayed until a session of the set replaces them or they are
  *       retired; it exists only to finish a campaign that started before sets were declared.
  *   {"set": "pre-version-recording", "measured": "YYYY-MM"}
  *       the engine's rows from before the app recorded engine versions (validation "legacy"),
@@ -35,7 +36,7 @@ export const PRE_VERSION = 'pre-version-recording';
 const FIELDS = ['schema', 'schemaVersion', 'description', 'engines', 'retiredKeys'];
 const SESSION_FIELDS = ['set', 'configurations', 'engineVersion', 'bindingVersion', 'measuredFrom', 'carryover'];
 const PRE_VERSION_FIELDS = ['set', 'measured'];
-const CARRYOVER_FIELDS = ['measured', 'reason', 'keys'];
+const CARRYOVER_FIELDS = ['engineVersion', 'bindingVersion', 'measured', 'reason', 'keys'];
 const RETIRED_FIELDS = ['key', 'reason', 'retiredAt'];
 const CONFIGURATION_FIELDS = ['id', 'backends'];
 export const BACKENDS = Object.freeze(['cpu', 'gpu', 'npu', 'ane']);
@@ -139,6 +140,10 @@ function engineErrors(engine, entry, reviewedIds, errors) {
       errors.push(`${at}.carryover.measured must be YYYY-MM`);
     }
     if (!text(carryover.reason)) errors.push(`${at}.carryover.reason must be a non-empty string`);
+    // A carryover belongs to one set: moving the set to other versions ends it.
+    if (carryover.engineVersion !== entry.engineVersion || (carryover.bindingVersion ?? null) !== (entry.bindingVersion ?? null)) {
+      errors.push(`${at}.carryover belongs to another set: its engineVersion and bindingVersion must be the set's`);
+    }
     keyListErrors(carryover.keys, `${at}.carryover.keys`, engine, errors);
   }
 }

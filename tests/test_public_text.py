@@ -70,6 +70,11 @@ class PublicTextTests(unittest.TestCase):
                 engineVersion=f"llama.cpp {HASH40}"), ".build.engineVersion: \"" + HASH40),
             "a vendor note": ("benchmarks", lambda f, b: self.row_of(b, "vendor").update(asStated="superseded figure"),
                               ".asStated: \"superseded\""),
+            "failed": ("findings", lambda f, b: f["findings"][0].update(headline="One row failed"), "\"failed\""),
+            "not yet": ("findings", lambda f, b: f["findings"][0].update(deck="Not yet measured."), "\"Not yet\""),
+            "re-measured": ("findings", lambda f, b: f["findings"][0].update(deck="It is re-measured."), "\"re-measured\""),
+            "carries over": ("findings", lambda f, b: f["findings"][0].update(deck="The row carries over."),
+                             "\"carries over\""),
         }
         for name, (kind, change, expected) in cases.items():
             with self.subTest(name):
@@ -83,6 +88,23 @@ class PublicTextTests(unittest.TestCase):
     @staticmethod
     def row_of(benchmarks, provenance):
         return next(row for row in benchmarks["rows"] if row["provenance"] == provenance)
+
+    def test_labels_follow_the_board_vocabulary(self):
+        cases = {
+            "lower-case quant": ("measured", {"quant": "q8"}, ".quant: \"q8\""),
+            "quant not stated": ("vendor", {"quant": "not stated"}, ".quant: \"not stated\""),
+            "quant with detail": ("vendor", {"quant": "int4 QAT (529MB, ctx 2048)"}, "not a quant from the board vocabulary"),
+            "lower-case SoC": ("measured", {"soc": "sdm845"}, ".soc: \"sdm845\""),
+            "device without brand line": ("vendor", {"device": "Samsung S26 Ultra"}, ".device: \"Samsung S26 Ultra\""),
+            "a laptop": ("vendor", {"platform": "macos"}, "a phone platform"),
+        }
+        for name, (provenance, change, expected) in cases.items():
+            with self.subTest(name):
+                benchmarks = copy.deepcopy(self.benchmarks)
+                self.row_of(benchmarks, provenance).update(change)
+                result = self.check(benchmarks=benchmarks)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(expected, result.stderr)
 
     def test_lab_row_notes_are_exempt(self):
         benchmarks = copy.deepcopy(self.benchmarks)

@@ -17,7 +17,8 @@ The board is not a lab book. A visitor reads it cold, once, and must understand 
 3. **No internal labels.** Never `legacy`, `harness`, `locked`, `gate`, `epoch`, `staged`,
    `retired`, `carryover`, policy ids, prompt ids or configuration names in prose. Name the thing
    a visitor knows: "the benchmark app", "an output check", "July 2026".
-4. **No inline hashes.** No commit or SHA-256 strings in text; link to the evidence instead.
+4. **No inline hashes.** No commit or SHA-256 strings in prose; link to the evidence instead.
+   A version field keeps the upstream build id it names (e.g. "llama.cpp b11385 (bf9a0cc)").
 5. **Every status or label is self-explanatory.** If a visitor would need our docs to understand
    a word, a badge or a column, rewrite it or drop it.
 6. **Versions and dates, not states.** A row shows the engine and binding version it was measured
@@ -27,7 +28,12 @@ The board is not a lab book. A visitor reads it cold, once, and must understand 
 `node scripts/check_public_text.mjs` enforces 2 to 4 on every string the site renders: each
 finding's headline and deck, and each row's displayed fields (device, model, quant, source,
 versions, configuration; `asStated` on vendor rows only, because a lab row's `asStated` is not
-rendered). It fails on a listed term or a 40- or 64-character hex string. A justified exception
+rendered). It fails on a listed term or a 40- or 64-character hex string (a short build id in a version
+field passes), and on a row label outside the board vocabulary: one spelling per quant scheme
+(llama.cpp's GGUF names as they are, `Q8`, `int4`, `int4 QAT`, `W4A16`, `BF16`, ...; no
+"not stated": leave an unknown quant out), upper-case SoC ids as in `configs/devices.json`,
+device names as "Brand model" (Samsung Galaxy S23, Google Pixel 9, POCO F8 Ultra, Apple iPhone
+17 Pro), and phone platforms only. Speeds are written "tok/s". A justified exception
 goes in [`configs/public-text-allowlist.json`](../configs/public-text-allowlist.json) with a
 reason; rewriting is almost always better. CI runs the check on every pull request.
 

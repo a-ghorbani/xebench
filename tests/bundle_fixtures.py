@@ -146,7 +146,8 @@ def board_config(root, ids, *, engines=None, retired=None, measured_from="2026-0
             entry = {"set": "sessions", "configurations": configurations, "engineVersion": engine_version,
                      **({"bindingVersion": binding} if binding else {}), "measuredFrom": measured_from}
             if legacy(engine):
-                entry["carryover"] = {"measured": "2026-07", "reason": "fixture rows without versions",
+                entry["carryover"] = {"engineVersion": engine_version, **({"bindingVersion": binding} if binding else {}),
+                                      "measured": "2026-07", "reason": "fixture rows without versions",
                                       "keys": legacy(engine)}
             engines[engine] = entry
         engines = dict(sorted(engines.items()))

@@ -14,7 +14,7 @@
           "device": "Samsung Galaxy S23"
         }
       ],
-      "headline": "LiteRT-LM on NPU: not on the board yet",
+      "headline": "LiteRT-LM on NPU: no row on this board",
       "deck": "Gemma 3 1B runs with correct output on the Snapdragon SM8850 (POCO F8 Ultra). On the SM8550 (Galaxy S23), Google's published model bundle drops part of long prompts (LiteRT-LM #3508).",
       "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/51527a535d98c8b9017b54f83f4b4aba68822474/docs/experiments/litert-accelerators.md#litert-lm-on-npu",
       "claims": [

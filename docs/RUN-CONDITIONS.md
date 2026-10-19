@@ -357,8 +357,10 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
 5. **Months, always.** Every measured row carries `sourceDate` (YYYY-MM). A row without versions
    also carries `dateBasis` (contract 1.3): `measured` when the month comes from the run's own
    record, or `first-published` when no record survives and the month is that of the first
-   commit carrying the row. [`scripts/date_legacy_rows.mjs`](../scripts/date_legacy_rows.mjs)
-   pins each July 2026 row's month and basis.
+   commit carrying the row. [`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs)
+   freezes each July 2026 row (key, numbers, month and basis); a row without versions is displayed
+   only as one of those rows, unchanged, and
+   [`scripts/date_legacy_rows.mjs`](../scripts/date_legacy_rows.mjs) writes their months.
 
 ### Publishing a new set
 
@@ -380,8 +382,11 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
 Sets were declared while this campaign was in progress, so `engines["llama.cpp"]` declares the
 rc.7 set (`llama.cpp b11385 (bf9a0cc)` + `llama.rn 0.13.0-rc.7`, `cpu-reference-v3`, CPU) with a
 `carryover`: the nine July 2026 llama.cpp rows stay displayed next to the nine rc.7 CPU rows until
-the campaign finishes. Carryover holds only rows without versions of that month; a session of
-the set for a carried key replaces its row (`--replace-legacy`). The July Hexagon row (POCO F8
+the campaign finishes. The carryover names the set's own versions, so moving the set to other
+versions ends it, and it displays only the frozen July rows of
+[`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs), unchanged; no other row
+without versions is ever displayed. A session of the set for a carried key replaces its row
+(`--replace-legacy`). The July Hexagon row (POCO F8
 Ultra, Llama 3.2 1B Q4_0, failed) is retired: it is replaced by a Q4_K_M NPU key. The campaign
 finishes in one publication pull request that
 

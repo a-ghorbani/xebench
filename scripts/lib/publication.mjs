@@ -391,8 +391,7 @@ export function rowInvariantErrors(row, path = '$') {
     }
   }
   if (Object.hasOwn(row, 'dateBasis')) {
-    const legacy = row.provenance === 'measured' && (row.validation === 'legacy' || !Object.hasOwn(row, 'validation'));
-    if (!legacy) errors.push(`${path}: dateBasis is only valid on legacy rows`);
+    if (row.provenance !== 'measured' || row.validation !== 'legacy') errors.push(`${path}: dateBasis is only valid on legacy rows`);
     if (!Object.hasOwn(row, 'sourceDate')) errors.push(`${path}: dateBasis requires sourceDate`);
   }
   if (CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field))) {
