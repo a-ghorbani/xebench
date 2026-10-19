@@ -1713,7 +1713,7 @@
             "processRestartBetweenRepetitions": {"const": false},
             "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10},
             "promptFormat": {"const": "user-turn-chat-template"},
-            "chatTemplate": {"enum": ["gemma3", "llama32", "qwen25"]},
+            "chatTemplate": {"enum": ["gemma3", "llama32"]},
             "sampling": {"const": "greedy"},
             "gate": {"const": "output-gate-v1"}
           }

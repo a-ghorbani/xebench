@@ -89,8 +89,9 @@ python3 scripts/stage_model.py --manifest configs/models/experimental-models.jso
 
 ### License
 
-The weights are under the Llama 3.2 Community License and Meta's Acceptable Use
-Policy. Meta's upstream repository is gated on Hugging Face. bartowski's GGUF
+The Llama 3.2 1B weights (Q4_K_M, Q4_0 and Q8_0) are under the Llama 3.2 Community License
+and Meta's Acceptable Use Policy; the Qwen2.5 and Gemma 3 files carry the licenses in their
+table above. Meta's upstream repository is gated on Hugging Face. bartowski's GGUF
 repository is not gated, but the same license still applies. Each user must read
 and accept Meta's terms themselves before downloading. xebench never rehosts or
 redistributes the model: it is not in this repository, its releases or the APK,
