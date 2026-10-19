@@ -336,8 +336,9 @@ class ReferenceV3ManifestTests(unittest.TestCase):
         """Every cpu-reference-v3 run pins the bytes reference-models.json lists for its file, all
         from bartowski's repository at the reference revision."""
         models = {model['file']: model for model in stage_model.load_manifest(stage_model.MANIFEST)}
-        self.assertEqual(sorted(models), ['Llama-3.2-1B-Instruct-Q4_0.gguf', 'Llama-3.2-1B-Instruct-Q4_K_M.gguf',
-                                          'Llama-3.2-1B-Instruct-Q8_0.gguf'])
+        self.assertEqual(sorted(name for name in models if name.startswith('Llama-3.2-1B')),
+                         ['Llama-3.2-1B-Instruct-Q4_0.gguf', 'Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+                          'Llama-3.2-1B-Instruct-Q8_0.gguf'])
         self.assertEqual((models['Llama-3.2-1B-Instruct-Q8_0.gguf']['size'],
                           models['Llama-3.2-1B-Instruct-Q8_0.gguf']['sha256']),
                          (1321083008, '432f310a77f4650a88d0fd59ecdd7cebed8d684bafea53cbff0473542964f0c3'))
@@ -371,6 +372,49 @@ class ReferenceV3ManifestTests(unittest.TestCase):
         self.assertEqual(stage_model.select(models, file=Path('other.gguf')), models[0])
         with self.assertRaises(stage_model.StageError):
             stage_model.select(models, model_id='no-such-model')
+
+
+class BoardConfigurationPinTests(unittest.TestCase):
+    """The configurations that re-measure the July llama.cpp board setups pin every file they run,
+    with the board's exact model and quant labels."""
+
+    # (configuration file, run id) -> (model label, quant label, file) of the board key it replaces
+    RUNS = {
+        ('cpu-reference-v3-qwen25.json', 'qwen25-1.5b-q80-cpu'): ('Qwen2.5 1.5B', 'Q8_0', 'Qwen2.5-1.5B-Instruct-Q8_0.gguf'),
+        ('cpu-reference-v3-gemma3.json', 'gemma3-1b-q40-qat-cpu'): ('Gemma 3 1B', 'Q4_0 (QAT)', 'gemma-3-1b-it-q4_0.gguf'),
+        ('llamacpp-qwen25-opencl-v1.json', 'qwen25-1.5b-q80-opencl'): ('Qwen2.5 1.5B', 'Q8_0', 'Qwen2.5-1.5B-Instruct-Q8_0.gguf'),
+        ('llamacpp-llama32-q4km-hexagon-v1.json', 'llama32-q4km-hexagon'): ('Llama 3.2 1B', 'Q4_K_M', 'Llama-3.2-1B-Instruct-Q4_K_M.gguf'),
+    }
+
+    def test_every_run_pins_its_manifest_file_with_the_board_labels(self):
+        pins = {}
+        for path in sorted((ROOT / 'configs/models').glob('*-models.json')):
+            for model in stage_model.load_manifest(path):
+                pins.setdefault(model['file'], set()).add(model['sha256'])
+        self.assertEqual(pins['Qwen2.5-1.5B-Instruct-Q8_0.gguf'],
+                         {'7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f'})
+        v3 = json.loads((ROOT / 'xebenchapp/configs/cpu-reference-v3.json').read_text())
+        settings = {key: v3['runs'][0][key] for key in ('useMmap', 'useMlock', 'noExtraBufts', 'flashAttnType',
+                                                        'nThreads', 'nCtx')}
+        timing = {key: v3[key] for key in ('nColdRuns', 'cooldownSec', 'readinessTimeoutSec', 'maxBatteryTempRiseC',
+                                           'maxDecodeTokens')}
+        for name in {name for name, _ in self.RUNS}:
+            config = json.loads((ROOT / 'xebenchapp/configs' / name).read_text())
+            with self.subTest(config=name):
+                self.assertEqual({key: config[key] for key in timing}, timing)
+                for run in config['runs']:
+                    self.assertEqual({key: run[key] for key in settings}, settings, run['id'])
+                    self.assertEqual(pins[run['modelFile']], {run['modelSha256']}, run['id'])
+        for (name, run_id), (model, quant, file) in self.RUNS.items():
+            config = json.loads((ROOT / 'xebenchapp/configs' / name).read_text())
+            [run] = [run for run in config['runs'] if run['id'] == run_id]
+            self.assertEqual((run['model'], run['quant'], run['modelFile']), (model, quant, file))
+
+    def test_models_md_documents_the_qwen_pin(self):
+        text = (ROOT / 'MODELS.md').read_text()
+        for value in ('bartowski/Qwen2.5-1.5B-Instruct-GGUF', '9eadc66189c7641e1ddd226b8267a9119b2ce2d4',
+                      '7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f', '1646573312'):
+            self.assertIn(value, text)
 
 
 if __name__ == '__main__':

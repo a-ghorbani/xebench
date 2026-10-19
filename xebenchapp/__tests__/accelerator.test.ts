@@ -24,6 +24,9 @@ import f8Config from '../configs/f8-gemma3-accelerators-v1.json';
 import s23Config from '../configs/s23-gemma3-accelerators-v1.json';
 import bugReproConfig from '../configs/s23-litert-npu-bugrepro-v1.json';
 import llamaHexagonConfig from '../configs/f8-llama32-hexagon-check-v1.json';
+import qwenOpenclConfig from '../configs/llamacpp-qwen25-opencl-v1.json';
+import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from '../src/harness/prompts';
+import q4kmHexagonConfig from '../configs/llamacpp-llama32-q4km-hexagon-v1.json';
 
 declare const __dirname: string;
 declare const process: {env: Record<string, string | undefined>};
@@ -127,7 +130,9 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
     Object.assign(adapter, {
       effectiveSettings: ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
         init: {n_ctx: run.nCtx!, n_batch: 512, n_ubatch: 512, n_threads: run.nThreads, n_gpu_layers: run.nGpuLayers ?? 0,
-          use_mmap: true, use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto' as const, cache_type_k: 'f16' as const,
+          // The run's load settings, else LlamaRnAdapter's defaults.
+          use_mmap: run.useMmap ?? true, use_mlock: run.useMlock ?? false, no_extra_bufts: run.noExtraBufts ?? false,
+          flash_attn_type: run.flashAttnType ?? 'auto' as const, cache_type_k: 'f16' as const,
           cache_type_v: 'f16' as const, ...(run.devices ? {devices: [...run.devices]} : {})},
         completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const,
         distribution: {source: 'npm' as const, package: 'llama.rn' as const, version: '0.0.0-fixture',
@@ -152,11 +157,13 @@ const SHA = (run: AcceleratorRun) => run.modelSha256 ?? (run.modelFile.startsWit
 async function runConfiguration(config: AcceleratorConfig, options: Record<string, FakeOptions> = {},
   extra: Partial<AcceleratorIO> = {}) {
   const records: Record<string, AcceleratorSession> = {};
-  const runs = seededOrder(config.runs, config.orderSeed!);
+  // A configuration without orderSeed gets a generated seed, as the app does.
+  const seed = config.orderSeed ?? 7;
+  const runs = seededOrder(config.runs, seed);
   const order = runs.map(run => run.id);
   let sequence = 0;
   const outcome = await runAcceleratorConfiguration(config, runs, (_run, position) => ({method: ORDER_METHOD,
-    seed: config.orderSeed!, seedSource: 'configured', order, position}), {
+    seed, seedSource: config.orderSeed === undefined ? 'generated' : 'configured', order, position}), {
     artifact: async run => ({sha256: SHA(run), sizeBytes: 600000000}),
     adapter: run => fake(run, options[run.id]),
     identity: () => ({runId: `1767225600000-${sequence++}-accel`, timestampIso: '2026-01-01T00:00:00.000Z',
@@ -368,6 +375,12 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
   });
   out['hashMismatch-npu'] = wrong.records['litert-npu'];
 
+  // The committed llama.cpp board configurations, exactly as staged (v3 load settings).
+  for (const [prefix, config] of [['qwen25', qwenOpenclConfig], ['board-hexagon', q4kmHexagonConfig]] as const) {
+    const board = await runConfiguration(parseAcceleratorConfig(config));
+    for (const [id, record] of Object.entries(board.records)) out[`${prefix}-${id}`] = record;
+  }
+
   const run = bug.runs[1];
   out['setupFailed-npu'] = unmeasuredAcceleratorSession(fake(run), small(bug), run,
     {runId: '1767225600000-99-accel', timestampIso: '2026-01-01T00:00:00.000Z',
@@ -397,7 +410,26 @@ test('accelerator records match the committed fixture validated by the host sche
     'configurationAborted-npu': 'failed/configuration-aborted/unverified/invalid/null/null',
     'setupFailed-npu': 'failed/setup-failed/unverified/invalid/null/null',
     'hashMismatch-npu': 'failed/model-hash-mismatch/unverified/unverified/null/null',
+    'qwen25-qwen25-1.5b-q80-cpu': 'complete/null/pass/valid/confirmed/confirmed',
+    'qwen25-qwen25-1.5b-q80-opencl': 'complete/null/pass/valid/confirmed/confirmed',
+    'board-hexagon-llama32-q4km-cpu': 'complete/null/pass/valid/confirmed/confirmed',
+    'board-hexagon-llama32-q4km-hexagon': 'complete/null/pass/valid/confirmed/confirmed',
   });
+  // The board configurations' records carry exactly the committed files and their load settings.
+  expect(records['qwen25-qwen25-1.5b-q80-opencl'].configuration).toEqual(qwenOpenclConfig);
+  expect(records['board-hexagon-llama32-q4km-hexagon'].configuration).toEqual(q4kmHexagonConfig);
+  expect(records['qwen25-qwen25-1.5b-q80-opencl'].effectiveSettings!.init).toMatchObject({use_mmap: false,
+    use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto', n_gpu_layers: 99});
+  expect(records['qwen25-qwen25-1.5b-q80-opencl'].protocol.chatTemplate).toBe('qwen25');
+  // They measure the CPU reference prompt (std-pp512-v1, pre-templated); the gate keeps its probes.
+  for (const key of ['qwen25-qwen25-1.5b-q80-opencl', 'board-hexagon-llama32-q4km-hexagon']) {
+    expect(records[key].protocol).toMatchObject({promptLabel: STANDARD_PROMPT_LABEL, prompt: STANDARD_PROMPT,
+      promptFormat: 'raw-pretemplated'});
+    expect(records[key].correctness.probes.map(probe => probe.id)).toEqual(records['f8-llama-hexagon'].correctness.probes
+      .map(probe => probe.id));
+  }
+  expect(records['f8-llama-hexagon'].protocol).toMatchObject({promptLabel: 'std-chat-v1',
+    promptFormat: 'user-turn-chat-template'});
   expect(records['hashMismatch-npu'].artifact).toEqual({sha256: 'e'.repeat(64), sizeBytes: 600000000,
     expectedSha256: 'fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f'});
   expect(records['f8-litert-npu'].artifact!.expectedSha256).toBe(records['f8-litert-npu'].artifact!.sha256);

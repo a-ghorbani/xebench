@@ -73,6 +73,15 @@ export const SUSTAINED_PROMPT_LABEL = 'sustained-short-v1';
 export const ACCELERATOR_PROMPT = LONG_BODY;
 export const ACCELERATOR_PROMPT_LABEL = 'std-chat-v1';
 
+/**
+ * The prompt an accelerator configuration's repetitions measure (configuration measuredPrompt).
+ * std-chat-v1 (default): ACCELERATOR_PROMPT as one user turn in the configuration's chat template.
+ * std-pp512-v1: the CPU reference prompt, the pre-templated STANDARD_PROMPT, so llama.cpp GPU/NPU
+ * rows measure exactly what the CPU rows measure. The output gate's probes are the same either way.
+ */
+export const MEASURED_PROMPTS = ['std-chat-v1', 'std-pp512-v1'] as const;
+export type MeasuredPrompt = typeof MEASURED_PROMPTS[number];
+
 /** Gemma 3 instruction-tuned single user turn. BOS is added by the tokenizer, not here. */
 export const gemma3Turn = (text: string) =>
   `<start_of_turn>user\n${text}<end_of_turn>\n<start_of_turn>model\n`;
@@ -81,11 +90,17 @@ export const gemma3Turn = (text: string) =>
 export const llama32Turn = (text: string) =>
   `<|start_header_id|>user<|end_header_id|>\n\n${text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
 
-export type ChatTemplate = 'gemma3' | 'llama32';
-export const CHAT_TEMPLATES = ['gemma3', 'llama32'] as const;
+/**
+ * Qwen2.5 instruct (ChatML) single user turn, no system message (the GGUF's own template adds
+ * Qwen's default system prompt only when a client renders it; llama.rn receives this raw string).
+ */
+export const qwen25Turn = (text: string) => `<|im_start|>user\n${text}<|im_end|>\n<|im_start|>assistant\n`;
+
+export type ChatTemplate = 'gemma3' | 'llama32' | 'qwen25';
+export const CHAT_TEMPLATES = ['gemma3', 'llama32', 'qwen25'] as const;
 /** The raw single-turn prompt for engines that take a pre-templated string (llama.cpp). */
 export const chatTurn = (template: ChatTemplate, text: string) =>
-  template === 'llama32' ? llama32Turn(text) : gemma3Turn(text);
+  template === 'llama32' ? llama32Turn(text) : template === 'qwen25' ? qwen25Turn(text) : gemma3Turn(text);
 
 /** Decode budget per run — comparable to llama-bench tg128 convention. */
 export const MAX_DECODE_TOKENS = 128;

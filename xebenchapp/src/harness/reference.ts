@@ -180,7 +180,9 @@ async function runAccelerators(raw: unknown, root: string, directory: string, lo
     adapter: run => run.engine === 'llama.cpp' ?
       new LlamaRnAdapter({modelPath: modelPath(run), modelLabel: run.model, quantLabel: run.quant,
         nThreads: run.nThreads!, nCtx: run.nCtx!, nGpuLayers: run.nGpuLayers ?? 0,
-        ...(run.devices ? {devices: run.devices} : {})}) :
+        ...(run.devices ? {devices: run.devices} : {}),
+        // Unset load settings (undefined) keep the adapter defaults.
+        useMmap: run.useMmap, useMlock: run.useMlock, noExtraBufts: run.noExtraBufts, flashAttnType: run.flashAttnType}) :
       new LiteRtAdapter({modelPath: modelPath(run), backend: run.backend, modelLabel: run.model,
         quantLabel: run.quant, nThreads: run.nThreads}),
     identity: () => ({runId: `${Date.now()}-${sequence++}-${Math.random().toString(36).slice(2)}`,
