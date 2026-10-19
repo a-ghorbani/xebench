@@ -28,7 +28,8 @@ import java.util.concurrent.TimeUnit
  * One engine at a time, all calls on one worker thread, so load -> generate -> release
  * mirrors the harness's fresh-instance protocol. Measurement uses the engine's own
  * counters (ExperimentalFlags.enableBenchmark -> Conversation.getBenchmarkInfo()), on a
- * real chat-templated prompt, so prefill/decode tok/s come from LiteRT-LM itself.
+ * real prompt (chat-templated, or pre-templated and rendered verbatim), so prefill/decode
+ * tok/s come from LiteRT-LM itself.
  *
  * LiteRT-LM does not report which accelerator executed. load() therefore returns the
  * accelerator-relevant native libraries mapped in this process before and after engine
@@ -119,17 +120,32 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
    * One greedy single-turn conversation on the loaded engine. stream=true measures
    * request -> first non-empty callback on this thread's clock (text not collected);
    * stream=false returns the full reply text (output-correctness gate).
+   *
+   * raw=false sends text as a user message in the artifact's own chat template. raw=true
+   * sends text as an already templated prompt (std-pp512-v1): the conversation's template is
+   * replaced by RAW_TEMPLATE, which renders the user message verbatim, and the rendered
+   * prompt must equal text byte for byte before anything is prefilled. LiteRT-LM still adds
+   * the artifact's start token on the first turn when its metadata defines one.
    */
   @OptIn(ExperimentalApi::class)
   @ReactMethod
-  fun generate(text: String, maxOutputTokens: Int, stream: Boolean, promise: Promise) = run(promise, "LITERT_GENERATE") {
+  fun generate(text: String, maxOutputTokens: Int, stream: Boolean, raw: Boolean, promise: Promise) =
+    run(promise, "LITERT_GENERATE") {
     val loaded = checkNotNull(engine) { "No LiteRT-LM engine is loaded" }
     val config = ConversationConfig(
       samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 1.0, seed = 0),
       maxOutputToken = maxOutputTokens,
+      chatTemplate = if (raw) RAW_TEMPLATE else null,
     )
     loaded.createConversation(config).use { conversation ->
       val result = Arguments.createMap()
+      if (raw) {
+        val rendered = conversation.renderMessageIntoString(Message.user(text))
+        check(rendered == text) {
+          "LiteRT-LM rendered the raw prompt differently (${rendered.length} vs ${text.length} chars)"
+        }
+        result.putBoolean("rawPromptVerified", true)
+      }
       val t0 = System.nanoTime()
       if (stream) {
         val done = CountDownLatch(1)
@@ -210,6 +226,17 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
   }
 
   companion object {
+    /**
+     * Renders every message's text parts verbatim: no role markers, no generation prompt.
+     * LiteRT-LM 0.18.0 passes message content as a list of parts; a plain string is accepted too.
+     */
+    private const val RAW_TEMPLATE =
+      "{%- for message in messages -%}" +
+        "{%- if message['content'] is string -%}{{ message['content'] }}" +
+        "{%- else -%}{%- for part in message['content'] -%}" +
+        "{%- if part['type'] == 'text' -%}{{ part['text'] }}{%- endif -%}" +
+        "{%- endfor -%}{%- endif -%}" +
+        "{%- endfor -%}"
     private val MARKERS = listOf("libOpenCL", "libLiteRt", "libQnn", "libcdsprpc", "libadsprpc", "libvndksupport")
   }
 }

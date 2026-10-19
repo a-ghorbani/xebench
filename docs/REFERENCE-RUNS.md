@@ -45,15 +45,71 @@ the same file ([litert-accelerators](experiments/litert-accelerators.md)):
 reference runs; these set cpu-reference-v3's values on every run, the gate's CPU references
 included.
 
-Every llama.cpp board row measures the same prompt and decode length. An accelerator
-configuration's `measuredPrompt` selects what its repetitions measure: `std-chat-v1` (the
-default) is the accelerator body as one user turn in the configuration's chat template;
-`std-pp512-v1` is the CPU reference prompt, pre-templated (`promptFormat: raw-pretemplated`)
-and allowed for llama.cpp runs only. These two configurations set `std-pp512-v1`, which is a
-Llama 3.2 turn for every model, as on the CPU rows. The output-correctness gate keeps its own
-probes in each model's chat template (`chatTemplate: qwen25`, a ChatML user turn without a
-system message, and `llama32`). An accelerator configuration's CPU run is the gate's reference,
-not a board CPU measurement: only its GPU and NPU sessions are published.
+Every board row measures the same prompt and decode length. An accelerator configuration's
+`measuredPrompt` selects what its repetitions measure: `std-chat-v1` (the default) is the
+accelerator body as one user turn in the configuration's chat template; `std-pp512-v1` is the
+CPU reference prompt, pre-templated (`promptFormat: raw-pretemplated`). These two
+configurations set `std-pp512-v1`, which is a Llama 3.2 turn for every model, as on the CPU
+rows. The output-correctness gate keeps its own probes in each model's chat template
+(`chatTemplate: qwen25`, a ChatML user turn without a system message, and `llama32`). An
+accelerator configuration's CPU run is the gate's reference, not a board CPU measurement: only
+its GPU and NPU sessions are published.
+
+### LiteRT-LM board configurations
+
+The board's LiteRT-LM rows run through the accelerator protocol with cpu-reference-v3's
+timing (3 repetitions, 120 s cooldown, 900 s readiness timeout, 2 °C rise bound, 128 decode
+tokens) and `measuredPrompt: std-pp512-v1`, so they measure the text the llama.cpp CPU rows
+measure. llama.rn receives that text as a raw prompt. LiteRT-LM has no raw-prompt call with
+engine counters, so `LiteRtBenchModule.kt` sends it as the user message of a conversation whose
+chat template renders message text verbatim (no role markers, no generation prompt), checks that
+the rendered prompt equals the text byte for byte, and refuses the repetition otherwise.
+LiteRT-LM adds the artifact's start token on the first turn when its metadata names one, as
+llama.cpp adds BOS when the model asks for it; each engine records its own prompt token count. CPU runs use 4 threads. The files
+are pinned in [MODELS.md](../MODELS.md#litert-lm-files).
+
+| Configuration | Runs | Board backend | Phones |
+| --- | --- | --- | --- |
+| [`litertlm-gemma3-int4-cpu-v1`](../xebenchapp/configs/litertlm-gemma3-int4-cpu-v1.json) | Gemma 3 1B `int4`, CPU | `cpu` | POCO F8 Ultra, Galaxy S23 |
+| [`litertlm-qwen25-q8-cpu-v1`](../xebenchapp/configs/litertlm-qwen25-q8-cpu-v1.json) | Qwen2.5 1.5B `Q8`, CPU | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9 |
+| [`litertlm-gemma3-sm8850-npu-v1`](../xebenchapp/configs/litertlm-gemma3-sm8850-npu-v1.json) | Gemma 3 1B `int4` on CPU (gate reference), the SM8850 NPU bundle on NPU | `npu` | POCO F8 Ultra |
+
+The NPU run is gated against the CPU run of the int4 file (`sameArtifact: false`). The Galaxy
+S23 has no LiteRT-LM NPU configuration: its SM8550 bundle answers the gate's long probes wrong
+([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508);
+[litert-accelerators](experiments/litert-accelerators.md)). LiteRT-LM reports no executing
+backend, so an NPU session's backend evidence is at most `consistent` and its publication
+validation is `unverified` ([RUN-CONDITIONS.md](RUN-CONDITIONS.md#publication-policy-v1)).
+
+Sessions per setup (one configuration on one phone), fixed before any measurement:
+
+1. Run the configuration once.
+2. If that session does not pass (fewer than 3 of 3 repetitions, a condition verdict other than
+   `pass`, or an output gate other than `pass`), run it once more, unchanged, on the same phone
+   and APK.
+3. Publish every session run under these configurations to the history. The board shows each
+   key's newest verified session, else its newest unverified one (the selection rule); no
+   session is left out by hand.
+4. A setup with no passing session after the second run is not run again; its key is retired
+   in [`configs/board.json`](../configs/board.json) with the reason.
+
+Run one configuration on one phone with the experimental APK (built as in
+[litert-accelerators](experiments/litert-accelerators.md#build)) and its files staged:
+
+```sh
+D=/sdcard/Android/data/com.xebenchapp/files
+adb -s <serial> shell "[ -f $D/xebench-config.json ] && cp $D/xebench-config.json $D/xebench-config.json.litert-backup"
+adb -s <serial> push xebenchapp/configs/litertlm-qwen25-q8-cpu-v1.json $D/xebench-config.json
+python3 scripts/capture_app_run.py <serial> 3600
+adb -s <serial> shell "if [ -f $D/xebench-config.json.litert-backup ]; then mv $D/xebench-config.json.litert-backup $D/xebench-config.json; else rm $D/xebench-config.json; fi"
+python3 scripts/export_evidence.py export --out <dir> <capture dir>
+python3 scripts/export_evidence.py verify <bundle dir>
+```
+
+The board shows these sessions once `configs/board.json` declares the LiteRT-LM set
+([RUN-CONDITIONS.md](RUN-CONDITIONS.md#publishing-a-new-set)). The CPU run of
+`litertlm-gemma3-sm8850-npu-v1` goes into the history only, with
+`--allow-unlisted-configuration`.
 
 A run field that is not set takes the harness default in parentheses
 (`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).

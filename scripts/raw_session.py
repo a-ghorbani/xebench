@@ -1248,9 +1248,6 @@ def _configuration_accelerator(config):
             errors.append(reason("configuration.run-invalid", where,
                                  "LiteRT-LM runs take nCtx null, no nGpuLayers/devices or llama.cpp load settings, "
                                  "and nThreads only on CPU"))
-        if measured_prompt(config) == STANDARD_PROMPT_LABEL and not llama:
-            errors.append(reason("configuration.run-invalid", where,
-                                 "measuredPrompt std-pp512-v1 is pre-templated for llama.cpp runs only"))
         reference = next((item for item in runs if item["id"] == run["referenceRunId"]), None)
         if (run["referenceRunId"] is not None) if run["backend"] == "cpu" else (
                 reference is None or reference["backend"] != "cpu" or reference["engine"] != run["engine"]):

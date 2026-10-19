@@ -46,7 +46,7 @@ const finite = (value: unknown): value is number => typeof value === 'number' &&
  *
  * load() creates and initializes a fresh Engine on the requested backend; benchOnce()
  * runs one single-turn greedy conversation on the real prompt (the artifact's own chat
- * template) and reports LiteRT-LM's engine counters (Conversation.getBenchmarkInfo):
+ * template, or a pre-templated prompt prefilled verbatim) and reports LiteRT-LM's engine counters (Conversation.getBenchmarkInfo):
  * prefill and decode tok/s are 'engine-timings', like llama.cpp's timings. TTFT is
  * request -> first streamed callback, timed natively on the worker thread.
  */
@@ -101,18 +101,25 @@ export class LiteRtAdapter implements EngineAdapter {
   }
 
   async generate(cfg: BenchOnceConfig): Promise<string> {
-    const result = await this.native.generate(cfg.text ?? cfg.prompt, cfg.maxDecodeTokens, false);
+    const raw = cfg.text === undefined;
+    const result = await this.native.generate(raw ? cfg.prompt : cfg.text, cfg.maxDecodeTokens, false, raw);
     if (typeof result?.text !== 'string') {
       throw new Error('LiteRT-LM returned no text');
     }
     return result.text;
   }
 
+  /**
+   * With cfg.text, the request is a user message in the artifact's chat template (std-chat-v1).
+   * Without it, cfg.prompt is already templated (std-pp512-v1) and is prefilled verbatim: the
+   * native module renders it with a pass-through template and refuses any difference.
+   */
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {
-    if (cfg.text === undefined) {
-      throw new Error('LiteRT-LM takes the prompt as a user message (accelerator protocol)');
+    const raw = cfg.text === undefined;
+    const result = await this.native.generate(raw ? cfg.prompt : cfg.text, cfg.maxDecodeTokens, true, raw);
+    if (raw && result?.rawPromptVerified !== true) {
+      throw new Error('LiteRT-LM did not confirm the verbatim prompt');
     }
-    const result = await this.native.generate(cfg.text, cfg.maxDecodeTokens, true);
     const info = result?.benchmark;
     if (!info) {
       throw new Error(`LiteRT-LM benchmark info unavailable: ${result?.benchmarkError ?? 'not reported'}`);

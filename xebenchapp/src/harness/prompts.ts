@@ -76,8 +76,10 @@ export const ACCELERATOR_PROMPT_LABEL = 'std-chat-v1';
 /**
  * The prompt an accelerator configuration's repetitions measure (configuration measuredPrompt).
  * std-chat-v1 (default): ACCELERATOR_PROMPT as one user turn in the configuration's chat template.
- * std-pp512-v1: the CPU reference prompt, the pre-templated STANDARD_PROMPT, so llama.cpp GPU/NPU
- * rows measure exactly what the CPU rows measure. The output gate's probes are the same either way.
+ * std-pp512-v1: the CPU reference prompt, the pre-templated STANDARD_PROMPT, so accelerator rows
+ * measure exactly the text the llama.cpp CPU rows measure. llama.rn receives it as a raw prompt;
+ * LiteRT-LM prefills it verbatim through a pass-through chat template (LiteRtBenchModule.kt). The
+ * output gate's probes are the same either way.
  */
 export const MEASURED_PROMPTS = ['std-chat-v1', 'std-pp512-v1'] as const;
 export type MeasuredPrompt = typeof MEASURED_PROMPTS[number];

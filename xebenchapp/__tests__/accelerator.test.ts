@@ -27,6 +27,8 @@ import llamaHexagonConfig from '../configs/f8-llama32-hexagon-check-v1.json';
 import qwenOpenclConfig from '../configs/llamacpp-qwen25-opencl-v1.json';
 import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from '../src/harness/prompts';
 import q4kmHexagonConfig from '../configs/llamacpp-llama32-q4km-hexagon-v1.json';
+import litertQwenCpuConfig from '../configs/litertlm-qwen25-q8-cpu-v1.json';
+import litertGemmaNpuConfig from '../configs/litertlm-gemma3-sm8850-npu-v1.json';
 
 declare const __dirname: string;
 declare const process: {env: Record<string, string | undefined>};
@@ -376,7 +378,8 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
   out['hashMismatch-npu'] = wrong.records['litert-npu'];
 
   // The committed llama.cpp board configurations, exactly as staged (v3 load settings).
-  for (const [prefix, config] of [['qwen25', qwenOpenclConfig], ['board-hexagon', q4kmHexagonConfig]] as const) {
+  for (const [prefix, config] of [['qwen25', qwenOpenclConfig], ['board-hexagon', q4kmHexagonConfig],
+    ['board-litert-qwen25', litertQwenCpuConfig], ['board-litert-npu', litertGemmaNpuConfig]] as const) {
     const board = await runConfiguration(parseAcceleratorConfig(config));
     for (const [id, record] of Object.entries(board.records)) out[`${prefix}-${id}`] = record;
   }
@@ -414,6 +417,9 @@ test('accelerator records match the committed fixture validated by the host sche
     'qwen25-qwen25-1.5b-q80-opencl': 'complete/null/pass/valid/confirmed/confirmed',
     'board-hexagon-llama32-q4km-cpu': 'complete/null/pass/valid/confirmed/confirmed',
     'board-hexagon-llama32-q4km-hexagon': 'complete/null/pass/valid/confirmed/confirmed',
+    'board-litert-qwen25-qwen25-1.5b-q8-litertlm-cpu': 'complete/null/pass/valid/consistent/consistent',
+    'board-litert-npu-gemma3-1b-int4-litertlm-cpu': 'complete/null/pass/valid/consistent/consistent',
+    'board-litert-npu-gemma3-1b-sm8850-litertlm-npu': 'complete/null/pass/valid/unknown/consistent',
   });
   // The board configurations' records carry exactly the committed files and their load settings.
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].configuration).toEqual(qwenOpenclConfig);
@@ -422,7 +428,8 @@ test('accelerator records match the committed fixture validated by the host sche
     use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto', n_gpu_layers: 99});
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].protocol.chatTemplate).toBe('qwen25');
   // They measure the CPU reference prompt (std-pp512-v1, pre-templated); the gate keeps its probes.
-  for (const key of ['qwen25-qwen25-1.5b-q80-opencl', 'board-hexagon-llama32-q4km-hexagon']) {
+  for (const key of ['qwen25-qwen25-1.5b-q80-opencl', 'board-hexagon-llama32-q4km-hexagon',
+    'board-litert-qwen25-qwen25-1.5b-q8-litertlm-cpu', 'board-litert-npu-gemma3-1b-sm8850-litertlm-npu']) {
     expect(records[key].protocol).toMatchObject({promptLabel: STANDARD_PROMPT_LABEL, prompt: STANDARD_PROMPT,
       promptFormat: 'raw-pretemplated'});
     expect(records[key].correctness.probes.map(probe => probe.id)).toEqual(records['f8-llama-hexagon'].correctness.probes

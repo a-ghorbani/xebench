@@ -204,7 +204,8 @@ export interface AcceleratorConfig {
   chatTemplate: ChatTemplate;
   /**
    * The prompt the repetitions measure; absent means std-chat-v1. std-pp512-v1 (the CPU reference
-   * prompt) needs llama.cpp runs only. Kept only when set, so the record echoes the file exactly.
+   * prompt) is prefilled verbatim by both engines (LiteRT-LM through a pass-through template).
+   * Kept only when set, so the record echoes the file exactly.
    */
   measuredPrompt?: MeasuredPrompt;
   orderSeed?: number;
@@ -306,9 +307,6 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
   }
   const measuredPrompt = value.measuredPrompt === undefined ? undefined :
     oneOf(value.measuredPrompt, MEASURED_PROMPTS, 'measuredPrompt');
-  if (measuredPrompt === 'std-pp512-v1' && runs.some(run => run.engine !== 'llama.cpp')) {
-    throw new Error('measuredPrompt std-pp512-v1 is a pre-templated prompt for llama.cpp runs only');
-  }
   for (const run of runs) {
     const reference = runs.find(item => item.id === run.referenceRunId);
     if (run.backend === 'cpu' ? run.referenceRunId !== null :

@@ -195,7 +195,8 @@ export async function runAcceleratorSession(
 /**
  * What the repetitions measure (configuration measuredPrompt): the std-chat-v1 body as one user
  * turn in the chat template (default), or the CPU reference prompt std-pp512-v1, pre-templated,
- * as llama.cpp CPU rows measure it. The output gate's probes do not depend on it.
+ * as llama.cpp CPU rows measure it (no user-message text: LiteRT-LM prefills the prompt verbatim). The
+ * output gate's probes do not depend on it.
  */
 function measuredPrompt(config: AcceleratorConfig) {
   if (config.measuredPrompt === 'std-pp512-v1') {
