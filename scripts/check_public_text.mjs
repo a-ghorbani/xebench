@@ -26,31 +26,34 @@ import { fileURLToPath } from 'node:url';
 /** [pattern, why] — matched case-insensitively on word boundaries. */
 export const BANNED = Object.freeze([
   ['legacy', 'internal label'],
-  ['harness', 'internal label (say "the benchmark app" or name the tool)'],
+  ['harness(es)?', 'internal label (say "the benchmark app" or name the tool)'],
   ['locked', 'process narration'],
   ['pending', 'process narration: say what is true now'],
   ['gat(e|es|ed|ing)', 'internal label (say what was checked, e.g. "output check")'],
-  ['epoch', 'internal label'],
+  ['epochs?', 'internal label'],
   ['previously', 'history narration'],
   ['marked( as)? failed', 'history narration'],
   ['failed', 'status label: the board shows no failed row'],
   ['not yet', 'process narration: say what is true now'],
-  ['re-?measur(e|ed|ing)', 'process narration'],
-  ['invalidated', 'history narration'],
-  ['deprecated', 'history narration'],
-  ['replaced', 'history narration'],
-  ['withdrawn', 'history narration'],
-  ['superseded', 'history narration'],
+  ['re-?measur(e|es|ed|ing|ements?)', 'process narration'],
+  ['invalidat(ed|es|ion)', 'history narration'],
+  ['deprecat(ed|es|ion)', 'history narration'],
+  ['replac(ed|es|ing|ements?)', 'history narration'],
+  ['withdr(awn|ew)', 'history narration'],
+  ['supersed(ed|es|ing)', 'history narration'],
   ['corrected', 'history narration (the history goes in docs/CORRECTIONS.md)'],
-  ['correction', 'history narration (the history goes in docs/CORRECTIONS.md)'],
-  ['retired', 'internal label'],
-  ['staged', 'internal label'],
+  ['corrections?', 'history narration (the history goes in docs/CORRECTIONS.md)'],
+  ['retir(ed|es|ing|ement)', 'internal label'],
+  ['stag(ed|ing)', 'internal label'],
   ['carr(y|ies|ied)[ -]?over', 'internal label'],
-  ['roadmap(ped)?', 'process narration'],
+  ['roadmap(s|ped)?', 'process narration'],
   ['todo|tbd|wip', 'unfinished copy'],
   ['lab[ -]book', 'internal label'],
 ]);
 const HEX = /\b(?:[0-9a-f]{64}|[0-9a-f]{40})\b/gi;
+/** In prose (finding text, vendor notes), a short commit or hash id too: 7 or more hex digits with a digit and a letter. */
+const SHORT_HEX = /\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,39}\b/gi;
+const PROSE = /\.(headline|deck|asStated)$/;
 /** The board's label vocabulary: [field, test, rule]. */
 export const VOCABULARY = Object.freeze([
   ['quant', (value) => /^(Q[2-8](_[01]|_K(_[SML])?)?|IQ[1-4]_[A-Z]{1,3}|F16|BF16|F32)( \(QAT\))?$/.test(value) ||
@@ -147,6 +150,9 @@ export function hits(items) {
       }
     }
     for (const match of item.text.matchAll(HEX)) out.push({ ...item, match: match[0], why: 'inline hash' });
+    if (PROSE.test(item.where)) {
+      for (const match of item.text.matchAll(SHORT_HEX)) out.push({ ...item, match: match[0], why: 'inline hash' });
+    }
   }
   return out;
 }

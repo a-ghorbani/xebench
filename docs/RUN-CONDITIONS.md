@@ -352,7 +352,7 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
    retired rows) is in [`data/sessions/index.json`](../data/sessions/index.json).
 3. **Re-measure everything, or retire it.** Re-measuring an engine means re-measuring all of its
    board setups. A setup that cannot be measured is listed in `retiredKeys` with a reason and a
-   date. The reason stays in the data (`configs/board.json` and the row's `replacedRows` entry
+   date; a retired key must name a published row or session, so a typo is refused. The reason stays in the data (`configs/board.json` and the row's `replacedRows` entry
    with `reason: "retired"`), never on the page.
 4. **Complete or nothing.** An update that would take a displayed key off the board refuses
    unless the key is retired. So a new set is displayed only once every displayed key of the
@@ -361,7 +361,7 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
    also carries `dateBasis` (contract 1.3): `measured` when the month comes from the run's own
    record, or `first-published` when no record survives and the month is that of the first
    commit carrying the row. [`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs)
-   freezes each July 2026 row (key, numbers, month and basis); a row without versions is displayed
+   freezes each July 2026 row (key, speeds, run count, time to first token, month and basis); a row without versions is displayed
    only as one of those rows, unchanged, and
    [`scripts/date_legacy_rows.mjs`](../scripts/date_legacy_rows.mjs) writes their months.
 

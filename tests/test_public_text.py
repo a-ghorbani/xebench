@@ -75,6 +75,24 @@ class PublicTextTests(unittest.TestCase):
             "re-measured": ("findings", lambda f, b: f["findings"][0].update(deck="It is re-measured."), "\"re-measured\""),
             "carries over": ("findings", lambda f, b: f["findings"][0].update(deck="The row carries over."),
                              "\"carries over\""),
+            # Inflections of the listed words are the same narration.
+            "replaces": ("findings", lambda f, b: f["findings"][0].update(deck="This row replaces the old one."),
+                         "\"replaces\""),
+            "supersedes": ("findings", lambda f, b: f["findings"][0].update(deck="It supersedes the July figure."),
+                           "\"supersedes\""),
+            "corrections": ("findings", lambda f, b: f["findings"][0].update(deck="See the corrections."),
+                            "\"corrections\""),
+            "re-measurement": ("findings", lambda f, b: f["findings"][0].update(deck="A re-measurement follows."),
+                               "\"re-measurement\""),
+            "retiring": ("findings", lambda f, b: f["findings"][0].update(deck="We are retiring this setup."),
+                         "\"retiring\""),
+            "staging": ("findings", lambda f, b: f["findings"][0].update(deck="Results are in staging."), "\"staging\""),
+            "harnesses": ("findings", lambda f, b: f["findings"][0].update(deck="Both harnesses agree."), "\"harnesses\""),
+            # A short commit id in prose is a hash too; a version field keeps its build id.
+            "a short commit in a deck": ("findings", lambda f, b: f["findings"][0].update(deck="Fixed in commit 0b24d8c."),
+                                         "\"0b24d8c\" (inline hash)"),
+            "a short hash in a vendor note": ("benchmarks", lambda f, b: self.row_of(b, "vendor").update(
+                asStated="Bundle 1fc8abbee996, CPU."), "\"1fc8abbee996\" (inline hash)"),
         }
         for name, (kind, change, expected) in cases.items():
             with self.subTest(name):

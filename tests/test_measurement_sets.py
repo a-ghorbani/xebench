@@ -327,6 +327,9 @@ class DisplayRuleTests(SetWorkspace):
             "unverified without evidence": ({k: v for k, v in {**made_up, "validation": "unverified"}.items() if k != "dateBasis"},
                                             "is unverified but no published session backs it"),
             "changed numbers": ({**july, "tgTps": 99.0}, "are not the dated"),
+            "changed run count": ({**july, "sampleCount": 5}, "are not the published"),
+            "changed time to first token": ({**july, "ttftMs": 1.0}, "are not the published"),
+            "a memory figure": ({**july, "memoryMb": 512.0}, "are not the published"),
             "no month basis": ({k: v for k, v in july.items() if k != "dateBasis"}, "does not carry its month"),
         }
         for name, (row, reason) in cases.items():
@@ -363,6 +366,19 @@ class DisplayRuleTests(SetWorkspace):
         self.assert_valid_data()
         again = self.aggregate("--apply-board", "--update")
         self.assertIn("nothing to write", again.stderr)
+
+    def test_a_retired_key_that_names_nothing_is_refused(self):
+        """A typo in retiredKeys would retire nothing and leave the intended row displayed."""
+        key = next(key for key in self.rows() if key.startswith("genie-x|npu|"))
+        board = load(self.root / "configs/board.json")
+        typo = key.replace("W4A16", "W4A61")
+        board["retiredKeys"] = sorted(board["retiredKeys"] + [{"key": typo, "reason": "fixture", "retiredAt": "2026-10-19"}],
+                                      key=lambda item: item["key"])
+        self.save(board)
+        result = self.node("validate_data.mjs")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"retiredKeys: {typo} names no published row or session", result.stderr)
+        self.assert_rejected("names no published row or session", "--apply-board", "--update")
 
     def test_a_malformed_board_is_refused(self):
         good = load(self.root / "configs/board.json")

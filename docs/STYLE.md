@@ -28,8 +28,10 @@ The board is not a lab book. A visitor reads it cold, once, and must understand 
 `node scripts/check_public_text.mjs` enforces 2 to 4 on every string the site renders: each
 finding's headline and deck, and each row's displayed fields (device, model, quant, source,
 versions, configuration; `asStated` on vendor rows only, because a lab row's `asStated` is not
-rendered). It fails on a listed term or a 40- or 64-character hex string (a short build id in a version
-field passes), and on a row label outside the board vocabulary: one spelling per quant scheme
+rendered). It fails on a listed term and its common forms (e.g. "replaces", "corrections"), on a
+40- or 64-character hex string, and in prose (a headline, deck or vendor note) on any hex id of 7
+or more characters; a short build id in a version field passes. It also fails on a row label
+outside the board vocabulary: one spelling per quant scheme
 (llama.cpp's GGUF names as they are, `Q8`, `int4`, `4-bit QAT`, `4-bit QAT + LoRA`, `W4A16`, `BF16`, ...; no
 "not stated": leave an unknown quant out), upper-case SoC ids as in `configs/devices.json`,
 device names as "Brand model" (Samsung Galaxy S23, Google Pixel 9, POCO F8 Ultra, Apple iPhone

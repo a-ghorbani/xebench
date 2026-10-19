@@ -147,6 +147,11 @@ export function applyBoard(envelope, index, board, { added = new Map() } = {}) {
       errors.push(`row ${key}: configs/board.json declares no measurement set for ${row.engine}`);
     }
   }
+  // A retired key names a published row or session: a typo would otherwise retire nothing and
+  // leave the intended row on the board without a word.
+  for (const key of board.retired.keys()) {
+    if (!keys.has(key)) errors.push(`configs/board.json retiredKeys: ${key} names no published row or session`);
+  }
   return {
     rows: [...out.values()].sort(compareRows),
     index: { ...emptyIndex(), keys: [...entries.values()].sort((a, b) => codepoint(a.key, b.key)) },

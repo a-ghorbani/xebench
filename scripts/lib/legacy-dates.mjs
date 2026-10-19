@@ -62,12 +62,50 @@ export const LEGACY_DATES = Object.freeze({
   'llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured': [97.6, 18.4, '2026-07', M, 'raw record, Galaxy S23, 2026-07-18'],
 });
 
+/**
+ * The rest of each frozen row's measurement, as first published: key -> [sampleCount, ttftMs].
+ * sampleCount is shown on the board ("3 runs"); no July row carries a memory figure. A row
+ * without versions is displayed only with exactly these values.
+ */
+export const LEGACY_MEASUREMENTS = Object.freeze({
+  'executorch|cpu|android|Google Pixel 9|Llama 3.2 1B|SpinQuant 4-bit|measured': [3, 2743],
+  'llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q4_K_M|measured': [3, 3282],
+  'llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q4_0|measured': [3, 2240],
+  'litert-lm|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8|measured': [3, 6746],
+  'llama.cpp|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8_0|measured': [3, 3832],
+  'executorch|cpu|android|OnePlus 6|Llama 3.2 1B|SpinQuant 4-bit|measured': [3, 41409],
+  'llama.cpp|cpu|android|OnePlus 6|Llama 3.2 1B|Q4_K_M|measured': [3, 29289],
+  'llama.cpp|cpu|android|OnePlus 6|Qwen2.5 1.5B|Q8_0|measured': [3, 104928],
+  'litert-lm|cpu|android|POCO F8 Ultra|Gemma 3 1B|int4|measured': [3, 765],
+  'llama.cpp|cpu|android|POCO F8 Ultra|Gemma 3 1B|Q4_0 (QAT)|measured': [3, 1364],
+  'executorch|cpu|android|POCO F8 Ultra|Llama 3.2 1B|SpinQuant 4-bit|measured': [3, 1510],
+  'genie-x|npu|android|POCO F8 Ultra|Llama 3.2 1B|W4A16|measured': [3, 71],
+  'llama.cpp|cpu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_0|measured': [3, 1575],
+  'llama.cpp|cpu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_K_M|measured': [3, 2286],
+  'litert-lm|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8|measured': [3, 1622],
+  'llama.cpp|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured': [3, 2202],
+  'llama.cpp|gpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured': [3, 2204],
+  'litert-lm|cpu|android|Samsung Galaxy S23|Gemma 3 1B|int4|measured': [3, 2771],
+  'llama.cpp|cpu|android|Samsung Galaxy S23|Gemma 3 1B|Q4_0 (QAT)|measured': [3, 2202],
+  'executorch|cpu|android|Samsung Galaxy S23|Llama 3.2 1B|SpinQuant 4-bit|measured': [3, 3142],
+  'llama.cpp|cpu|android|Samsung Galaxy S23|Llama 3.2 1B|Q4_K_M|measured': [3, 3810],
+  'genie-x|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured': [1, 5906],
+  'litert-lm|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8|measured': [3, 6578],
+  'llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured': [3, 4941],
+  'llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured': [3, 5325],
+});
+
 /** Why `row` is not one of the frozen rows without versions, exactly as dated; null when it is. */
 export function legacyDateMismatch(row) {
   const entry = LEGACY_DATES[rowKey(row)];
   if (!entry) return 'it is not one of the July 2026 rows without versions (scripts/lib/legacy-dates.mjs)';
   const [ppTps, tgTps, sourceDate, dateBasis] = entry;
   if (row.ppTps !== ppTps || row.tgTps !== tgTps) return `its numbers ${row.ppTps}/${row.tgTps} are not the dated ${ppTps}/${tgTps}`;
+  const [sampleCount, ttftMs] = LEGACY_MEASUREMENTS[rowKey(row)];
+  if (row.sampleCount !== sampleCount || row.ttftMs !== ttftMs || (row.memoryMb ?? null) !== null) {
+    return `its runs, time to first token or memory (${row.sampleCount}, ${row.ttftMs}, ${row.memoryMb ?? 'none'}) ` +
+      `are not the published ${sampleCount}, ${ttftMs}, none`;
+  }
   if (row.sourceDate !== sourceDate || row.dateBasis !== dateBasis) {
     return `it does not carry its month (sourceDate ${sourceDate}, dateBasis ${dateBasis}); run node scripts/date_legacy_rows.mjs`;
   }

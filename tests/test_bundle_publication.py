@@ -687,6 +687,9 @@ def consumer_fixtures(test):
                                 "do not resolve.",
                  "rowCount": 3, "rows": [vendor, july, legacy]}
         test.canonical.write_text(json.dumps(start, indent=2) + "\n")
+        # This small board has no failed NPU row, so nothing is retired (a retired key must name a row).
+        board_file = test.root / "configs/board.json"
+        board_file.write_text(json.dumps({**load(board_file), "retiredKeys": []}, indent=2) + "\n")
         test.bundle(
             fx.cpu_record("complete", "1767225600000-0-pixel", timestamp=T["t0"], device="Pixel 9", runtimes=runtimes),
             fx.cpu_record("flagged", "1767225600000-1-pixel", timestamp=T["t1"], device="Pixel 9", runtimes=runtimes),
