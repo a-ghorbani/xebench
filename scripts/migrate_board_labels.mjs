@@ -48,6 +48,10 @@ export const VENDOR_QUANTS = Object.freeze({ 'QAT+LoRA 4-bit': '4-bit QAT + LoRA
 /** Vendor source titles and notes in plain words: [field, before, after]. */
 export const VENDOR_TEXT = Object.freeze([
   ['sourceName', 'Arm Learning Path (ExecuTorch + XNNPACK)', 'Arm Learning Path (ExecuTorch tutorial)'],
+  // The board shows no memory column, so a note says nothing about memory.
+  ['asStated', 'XNNPACK; Arm learning-path tutorial run; RSS 1122 MiB', 'From an Arm tutorial run on the CPU.'],
+  ['asStated', 'From an Arm tutorial run on the CPU; memory is what the program held during the run.',
+    'From an Arm tutorial run on the CPU.'],
   ['asStated', 'Decode on the GPU; the source reports up to 2.2x more with multi-token prediction.', 'Measured without an optional speed-up mode (multi-token prediction); the source reports up to 2.2x faster generation with it.'],
   ['asStated', 'Measured without multi-token prediction; the source reports up to 2.2x faster generation with it.', 'Measured without an optional speed-up mode (multi-token prediction); the source reports up to 2.2x faster generation with it.'],
 ]);

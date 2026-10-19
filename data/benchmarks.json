@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.3",
-  "generatedAt": "2026-10-19T09:12:57Z",
+  "generatedAt": "2026-10-19T09:26:11Z",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Cross-engine on-device LLM benchmark results. provenance: measured = xebench lab runs; vendor = engine-maker official published numbers.",
   "rowCount": 43,
@@ -32,7 +32,7 @@
       "ppTps": 415.4,
       "tgTps": 53,
       "memoryMb": 1122,
-      "asStated": "From an Arm tutorial run on the CPU; memory is what the program held during the run.",
+      "asStated": "From an Arm tutorial run on the CPU.",
       "sourceName": "Arm Learning Path (ExecuTorch tutorial)",
       "sourceUrl": "https://learn.arm.com/learning-paths/smartphones-and-mobile/build-llama3-chat-android-app-using-executorch-and-xnnpack/5-run-benchmark-on-android/",
       "sourceDate": "2024",
