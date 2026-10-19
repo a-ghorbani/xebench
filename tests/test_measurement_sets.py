@@ -107,7 +107,8 @@ class CheckedInSetTests(unittest.TestCase):
         llama = {key_of(row): row for row in self.data["rows"] if row["engine"] == "llama.cpp"}
         self.assertEqual({(row.get("build") or {}).get("bindingVersion") for row in llama.values()},
                          {"llama.rn 0.13.0-rc.7"})
-        self.assertTrue(all("evidence" in row and row["sourceDate"] == "2026-10" for row in llama.values()))
+        self.assertTrue(all("evidence" in row and row["sourceDate"] == "2026-10" and row["validation"] == "verified"
+                            for row in llama.values()))
         self.assertEqual(sorted(row["backend"] for row in llama.values()), ["cpu"] * 14 + ["gpu", "npu"])
         retired = {item["key"] for item in self.board["retiredKeys"]}
         for key in (key for key in JULY_ROWS if key.startswith("llama.cpp|")):
