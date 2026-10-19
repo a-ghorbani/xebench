@@ -16,6 +16,8 @@ REASONS = {
     "date-basis-on-vendor-row.json": "dateBasis is only valid on legacy rows",
     "date-basis-without-source-date.json": "dateBasis requires sourceDate",
     "unknown-date-basis.json": "is not one of",
+    "quant-bits-in-1.2.json": "quantBits needs schemaVersion 1.3",
+    "wrong-quant-bits.json": "is not the bit width of quant",
 }
 
 

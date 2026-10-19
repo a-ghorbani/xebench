@@ -319,6 +319,20 @@ export const CONTRACT_VERSION = '1.1';
 export const RUNTIMES_CONTRACT_VERSION = '1.2';
 /** The minor that adds dateBasis on rows without versions; a file declares it only when a row carries one. */
 export const DATE_BASIS_CONTRACT_VERSION = '1.3';
+/**
+ * quantBits (contract 1.3): the weight bit width a quant scheme names, where it is certain; null
+ * otherwise. The board shows "4-bit" with the scheme as secondary text. A row's quantBits must
+ * equal quantBitsFor(quant).
+ */
+export function quantBitsFor(quant) {
+  if (typeof quant !== 'string') return null;
+  if (/^Q4_(0|1|K_[SM])( \(QAT\))?$/.test(quant)) return 4;
+  if (/^Q8(_0)?$/.test(quant)) return 8;
+  if (/^(BF16|F16)$/.test(quant)) return 16;
+  if (/^(int4|W4A16|SpinQuant 4-bit|4-bit groupwise|4-bit groupwise \+ 4-bit embedding|4-bit QAT|4-bit QAT \+ LoRA)$/.test(quant)) return 4;
+  return null;
+}
+
 /** Minors at or above the producer's floor: a file at one of them needs no 1.1 migration. */
 const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION, DATE_BASIS_CONTRACT_VERSION]);
 /**
@@ -390,6 +404,9 @@ export function rowInvariantErrors(row, path = '$') {
       if (Object.hasOwn(row, field)) errors.push(`${path}: legacy rows carry no ${field}`);
     }
   }
+  if (Object.hasOwn(row, 'quantBits') && row.quantBits !== quantBitsFor(row.quant)) {
+    errors.push(`${path}: quantBits ${row.quantBits} is not the bit width of quant ${JSON.stringify(row.quant)} (${quantBitsFor(row.quant) ?? 'none certain'})`);
+  }
   if (Object.hasOwn(row, 'dateBasis')) {
     if (row.provenance !== 'measured' || row.validation !== 'legacy') errors.push(`${path}: dateBasis is only valid on legacy rows`);
     if (!Object.hasOwn(row, 'sourceDate')) errors.push(`${path}: dateBasis requires sourceDate`);
@@ -443,8 +460,10 @@ export function assertBenchmarks(envelope, schema, label) {
   }
   if (['1.0', '1.1', '1.2'].includes(envelope?.schemaVersion) && Array.isArray(envelope.rows)) {
     envelope.rows.forEach((row, index) => {
-      if (isObject(row) && Object.hasOwn(row, 'dateBasis')) {
-        invariants.push(`$.rows[${index}]: dateBasis needs schemaVersion ${DATE_BASIS_CONTRACT_VERSION}`);
+      for (const field of ['dateBasis', 'quantBits']) {
+        if (isObject(row) && Object.hasOwn(row, field)) {
+          invariants.push(`$.rows[${index}]: ${field} needs schemaVersion ${DATE_BASIS_CONTRACT_VERSION}`);
+        }
       }
     });
   }
@@ -601,7 +620,7 @@ export function writeAtomic(target, text, expectedBefore) {
 export function contractVersionFor(rows, floor = CONTRACT_VERSION) {
   const needsRuntimes = rows.some((row) => (isObject(row.build) && Object.hasOwn(row.build, 'runtimes')) ||
     CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field)) || Object.hasOwn(row, 'chipName'));
-  const needsDateBasis = rows.some((row) => Object.hasOwn(row, 'dateBasis'));
+  const needsDateBasis = rows.some((row) => Object.hasOwn(row, 'dateBasis') || Object.hasOwn(row, 'quantBits'));
   const minor = (version) => Number(String(version).split('.')[1]);
   const wanted = needsDateBasis ? DATE_BASIS_CONTRACT_VERSION : needsRuntimes ? RUNTIMES_CONTRACT_VERSION : CONTRACT_VERSION;
   return minor(floor) > minor(wanted) ? floor : wanted;

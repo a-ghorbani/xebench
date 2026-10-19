@@ -14,6 +14,7 @@
       "chipName": "Google Tensor G4",
       "model": "Llama 3.2 1B",
       "quant": "SpinQuant 4-bit",
+      "quantBits": 4,
       "ppTps": 171.7,
       "tgTps": 15.9,
       "ttftMs": 2743,

@@ -94,6 +94,7 @@ class PublicTextTests(unittest.TestCase):
             "lower-case quant": ("measured", {"quant": "q8"}, ".quant: \"q8\""),
             "quant not stated": ("vendor", {"quant": "not stated"}, ".quant: \"not stated\""),
             "quant with detail": ("vendor", {"quant": "int4 QAT (529MB, ctx 2048)"}, "not a quant from the board vocabulary"),
+            "old vendor order": ("vendor", {"quant": "QAT+LoRA 4-bit"}, ".quant: \"QAT+LoRA 4-bit\""),
             "lower-case SoC": ("measured", {"soc": "sdm845"}, ".soc: \"sdm845\""),
             "device without brand line": ("vendor", {"device": "Samsung S26 Ultra"}, ".device: \"Samsung S26 Ultra\""),
             "a laptop": ("vendor", {"platform": "macos"}, "a phone platform"),

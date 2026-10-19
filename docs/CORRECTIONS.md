@@ -43,14 +43,17 @@ Newest first.
   The board compares phones, and the MacBook figure is a browser deployment, not a phone or a
   native app.
 - **What changed.** `data/benchmarks.json` uses one vocabulary: `Q8`, `SDM845`, no quant when the
-  source states none, `4-bit groupwise`, `BF16`, `int4 QAT`, `Samsung Galaxy S26 Ultra`,
+  source states none, `4-bit groupwise`, `BF16`, `4-bit QAT`, `4-bit QAT + LoRA` (was
+  `QAT+LoRA 4-bit`), `Samsung Galaxy S26 Ultra`,
   `Apple iPhone 17 Pro`; each vendor note is one plain sentence with the source's meaning. The
   MacBook Pro row is dropped from the data (its values are above). Lab rows name their source
   "xebench" (was "PocketPal R&D lab (xebench)") and every row whose phone ships with one chip
   names it (`chipName`, e.g. "Snapdragon 8 Elite Gen 5"); `scripts/migrate_board_labels.mjs`
   applies both to the board rows and to the published session rows they equal. The LiteRT-LM NPU
   finding names the issue in words ("a known LiteRT-LM issue"); the issue link stays in its
-  sources. Dropped quant details:
+  sources. Every row whose quant names a certain bit width carries it (`quantBits`, contract 1.3),
+  so the board can show "4-bit" next to the exact scheme. The Arm source is titled "Arm Learning
+  Path (ExecuTorch tutorial)". Dropped quant details:
   group size 128 and the Gemma 3 bundle's 529 MB size and 2048-token context, which do not change
   how a row compares. `scripts/check_public_text.mjs` enforces the vocabulary in CI.
 

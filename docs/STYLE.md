@@ -30,7 +30,7 @@ finding's headline and deck, and each row's displayed fields (device, model, qua
 versions, configuration; `asStated` on vendor rows only, because a lab row's `asStated` is not
 rendered). It fails on a listed term or a 40- or 64-character hex string (a short build id in a version
 field passes), and on a row label outside the board vocabulary: one spelling per quant scheme
-(llama.cpp's GGUF names as they are, `Q8`, `int4`, `int4 QAT`, `W4A16`, `BF16`, ...; no
+(llama.cpp's GGUF names as they are, `Q8`, `int4`, `4-bit QAT`, `4-bit QAT + LoRA`, `W4A16`, `BF16`, ...; no
 "not stated": leave an unknown quant out), upper-case SoC ids as in `configs/devices.json`,
 device names as "Brand model" (Samsung Galaxy S23, Google Pixel 9, POCO F8 Ultra, Apple iPhone
 17 Pro), and phone platforms only. Speeds are written "tok/s". A justified exception

@@ -33,9 +33,9 @@
       }
     },
     {
-      "$comment": "dateBasis is a 1.3 field: a 1.0, 1.1 or 1.2 file carries none",
+      "$comment": "dateBasis and quantBits are 1.3 fields: a 1.0, 1.1 or 1.2 file carries none",
       "if": { "required": ["schemaVersion"], "properties": { "schemaVersion": { "enum": ["1.0", "1.1", "1.2"] } } },
-      "then": { "properties": { "rows": { "items": { "properties": { "dateBasis": false } } } } }
+      "then": { "properties": { "rows": { "items": { "properties": { "dateBasis": false, "quantBits": false } } } } }
     }
   ],
   "$defs": {
@@ -68,6 +68,11 @@
         "sourceName": { "type": "string" },
         "sourceUrl": { "type": "string", "format": "uri" },
         "sourceDate": { "type": "string", "description": "YYYY-MM of the source measurement (on a legacy row with dateBasis first-published: the month the row was first published)" },
+        "quantBits": {
+          "type": "integer",
+          "enum": [4, 8, 16],
+          "description": "1.3, optional. Weight bit width the quant scheme names (e.g. 4 for Q4_K_M, Q4_0, int4, W4A16), only where certain; enforced equal to scripts/lib/publication.mjs quantBitsFor(quant). The board shows '4-bit' with the scheme as secondary text"
+        },
         "dateBasis": {
           "type": "string",
           "enum": ["measured", "first-published"],

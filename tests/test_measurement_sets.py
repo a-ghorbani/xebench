@@ -118,6 +118,11 @@ class CheckedInSetTests(unittest.TestCase):
                 else:
                     self.assertIn("chipName", row)
         self.assertNotIn("MacBook Pro (M4 Max)", {row["device"] for row in self.data["rows"]})
+        bits = {"Q4_0": 4, "Q4_K_M": 4, "Q4_0 (QAT)": 4, "Q8_0": 8, "Q8": 8, "int4": 4, "W4A16": 4, "SpinQuant 4-bit": 4,
+                "4-bit groupwise": 4, "4-bit groupwise + 4-bit embedding": 4, "4-bit QAT": 4, "4-bit QAT + LoRA": 4, "BF16": 16}
+        for row in rows:
+            with self.subTest(key_of(row), field="quantBits"):
+                self.assertEqual(row.get("quantBits"), bits.get(row.get("quant")))
         result = subprocess.run(["node", str(ROOT / "scripts/migrate_board_labels.mjs"), "--check"], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 

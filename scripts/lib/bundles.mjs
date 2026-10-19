@@ -17,7 +17,7 @@ import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  assertFinite, buildFromSession, CONFIGURATION_ID, evidenceUrl, friendlyDevice, jsonEqual, PublicationError,
+  assertFinite, buildFromSession, CONFIGURATION_ID, evidenceUrl, friendlyDevice, jsonEqual, PublicationError, quantBitsFor,
 } from './publication.mjs';
 
 export const POLICY_SCRIPT = fileURLToPath(new URL('../publication_policy.py', import.meta.url));
@@ -269,6 +269,7 @@ export function bundleRow({ doc, capture, decision, facts, bundleSha256, chipNam
     chipName: chipNames.get(device.model),
     model: record.model,
     quant: record.quant || undefined,
+    quantBits: quantBitsFor(record.quant) ?? undefined,
     ppTps: round1(stats.prefillTps.median),
     tgTps: round1(stats.decodeTps.median),
     ttftMs: round1(stats.ttftMs?.median),

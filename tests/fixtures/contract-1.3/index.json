@@ -1,12 +1,12 @@
 {
   "contract": "1.3",
-  "description": "Fixtures for the xebench benchmarks contract 1.3 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): dateBasis on rows without versions. Each file is a complete envelope. producerMustNotEmit=true marks a file that breaks a producer rule: scripts/validate_data.mjs refuses it. consumerExpectation is what the website does with it. dateBasis is never displayed; it tells a reader of the data whether sourceDate is the measurement month or the first-published month. tests/test_contract_1_3.py checks producerMustNotEmit against scripts/validate_data.mjs.",
+  "description": "Fixtures for the xebench benchmarks contract 1.3 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): dateBasis on rows without versions, and quantBits. Each file is a complete envelope. producerMustNotEmit=true marks a file that breaks a producer rule: scripts/validate_data.mjs refuses it. consumerExpectation is what the website does with it. dateBasis is never displayed; it tells a reader of the data whether sourceDate is the measurement month or the first-published month. tests/test_contract_1_3.py checks producerMustNotEmit against scripts/validate_data.mjs.",
   "fixtures": [
     {
       "file": "dated-rows.json",
       "producerMustNotEmit": false,
-      "notes": "Two July 2026 rows without versions (dateBasis measured and first-published) and a vendor row",
-      "consumerExpectation": "rendered: each lab row shows \"Jul 2026\" and no version; dateBasis is not shown"
+      "notes": "Two July 2026 rows without versions (dateBasis measured and first-published) and a vendor row, each with quantBits",
+      "consumerExpectation": "rendered: each lab row shows \"Jul 2026\" and no version; dateBasis is not shown; quantBits shown as \"4-bit\" with the scheme as secondary text"
     },
     {
       "file": "v1.2-rows-in-1.3.json",
@@ -43,6 +43,18 @@
       "producerMustNotEmit": true,
       "producerRule": "dateBasis is measured or first-published",
       "consumerExpectation": "rendered; dateBasis is ignored"
+    },
+    {
+      "file": "quant-bits-in-1.2.json",
+      "producerMustNotEmit": true,
+      "producerRule": "quantBits needs schemaVersion 1.3",
+      "consumerExpectation": "rendered; quantBits shown as \"4-bit\""
+    },
+    {
+      "file": "wrong-quant-bits.json",
+      "producerMustNotEmit": true,
+      "producerRule": "quantBits is the bit width its quant names",
+      "consumerExpectation": "rendered; a quantBits that contradicts the scheme is ignored and the scheme shown alone"
     }
   ]
 }

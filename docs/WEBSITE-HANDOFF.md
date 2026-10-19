@@ -239,6 +239,7 @@ What the site renders:
 | Vendor rows | In a separate "Vendor-reported" section, not mixed into lab rows; keep their `asStated` (one plain sentence), `sourceName` and source link. |
 | Chip | `chipName` (e.g. "Snapdragon 8 Elite Gen 5") where present; `soc` is a code for checks, not for display. |
 | Source | Lab rows carry `sourceName` "xebench"; vendor rows name their source. |
+| Quant | Render `quantBits` as "4-bit" / "8-bit" / "16-bit", with the exact `quant` scheme (Q4_K_M, Q4_0, W4A16, 4-bit QAT, ...) as secondary text and a glossary tooltip: Q4_K_M and Q4_0 are different setups, so the scheme stays visible. A row without `quantBits` shows its scheme alone. |
 | Labels | `quant` may be absent when the source states none: the site words that itself. Labels follow one vocabulary (quant, upper-case SoC, "Brand model" devices, android/ios only), enforced by the lab-book gate. Speeds are "tok/s" in the data text. |
 | Lab row notes | Do not render `asStated` on measured rows: it is lab-book provenance (policy names, prompt ids). |
 | Findings | Render only `headline`, `deck` and the `detailsUrl` link, verbatim. Do not render `context` (for example `correctedAt`). The finding `llama-cpp-hexagon-output` is removed; the board does not explain the retired Hexagon row. |
@@ -273,16 +274,18 @@ chip. `soc` stays the code publication policy v1 checks.
 Galaxy S22 and S24 ship with a Snapdragon or an Exynos chip depending on the market, and the S26
 Ultra's chip is not verified here, so those vendor rows carry no `chipName`.
 
-### Contract 1.3 (proposed): `dateBasis`
+### Contract 1.3 (proposed): `dateBasis`, `quantBits`
 
-Contract 1.3 is additive over 1.2. It adds one optional row field, valid only on legacy measured
-rows that carry `sourceDate`; a file declares "1.3" only when a row carries it. The rollout rule
+Contract 1.3 is additive over 1.2. It adds two optional row fields: `dateBasis`, valid only on
+legacy measured rows that carry `sourceDate`, and `quantBits`; a file declares "1.3" only when a
+row carries one. The rollout rule
 holds: the website accepts 1.3 in production before the producer pull request that publishes it
 merges.
 
 | Field | Type | Meaning | Invariants |
 | --- | --- | --- | --- |
 | `dateBasis` | `"measured"` \| `"first-published"` | What `sourceDate` is on a row without versions: the month the row was measured, or (only when that cannot be established) the month it was first published | Legacy measured rows only, with `sourceDate`; in `schemaVersion` "1.3" files only. Not displayed. |
+| `quantBits` | `4` \| `8` \| `16` | The weight bit width the `quant` scheme names | Any row, only where the width is certain (`scripts/lib/publication.mjs` `quantBitsFor`: Q4_0, Q4_K_M, int4, W4A16, SpinQuant 4-bit, 4-bit groupwise, 4-bit QAT (+ LoRA) are 4; Q8, Q8_0 are 8; BF16 is 16); must equal that mapping; in "1.3" files only. Displayed as "4-bit" with the scheme as secondary text. |
 
 Consumer fixtures are in [`tests/fixtures/contract-1.3/`](../tests/fixtures/contract-1.3/),
 listed in `index.json` with `producerMustNotEmit` and `consumerExpectation` as for 1.2. The
