@@ -773,8 +773,13 @@ class BoardConfigurationTests(Workspace):
         self.assertEqual(board["schemaVersion"], 2)
         llama = board["engines"]["llama.cpp"]
         self.assertEqual((llama["set"], llama["configurations"], llama["engineVersion"], llama["bindingVersion"]),
-                         ("sessions", [{"id": "cpu-reference-v3", "backends": ["cpu"]}], "llama.cpp b11385 (bf9a0cc)",
-                          "llama.rn 0.13.0-rc.7"))
+                         ("sessions", [{"id": "cpu-reference-v3", "backends": ["cpu"]},
+                                       {"id": "cpu-reference-v3-qwen25", "backends": ["cpu"]},
+                                       {"id": "cpu-reference-v3-gemma3", "backends": ["cpu"]},
+                                       {"id": "llamacpp-qwen25-opencl-v1", "backends": ["gpu"]},
+                                       {"id": "llamacpp-llama32-q4km-hexagon-v1", "backends": ["npu"]}],
+                          "llama.cpp b11385 (bf9a0cc)", "llama.rn 0.13.0-rc.7"))
+        self.assertNotIn("carryover", llama)
         for engine in ("executorch", "genie-x", "litert-lm"):
             self.assertEqual(board["engines"][engine], {"set": "pre-version-recording", "measured": "2026-07"})
         result = subprocess.run(["node", "--input-type=module", "-e",
@@ -784,7 +789,12 @@ class BoardConfigurationTests(Workspace):
                                 cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {"engines": ["executorch", "genie-x", "litert-lm", "llama.cpp"],
-                                                     "retired": [fx.NPU_KEY]})
+                                                     "retired": sorted([
+                                                         fx.NPU_KEY,
+                                                         "llama.cpp|cpu|android|OnePlus 6|Llama 3.2 1B|Q4_K_M|measured",
+                                                         "llama.cpp|cpu|android|OnePlus 6|Qwen2.5 1.5B|Q8_0|measured",
+                                                         "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
+                                                     ])})
 
     def test_an_unlisted_configuration_is_refused_without_the_flag(self):
         self.listed_and_unlisted()

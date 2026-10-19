@@ -61,7 +61,8 @@ class CheckedInDataTests(unittest.TestCase):
         data = load(ROOT / 'data/benchmarks.json')
         self.assertEqual([row for row in data['rows'] if is_target(row)], [], 'a failed row is never displayed')
         index = load(ROOT / 'data/sessions/index.json')
-        [entry] = [entry for entry in index['keys'] if entry['key'].startswith('llama.cpp|npu|android|POCO F8 Ultra|')]
+        [entry] = [entry for entry in index['keys']
+                   if entry['key'] == 'llama.cpp|npu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_0|measured']
         self.assertEqual((entry['displayed'], entry['rule'], entry['sessions']), (None, 'retired', []))
         [kept] = entry['replacedRows']
         self.assertEqual((kept['reason'], kept['note'], kept['retiredAt']),

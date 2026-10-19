@@ -380,26 +380,29 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
 3. `validate_data.mjs` (CI) checks that applying `configs/board.json` to the committed files
    changes nothing.
 
-### The llama.cpp campaign (llama.rn 0.13.0-rc.7)
+### The llama.cpp set (llama.rn 0.13.0-rc.7)
 
-Sets were declared while this campaign was in progress, so `engines["llama.cpp"]` declares the
-rc.7 set (`llama.cpp b11385 (bf9a0cc)` + `llama.rn 0.13.0-rc.7`, `cpu-reference-v3`, CPU) with a
-`carryover`: the nine July 2026 llama.cpp rows stay displayed next to the nine rc.7 CPU rows until
-the campaign finishes. The carryover names the set's own versions, so moving the set to other
-versions ends it, and it displays only the frozen July rows of
-[`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs), unchanged; no other row
-without versions is ever displayed. A session of the set for a carried key replaces its row
-(`--replace-legacy`). The July Hexagon row (POCO F8
-Ultra, Llama 3.2 1B Q4_0, failed) is retired: it is replaced by a Q4_K_M NPU key. The campaign
-finishes in one publication pull request that
+`engines["llama.cpp"]` declares the rc.7 set: `llama.cpp b11385 (bf9a0cc)` + `llama.rn
+0.13.0-rc.7`, measured from 2026-10-18, with five configurations, each on its backends:
+`cpu-reference-v3` (Llama 3.2 1B Q4_0, Q4_K_M and Q8_0), `cpu-reference-v3-qwen25` and
+`cpu-reference-v3-gemma3` on `cpu`; `llamacpp-qwen25-opencl-v1` on `gpu`;
+`llamacpp-llama32-q4km-hexagon-v1` on `npu`. Every llama.cpp board row is a session of this set;
+the board shows no July 2026 llama.cpp row. The July rows the set replaces stay in
+`data/sessions/index.json` with their month and its basis.
 
-- adds the new configurations to the set, each with its backends (`cpu-reference-v3-qwen25` and
-  `cpu-reference-v3-gemma3`: `cpu`; `llamacpp-qwen25-opencl-v1`: `gpu`;
-  `llamacpp-llama32-q4km-hexagon-v1`: `npu`);
-- publishes the rc.7 sessions for the carried setups with `--replace-legacy`;
-- lists every carried setup that is not re-measured in `retiredKeys` and deletes `carryover`;
-- runs `aggregate.mjs --update` once. It refuses, naming each July row still neither replaced nor
-  retired, until the list is complete.
+Four llama.cpp setups are retired (`retiredKeys`, each with its reason):
+
+| Setup | Reason |
+| --- | --- |
+| OnePlus 6, Llama 3.2 1B Q4_K_M, CPU | the device cannot complete the measurement conditions (sustained thermal throttling) |
+| OnePlus 6, Qwen2.5 1.5B Q8_0, CPU | the device cannot complete the measurement conditions (sustained thermal throttling) |
+| Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, GPU | the device cannot complete the measurement conditions (the app is killed for low memory) |
+| POCO F8 Ultra, Llama 3.2 1B Q4_0, NPU | replaced by the Q4_K_M NPU setup; the Q4_0 CPU reference misses a correctness probe |
+
+A set may declare a `carryover` ([`scripts/lib/board.mjs`](../scripts/lib/board.mjs)): frozen
+July rows of [`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs) that stay
+displayed, unchanged, next to the set's sessions until each is re-measured
+(`--replace-legacy`) or retired. No engine declares one.
 
 API semantics: [thermal status](https://developer.android.com/reference/android/os/PowerManager#getCurrentThermalStatus()),
 [thermal headroom](https://developer.android.com/reference/android/os/PowerManager#getThermalHeadroom(int)),

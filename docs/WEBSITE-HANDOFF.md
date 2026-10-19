@@ -223,10 +223,11 @@ an engine once it is re-measured, live only in `data/sessions/index.json`. The s
 selection logic and no new field: it renders every row in `rows` and nothing else. This keeps the
 contract unchanged (removing rows is always valid: the site falls back to its bundled data only for
 an unknown major, malformed JSON or no valid rows), and the producer refuses to write a partial
-set. One declared exception exists today: while the llama.rn 0.13.0-rc.7 campaign finishes,
-llama.cpp shows nine July 2026 rows (month only) next to nine rc.7 rows (versions and month). The
-row text itself tells them apart; the page should not present the two as one comparable series
-(for example, no single "llama.cpp" trend or ranking that mixes them).
+set. Each engine's rows come from one set: every llama.cpp row carries llama.cpp b11385 (bf9a0cc),
+llama.rn 0.13.0-rc.7 and its month, and the ExecuTorch, LiteRT-LM and GENIE-X rows are July 2026
+rows (month only). A board that declares a `carryover` would show an engine's July rows next to
+its new set; the row text tells them apart, and the page should then not present the two as one
+comparable series. No engine declares one.
 
 What the site renders:
 
@@ -289,7 +290,8 @@ merges.
 
 Consumer fixtures are in [`tests/fixtures/contract-1.3/`](../tests/fixtures/contract-1.3/),
 listed in `index.json` with `producerMustNotEmit` and `consumerExpectation` as for 1.2. The
-current data dates all 20 July rows to 2026-07: 18 `measured`, 2 `first-published` (Galaxy S23,
+current data dates all 20 July rows (11 on the board, the 9 llama.cpp rows in the history) to
+2026-07: 18 `measured`, 2 `first-published` (Galaxy S23,
 Gemma 3 1B, LiteRT-LM int4 and llama.cpp Q4_0 QAT).
 
 Their evidence URLs name the fixture bundles' real hashes but do not resolve.

@@ -11,7 +11,7 @@ It powers the cross-engine leaderboard at **[pocketpal.dev/leaderboard/engines](
 
 | Engine | Via | CPU | GPU | NPU |
 |---|---|---|---|---|
-| **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | Hexagon (`ggml-hexagon`), F8 Ultra: wrong output with llama.rn 0.12.4; correct for Llama 3.2 1B Q4_K_M and Gemma 3 1B with 0.13.0-rc.7; no board row |
+| **llama.cpp** | `llama.rn` | ✅ | ✅ OpenCL (Adreno) | Hexagon (`ggml-hexagon`), F8 Ultra: wrong output with llama.rn 0.12.4; correct for Llama 3.2 1B Q4_K_M and Gemma 3 1B with 0.13.0-rc.7; board row: Llama 3.2 1B Q4_K_M |
 | **ExecuTorch** | `react-native-executorch` | ✅ XNNPACK | — | — (delegate not in RN binding) |
 | **LiteRT-LM** | native Kotlin bridge | ✅ | ⚠️ ML Drift: measured in experiment, not yet on the board (needs `uses-native-library`) | ⚠️ measured in experiment, not yet on the board; SM8550 bundle output wrong ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) |
 | **GENIE-X / Genie** | `geniex-android` / QAIRT `genie-t2t-run` | ✅ | — | ✅ Hexagon (QNN context binary) |
