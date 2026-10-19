@@ -1,0 +1,6 @@
+{
+  "schema": "xebench-public-text-allowlist",
+  "schemaVersion": 1,
+  "description": "Justified exceptions to the lab-book gate (scripts/check_public_text.mjs, docs/STYLE.md Board text). Each entry names the file, the place (finding id + field, or row key + field), the matched text and why a first-time visitor still understands it. An entry that matches nothing fails the check. Keep this list short: rewriting the text is almost always better.",
+  "entries": []
+}
