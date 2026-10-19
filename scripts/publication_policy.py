@@ -242,6 +242,19 @@ def _gate(record, backend_status):
     return status, comparison["status"]
 
 
+def configuration_file(record, reference):
+    """The reviewed configuration file the session ran: its configurationSource hash names the
+    file and the session carries exactly that file's content (so its id too). None otherwise.
+
+    A row names its configuration (configurationId, configurationSha256) only from this file,
+    so a re-hashed session cannot claim a configuration the board displays."""
+    source = record.get("configurationSource")
+    entry = reference["files"].get(source.get("sha256")) if isinstance(source, dict) else None
+    if entry is None or entry["configuration"] != record.get("configuration"):
+        return None
+    return {"name": entry["name"], "id": entry["configuration"].get("id"), "sha256": source["sha256"]}
+
+
 def _reviewed(record, run, reference):
     """The reviewed configuration file this session ran, when its run has exactly this run's model identity.
 
@@ -284,6 +297,7 @@ def session_facts(doc, capture, reference=None):
         "build": None, "appIdentity": app_identity(capture)[0],
         "device": {"model": doc["device"].get("model"), "soc": doc["device"].get("soc"),
                    "tableSoc": device_soc(doc, reference)[0]},
+        "configurationFile": configuration_file(record, reference),
     }
     if version in CONDITION_PROTOCOLS:
         repetitions = []

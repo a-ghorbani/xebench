@@ -17,7 +17,7 @@ import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  assertFinite, buildFromSession, evidenceUrl, friendlyDevice, jsonEqual, PublicationError,
+  assertFinite, buildFromSession, CONFIGURATION_ID, evidenceUrl, friendlyDevice, jsonEqual, PublicationError,
 } from './publication.mjs';
 
 export const POLICY_SCRIPT = fileURLToPath(new URL('../publication_policy.py', import.meta.url));
@@ -196,6 +196,23 @@ function rowBuild(record, capture, where, appIdentity) {
   return Object.keys(ordered).length ? ordered : undefined;
 }
 
+/**
+ * Contract 1.2 configurationId/configurationSha256: the configuration the session ran. Both
+ * come from the reviewed configuration file publication_policy.py matched (facts
+ * configurationFile: the session's configurationSource hash names a committed file under
+ * xebenchapp/configs/ and the session carries exactly its content). A session that names no
+ * such file, or whose configuration differs from it, names no configuration, so the board
+ * (configs/board.json) never displays it. A value without the contract's form is absent.
+ */
+function rowConfiguration(record, facts) {
+  const file = facts?.configurationFile;
+  const id = record.configuration?.id;
+  if (!isObject(file) || file.id !== id || typeof id !== 'string' || !CONFIGURATION_ID.test(id)) return {};
+  const sha = record.configurationSource?.sha256;
+  if (sha !== file.sha256 || !HEX64.test(String(sha))) return {};
+  return { configurationId: id, configurationSha256: sha };
+}
+
 function asStated(record, n, decision) {
   const parts = [`n=${n} cold-run median`, `prompt ${record.protocol.promptLabel}`, `decode ${record.protocol.maxDecodeTokens} tok`];
   const pm = record.coldRuns.find((attempt) => attempt.status === 'complete')?.prefillMethod;
@@ -249,6 +266,7 @@ export function bundleRow({ doc, capture, decision, facts, bundleSha256 }) {
     guardsPassed: decision.guardsPassed,
     conditionPolicy: typeof record.conditionPolicy?.version === 'string' ? record.conditionPolicy.version : undefined,
     protocolVersion: record.protocol.version,
+    ...rowConfiguration(record, facts),
     timingMethod: timingMethod(complete),
     dispersion,
     evidence: { sessionIds: [doc.sessionId], bundleSha256, url: evidenceUrl(bundleSha256) },

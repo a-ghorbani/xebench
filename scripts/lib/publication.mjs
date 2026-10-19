@@ -315,7 +315,7 @@ export function compareRows(a, b) {
 
 /** The contract version this producer writes (data/benchmarks.schema.json). */
 export const CONTRACT_VERSION = '1.1';
-/** The minor that adds build.runtimes; a file declares it only when a row carries runtimes. */
+/** The minor that adds build.runtimes and the configuration fields; a file declares it only when a row carries one. */
 export const RUNTIMES_CONTRACT_VERSION = '1.2';
 /** Minors at or above the producer's floor: a file at one of them needs no 1.1 migration. */
 const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION]);
@@ -334,6 +334,14 @@ const HEX_COMMIT = /^[0-9a-f]{7,40}$/;
 export const MEASURED_ONLY_FIELDS = Object.freeze([
   'validation', 'guardsPassed', 'conditionPolicy', 'protocolVersion', 'timingMethod', 'dispersion', 'evidence', 'build',
 ]);
+
+/**
+ * Row fields 1.2 adds next to protocolVersion: the run configuration a bundle session ran.
+ * Measured rows from evidence bundles only (they need evidence), never on legacy rows.
+ */
+export const CONFIGURATION_FIELDS = Object.freeze(['configurationId', 'configurationSha256']);
+/** configurationId: a configuration file's id, e.g. cpu-reference-v2. */
+export const CONFIGURATION_ID = /^[a-z0-9][a-z0-9.-]{0,63}$/;
 
 /** Full ISO-8601 UTC timestamp without fractional seconds: YYYY-MM-DDTHH:MM:SSZ. */
 export const isoNow = (date = new Date()) => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -357,7 +365,7 @@ const isCalendarTimestamp = (value) => {
 export function rowInvariantErrors(row, path = '$') {
   const errors = [];
   if (row.provenance !== 'measured') {
-    for (const field of MEASURED_ONLY_FIELDS) {
+    for (const field of [...MEASURED_ONLY_FIELDS, ...CONFIGURATION_FIELDS]) {
       if (Object.hasOwn(row, field)) errors.push(`${path}: ${field} is only valid on provenance=measured rows`);
     }
   }
@@ -370,9 +378,13 @@ export function rowInvariantErrors(row, path = '$') {
   }
   // A measured row without validation (a 1.0 row) is legacy, so the same rule applies.
   if (row.validation === 'legacy' || (row.provenance === 'measured' && !Object.hasOwn(row, 'validation'))) {
-    for (const field of ['dispersion', 'evidence']) {
+    for (const field of ['dispersion', 'evidence', ...CONFIGURATION_FIELDS]) {
       if (Object.hasOwn(row, field)) errors.push(`${path}: legacy rows carry no ${field}`);
     }
+  }
+  if (CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field))) {
+    if (!Object.hasOwn(row, 'configurationId')) errors.push(`${path}: configurationSha256 requires configurationId`);
+    if (!Object.hasOwn(row, 'evidence')) errors.push(`${path}: configurationId comes from an evidence bundle and requires evidence`);
   }
   const runtimes = isObject(row.build) && Array.isArray(row.build.runtimes) ? row.build.runtimes : [];
   const names = runtimes.map((item) => (isObject(item) ? item.name : undefined));
@@ -409,6 +421,11 @@ export function assertBenchmarks(envelope, schema, label) {
     envelope.rows.forEach((row, index) => {
       if (isObject(row) && isObject(row.build) && Object.hasOwn(row.build, 'runtimes')) {
         invariants.push(`$.rows[${index}]: build.runtimes needs schemaVersion ${RUNTIMES_CONTRACT_VERSION}`);
+      }
+      for (const field of CONFIGURATION_FIELDS) {
+        if (isObject(row) && Object.hasOwn(row, field)) {
+          invariants.push(`$.rows[${index}]: ${field} needs schemaVersion ${RUNTIMES_CONTRACT_VERSION}`);
+        }
       }
     });
   }
@@ -559,11 +576,12 @@ export function writeAtomic(target, text, expectedBefore) {
 
 /**
  * The schemaVersion an envelope holding `rows` declares: 1.2 as soon as one row
- * carries build.runtimes, otherwise the producer's CONTRACT_VERSION; never below
- * `floor` (the version the canonical file already declares).
+ * carries build.runtimes or a configuration field, otherwise the producer's
+ * CONTRACT_VERSION; never below `floor` (the version the canonical file already declares).
  */
 export function contractVersionFor(rows, floor = CONTRACT_VERSION) {
-  const needsRuntimes = rows.some((row) => isObject(row.build) && Object.hasOwn(row.build, 'runtimes'));
+  const needsRuntimes = rows.some((row) => (isObject(row.build) && Object.hasOwn(row.build, 'runtimes')) ||
+    CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field)));
   const minor = (version) => Number(String(version).split('.')[1]);
   const wanted = needsRuntimes ? RUNTIMES_CONTRACT_VERSION : CONTRACT_VERSION;
   return minor(floor) > minor(wanted) ? floor : wanted;

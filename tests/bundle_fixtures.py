@@ -10,6 +10,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 
 from test_export_evidence import ACCEL, APP_V2, HOST_DEVICE, evidence, make_capture
@@ -113,7 +114,18 @@ def reference_root(target):
     devices = json.loads(table.read_text())
     devices["devices"] += [{"model": model, "name": model, "soc": HOST_DEVICE["soc"]} for model in FIXTURE_DEVICES]
     table.write_text(json.dumps(devices, indent=2) + "\n")
+    write_board(target, sorted({configuration["id"] for configuration in configurations
+                                if not configuration["id"].startswith("experiment-")
+                                and re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,63}", configuration["id"])}))
     return target
+
+
+def write_board(root, ids):
+    """configs/board.json listing `ids` as the configurations the board displays (the fixture
+    root lists every fixture configuration, so publication tests see their own rows)."""
+    board = {"schema": "xebench-board", "schemaVersion": 1, "description": "Fixture board configuration.",
+             "displayConfigurations": list(ids)}
+    (Path(root) / "configs/board.json").write_text(json.dumps(board, indent=2) + "\n")
 
 
 def host(bundle_dir, repo_root):

@@ -54,9 +54,10 @@ envelope. The producer (`scripts/aggregate.mjs`) labels rows from legacy records
 `validation: "legacy"`. It emits `verified`, `unverified` and `failed` rows only from
 hosted evidence bundles, under publication policy v1 (see
 [Published sessions and row selection](#published-sessions-and-row-selection)).
-1.1 data contains legacy and vendor rows, plus one measured row with
-`validation: "failed"` and no `guardsPassed`: the llama.cpp Hexagon row, invalidated
-by a later output-correctness re-check (`scripts/correct_hexagon_row.mjs`).
+The data contains legacy and vendor rows, verified rows published from evidence bundles,
+and one measured row with `validation: "failed"` and no `guardsPassed`: the llama.cpp
+Hexagon row, invalidated by a later output-correctness re-check
+(`scripts/correct_hexagon_row.mjs`).
 Consumers must not show a `failed` row as a normal measurement.
 
 Migration: `node scripts/migrate_contract_1_1.mjs` set `schemaVersion` "1.1",
@@ -82,16 +83,20 @@ lists each file and whether a consumer must accept or reject it:
 
 Agreed by the website implementer and the PM. Contract 1.2 is additive over 1.1:
 every 1.0 and 1.1 file still validates, and no 1.1 field changes meaning. It adds
-one optional field, on measured rows only, that names each software component
-behind a row with its version. A file declares `schemaVersion` "1.2" only when a
-row carries it. The same rollout rule applies: the website accepts 1.2 in
-production before the producer publishes a 1.2 file.
+optional fields on measured rows only: `build.runtimes`, which names each software
+component behind a row with its version, and `configurationId`/`configurationSha256`,
+which name the run configuration behind a row published from an evidence bundle. A
+file declares `schemaVersion` "1.2" only when a row carries one of them. The same
+rollout rule applies: the website accepts 1.2 in production before the producer
+publishes a 1.2 file.
 
 | Field | Type | Meaning | Invariants |
 | --- | --- | --- | --- |
 | `build.runtimes` | `[{ name, version }]` | Each component that ran, with its version | Measured rows only, in `schemaVersion` "1.2" files only. Non-empty; one entry per `name`. `name` is one of `llama.cpp`, `llama.rn`, `LiteRT-LM`, `litert-npu-runtime-qualcomm`, `QAIRT`, `geniex-android`. `geniex-android` is the GENIE-X AAR (`com.qualcomm.qti:geniex-android`, e.g. `0.3.1`), not Qualcomm's Genie runtime; a Genie runtime version, if recorded later, gets its own name. `version` is a llama.cpp build (`b11385`) or a dotted version with an optional pre-release (`0.13.0-rc.7`, `2.50.0.260828221209`): `^(b[0-9]{1,7}\|[0-9]{1,5}(\.[0-9]{1,12}){1,3}(-[0-9A-Za-z]{1,16}(\.[0-9A-Za-z]{1,16}){0,3})?)$`, at most 64 characters. No other keys. |
 | `build.engineVersion` | string | The engine's own version | With `runtimes`: `llama.cpp b<build> (<7-hex commit>)`, `LiteRT-LM <version>` or `geniex-android <version>`. Without `runtimes`, any string, as in 1.1. |
 | `build.bindingVersion` | string | The app binding the engine runs through | With `runtimes`: `llama.rn <version>`. Without `runtimes`, any string, as in 1.1. |
+| `configurationId` | string | The id of the run configuration the session ran, e.g. `cpu-reference-v2` | Top-level, next to `protocolVersion`. Measured rows from evidence bundles only (requires `evidence`); never on legacy or vendor rows; in `schemaVersion` "1.2" files only. `^[a-z0-9][a-z0-9.-]{0,63}$`. |
+| `configurationSha256` | string | SHA-256 of that configuration file's bytes, as the session recorded it | Top-level. Only with `configurationId`; 64 lowercase hex. Absent when the session recorded no hash. |
 
 Example (a llama.cpp row):
 
@@ -108,7 +113,13 @@ A LiteRT-LM NPU row lists `LiteRT-LM`, `litert-npu-runtime-qualcomm` and
 except one entry per `name` (identical duplicate entries fail its
 `uniqueItems`); `scripts/lib/publication.mjs` enforces all of them. The producer
 fills `build` from the versions a session records (`runtimeVersions` in the raw
-session); a component the session does not report is absent, never guessed.
+session); a component the session does not report is absent, never guessed. It fills
+`configurationId` and `configurationSha256` only when the session's `configurationSource`
+hash names a committed configuration file and the session carries exactly that file's
+content: the id is that file's id, and the hash is the SHA-256 of its bytes. Otherwise a row
+names no configuration, and the board never displays it. The website is to show `configurationId` as the row's
+"Config" in its details, and must accept both fields in production before a file that
+carries them is published.
 
 Producer rules and consumer behavior are separate. The producer rules above are
 strict: `scripts/validate_data.mjs` refuses a file that breaks one, so xebench
@@ -134,6 +145,13 @@ a producer rule) and `consumerExpectation` (what the website does with it):
 | `bad-runtime-version.json` | true | That entry is dropped by the version-token check | A free-text `version` (`0.18.0 (Maven)`) |
 | `engine-version-form.json` | true | Shown sanitised | With `runtimes`, an `engineVersion` outside the fixed forms |
 | `runtimes-on-vendor-row.json` | true | Ignored | `build` on a vendor row |
+| `configuration.json` | false | Rendered: `configurationId` shown as the row's configuration | Synthetic bundle row with `configurationId` and `configurationSha256` |
+| `configuration-in-1.1.json` | true | Rendered; the configuration fields are harmless | Configuration fields in a file that declares 1.1 |
+| `configuration-on-vendor-row.json` | true | Ignored | `configurationId` on a vendor row |
+| `configuration-on-legacy-row.json` | true | Ignored | `configurationId` on a legacy row |
+| `configuration-without-evidence.json` | true | Rendered; the configuration is shown | `configurationId` on a measured row without `evidence` |
+| `configuration-sha-without-id.json` | true | Rendered; the hash alone is not shown | `configurationSha256` without `configurationId` |
+| `bad-configuration-id.json` | true | That field is dropped by the id form check; the rest of the row renders | A `configurationId` outside `^[a-z0-9][a-z0-9.-]{0,63}$` |
 
 ## Published sessions and row selection
 
@@ -153,6 +171,8 @@ meaning. For those rows:
   max of `ppTps` and `tgTps`. All are recomputed from the session's successful
   repetitions with linear interpolation at `(n - 1) * p` and rounded to 0.1, so a
   consumer can recompute a displayed median from the linked session.
+- `configurationId` and `configurationSha256` name the run configuration the session
+  ran (contract 1.2), so every bundle row is in a "1.2" file.
 - `memoryMb` is absent. `build.apkSha256` is present only when the capture lists one
   installed APK; any unknown build value is absent.
 
@@ -169,9 +189,13 @@ history:
 | `keys[].displayed`, `keys[].rule` | The session `data/benchmarks.json` shows, and why: `newest-verified`, `newest-unverified` or `newest-failed` |
 | `keys[].replacedRows[]` | A legacy or failed row a published session replaced (`reason`, `replacedBy`, the row as it was) |
 
-Selection is explicit and deterministic: the newest verified session, else the newest
-unverified, else the newest failed, where newest is the latest `timestampIso`, then
-`sessionId`. A newer failed session never replaces a displayed verified row. The
+Selection is explicit and deterministic. Among the key's published sessions of a
+configuration [`configs/board.json`](../configs/board.json) lists (`displayConfigurations`,
+now `cpu-reference-v3`; the session's row names it in `configurationId`), it picks the newest
+verified session, else the newest unverified, else the newest failed, where newest is the
+latest `timestampIso`, then `sessionId`. A session of an unlisted configuration may be in the
+history (published with the logged `--allow-unlisted-configuration`) but is never
+displayed. A newer failed session never replaces a displayed verified row. The
 board row for a key is exactly `sessions[displayed].row`, and `validate_data.mjs`
 refuses any file pair where it is not, or where a session's row does not come out of
 its hosted bundle again. A published session is never removed or
@@ -180,15 +204,15 @@ rewritten.
 The index is an additive, optional file: the board needs only
 `data/benchmarks.json`. A consumer that shows history links reads the index and
 treats an unknown `schemaVersion` major as absent. Fixtures with the producer's real
-output, a 1.2 and a 1.1 pair, are in
+output, two 1.2 pairs, are in
 [`tests/fixtures/verified-publication/`](../tests/fixtures/verified-publication/):
 
 | Fixture | Producer must not emit | Consumer expectation |
 | --- | --- | --- |
-| `board-1.2.json` | false | Rendered: verified, unverified, failed and vendor rows; runtimes shown; failed rows not shown as normal measurements |
+| `board-1.2.json` | false | Rendered: verified, unverified, failed and vendor rows; runtimes and `configurationId` shown; failed rows not shown as normal measurements |
 | `sessions-1.2.json` | false | Optional history: two sessions for one key, the verified one displayed; one replaced legacy row |
-| `board-1.1.json` | false | As `board-1.2.json`, from sessions without runtime versions (no `build.runtimes`) |
-| `sessions-1.1.json` | false | As `sessions-1.2.json` |
+| `board-1.2-without-runtimes.json` | false | As `board-1.2.json`, from sessions without runtime versions (no `build.runtimes`) |
+| `sessions-1.2-without-runtimes.json` | false | As `sessions-1.2.json` |
 
 Their evidence URLs name the fixture bundles' real hashes but do not resolve.
 

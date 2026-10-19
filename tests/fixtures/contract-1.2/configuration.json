@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.2",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract 1.2 consumer fixture: a SYNTHETIC row published from an evidence bundle, naming the run configuration it ran (configurationId cpu-reference-v2) and the SHA-256 of that file.",
+  "rowCount": 1,
+  "rows": [
+    {
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Fixture Phone",
+      "soc": "Fixture SoC",
+      "model": "Fixture Model 1B",
+      "quant": "Q4_0",
+      "ppTps": 210.4,
+      "tgTps": 27.3,
+      "ttftMs": 2480,
+      "memoryMb": 712.5,
+      "provenance": "measured",
+      "sourceName": "PocketPal R&D lab (xebench)",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sourceDate": "2026-10",
+      "sampleCount": 10,
+      "asStated": "SYNTHETIC FIXTURE; n=10 cold-run median; prompt std-pp512-v1; decode 128 tok",
+      "validation": "unverified",
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "cpu-reference-v3",
+      "configurationId": "cpu-reference-v2",
+      "configurationSha256": "6272ecc480b9a37d71ea9dd78515dae6d40d9e87ac89fa86ee80c9d12c7d59f6",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 3.1,
+          "min": 205.9,
+          "max": 214.2
+        },
+        "tgTps": {
+          "iqr": 0.4,
+          "min": 26.8,
+          "max": 27.9
+        }
+      },
+      "build": {
+        "apkSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "harnessCommit": "0000000000000000000000000000000000000000"
+      },
+      "evidence": {
+        "sessionIds": [
+          "1767225600000-0-fixture"
+        ],
+        "bundleSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/0000000000000000000000000000000000000000000000000000000000000000/manifest.json"
+      }
+    }
+  ]
+}

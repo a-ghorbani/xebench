@@ -23,10 +23,13 @@
   },
   "allOf": [
     {
-      "$comment": "build.runtimes is a 1.2 field: a 1.0 or 1.1 file carries none",
+      "$comment": "build.runtimes, configurationId and configurationSha256 are 1.2 fields: a 1.0 or 1.1 file carries none",
       "if": { "required": ["schemaVersion"], "properties": { "schemaVersion": { "enum": ["1.0", "1.1"] } } },
       "then": {
-        "properties": { "rows": { "items": { "properties": { "build": { "properties": { "runtimes": false } } } } } }
+        "properties": { "rows": { "items": { "properties": {
+          "build": { "properties": { "runtimes": false } },
+          "configurationId": false, "configurationSha256": false
+        } } } }
       }
     }
   ],
@@ -72,6 +75,16 @@
         },
         "conditionPolicy": { "type": "string", "description": "1.1, measured rows only. Run-condition policy id, e.g. 'observed-conditions-v1'" },
         "protocolVersion": { "type": "string", "description": "1.1, measured rows only. Measurement protocol id, e.g. 'cpu-reference-v1'" },
+        "configurationId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{0,63}$",
+          "description": "1.2, measured rows from evidence bundles only. The id of the run configuration the session ran, e.g. 'cpu-reference-v2'"
+        },
+        "configurationSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "1.2, measured rows from evidence bundles only, with configurationId. SHA-256 of the configuration file's bytes, as the session recorded it (configurationSource)"
+        },
         "timingMethod": { "type": "string", "description": "1.1, measured rows only. How ppTps/tgTps were timed, e.g. 'engine-timings'" },
         "dispersion": {
           "type": "object",
@@ -134,7 +147,8 @@
           "else": {
             "properties": {
               "validation": false, "guardsPassed": false, "conditionPolicy": false, "protocolVersion": false,
-              "timingMethod": false, "dispersion": false, "evidence": false, "build": false
+              "timingMethod": false, "dispersion": false, "evidence": false, "build": false,
+              "configurationId": false, "configurationSha256": false
             }
           }
         },
@@ -149,9 +163,19 @@
           "then": { "required": ["validation"], "properties": { "validation": { "const": "failed" } } }
         },
         {
-          "$comment": "legacy rows carry no dispersion or evidence; a measured row without validation (1.0) is legacy",
+          "$comment": "legacy rows carry no dispersion, evidence or configuration; a measured row without validation (1.0) is legacy",
           "if": { "properties": { "validation": { "const": "legacy" } } },
-          "then": { "properties": { "dispersion": false, "evidence": false } }
+          "then": { "properties": { "dispersion": false, "evidence": false, "configurationId": false, "configurationSha256": false } }
+        },
+        {
+          "$comment": "configurationId comes from an evidence bundle",
+          "if": { "required": ["configurationId"] },
+          "then": { "required": ["evidence"] }
+        },
+        {
+          "$comment": "configurationSha256 comes with configurationId",
+          "if": { "required": ["configurationSha256"] },
+          "then": { "required": ["configurationId"] }
         }
       ]
     },

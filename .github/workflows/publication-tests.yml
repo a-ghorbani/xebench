@@ -18,7 +18,7 @@ jobs:
           node-version: '22'
       - name: Validate checked-in data against schemas
         run: node scripts/validate_data.mjs
-      - name: Canonical data is at contract 1.1 (migration is a no-op)
+      - name: Canonical data needs no 1.1 migration (it is at contract 1.1 or 1.2)
         run: node scripts/migrate_contract_1_1.mjs --check
       - name: Aggregation fail-closed and bundle publication tests
         run: python3 -m unittest discover -s tests -p 'test_*publication.py' -v

@@ -2,10 +2,11 @@
  * Published-session history (data/sessions/index.json) and the explicit selection of
  * the row data/benchmarks.json displays for each key.
  *
- * Selection rule (SELECTION_RULE): among a key's published sessions, the newest
- * verified, else the newest unverified, else the newest failed. "Newest" is the latest
- * timestampIso, ties broken by sessionId (plain code-point order), so the result never
- * depends on input order. Publishing never deletes a session: every published session
+ * Selection rule (SELECTION_RULE): among a key's published sessions of a configuration
+ * the board displays (configs/board.json, scripts/lib/board.mjs), the newest verified, else
+ * the newest unverified, else the newest failed. "Newest" is the latest timestampIso, ties
+ * broken by sessionId (plain code-point order), so the result never depends on input order.
+ * A published session of another configuration stays in the history and is never displayed. Publishing never deletes a session: every published session
  * stays in the index, and a replaced legacy or failed row is kept in replacedRows.
  *
  * Everything here is pure (no I/O) so that selection and history are testable alone.
@@ -41,14 +42,31 @@ export const compareSessions = (a, b) => {
     codepoint(String(a.sessionId), String(b.sessionId));
 };
 
-/** The displayed session of a key, by SELECTION_RULE: { sessionId, rule }. */
-export function selectSession(sessions) {
+/**
+ * The displayed session of a key, by SELECTION_RULE: { sessionId, rule }. With a board,
+ * only sessions whose row names a configuration it lists are candidates.
+ */
+export function selectSession(sessions, board = null) {
+  const shown = board ? sessions.filter((session) => board.displayConfigurations.includes(session.row?.configurationId))
+    : sessions;
+  if (board && !shown.length) {
+    throw new PublicationError('no published session of a configuration configs/board.json lists; nothing to display');
+  }
   for (const validation of PREFERENCE) {
-    const pool = sessions.filter((session) => session.validation === validation).sort(compareSessions);
+    const pool = shown.filter((session) => session.validation === validation).sort(compareSessions);
     if (pool.length) return { sessionId: pool[pool.length - 1].sessionId, rule: `newest-${validation}` };
   }
   throw new PublicationError('a key needs at least one verified, unverified or failed session');
 }
+
+/**
+ * `board` is the board configuration, or a function that loads it. It is resolved only when
+ * a key is selected, so files without published sessions need no configs/board.json.
+ */
+const boardResolver = (board) => {
+  let resolved = null;
+  return () => (resolved ??= typeof board === 'function' ? board() : board);
+};
 
 export const emptyIndex = () => ({
   schema: INDEX_SCHEMA, schemaVersion: INDEX_VERSION, policy: POLICY, selectionRule: SELECTION_RULE, keys: [],
@@ -66,8 +84,9 @@ export function sessionEntry({ sessionId, timestampIso, bundleSha256, row }) {
  * Every invariant of the index on its own and against the benchmarks envelope it
  * describes, as "path: message" errors. Fail closed: callers refuse on any error.
  */
-export function indexErrors(index, envelope, schemas) {
+export function indexErrors(index, envelope, schemas, board) {
   const errors = [];
+  const getBoard = boardResolver(board);
   const add = (message) => errors.push(message);
   try {
     assertSchema(index, schemas.index, 'data/sessions/index.json');
@@ -116,8 +135,9 @@ export function indexErrors(index, envelope, schemas) {
     const ids = new Set(entry.sessions.map((session) => session.sessionId));
     let selected;
     try {
-      selected = selectSession(entry.sessions);
+      selected = selectSession(entry.sessions, getBoard());
     } catch (error) {
+      if (!(error instanceof PublicationError)) throw error;
       add(`${at}: ${error.message}`);
       return;
     }
@@ -155,8 +175,9 @@ export function indexErrors(index, envelope, schemas) {
   return errors;
 }
 
-export function assertIndex(index, envelope, schemas, label = 'data/sessions/index.json') {
-  const errors = indexErrors(index, envelope, schemas);
+export function assertIndex(index, envelope, schemas, board, label = 'data/sessions/index.json') {
+  if (!board) throw new PublicationError(`${label}: checking the displayed rows needs configs/board.json`);
+  const errors = indexErrors(index, envelope, schemas, board);
   if (errors.length) throw new PublicationError(`${label} is inconsistent:\n  ${errors.slice(0, 20).join('\n  ')}`);
 }
 
@@ -168,9 +189,12 @@ export function assertIndex(index, envelope, schemas, label = 'data/sessions/ind
  *   --replace-failed  a key's current row is failed (an unindexed failed row is kept in
  *                     replacedRows; an indexed failed session stays in the history).
  * A session already in the index with identical content is a no-op; the same session
- * with different content, or under another key, is refused.
+ * with different content, or under another key, is refused. Only sessions of a
+ * configuration the board lists are displayed; a key needs at least one.
  */
-export function planPublication(envelope, index, candidates) {
+export function planPublication(envelope, index, candidates, board) {
+  if (!board) throw new PublicationError('planning a publication needs configs/board.json');
+  const getBoard = boardResolver(board);
   const entries = new Map(index.keys.map((entry) => [entry.key, clone(entry)]));
   const owner = new Map(index.keys.flatMap((entry) => entry.sessions.map((session) => [session.sessionId, entry.key])));
   const rows = new Map(envelope.rows.map((row) => [rowKey(row), row]));
@@ -205,7 +229,13 @@ export function planPublication(envelope, index, candidates) {
     const entry = entries.get(key);
     const before = rows.get(key);
     const wasIndexed = index.keys.some((item) => item.key === key);
-    const selected = selectSession(entry.sessions);
+    let selected;
+    try {
+      selected = selectSession(entry.sessions, getBoard());
+    } catch (error) {
+      if (!(error instanceof PublicationError)) throw error;
+      throw new PublicationError(`row ${key}: ${error.message}`);
+    }
     const action = { key, added: change.added ?? [], unchanged: change.unchanged ?? [], displayed: selected.sessionId, rule: selected.rule, needs: [] };
     if (!change.added) {
       actions.push({ ...action, change: 'already published' });
