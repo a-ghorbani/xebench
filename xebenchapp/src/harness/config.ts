@@ -1,5 +1,5 @@
-import {CHAT_TEMPLATES} from './prompts';
-import type {ChatTemplate} from './prompts';
+import {CHAT_TEMPLATES, MEASURED_PROMPTS} from './prompts';
+import type {ChatTemplate, MeasuredPrompt} from './prompts';
 
 export interface ReferenceRun {
   id: string;
@@ -202,6 +202,11 @@ export interface AcceleratorConfig {
   maxDecodeTokens: number;
   /** Chat template the harness applies for raw-prompt engines (llama.cpp). */
   chatTemplate: ChatTemplate;
+  /**
+   * The prompt the repetitions measure; absent means std-chat-v1. std-pp512-v1 (the CPU reference
+   * prompt) needs llama.cpp runs only. Kept only when set, so the record echoes the file exactly.
+   */
+  measuredPrompt?: MeasuredPrompt;
   orderSeed?: number;
   runs: AcceleratorRun[];
 }
@@ -288,7 +293,7 @@ function acceleratorRun(item: unknown): AcceleratorRun {
 export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
   const value = object(input);
   fields(value, ['schemaVersion', 'id', 'nColdRuns', 'cooldownSec', 'readinessTimeoutSec',
-    'maxBatteryTempRiseC', 'maxDecodeTokens', 'chatTemplate', 'orderSeed', 'runs']);
+    'maxBatteryTempRiseC', 'maxDecodeTokens', 'chatTemplate', 'measuredPrompt', 'orderSeed', 'runs']);
   if (value.schemaVersion !== 2) {
     throw new Error('Unsupported configuration version');
   }
@@ -298,6 +303,11 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
   const runs = value.runs.map(acceleratorRun);
   if (new Set(runs.map(run => run.id)).size !== runs.length) {
     throw new Error('Run IDs must be unique');
+  }
+  const measuredPrompt = value.measuredPrompt === undefined ? undefined :
+    oneOf(value.measuredPrompt, MEASURED_PROMPTS, 'measuredPrompt');
+  if (measuredPrompt === 'std-pp512-v1' && runs.some(run => run.engine !== 'llama.cpp')) {
+    throw new Error('measuredPrompt std-pp512-v1 is a pre-templated prompt for llama.cpp runs only');
   }
   for (const run of runs) {
     const reference = runs.find(item => item.id === run.referenceRunId);
@@ -312,6 +322,7 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
     maxBatteryTempRiseC: decimal(value.maxBatteryTempRiseC, 0.5, 10),
     maxDecodeTokens: integer(value.maxDecodeTokens, 1, 512),
     chatTemplate: oneOf(value.chatTemplate, CHAT_TEMPLATES, 'chatTemplate'),
+    ...(measuredPrompt === undefined ? {} : {measuredPrompt}),
     ...(value.orderSeed === undefined ? {} : {orderSeed: integer(value.orderSeed, 0, 0xffffffff)}), runs,
   };
 }

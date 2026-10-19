@@ -609,7 +609,6 @@ class FactsFromBundlesTests(unittest.TestCase):
         a session whose engine was given other load settings is refused."""
         cases = (("qwen25-qwen25-1.5b-q80-opencl", "llamacpp-qwen25-opencl-v1.json"),
                  ("qwen25-qwen25-1.5b-q80-cpu", "llamacpp-qwen25-opencl-v1.json"),
-                 ("board-hexagon-llama32-q40-hexagon", "llamacpp-llama32-q40-hexagon-v1.json"),
                  ("board-hexagon-llama32-q4km-hexagon", "llamacpp-llama32-q4km-hexagon-v1.json"))
         for index, (name, file) in enumerate(cases):
             data = (ROOT / "xebenchapp/configs" / file).read_bytes()

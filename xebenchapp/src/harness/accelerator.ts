@@ -8,7 +8,7 @@
 import type {RuntimeVersions} from './runtime';
 import type {EngineAdapter, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
 import type {AcceleratorConfig, AcceleratorRun} from './config';
-import {ACCELERATOR_PROMPT, ACCELERATOR_PROMPT_LABEL, chatTurn} from './prompts';
+import {ACCELERATOR_PROMPT, ACCELERATOR_PROMPT_LABEL, chatTurn, STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
 import type {ChatTemplate} from './prompts';
 import {CHARGING_POLICY, CONDITION_POLICY} from './conditions';
 import {
@@ -65,7 +65,8 @@ export interface AcceleratorSession extends Omit<SessionIdentity, 'artifact'> {
   protocol: {
     version: 'accelerator-v2'; nColdRuns: number; cooldownSec: number; readinessTimeoutSec: number;
     maxBatteryTempRiseC: number;
-    promptLabel: string; prompt: string; promptFormat: 'user-turn-chat-template'; chatTemplate: ChatTemplate;
+    promptLabel: string; prompt: string; promptFormat: 'user-turn-chat-template' | 'raw-pretemplated';
+    chatTemplate: ChatTemplate;
     maxDecodeTokens: number; sampling: 'greedy'; nThreads: number | null; nCtx: number | null;
     coldDefinition: string; measurementKind: 'fresh-instance-first-request'; warmRequests: 'not-measured';
     processRestartBetweenRepetitions: false; gate: typeof GATE_VERSION;
@@ -136,8 +137,7 @@ export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' |
     protocol: {
       version: 'accelerator-v2', nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec,
       readinessTimeoutSec: config.readinessTimeoutSec, maxBatteryTempRiseC: config.maxBatteryTempRiseC,
-      promptLabel: ACCELERATOR_PROMPT_LABEL,
-      prompt: ACCELERATOR_PROMPT, promptFormat: 'user-turn-chat-template', chatTemplate: config.chatTemplate,
+      ...measuredPrompt(config).protocol, chatTemplate: config.chatTemplate,
       maxDecodeTokens: config.maxDecodeTokens, sampling: 'greedy', nThreads: run.nThreads, nCtx: run.nCtx,
       coldDefinition: ACCELERATOR_COLD_DEFINITION, measurementKind: 'fresh-instance-first-request',
       warmRequests: 'not-measured', processRestartBetweenRepetitions: false, gate: GATE_VERSION,
@@ -185,12 +185,26 @@ export async function runAcceleratorSession(
   return runRepetitions(record, adapter, {
     nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec, readinessTimeoutSec: config.readinessTimeoutSec,
     maxBatteryTempRiseC: config.maxBatteryTempRiseC,
-    bench: {prompt: chatTurn(config.chatTemplate, ACCELERATOR_PROMPT), text: ACCELERATOR_PROMPT,
-      maxDecodeTokens: config.maxDecodeTokens},
+    bench: {...measuredPrompt(config).bench, maxDecodeTokens: config.maxDecodeTokens},
     update: updateAcceleratorVerdict, executionReports: 'when-reported',
     observe: () => adapter.backendEvidence ? adapter.backendEvidence() :
       {status: 'unknown', source: 'none', report: null, libraries: null},
   }, persist, sleep, context);
+}
+
+/**
+ * What the repetitions measure (configuration measuredPrompt): the std-chat-v1 body as one user
+ * turn in the chat template (default), or the CPU reference prompt std-pp512-v1, pre-templated,
+ * as llama.cpp CPU rows measure it. The output gate's probes do not depend on it.
+ */
+function measuredPrompt(config: AcceleratorConfig) {
+  if (config.measuredPrompt === 'std-pp512-v1') {
+    return {protocol: {promptLabel: STANDARD_PROMPT_LABEL, prompt: STANDARD_PROMPT, promptFormat: 'raw-pretemplated' as const},
+      bench: {prompt: STANDARD_PROMPT}};
+  }
+  return {protocol: {promptLabel: ACCELERATOR_PROMPT_LABEL, prompt: ACCELERATOR_PROMPT,
+    promptFormat: 'user-turn-chat-template' as const},
+  bench: {prompt: chatTurn(config.chatTemplate, ACCELERATOR_PROMPT), text: ACCELERATOR_PROMPT}};
 }
 
 export interface AcceleratorIO {

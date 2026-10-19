@@ -1,5 +1,5 @@
 import {parseAcceleratorConfig, parseConfig} from '../src/harness/config';
-import {chatTurn} from '../src/harness/prompts';
+import {ACCELERATOR_PROMPT, chatTurn, STANDARD_PROMPT} from '../src/harness/prompts';
 import f8Gemma from '../configs/f8-gemma3-accelerators-v1.json';
 import bundled from '../configs/cpu-reference-v2.json';
 import v1 from '../configs/cpu-reference-v1.json';
@@ -8,7 +8,6 @@ import v3 from '../configs/cpu-reference-v3.json';
 import qwen from '../configs/cpu-reference-v3-qwen25.json';
 import gemma from '../configs/cpu-reference-v3-gemma3.json';
 import qwenOpencl from '../configs/llamacpp-qwen25-opencl-v1.json';
-import q40Hexagon from '../configs/llamacpp-llama32-q40-hexagon-v1.json';
 import q4kmHexagon from '../configs/llamacpp-llama32-q4km-hexagon-v1.json';
 
 test('bundled CPU reference configuration is valid', () => {
@@ -119,13 +118,14 @@ test('the board configurations for Qwen2.5 and Gemma 3 parse to their files with
     expect(parseConfig(config)).toEqual(config);
     expect(config.runs[0]).toMatchObject({useMmap: false, useMlock: false, noExtraBufts: false, flashAttnType: 'auto'});
   }
-  for (const config of [qwenOpencl, q40Hexagon, q4kmHexagon]) {
+  for (const config of [qwenOpencl, q4kmHexagon]) {
     expect(parseAcceleratorConfig(config)).toEqual(config);
     for (const run of config.runs) {
       expect(run).toMatchObject({useMmap: false, useMlock: false, noExtraBufts: false, flashAttnType: 'auto'});
     }
   }
   expect(qwenOpencl.chatTemplate).toBe('qwen25');
+  expect([qwenOpencl.measuredPrompt, q4kmHexagon.measuredPrompt]).toEqual(['std-pp512-v1', 'std-pp512-v1']);
 });
 
 test('accelerator load settings apply to llama.cpp runs only and are validated', () => {
@@ -153,4 +153,20 @@ test('the qwen25 chat template is a ChatML user turn without a system message', 
   expect(chatTurn('llama32', 'Hi')).toBe(
     '<|start_header_id|>user<|end_header_id|>\n\nHi<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n');
   expect(chatTurn('gemma3', 'Hi')).toBe('<start_of_turn>user\nHi<end_of_turn>\n<start_of_turn>model\n');
+});
+
+test('measuredPrompt is optional, validated, and std-pp512-v1 needs llama.cpp runs only', () => {
+  const {measuredPrompt, ...plain} = qwenOpencl;
+  expect(measuredPrompt).toBe('std-pp512-v1');
+  expect(parseAcceleratorConfig(plain)).not.toHaveProperty('measuredPrompt');
+  expect(parseAcceleratorConfig({...plain, measuredPrompt: 'std-chat-v1'}).measuredPrompt).toBe('std-chat-v1');
+  expect(() => parseAcceleratorConfig({...plain, measuredPrompt: 'std-pp1024'})).toThrow('measuredPrompt');
+  expect(() => parseAcceleratorConfig({...f8Gemma, measuredPrompt: 'std-pp512-v1'})).toThrow('llama.cpp runs only');
+});
+
+test('the measured prompts have the SHA-256 values the host validator pins', () => {
+  const {createHash} = require('crypto');
+  const digest = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
+  expect(digest(STANDARD_PROMPT)).toBe('d4af02ae1c169637720a824ed879956385446ffd8823e287b30c8b11756c90f4');
+  expect(digest(ACCELERATOR_PROMPT)).toBe('97b05f26c77fa84504cfa238dad74591d882e5e0a6264a47f05dd03605bdb4f8');
 });

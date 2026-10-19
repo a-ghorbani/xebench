@@ -291,7 +291,7 @@ ENUM_WORDS = (
     "agreement", "answer", "answer-mismatch", "backend-mismatch", "bug-repro", "candidate", "confirmed", "consistent",
     "correctness-fail", "correctness-unverified", "engine-report", "engine-unavailable", "gate-cleanup-failed",
     "gate-error", "gate-not-run", "greedy", "invalid", "measurement", "mismatch", "none", "process-libraries",
-    "reference", "reference-failed", "reference-unavailable", "user-turn-chat-template", "valid",
+    "reference", "reference-failed", "reference-unavailable", "user-turn-chat-template", "raw-pretemplated", "valid",
 )
 
 
@@ -586,7 +586,7 @@ PROTOCOL = Obj({
 CONFIGURATION = Obj({
     "schemaVersion": INT, "id": LABEL, "nColdRuns": COUNT, "cooldownSec": NONNEG,
     "readinessTimeoutSec": NONNEG, "maxBatteryTempRiseC": NONNEG, "maxDecodeTokens": COUNT,
-    "orderSeed": _number(0, 2 ** 32 - 1, integer=True), "chatTemplate": VERSION,
+    "orderSeed": _number(0, 2 ** 32 - 1, integer=True), "chatTemplate": VERSION, "measuredPrompt": VERSION,
     # EXPERIMENT ONLY (docs/experiments/charging-ab.md): kept so a bundle shows the marker.
     "experimentChargingReadiness": ENUM,
     "runs": Arr(Obj({"id": LABEL, "engine": LABEL, "model": LABEL, "modelFile": MODEL_FILE, "quant": LABEL,
@@ -1005,9 +1005,11 @@ def _check_correctness(record, where, errors):
         return
     try:
         protocol, correctness = record["protocol"], record["correctness"]
-        if protocol.get("promptSha256") != raw_session.ACCELERATOR_PROMPT_SHA256 or \
-                protocol.get("promptLabel") != raw_session.ACCELERATOR_PROMPT_LABEL:
-            errors.append(f"{where}/protocol/promptSha256: not the accelerator-v1 prompt")
+        label = raw_session.measured_prompt(record["configuration"])
+        digest, prompt_format = raw_session.MEASURED_PROMPTS.get(label, (None, None))
+        if protocol.get("promptSha256") != digest or protocol.get("promptLabel") != label or \
+                protocol.get("promptFormat") != prompt_format:
+            errors.append(f"{where}/protocol/promptSha256: not the prompt its configuration's measuredPrompt names")
         found = raw_session.probe_set_errors(correctness["probes"], protocol["maxDecodeTokens"],
                                              lambda probe: probe.get("promptSha256"), f"{where}/correctness")
         errors.extend(f"{item['path']}: {item['message']}" for item in found)

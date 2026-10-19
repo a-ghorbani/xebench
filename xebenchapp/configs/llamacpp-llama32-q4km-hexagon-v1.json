@@ -7,6 +7,7 @@
   "maxBatteryTempRiseC": 2,
   "maxDecodeTokens": 128,
   "chatTemplate": "llama32",
+  "measuredPrompt": "std-pp512-v1",
   "runs": [
     {
       "id": "llama32-q4km-cpu",

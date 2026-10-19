@@ -73,6 +73,15 @@ export const SUSTAINED_PROMPT_LABEL = 'sustained-short-v1';
 export const ACCELERATOR_PROMPT = LONG_BODY;
 export const ACCELERATOR_PROMPT_LABEL = 'std-chat-v1';
 
+/**
+ * The prompt an accelerator configuration's repetitions measure (configuration measuredPrompt).
+ * std-chat-v1 (default): ACCELERATOR_PROMPT as one user turn in the configuration's chat template.
+ * std-pp512-v1: the CPU reference prompt, the pre-templated STANDARD_PROMPT, so llama.cpp GPU/NPU
+ * rows measure exactly what the CPU rows measure. The output gate's probes are the same either way.
+ */
+export const MEASURED_PROMPTS = ['std-chat-v1', 'std-pp512-v1'] as const;
+export type MeasuredPrompt = typeof MEASURED_PROMPTS[number];
+
 /** Gemma 3 instruction-tuned single user turn. BOS is added by the tokenizer, not here. */
 export const gemma3Turn = (text: string) =>
   `<start_of_turn>user\n${text}<end_of_turn>\n<start_of_turn>model\n`;
