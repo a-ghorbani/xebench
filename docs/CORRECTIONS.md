@@ -7,6 +7,28 @@ facts, a short dated label is left where a reader needs it ("Corrected <date>", 
 
 Newest first.
 
+## 2026-10-19 — llama.cpp Hexagon row leaves the board
+
+- **What the board showed.** The llama.cpp NPU row (POCO F8 Ultra, Llama 3.2 1B Q4_0, 197.6
+  prefill / 38.6 decode tok/s) with `validation: "failed"` (see the 2026-10-17/18 entry below),
+  and the finding `llama-cpp-hexagon-output`, headed "one result marked failed", explaining it.
+- **What is true.** The board shows only each engine's latest measurement set and never a failed
+  row ([RUN-CONDITIONS.md, Measurement sets](./RUN-CONDITIONS.md#measurement-sets)). This row is
+  not re-measured: its successor is a Q4_K_M NPU row measured with llama.rn 0.13.0-rc.7, because
+  the Q4_0 CPU reference misses a correctness probe.
+- **What changed.**
+  - `configs/board.json` lists the row's key in `retiredKeys` ("replaced by Q4_K_M; Q4_0 CPU
+    reference misses a correctness probe", 2026-10-19). `data/benchmarks.json` no longer holds
+    the row; `data/sessions/index.json` keeps it byte for byte, with its numbers and correction
+    note, under `replacedRows` (`reason: "retired"`). `scripts/correct_hexagon_row.mjs --check`
+    finds it there.
+  - The finding `llama-cpp-hexagon-output` is removed from `data/findings.json`; the board does
+    not explain a row it does not show. ENGINES.md and README state that the board has no llama.cpp
+    NPU row.
+  - The 20 July 2026 rows without versions carry their month (`sourceDate` 2026-07) and its basis
+    (`dateBasis`): 18 from their run records, 2 from the first commit carrying them
+    (`scripts/date_legacy_rows.mjs`). No version is backfilled.
+
 ## 2026-10-17/18 — llama.cpp Hexagon board row and "functional" claim
 
 PR [#25](https://github.com/a-ghorbani/xebench/pull/25).

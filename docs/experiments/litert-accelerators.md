@@ -56,8 +56,8 @@ Results: [POCO F8 Ultra](#poco-f8-ultra-sm8850-measured-2026-10-17),
 
 ### llama.cpp on NPU (Hexagon)
 
-Finding `llama-cpp-hexagon-output` in [`data/findings.json`](../../data/findings.json).
-Corrected 2026-10-17; see [CORRECTIONS.md](../CORRECTIONS.md).
+Corrected 2026-10-17; the board row is retired on 2026-10-19 and the finding
+`llama-cpp-hexagon-output` removed; see [CORRECTIONS.md](../CORRECTIONS.md).
 
 - **Scope:** POCO F8 Ultra (Snapdragon SM8850, Hexagon v81); llama.cpp's Hexagon backend (`HTP0`)
   through llama.rn 0.12.4 and 0.13.0-rc.7; Llama 3.2 1B (Q4_K_M, Q4_0) and Gemma 3 1B (QAT
@@ -457,7 +457,8 @@ Findings:
   The legacy figures are close to today's **Q4_K_M** Hexagon row (213.6 / 39.6), whose output is
   wrong. Whether the July build produced correct output cannot be established from the record.
   The board row is therefore marked `validation: "failed"` in `data/benchmarks.json`, with its
-  numbers kept for the record; see the finding [`llama-cpp-hexagon-output`](../../data/findings.json).
+  numbers kept for the record. Since 2026-10-19 it is retired from the board and kept in
+  `data/sessions/index.json`; see [CORRECTIONS.md](../CORRECTIONS.md).
 - Hexagon on Q4_K_M is barely faster than CPU at prefill (213.6 vs 204.8) and slower at decode
   (39.6 vs 47.6),
   consistent with the old note that Q4_K_M largely falls back on the DSP.
@@ -516,8 +517,8 @@ back to within 2 °C of the baseline in 900 s. Its condition verdict is therefor
   Gemma 3 (24.0, IQR 5.7, against 51.3 on CPU).
 - **rc.7 OpenCL** is much faster than 0.12.4 OpenCL on the F8 (937.7 vs 342.9 prefill).
 - **The legacy board row** (Llama 3.2 1B Q4_0, 197.6 / 38.6) matches neither version's Hexagon
-  numbers on today's prompt, and it was never output-checked. It stays marked `failed` on the
-  board (finding [`llama-cpp-hexagon-output`](../../data/findings.json)). rc.7 is the version to measure going forward.
+  numbers on today's prompt, and it was never output-checked. It is retired from the board
+  (2026-10-19; [CORRECTIONS.md](../CORRECTIONS.md)). rc.7 is the version to measure going forward.
 - As on 0.12.4, the recorded llama.cpp CPU runs attach only `GPUOpenCL`. Backend evidence for
   llama.cpp CPU stays `consistent`.
 

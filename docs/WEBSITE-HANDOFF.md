@@ -54,11 +54,10 @@ envelope. The producer (`scripts/aggregate.mjs`) labels rows from legacy records
 `validation: "legacy"`. It emits `verified`, `unverified` and `failed` rows only from
 hosted evidence bundles, under publication policy v1 (see
 [Published sessions and row selection](#published-sessions-and-row-selection)).
-The data contains legacy and vendor rows, verified rows published from evidence bundles,
-and one measured row with `validation: "failed"` and no `guardsPassed`: the llama.cpp
-Hexagon row, invalidated by a later output-correctness re-check
-(`scripts/correct_hexagon_row.mjs`).
-Consumers must not show a `failed` row as a normal measurement.
+Since measurement sets ([below](#measurement-sets-what-the-board-renders)),
+`data/benchmarks.json` holds only rows the board displays: vendor rows, July 2026 rows without
+versions (`validation: "legacy"`) and rows published from evidence bundles. It never holds a
+`failed` row; failed and replaced rows are in `data/sessions/index.json`.
 
 Migration: `node scripts/migrate_contract_1_1.mjs` set `schemaVersion` "1.1",
 re-stamped `generatedAt`, and appended `validation: "legacy"` to each of the 26
@@ -177,7 +176,7 @@ meaning. For those rows:
   installed APK; any unknown build value is absent.
 
 A row key (`engine|backend|platform|device|model|quant|provenance`) can have
-several published sessions. The board shows one row per key, and
+several published sessions. The board shows at most one row per key, and
 [`data/sessions/index.json`](../data/sessions/index.json) (schema:
 [`data/sessions/index.schema.json`](../data/sessions/index.schema.json)) keeps the
 history:
@@ -186,49 +185,94 @@ history:
 | --- | --- |
 | `keys[].key` | The row key |
 | `keys[].sessions[]` | Every published session for the key, oldest first: `sessionId`, `timestampIso`, `bundleSha256`, `url`, `validation`, `guardsPassed` and the full `row` it publishes |
-| `keys[].displayed`, `keys[].rule` | The session `data/benchmarks.json` shows, and why: `newest-verified`, `newest-unverified` or `newest-failed` |
-| `keys[].replacedRows[]` | A legacy or failed row a published session replaced (`reason`, `replacedBy`, the row as it was) |
+| `keys[].displayed`, `keys[].rule` | The session `data/benchmarks.json` shows, and why: `newest-verified` or `newest-unverified`; `null` with `retired` (the key is in `configs/board.json` `retiredKeys`) or `no-session-in-set` (no displayable session in the engine's set: staged, failed or of another configuration or backend) |
+| `keys[].replacedRows[]` | A row without a session that left `data/benchmarks.json`, as it was: replaced by a session (`reason` `replace-legacy` or `replace-failed`, `replacedBy`) or retired (`reason` `retired`, `note`, `retiredAt`) |
 
-Selection is explicit and deterministic. Among the key's published sessions of a
-configuration [`configs/board.json`](../configs/board.json) lists (`displayConfigurations`,
-now `cpu-reference-v3`; the session's row names it in `configurationId`), it picks the newest
-verified session, else the newest unverified, else the newest failed, where newest is the
-latest `timestampIso`, then `sessionId`. A session of an unlisted configuration may be in the
-history (published with the logged `--allow-unlisted-configuration`) but is never
-displayed. A newer failed session never replaces a displayed verified row. The
-board row for a key is exactly `sessions[displayed].row`, and `validate_data.mjs`
-refuses any file pair where it is not, or where a session's row does not come out of
-its hosted bundle again. A published session is never removed or
-rewritten.
+Selection is explicit and deterministic (index `schemaVersion` "1.1", `selectionRule`
+`engine-set-newest-verified-else-newest-unverified`). Among the key's published sessions in its
+engine's declared set ([`configs/board.json`](../configs/board.json): configuration and backend,
+engine and binding version, measured from a date), it picks the newest verified session, else the
+newest unverified, where newest is the latest `timestampIso`, then `sessionId`. A failed session
+is never displayed, and a retired key displays nothing. Other sessions stay in the history
+(published with the logged `--stage` or `--allow-unlisted-configuration`). The board row for a
+key is exactly `sessions[displayed].row`, and `validate_data.mjs` refuses any file pair where it
+is not, where applying `configs/board.json` would change anything, or where a session's row does
+not come out of its hosted bundle again. A published session is never removed or rewritten.
 
 The index is an additive, optional file: the board needs only
 `data/benchmarks.json`. A consumer that shows history links reads the index and
 treats an unknown `schemaVersion` major as absent. Fixtures with the producer's real
-output, two 1.2 pairs, are in
-[`tests/fixtures/verified-publication/`](../tests/fixtures/verified-publication/):
+output, one 1.3 pair, are in
+[`tests/fixtures/verified-publication/`](../tests/fixtures/verified-publication/) (the 1.2 pairs
+are gone: the producer no longer writes a failed row into `rows`, and a session without a
+recorded engine version is never displayed):
 
 | Fixture | Producer must not emit | Consumer expectation |
 | --- | --- | --- |
-| `board-1.2.json` | false | Rendered: verified, unverified, failed and vendor rows; runtimes and `configurationId` shown; failed rows not shown as normal measurements |
-| `sessions-1.2.json` | false | Optional history: two sessions for one key, the verified one displayed; one replaced legacy row |
-| `board-1.2-without-runtimes.json` | false | As `board-1.2.json`, from sessions without runtime versions (no `build.runtimes`) |
-| `sessions-1.2-without-runtimes.json` | false | As `sessions-1.2.json` |
+| `board-1.3.json` | false | Rendered: every row; versions shown as text on each bundle row; the July 2026 row shows its month and no version; the vendor row in the Vendor-reported section |
+| `sessions-1.3.json` | false | Optional history: a replaced July row; a key whose only session failed has `displayed: null` and no board row |
+
+## Measurement sets: what the board renders
+
+Owner decisions of 2026-10-19 ([RUN-CONDITIONS.md, Measurement sets](RUN-CONDITIONS.md#measurement-sets)).
+Proposed for the website implementer; the producer side is in this repository.
+
+**Display approach: `rows` is the board.** The producer writes only displayed rows into
+`data/benchmarks.json` `rows`. Superseded, staged, retired and failed rows, and the July rows of
+an engine once it is re-measured, live only in `data/sessions/index.json`. The site needs no
+selection logic and no new field: it renders every row in `rows` and nothing else. This keeps the
+contract unchanged (removing rows is always valid: the site falls back to its bundled data only for
+an unknown major, malformed JSON or no valid rows) and makes a mixed or partial set impossible to
+render, because the producer refuses to write one.
+
+What the site renders:
+
+| Data | Website requirement |
+| --- | --- |
+| Versions | On every row that has them, as text: `build.engineVersion` and `build.bindingVersion` (e.g. "llama.cpp b11385 (bf9a0cc) · llama.rn 0.13.0-rc.7"). Not in a tooltip or details panel only. |
+| Rows without versions | Show the measurement month and no version. Never explain why, and never print `validation` ("legacy") or any placeholder such as "unknown version". |
+| Measurement month | On every row: `sourceDate` (`YYYY-MM`) as a month, e.g. "Jul 2026", "Oct 2026". `dateBasis` (contract 1.3) is data for readers of the file; do not render it. |
+| Status words | No "legacy", "failed", "retired", "superseded", "pending" or other lab-book label anywhere. `validation` is not rendered as a word; a verified row may show its evidence link. An `unverified` row needs a plain, self-explanatory label if it is marked at all. |
+| Vendor rows | In a separate "Vendor-reported" section, not mixed into lab rows; keep their `asStated`, `sourceName` and source link. |
+| Lab row notes | Do not render `asStated` on measured rows: it is lab-book provenance (policy names, prompt ids). |
+| Findings | Render only `headline`, `deck` and the `detailsUrl` link, verbatim. Do not render `context` (for example `correctedAt`). The finding `llama-cpp-hexagon-output` is removed; the board does not explain the retired Hexagon row. |
+
+Every string in this table is checked in CI by `scripts/check_public_text.mjs` (the lab-book gate,
+[STYLE.md](STYLE.md#board-text-the-lab-book-gate)), and every public-facing pull request completes
+the first-time visitor review on the rendered page.
+
+### Contract 1.3 (proposed): `dateBasis`
+
+Contract 1.3 is additive over 1.2. It adds one optional row field, valid only on legacy measured
+rows that carry `sourceDate`; a file declares "1.3" only when a row carries it. The rollout rule
+holds: the website accepts 1.3 in production before the producer pull request that publishes it
+merges.
+
+| Field | Type | Meaning | Invariants |
+| --- | --- | --- | --- |
+| `dateBasis` | `"measured"` \| `"first-published"` | What `sourceDate` is on a row without versions: the month the row was measured, or (only when that cannot be established) the month it was first published | Legacy measured rows only, with `sourceDate`; in `schemaVersion` "1.3" files only. Not displayed. |
+
+Consumer fixtures are in [`tests/fixtures/contract-1.3/`](../tests/fixtures/contract-1.3/),
+listed in `index.json` with `producerMustNotEmit` and `consumerExpectation` as for 1.2. The
+current data dates all 20 July rows to 2026-07: 18 `measured`, 2 `first-published` (Galaxy S23,
+Gemma 3 1B, LiteRT-LM int4 and llama.cpp Q4_0 QAT).
 
 Their evidence URLs name the fixture bundles' real hashes but do not resolve.
 
 ## Contract and display
 
-Contracts 1.1 and 1.2 above cover the first rows of this table. Agree further field
-names and types in the versioned schema before implementation.
+Contracts 1.1 to 1.3 above cover the first rows of this table, and [Measurement sets](#measurement-sets-what-the-board-renders)
+overrides it where they differ. Agree further field names and types in the versioned schema
+before implementation.
 
 | Data | Website requirement |
 | --- | --- |
 | Schema version and publication date | Validate on fetch; use a compatible fallback on failure and show its age. |
 | Session, protocol, workload and evidence references | Link verified results to immutable, sanitized evidence; preserve historical links. |
-| Engine/build versions, artifact hashes and actual backend/fallback | Expose configuration in result details; unknown execution stays unknown. |
+| Engine/build versions, artifact hashes and actual backend/fallback | Engine and binding versions as text on every row that has them; configuration and hashes in result details (hashes never inline); unknown execution stays unknown. |
 | Quantization, timing method, repetition count and dispersion | Make metric differences and uncertainty visible; missing values are not zero. |
-| Condition policy, readiness, sampled conditions and verdict | Distinguish pass, failed and unverified conditions, and skipped repetitions; show charging-policy status separately; PSS/RSS samples are not peak memory. |
-| Provenance, validation and comparison eligibility | Distinguish vendor claims, legacy and verified evidence; compare only compatible records. |
+| Condition policy, readiness, sampled conditions and verdict | In result details only, in plain words; the board holds no failed row; PSS/RSS samples are not peak memory. |
+| Provenance, validation and comparison eligibility | Vendor claims in their own section; lab rows show versions or, without them, their month; compare only compatible records. |
 | Later: quality and sustained measurements | Add workload selection with #5 and quality filtering with #6; keep metrics distinct. |
 
 Lab provenance alone does not establish verification. Do not choose winners
