@@ -434,7 +434,7 @@ export function assertBenchmarks(envelope, schema, label) {
       if (isObject(row) && isObject(row.build) && Object.hasOwn(row.build, 'runtimes')) {
         invariants.push(`$.rows[${index}]: build.runtimes needs schemaVersion ${RUNTIMES_CONTRACT_VERSION}`);
       }
-      for (const field of CONFIGURATION_FIELDS) {
+      for (const field of [...CONFIGURATION_FIELDS, 'chipName']) {
         if (isObject(row) && Object.hasOwn(row, field)) {
           invariants.push(`$.rows[${index}]: ${field} needs schemaVersion ${RUNTIMES_CONTRACT_VERSION}`);
         }
@@ -600,7 +600,7 @@ export function writeAtomic(target, text, expectedBefore) {
  */
 export function contractVersionFor(rows, floor = CONTRACT_VERSION) {
   const needsRuntimes = rows.some((row) => (isObject(row.build) && Object.hasOwn(row.build, 'runtimes')) ||
-    CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field)));
+    CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field)) || Object.hasOwn(row, 'chipName'));
   const needsDateBasis = rows.some((row) => Object.hasOwn(row, 'dateBasis'));
   const minor = (version) => Number(String(version).split('.')[1]);
   const wanted = needsDateBasis ? DATE_BASIS_CONTRACT_VERSION : needsRuntimes ? RUNTIMES_CONTRACT_VERSION : CONTRACT_VERSION;

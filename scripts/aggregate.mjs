@@ -63,7 +63,7 @@ import {
   assertBenchmarks, assertFinite, assertSchema, buildFromSession, compareRows, CONTRACT_VERSION, contractVersionFor,
   friendlyDevice, isoNow, migrationNeeds, PublicationError, readJson, rowInvariantErrors, rowKey, writeAtomicGroup,
 } from './lib/publication.mjs';
-import { bundleRow, isHosted, listBundles, readBoundBundle, reproductionErrors, runPolicy } from './lib/bundles.mjs';
+import { bundleRow, isHosted, listBundles, loadChipNames, readBoundBundle, reproductionErrors, runPolicy } from './lib/bundles.mjs';
 import { assertIndex } from './lib/history.mjs';
 import { applyBoard, boardDisplayErrors, planPublication } from './lib/sets.mjs';
 import { boardExists, loadBoard, SESSIONS, setMismatch } from './lib/board.mjs';
@@ -160,7 +160,7 @@ const DATA = fileURLToPath(new URL('../data/benchmarks.json', import.meta.url));
 const SCHEMA = fileURLToPath(new URL('../data/benchmarks.schema.json', import.meta.url));
 const INDEX = fileURLToPath(new URL('../data/sessions/index.json', import.meta.url));
 const INDEX_SCHEMA = fileURLToPath(new URL('../data/sessions/index.schema.json', import.meta.url));
-const SOURCE_NAME = 'PocketPal R&D lab (xebench)';
+const SOURCE_NAME = 'xebench';
 const SOURCE_URL = 'https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md';
 const SUPPORTED_PROTOCOLS = new Set(['cpu-reference-v1']); // schemaVersion 1 sessions in raw preview
 // Legacy producers that exported medians but not per-repetition values. Their
@@ -627,7 +627,8 @@ function readBundles(schemas) {
           decision: item.decision, facts: item.facts, row: null,
         };
         if (item.decision.publishable) {
-          const row = bundleRow({ doc, capture, decision: item.decision, facts: item.facts, bundleSha256: bundle.sha });
+          const row = bundleRow({ doc, capture, decision: item.decision, facts: item.facts, bundleSha256: bundle.sha,
+            chipNames: loadChipNames(ROOT) });
           if (row.sampleCount !== item.facts.measured) {
             throw new PublicationError(`${dir}: ${item.sessionId}: recomputed n ${row.sampleCount} differs from the verifier's ${item.facts.measured}`);
           }

@@ -10,6 +10,7 @@
       "backend": "cpu",
       "platform": "android",
       "device": "Google Pixel 7 Pro",
+      "chipName": "Google Tensor G2",
       "model": "FunctionGemma 270M",
       "ppTps": 1916,
       "tgTps": 142,

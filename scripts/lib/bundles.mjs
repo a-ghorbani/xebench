@@ -26,7 +26,22 @@ export const METRICS = Object.freeze(['loadMs', 'ttftMs', 'prefillTps', 'decodeT
 // raw_session.TOLERANCE: summaries are compared with the validator's tolerance.
 const TOLERANCE = 1e-12;
 const HEX64 = /^[0-9a-f]{64}$/;
-const SOURCE_NAME = 'PocketPal R&D lab (xebench)';
+const SOURCE_NAME = 'xebench';
+
+/**
+ * Marketing chip names by device model (configs/devices.json chipName): the row's chipName.
+ * An unlisted model, or one without chipName, gives none. A missing table gives an empty map.
+ */
+export function loadChipNames(root) {
+  try {
+    const table = JSON.parse(readFileSync(join(root, 'configs/devices.json'), 'utf8'));
+    return new Map((table.devices ?? []).filter((entry) => typeof entry.chipName === 'string' && entry.chipName)
+      .map((entry) => [entry.model, entry.chipName]));
+  } catch (error) {
+    if (error.code === 'ENOENT') return new Map();
+    throw new PublicationError(`configs/devices.json: unreadable (${error.message})`);
+  }
+}
 const SOURCE_URL = 'https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md';
 
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -227,7 +242,7 @@ function asStated(record, n, decision) {
  * The board row a publishable session gives. Every number is recomputed from the
  * bundle's repetitions; validation and guardsPassed are the policy decision.
  */
-export function bundleRow({ doc, capture, decision, facts, bundleSha256 }) {
+export function bundleRow({ doc, capture, decision, facts, bundleSha256, chipNames = new Map() }) {
   const record = doc.record;
   const where = `${bundleSha256.slice(0, 12)}…/sessions/${doc.sessionId}.json`;
   const stats = recomputeSummary(record);
@@ -251,6 +266,7 @@ export function bundleRow({ doc, capture, decision, facts, bundleSha256 }) {
     platform: record.platform,
     device: friendlyDevice(capture.device?.manufacturer ?? device.manufacturer, device.model),
     soc: device.soc || undefined,
+    chipName: chipNames.get(device.model),
     model: record.model,
     quant: record.quant || undefined,
     ppTps: round1(stats.prefillTps.median),
@@ -292,6 +308,7 @@ export function isHosted(bundleDir, root, sha) {
  */
 export function reproductionErrors(index, root) {
   const errors = [];
+  const chipNames = loadChipNames(root);
   const bySha = new Map();
   for (const entry of index.keys) {
     for (const session of entry.sessions) {
@@ -315,7 +332,7 @@ export function reproductionErrors(index, root) {
         const doc = bound.file(`sessions/${item.sessionId}.json`);
         const capture = bound.file(`captures/${doc.captureId}.json`);
         const row = item.decision.publishable
-          ? bundleRow({ doc, capture, decision: item.decision, facts: item.facts, bundleSha256: sha }) : null;
+          ? bundleRow({ doc, capture, decision: item.decision, facts: item.facts, bundleSha256: sha, chipNames }) : null;
         // timestampIso orders the key's history and so picks the displayed row: it is
         // re-derived too, like the row itself.
         if (!row || !jsonEqual(row, session.row) || session.timestampIso !== doc.record.timestampIso) {

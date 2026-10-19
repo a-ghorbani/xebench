@@ -97,6 +97,7 @@ class PublicTextTests(unittest.TestCase):
             "lower-case SoC": ("measured", {"soc": "sdm845"}, ".soc: \"sdm845\""),
             "device without brand line": ("vendor", {"device": "Samsung S26 Ultra"}, ".device: \"Samsung S26 Ultra\""),
             "a laptop": ("vendor", {"platform": "macos"}, "a phone platform"),
+            "a chip name with a lab label": ("measured", {"chipName": "Snapdragon 8 Gen 2 (legacy)"}, ".chipName: \"legacy\""),
         }
         for name, (provenance, change, expected) in cases.items():
             with self.subTest(name):

@@ -314,7 +314,10 @@ that names no such file names no configuration and is never displayed. Which pub
 board displays is decided by the measurement sets below.
 
 A published session is never rewritten, and CI re-derives every published row from its
-bundle with the current code. A change to the policy, the row format or its rounding
+bundle with the current code. The one migration so far is a label migration (2026-10-19,
+`scripts/migrate_board_labels.mjs`): lab rows name their source "xebench" and carry the device's
+`chipName`; the producer emits the same labels, so every session still reproduces, and no
+measured value changed. A change to the policy, the row format or its rounding
 therefore comes with a new policy version and a migration of the published index.
 
 Limits: for engines whose only timing source is the engine's own benchmark API

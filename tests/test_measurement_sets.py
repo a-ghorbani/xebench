@@ -103,6 +103,24 @@ class CheckedInSetTests(unittest.TestCase):
         self.assertEqual(sorted(key_of(row) for row in llama if "evidence" not in row),
                          self.board["engines"]["llama.cpp"]["carryover"]["keys"])
 
+    def test_board_labels(self):
+        """Lab rows say "xebench" and name their chip from configs/devices.json; vendor rows name a
+        chip only where the device ships with one."""
+        devices = {entry["name"]: entry["chipName"] for entry in load(ROOT / "configs/devices.json")["devices"]}
+        rows = self.data["rows"] + [s["row"] for entry in self.index["keys"] for s in entry["sessions"]]
+        for row in rows:
+            with self.subTest(key_of(row)):
+                if row["provenance"] == "measured":
+                    self.assertEqual(row["sourceName"], "xebench")
+                    self.assertEqual(row["chipName"], devices[row["device"]])
+                elif row["device"] in ("Samsung Galaxy S22", "Samsung Galaxy S24", "Samsung Galaxy S26 Ultra"):
+                    self.assertNotIn("chipName", row, "the chip depends on the market")
+                else:
+                    self.assertIn("chipName", row)
+        self.assertNotIn("MacBook Pro (M4 Max)", {row["device"] for row in self.data["rows"]})
+        result = subprocess.run(["node", str(ROOT / "scripts/migrate_board_labels.mjs"), "--check"], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_the_hexagon_row_is_retired_into_the_history(self):
         self.assertNotIn(fx.NPU_KEY, {key_of(row) for row in self.data["rows"]})
         self.assertEqual([item["key"] for item in self.board["retiredKeys"]], [fx.NPU_KEY])

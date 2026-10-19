@@ -15,7 +15,7 @@
         }
       ],
       "headline": "LiteRT-LM on NPU: no row on this board",
-      "deck": "Gemma 3 1B runs with correct output on the Snapdragon SM8850 (POCO F8 Ultra). On the SM8550 (Galaxy S23), Google's published model bundle drops part of long prompts (LiteRT-LM #3508).",
+      "deck": "Gemma 3 1B runs with correct output on the POCO F8 Ultra (Snapdragon 8 Elite Gen 5). On the Galaxy S23 (Snapdragon 8 Gen 2 for Galaxy), Google's published model bundle drops part of long prompts, a known LiteRT-LM issue.",
       "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/51527a535d98c8b9017b54f83f4b4aba68822474/docs/experiments/litert-accelerators.md#litert-lm-on-npu",
       "claims": [
         "The NPU path needs four pieces: the litertlm-android AAR, Google's litert-npu-runtime-qualcomm (it provides libLiteRtDispatch_Qualcomm.so; 2.3.0 tested), a QAIRT version that matches the release's LITERT_REF, and <uses-native-library> manifest declarations.",

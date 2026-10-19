@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "description": "Lab devices by the ro.product.model a capture reads, with the SoC that model ships with. Publication refuses a session whose SoC contradicts its model's entry and leaves a row from an unlisted model unverified (docs/RUN-CONDITIONS.md, Publication policy v1). SoC values compare case-insensitively. Add a device only from a host getprop record of that phone.",
+  "description": "Lab devices by the ro.product.model a capture reads, with the SoC that model ships with. Publication refuses a session whose SoC contradicts its model's entry and leaves a row from an unlisted model unverified (docs/RUN-CONDITIONS.md, Publication policy v1). SoC values compare case-insensitively. Add a device only from a host getprop record of that phone. chipName is the SoC's marketing name for that phone, shown on the board (rows carry it as chipName); soc stays the code the policy checks. Sources: docs/WEBSITE-HANDOFF.md, Chip names.",
   "devices": [
-    { "model": "SM-S911B", "name": "Samsung Galaxy S23", "soc": "SM8550" },
-    { "model": "25102PCBEG", "name": "POCO F8 Ultra", "soc": "SM8850" },
-    { "model": "Pixel 9", "name": "Google Pixel 9", "soc": "Tensor G4" },
-    { "model": "ONEPLUS A6003", "name": "OnePlus 6", "soc": "SDM845" },
-    { "model": "2511FPC34G", "name": "POCO X8 Pro", "soc": "MT6899" }
+    { "model": "SM-S911B", "name": "Samsung Galaxy S23", "soc": "SM8550", "chipName": "Snapdragon 8 Gen 2 for Galaxy" },
+    { "model": "25102PCBEG", "name": "POCO F8 Ultra", "soc": "SM8850", "chipName": "Snapdragon 8 Elite Gen 5" },
+    { "model": "Pixel 9", "name": "Google Pixel 9", "soc": "Tensor G4", "chipName": "Google Tensor G4" },
+    { "model": "ONEPLUS A6003", "name": "OnePlus 6", "soc": "SDM845", "chipName": "Snapdragon 845" },
+    { "model": "2511FPC34G", "name": "POCO X8 Pro", "soc": "MT6899", "chipName": "Dimensity 8500-Ultra" }
   ]
 }

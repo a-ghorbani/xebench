@@ -237,6 +237,8 @@ What the site renders:
 | Measurement month | On every row: `sourceDate` (`YYYY-MM`) as a month, e.g. "Jul 2026", "Oct 2026". `dateBasis` (contract 1.3) is data for readers of the file; do not render it. |
 | Status words | No "legacy", "failed", "retired", "superseded", "pending" or other lab-book label anywhere. `validation` is not rendered as a word; a verified row may show its evidence link. An `unverified` row needs a plain, self-explanatory label if it is marked at all. |
 | Vendor rows | In a separate "Vendor-reported" section, not mixed into lab rows; keep their `asStated` (one plain sentence), `sourceName` and source link. |
+| Chip | `chipName` (e.g. "Snapdragon 8 Elite Gen 5") where present; `soc` is a code for checks, not for display. |
+| Source | Lab rows carry `sourceName` "xebench"; vendor rows name their source. |
 | Labels | `quant` may be absent when the source states none: the site words that itself. Labels follow one vocabulary (quant, upper-case SoC, "Brand model" devices, android/ios only), enforced by the lab-book gate. Speeds are "tok/s" in the data text. |
 | Lab row notes | Do not render `asStated` on measured rows: it is lab-book provenance (policy names, prompt ids). |
 | Findings | Render only `headline`, `deck` and the `detailsUrl` link, verbatim. Do not render `context` (for example `correctedAt`). The finding `llama-cpp-hexagon-output` is removed; the board does not explain the retired Hexagon row. |
@@ -244,6 +246,32 @@ What the site renders:
 Every string in this table is checked in CI by `scripts/check_public_text.mjs` (the lab-book gate,
 [STYLE.md](STYLE.md#board-text-the-lab-book-gate)), and every public-facing pull request completes
 the first-time visitor review on the rendered page.
+
+### `chipName` (additive, contract 1.2)
+
+An optional row field, valid in "1.2" and later files: the SoC's marketing name for the row's
+device. Lab rows take it from [`configs/devices.json`](../configs/devices.json) (`chipName` per
+device model; bundle rows get it from the producer, legacy rows from
+`scripts/migrate_board_labels.mjs`). Vendor rows carry it only where the device ships with one
+chip. `soc` stays the code publication policy v1 checks.
+
+#### Chip names
+
+| Device | `soc` | `chipName` | Source |
+| --- | --- | --- | --- |
+| Samsung Galaxy S23 (SM-S911B) | SM8550 | Snapdragon 8 Gen 2 for Galaxy | TENAA listing of the S23 series as SM8550-AC, the "for Galaxy" part ([Notebookcheck](https://www.notebookcheck.net/Samsung-Galaxy-S23-series-confirmed-to-launch-with-more-powerful-Snapdragon-8-Gen-2-chipset-than-Xiaomi-13-or-Xiaomi-13-Pro.674181.0.html)) |
+| POCO F8 Ultra | SM8850 | Snapdragon 8 Elite Gen 5 | [GSMArena spec sheet](https://www.gsmarena.com/xiaomi_poco_f8_ultra_5g-14301.php); SM8850 = Snapdragon 8 Elite Gen 5 ([Notebookcheck](https://www.notebookcheck.net/Qualcomm-confirms-Snapdragon-8-Elite-Gen-5-moniker-for-forthcoming-flagship-SoC.1114667.0.html)) |
+| Google Pixel 9 | Tensor G4 | Google Tensor G4 | Google's name for the chip |
+| OnePlus 6 | SDM845 | Snapdragon 845 | [WikiChip SDM845](https://en.wikichip.org/wiki/qualcomm/snapdragon_800/845) |
+| POCO X8 Pro | MT6899 | Dimensity 8500-Ultra | POCO's launch ([GSMArena](https://www.gsmarena.com/poco_confirms_the_chipsets_for_the_upcoming_x8_pro_series-news-71829.php)). Public sources also tie MT6899 to the Dimensity 8400, so the name comes from the phone, not the code |
+| Google Pixel 7 Pro (vendor) | — | Google Tensor G2 | [MobileSyrup comparison](https://mobilesyrup.com/2023/10/04/heres-how-the-pixel-8-pro-compares-to-the-pixel-7-pro/) |
+| Google Pixel 8 Pro (vendor) | — | Google Tensor G3 | [Trusted Reviews](https://www.trustedreviews.com/explainer/what-is-the-tensor-g3-4375901) |
+| OnePlus 12 (vendor) | — | Snapdragon 8 Gen 3 | [PhoneArena comparison](https://www.phonearena.com/reviews/samsung-galaxy-s24-ultra-vs-oneplus-12_id6053) |
+| Samsung Galaxy S24 Ultra (vendor) | — | Snapdragon 8 Gen 3 for Galaxy | Same in every market ([PhoneArena](https://www.phonearena.com/reviews/samsung-galaxy-s24-ultra-vs-oneplus-12_id6053), [Android Authority](https://www.androidauthority.com/best-snapdragon-8-gen-3-phones-3442576/)) |
+| Apple iPhone 17 Pro (vendor) | — | Apple A19 Pro | [Apple Newsroom](https://www.apple.com/newsroom/2025/09/apple-unveils-iphone-17-pro-and-iphone-17-pro-max) |
+
+Galaxy S22 and S24 ship with a Snapdragon or an Exynos chip depending on the market, and the S26
+Ultra's chip is not verified here, so those vendor rows carry no `chipName`.
 
 ### Contract 1.3 (proposed): `dateBasis`
 

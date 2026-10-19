@@ -8,7 +8,7 @@
  * Scans every string pocketpal.dev renders from xebench data:
  *   data/findings.json   each finding's headline and deck;
  *   data/benchmarks.json each row's displayed fields: engine, backend, platform, device, soc,
- *                        model, quant, sourceName, sourceDate, configurationId and the build
+ *                        chipName, model, quant, sourceName, sourceDate, configurationId and the build
  *                        versions; plus asStated on vendor and community rows. A lab row's
  *                        asStated is lab-book provenance the site does not render, so it is exempt.
  * and fails on lab-book words (internal labels, process and history narration) and on 40- or
@@ -64,7 +64,7 @@ export const VOCABULARY = Object.freeze([
     '"<Brand> <model>", e.g. "Samsung Galaxy S23", "Google Pixel 9", "POCO F8 Ultra", "Apple iPhone 17 Pro"'],
   ['platform', (value) => ['android', 'ios'].includes(value), 'a phone platform (android or ios): the board compares phones'],
 ]);
-const ROW_FIELDS = ['engine', 'backend', 'platform', 'device', 'soc', 'model', 'quant', 'sourceName', 'sourceDate', 'configurationId'];
+const ROW_FIELDS = ['engine', 'backend', 'platform', 'device', 'soc', 'chipName', 'model', 'quant', 'sourceName', 'sourceDate', 'configurationId'];
 const BUILD_FIELDS = ['engineVersion', 'bindingVersion'];
 const ALLOWLIST_SCHEMA = 'xebench-public-text-allowlist';
 
