@@ -307,24 +307,17 @@ is never a pass. Three kinds of session are never published at all:
 - bug reproductions (`purpose: "bug-repro"`);
 - sessions without a measured repetition.
 
-The board displays sessions of the configurations listed in
-[`configs/board.json`](../configs/board.json) (`displayConfigurations`, now
-`cpu-reference-v3`). A row published from a bundle names its configuration
-(`configurationId`, `configurationSha256`) only when the session's `configurationSource`
-hash names a committed file under `xebenchapp/configs/` and the session carries exactly that
-file's content; a session that names no such file names no configuration and is never
-displayed. `aggregate.mjs --update` refuses a session of any other configuration.
-With `--allow-unlisted-configuration`, it logs the session and publishes it into the history
-only: such a session is never displayed, and a row key needs at least one session of a listed
-configuration. The display selection below considers only listed configurations, and
-`validate_data.mjs` checks the board file and the selection against it. A change to the
-list that changes a displayed session leaves the committed index invalid, and
-`aggregate.mjs` has no command that re-selects the displayed sessions yet, so such a change
-needs that re-selection step first. A configuration that is a key's only listed one cannot be
-delisted, because published sessions are never removed.
+A row published from a bundle names its configuration (`configurationId`,
+`configurationSha256`) only when the session's `configurationSource` hash names a committed
+file under `xebenchapp/configs/` and the session carries exactly that file's content; a session
+that names no such file names no configuration and is never displayed. Which published rows the
+board displays is decided by the measurement sets below.
 
 A published session is never rewritten, and CI re-derives every published row from its
-bundle with the current code. A change to the policy, the row format or its rounding
+bundle with the current code. The one migration so far is a label migration (2026-10-19,
+`scripts/migrate_board_labels.mjs`): lab rows name their source "xebench" and carry the device's
+`chipName`; the producer emits the same labels, so every session still reproduces, and no
+measured value changed. A change to the policy, the row format or its rounding
 therefore comes with a new policy version and a migration of the published index.
 
 Limits: for engines whose only timing source is the engine's own benchmark API
@@ -333,6 +326,80 @@ measurement, and no independent counter exists. The gate's probe verdicts are re
 validator at capture time; a bundle carries only their digests, so the publication
 check re-derives the gate status from the verdicts, not from the outputs. The policy
 does not establish cross-device comparability or quality beyond the gate.
+
+## Measurement sets
+
+Owner decision, 2026-10-19. What the board at pocketpal.dev/leaderboard/engines displays is
+declared in [`configs/board.json`](../configs/board.json) and applied by
+[`scripts/lib/sets.mjs`](../scripts/lib/sets.mjs) on every `aggregate.mjs` write.
+
+1. **One set per engine.** An engine's board rows all come from one measurement set: one engine
+   version, one binding version and one measurement campaign. Different engines may be at
+   different versions. `engines.<engine>` declares the set:
+   - `"set": "sessions"`: sessions published from evidence bundles whose row names one of
+     `configurations` and runs one of that configuration's `backends`, whose `build` carries
+     exactly `engineVersion` and `bindingVersion` (none when not declared), measured on or after
+     `measuredFrom` (UTC). The backends keep a configuration's other runs off the board: an
+     accelerator configuration's CPU reference run has the same row key as a CPU board row, so
+     `llamacpp-llama32-q4km-hexagon-v1` displays `npu` only, `llamacpp-qwen25-opencl-v1` `gpu`
+     only and `cpu-reference-v3*` `cpu` only.
+   - `"set": "pre-version-recording"`: the engine's rows from before the app recorded engine
+     versions, all measured in the month `measured`. They show no version, and none is
+     backfilled. Today ExecuTorch, LiteRT-LM and GENIE-X display their July 2026 rows.
+2. **Latest set only.** Within a set, a key displays its newest verified session, else its
+   newest unverified one. A failed session or row is never displayed. `data/benchmarks.json`
+   holds only displayed rows; everything else (staged and superseded sessions, replaced and
+   retired rows) is in [`data/sessions/index.json`](../data/sessions/index.json).
+3. **Re-measure everything, or retire it.** Re-measuring an engine means re-measuring all of its
+   board setups. A setup that cannot be measured is listed in `retiredKeys` with a reason and a
+   date; a retired key must name a published row or session, so a typo is refused. The reason stays in the data (`configs/board.json` and the row's `replacedRows` entry
+   with `reason: "retired"`), never on the page.
+4. **Complete or nothing.** An update that would take a displayed key off the board refuses
+   unless the key is retired. So a new set is displayed only once every displayed key of the
+   engine has a session in it or is retired; until then, `aggregate.mjs` names every missing key.
+5. **Months, always.** Every measured row carries `sourceDate` (YYYY-MM). A row without versions
+   also carries `dateBasis` (contract 1.3): `measured` when the month comes from the run's own
+   record, or `first-published` when no record survives and the month is that of the first
+   commit carrying the row. [`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs)
+   freezes each July 2026 row (key, speeds, run count, time to first token, month and basis); a row without versions is displayed
+   only as one of those rows, unchanged, and
+   [`scripts/date_legacy_rows.mjs`](../scripts/date_legacy_rows.mjs) writes their months.
+
+### Publishing a new set
+
+1. Publish the new version's sessions into the history while the board still shows the old
+   set: `aggregate.mjs --from-bundles evidence/ --session <id>... --update --stage`. A staged
+   session changes nothing on the board. Without `--stage`, a session outside its engine's set is
+   refused; a session of a configuration or backend the set does not list needs
+   `--allow-unlisted-configuration` instead.
+2. In one publication pull request, edit `engines.<engine>` to the new versions, configurations
+   and `measuredFrom`, add every setup that was not re-measured to `retiredKeys`, and run
+   `aggregate.mjs --apply-board --update --replace-legacy` (or publish the last sessions with
+   `--update`, which applies the board too). The run refuses, naming each key, until the set is
+   complete; then it writes both files together.
+3. `validate_data.mjs` (CI) checks that applying `configs/board.json` to the committed files
+   changes nothing.
+
+### The llama.cpp campaign (llama.rn 0.13.0-rc.7)
+
+Sets were declared while this campaign was in progress, so `engines["llama.cpp"]` declares the
+rc.7 set (`llama.cpp b11385 (bf9a0cc)` + `llama.rn 0.13.0-rc.7`, `cpu-reference-v3`, CPU) with a
+`carryover`: the nine July 2026 llama.cpp rows stay displayed next to the nine rc.7 CPU rows until
+the campaign finishes. The carryover names the set's own versions, so moving the set to other
+versions ends it, and it displays only the frozen July rows of
+[`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs), unchanged; no other row
+without versions is ever displayed. A session of the set for a carried key replaces its row
+(`--replace-legacy`). The July Hexagon row (POCO F8
+Ultra, Llama 3.2 1B Q4_0, failed) is retired: it is replaced by a Q4_K_M NPU key. The campaign
+finishes in one publication pull request that
+
+- adds the new configurations to the set, each with its backends (`cpu-reference-v3-qwen25` and
+  `cpu-reference-v3-gemma3`: `cpu`; `llamacpp-qwen25-opencl-v1`: `gpu`;
+  `llamacpp-llama32-q4km-hexagon-v1`: `npu`);
+- publishes the rc.7 sessions for the carried setups with `--replace-legacy`;
+- lists every carried setup that is not re-measured in `retiredKeys` and deletes `carryover`;
+- runs `aggregate.mjs --update` once. It refuses, naming each July row still neither replaced nor
+  retired, until the list is complete.
 
 API semantics: [thermal status](https://developer.android.com/reference/android/os/PowerManager#getCurrentThermalStatus()),
 [thermal headroom](https://developer.android.com/reference/android/os/PowerManager#getThermalHeadroom(int)),

@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests/fixtures/verified-publication"
 RAW_URL = "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/{}/manifest.json"
 LEGACY_KEY = "llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q4_K_M|measured"
+JULY_KEY = "executorch|cpu|android|Google Pixel 9|Llama 3.2 1B|SpinQuant 4-bit|measured"
 ISO = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 T = {name: f"2026-03-0{day}T00:00:00.000Z" for day, name in enumerate(("t0", "t1", "t2", "t3"), start=1)}
 
@@ -51,7 +52,7 @@ class Workspace(unittest.TestCase):
         self.root = Path(self.tmp.name) / "repo"
         shutil.copytree(ROOT / "scripts", self.root / "scripts")
         shutil.copytree(ROOT / "data", self.root / "data")
-        board_before.seed(self.root)  # the board before the first bundle publication
+        board_before.seed(self.root, dated=True)  # the board before the first bundle publication
         fx.reference_root(self.root)  # reviewed configs, model manifests, device table (+ fixture devices)
         (self.root / "evidence").mkdir()
         self.out = Path(self.tmp.name) / "work"
@@ -148,7 +149,7 @@ class DryRunTests(Workspace):
         report = json.loads(self.dry_run("--json").stdout)
         decisions = {item["sessionId"]: item["decision"] for item in report["sessions"]}
         self.assertEqual(decisions["1767225600000-0-dry"]["validation"], "verified")
-        self.assertEqual(report["plan"]["schemaVersion"], "1.2")
+        self.assertEqual(report["plan"]["schemaVersion"], "1.3", "the seeded rows without versions carry dateBasis")
         filtered = json.loads(self.dry_run("--json", "--session", "1767225600000-2-dry").stdout)
         self.assertEqual([item["sessionId"] for item in filtered["sessions"]], ["1767225600000-2-dry"])
 
@@ -182,7 +183,7 @@ class VerifiedPublicationTests(Workspace):
         result = self.publish("1767225600000-0-verified")
         self.assertIn("new row", result.stderr)
         data = load(self.canonical)
-        self.assertEqual(data["schemaVersion"], "1.2", "a row with build.runtimes makes the file 1.2")
+        self.assertEqual(data["schemaVersion"], "1.3", "the seeded rows without versions carry dateBasis (1.3)")
         self.assertRegex(data["generatedAt"], ISO)
         row = self.row()
         exported = load(directory / "sessions/1767225600000-0-verified.json")["record"]
@@ -213,15 +214,20 @@ class VerifiedPublicationTests(Workspace):
         self.no_leftovers()
 
     def test_rows_without_runtime_versions(self):
-        """A session without runtimeVersions gives no build.runtimes; its configuration
-        fields still make the file 1.2."""
+        """A session without runtimeVersions gives no build.runtimes and no engine version, so it
+        is in no measurement set: it is published into the history only (--stage), never displayed."""
         self.bundle(fx.cpu_record("complete", "1767225600000-0-v11", device="Fixture Phone", runtimes=False),
                     apks=[{"name": "base.apk", "sha256": "d" * 64}])
-        self.publish("1767225600000-0-v11")
-        data = load(self.canonical)
-        self.assertEqual(data["schemaVersion"], "1.2")
-        self.assertEqual(self.row()["configurationId"], "cpu-reference-v2")
-        build = self.row()["build"]
+        self.assert_rejected("engine version not recorded is not llama.cpp's set", "--from-bundles",
+                             self.root / "evidence", "--update", "--session", "1767225600000-0-v11")
+        self.publish("1767225600000-0-v11", flags=["--stage"])
+        key = "llama.cpp|cpu|android|Google Fixture Phone|Llama 3.2 1B|Q4_K_M|measured"
+        self.assertNotIn(key, self.rows())
+        entry = self.entry(key)
+        self.assertEqual((entry["displayed"], entry["rule"]), (None, "no-session-in-set"))
+        row = entry["sessions"][0]["row"]
+        self.assertEqual(row["configurationId"], "cpu-reference-v2")
+        build = row["build"]
         self.assertNotIn("runtimes", build)
         self.assertNotIn("engineVersion", build, "no runtime versions: the engine version stays unknown")
         self.assertEqual(build["bindingVersion"], "llama.rn 0.0.0-fixture")
@@ -232,7 +238,13 @@ class VerifiedPublicationTests(Workspace):
         self.bundle(fx.cpu_record("noExpectedHash", "1767225600000-0-u", device="Fixture Phone"),
                     fx.cpu_record("flagged", "1767225600000-1-f", device="Fixture Tablet"))
         self.publish("1767225600000-0-u", "1767225600000-1-f")
-        unverified, failed = self.row(), self.row(device="Google Fixture Tablet")
+        unverified = self.row()
+        # A failed session is never displayed; it stays in the history with its evidence.
+        failed_key = "llama.cpp|cpu|android|Google Fixture Tablet|Llama 3.2 1B|Q4_K_M|measured"
+        self.assertNotIn(failed_key, self.rows())
+        entry = self.entry(failed_key)
+        self.assertEqual((entry["displayed"], entry["rule"]), (None, "no-session-in-set"))
+        failed = entry["sessions"][0]["row"]
         self.assertEqual((unverified["validation"], unverified["guardsPassed"]), ("unverified", None))
         self.assertIn("artifact unknown", unverified["asStated"])
         self.assertEqual((failed["validation"], failed["guardsPassed"]), ("failed", False))
@@ -254,13 +266,23 @@ class VerifiedPublicationTests(Workspace):
         self.assertIn("backend unknown", gpu["asStated"])
 
     def test_vendor_and_legacy_rows_are_unchanged(self):
+        """Every row stays byte for byte, except the failed row the board retires: it moves into
+        the history, byte for byte."""
         before = load(self.canonical)["rows"]
         self.bundle(fx.cpu_record("complete", "1767225600000-0-keep", device="Fixture Phone"))
-        self.publish("1767225600000-0-keep")
+        result = self.publish("1767225600000-0-keep")
+        self.assertIn(f"{fx.NPU_KEY}: retired: the row moves to the history", result.stderr)
         after = {key_of(row): row for row in load(self.canonical)["rows"]}
         for row in before:
-            self.assertEqual(json.dumps(after[key_of(row)]), json.dumps(row))
-        self.assertEqual(len(after), len(before) + 1)
+            if key_of(row) == fx.NPU_KEY:
+                self.assertNotIn(fx.NPU_KEY, after)
+                kept = self.entry(fx.NPU_KEY)
+                self.assertEqual((kept["displayed"], kept["rule"], kept["sessions"]), (None, "retired", []))
+                self.assertEqual(json.dumps(kept["replacedRows"][0]["row"]), json.dumps(row))
+                self.assertEqual(kept["replacedRows"][0]["reason"], "retired")
+            else:
+                self.assertEqual(json.dumps(after[key_of(row)]), json.dumps(row))
+        self.assertEqual(len(after), len(before))
 
 
 class FailClosedTests(Workspace):
@@ -397,10 +419,13 @@ class FailClosedTests(Workspace):
         record["deviceInfo"] = {"manufacturer": "Google", "model": "Fixture Phone", "soc": "x"}
         raw.write_text(json.dumps(record) + "\n")
         self.assert_rejected("published from evidence bundles", raw, "--update", "--allow-legacy")
-        # Unrelated legacy updates still work and keep the index consistent.
+        # llama.cpp displays a set of sessions: a raw record cannot add a row to it.
         unrelated = self.root / "raw2.jsonl"
         unrelated.write_text(json.dumps(legacy_record()) + "\n")
-        self.assertEqual(self.aggregate(unrelated, "--update", "--allow-legacy").returncode, 0)
+        self.assert_rejected("a raw record cannot add a row to it", unrelated, "--update", "--allow-legacy")
+        # Nor to an engine whose set is its July 2026 rows: those rows are frozen.
+        unrelated.write_text(json.dumps(legacy_record(engine="executorch")) + "\n")
+        self.assert_rejected("is not one of the July 2026 rows without versions", unrelated, "--update", "--allow-legacy")
         self.assert_valid_data()
 
 
@@ -423,8 +448,11 @@ class ReplacementTests(Workspace):
         data = load(self.canonical)
         target = next(row for row in data["rows"] if key_of(row) == LEGACY_KEY)
         target["validation"] = "failed"  # e.g. invalidated by a later output-correctness re-check
+        del target["dateBasis"]  # a legacy-only field
         self.canonical.write_text(json.dumps(data, indent=2) + "\n")
-        self.assert_valid_data()
+        result = self.node("validate_data.mjs")
+        self.assertEqual(result.returncode, 1, "a failed row is never displayed")
+        self.assertIn(f"row {LEGACY_KEY} is failed and is never displayed", result.stderr)
         self.bundle(fx.cpu_record("complete", "1767225600000-0-again", device="Pixel 9"))
         for flags in ([], ["--replace-legacy"]):
             with self.subTest(flags=flags):
@@ -468,15 +496,18 @@ class HistoryTests(Workspace):
         self.assertEqual([s["validation"] for s in entry["sessions"]], ["verified", "unverified", "failed", "verified"])
         self.assert_valid_data()
 
-    def test_a_displayed_failed_row_changes_only_with_replace_failed(self):
+    def test_a_failed_session_is_never_displayed(self):
         self.sessions()
-        self.publish("1767225600000-2-f")
-        self.assertEqual(self.displayed(), ("1767225600000-2-f", "newest-failed"))
-        self.assert_rejected("pass --replace-failed", "--from-bundles", self.root / "evidence", "--update",
-                             "--session", "1767225600000-0-u")
-        self.publish("1767225600000-0-u", flags=["--replace-failed"])
+        result = self.publish("1767225600000-2-f")
+        self.assertIn("history only (not displayed: no session in the set)", result.stderr)
+        self.assertNotIn(self.KEY, self.rows())
+        entry = self.entry(self.KEY)
+        self.assertEqual((entry["displayed"], entry["rule"]), (None, "no-session-in-set"))
+        self.publish("1767225600000-0-u")  # no flag: nothing failed was displayed
         self.assertEqual(self.displayed(), ("1767225600000-0-u", "newest-unverified"))
+        self.assertEqual([s["validation"] for s in self.entry(self.KEY)["sessions"]], ["unverified", "failed"])
         self.assertEqual(self.entry(self.KEY)["replacedRows"], [], "the failed session stays in the history")
+        self.assert_valid_data()
 
     def test_history_is_deterministic_whatever_the_order(self):
         orders = (["0-u", "1-v", "2-f", "3-v2"], ["3-v2", "2-f", "1-v", "0-u"], ["2-f", "0-u", "3-v2", "1-v"])
@@ -641,19 +672,24 @@ def consumer_fixtures(test):
     """Publish the fixture scenario into a small board and return {file name: text}."""
     real = load(board_before.BENCHMARKS)
     vendor = next(row for row in real["rows"] if row["provenance"] == "vendor")
-    legacy = next(row for row in real["rows"] if key_of(row) == LEGACY_KEY)
+    dated = load(test.canonical)["rows"]  # the seeded rows, with their months
+    legacy = next(row for row in dated if key_of(row) == LEGACY_KEY)
+    july = next(row for row in dated if key_of(row) == JULY_KEY)
     outputs = {}
-    # Every bundle row carries configurationId (1.2); the second pair has no build.runtimes.
-    for name, runtimes in (("1.2", True), ("1.2-without-runtimes", False)):
+    # Every bundle row carries configurationId (1.2); the July row carries dateBasis (1.3).
+    for name, runtimes in (("1.3", True),):
         test.tearDown()
         test.setUp()
-        start = {"schemaVersion": "1.1", "generatedAt": "2026-10-18T00:00:00Z",
+        start = {"schemaVersion": "1.3", "generatedAt": "2026-10-18T00:00:00Z",
                  "source": "https://github.com/a-ghorbani/xebench",
                  "description": "Consumer fixture: rows published from SYNTHETIC evidence bundles built from the "
                                 "app-emitted test fixtures. Evidence URLs name the fixture bundles' real hashes but "
                                 "do not resolve.",
-                 "rowCount": 2, "rows": [vendor, legacy]}
+                 "rowCount": 3, "rows": [vendor, july, legacy]}
         test.canonical.write_text(json.dumps(start, indent=2) + "\n")
+        # This small board has no failed NPU row, so nothing is retired (a retired key must name a row).
+        board_file = test.root / "configs/board.json"
+        board_file.write_text(json.dumps({**load(board_file), "retiredKeys": []}, indent=2) + "\n")
         test.bundle(
             fx.cpu_record("complete", "1767225600000-0-pixel", timestamp=T["t0"], device="Pixel 9", runtimes=runtimes),
             fx.cpu_record("flagged", "1767225600000-1-pixel", timestamp=T["t1"], device="Pixel 9", runtimes=runtimes),
@@ -665,7 +701,7 @@ def consumer_fixtures(test):
                      "1767225600000-3-tablet", "1767225600000-4-npu", flags=["--replace-legacy"])
         test.assert_valid_data()  # every published row reproduces from its hosted bundle
         board = load(test.canonical)
-        test.assertEqual(board["schemaVersion"], "1.2")
+        test.assertEqual(board["schemaVersion"], "1.3")
         board["generatedAt"] = "2026-10-18T00:00:00Z"
         outputs[f"board-{name}.json"] = json.dumps(board, indent=2) + "\n"
         outputs[f"sessions-{name}.json"] = test.index.read_text()
@@ -691,18 +727,28 @@ class ConsumerFixtureTests(Workspace):
             if item["kind"] == "board":
                 result = self.node("validate_data.mjs", FIXTURES / item["file"])
                 self.assertEqual(result.returncode, 0, result.stderr)
-        for name in ("1.2", "1.2-without-runtimes"):
+        for name in ("1.3",):
             board, sessions = load(FIXTURES / f"board-{name}.json"), load(FIXTURES / f"sessions-{name}.json")
+            # Only displayed rows: no failed row; the one July row without versions shows its month.
             validations = {row.get("validation") for row in board["rows"]}
-            self.assertEqual(validations, {None, "verified", "unverified", "failed"})
-            # Bundle rows name their configuration; the vendor and legacy rows do not.
+            self.assertEqual(validations, {None, "legacy", "verified", "unverified"})
+            july = next(row for row in board["rows"] if row.get("validation") == "legacy")
+            self.assertEqual((key_of(july), july["sourceDate"], july["dateBasis"]), (JULY_KEY, "2026-07", "measured"))
+            self.assertNotIn("build", july)
+            # Bundle rows name their configuration and versions; the vendor row does not.
             for row in board["rows"]:
                 self.assertEqual("configurationId" in row, "evidence" in row, row)
-            self.assertEqual(any("runtimes" in row.get("build", {}) for row in board["rows"]), name == "1.2")
+                if "evidence" in row:
+                    self.assertIn("engineVersion", row["build"])
             history = next(entry for entry in sessions["keys"] if entry["key"] == LEGACY_KEY)
             self.assertEqual([s["validation"] for s in history["sessions"]], ["verified", "failed"])
             self.assertEqual((history["displayed"], history["rule"]), ("1767225600000-0-pixel", "newest-verified"))
             self.assertEqual(history["replacedRows"][0]["reason"], "replace-legacy")
+            self.assertEqual(history["replacedRows"][0]["row"]["sourceDate"], "2026-07")
+            hidden = [entry for entry in sessions["keys"] if entry["displayed"] is None]
+            self.assertTrue(hidden, "a key whose only session failed stays in the history only")
+            for entry in hidden:
+                self.assertNotIn(entry["key"], {key_of(row) for row in board["rows"]})
 
 
 class BoardConfigurationTests(Workspace):
@@ -722,15 +768,23 @@ class BoardConfigurationTests(Workspace):
         self.bundle(listed, unlisted)
         return listed, unlisted
 
-    def test_the_committed_board_lists_cpu_reference_v3(self):
+    def test_the_committed_board_declares_one_set_per_engine(self):
         board = json.loads((ROOT / "configs/board.json").read_text())
-        self.assertEqual(board["displayConfigurations"], ["cpu-reference-v3"])
+        self.assertEqual(board["schemaVersion"], 2)
+        llama = board["engines"]["llama.cpp"]
+        self.assertEqual((llama["set"], llama["configurations"], llama["engineVersion"], llama["bindingVersion"]),
+                         ("sessions", [{"id": "cpu-reference-v3", "backends": ["cpu"]}], "llama.cpp b11385 (bf9a0cc)",
+                          "llama.rn 0.13.0-rc.7"))
+        for engine in ("executorch", "genie-x", "litert-lm"):
+            self.assertEqual(board["engines"][engine], {"set": "pre-version-recording", "measured": "2026-07"})
         result = subprocess.run(["node", "--input-type=module", "-e",
                                  "import {loadBoard} from './scripts/lib/board.mjs';"
-                                 "console.log(JSON.stringify(loadBoard(process.cwd())));"],
+                                 "const b = loadBoard(process.cwd());"
+                                 "console.log(JSON.stringify({engines: Object.keys(b.engines), retired: [...b.retired.keys()]}));"],
                                 cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), {"displayConfigurations": ["cpu-reference-v3"]})
+        self.assertEqual(json.loads(result.stdout), {"engines": ["executorch", "genie-x", "litert-lm", "llama.cpp"],
+                                                     "retired": [fx.NPU_KEY]})
 
     def test_an_unlisted_configuration_is_refused_without_the_flag(self):
         self.listed_and_unlisted()
@@ -738,22 +792,23 @@ class BoardConfigurationTests(Workspace):
         result = self.aggregate("--from-bundles", self.root / "evidence", "--update", "--session", "1767225600000-1-unlisted",
                                 "--replace-legacy")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("configuration cpu-reference-v2 is not in configs/board.json", result.stderr)
+        self.assertIn("configuration cpu-reference-v2 is not in llama.cpp's set in configs/board.json", result.stderr)
         self.assertIn("--allow-unlisted-configuration", result.stderr)
         self.assertEqual(self.digests(), before)
-        # With the flag but no listed session for the key, nothing could be displayed: refused.
-        result = self.aggregate("--from-bundles", self.root / "evidence", "--update", "--session", "1767225600000-1-unlisted",
-                                "--replace-legacy", "--allow-unlisted-configuration")
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("no published session of a configuration configs/board.json lists", result.stderr)
-        self.assertEqual(self.digests(), before)
+        # With the flag it is history only: the July row of the key stays displayed (carried over).
+        legacy = self.rows()[LEGACY_KEY]
+        result = self.publish("1767225600000-1-unlisted", flags=["--allow-unlisted-configuration"])
+        self.assertIn("history only", result.stderr)
+        self.assertEqual(self.rows()[LEGACY_KEY], legacy)
+        self.assertEqual((self.entry(LEGACY_KEY)["displayed"], self.entry(LEGACY_KEY)["rule"]), (None, "no-session-in-set"))
+        self.assert_valid_data()
 
     def test_only_listed_configurations_are_displayed(self):
         self.listed_and_unlisted()
         result = self.publish("1767225600000-0-listed", "1767225600000-1-unlisted",
                               flags=["--replace-legacy", "--allow-unlisted-configuration"])
-        self.assertIn("--allow-unlisted-configuration: publishing 1767225600000-1-unlisted (configuration "
-                      "cpu-reference-v2, not in configs/board.json)", result.stderr)
+        self.assertIn("--allow-unlisted-configuration: publishing 1767225600000-1-unlisted into the history only "
+                      "(configuration cpu-reference-v2 is not in llama.cpp's set in configs/board.json)", result.stderr)
         index = json.loads(self.index.read_text())
         [entry] = [item for item in index["keys"] if item["key"] == LEGACY_KEY]
         self.assertEqual([session["sessionId"] for session in entry["sessions"]],
@@ -803,7 +858,8 @@ class BoardConfigurationTests(Workspace):
         self.assertEqual(result.returncode, 0, result.stderr)
         line = next(line for line in result.stdout.splitlines() if "1767225600000-1-unlisted |" in line
                     and line.count(" | ") == 8)
-        self.assertIn("verified; not displayed: configuration cpu-reference-v2 is not in configs/board.json", line)
+        self.assertIn("verified; not displayed: configuration cpu-reference-v2 is not in llama.cpp's set in configs/board.json",
+                      line)
         self.assertRegex(result.stdout, r"Google Pixel 9\\\|Llama 3.2 1B\\\|Q4_K_M\\\|measured \| "
                                         r"1767225600000-0-listed \| newest-verified")
 
@@ -836,11 +892,14 @@ class BoardConfigurationTests(Workspace):
         result = self.aggregate("--from-bundles", self.root / "evidence", "--dry-run", "--allow-unlisted-configuration")
         self.assertEqual(result.returncode, 2)
         self.assertIn("--allow-unlisted-configuration only applies to --update --from-bundles", result.stderr)
+        result = self.aggregate("--from-bundles", self.root / "evidence", "--dry-run", "--stage")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--stage only applies to --update --from-bundles", result.stderr)
 
 
 class PublishedBoardTests(unittest.TestCase):
-    """The checked-in board: every row published from a bundle comes from a listed configuration,
-    named by the hash of its committed file, and the files reproduce from evidence/."""
+    """The checked-in board: every row published from a bundle comes from its engine's declared
+    set, names the hash of its committed configuration file, and the files reproduce from evidence/."""
 
     def test_published_rows_name_a_listed_committed_configuration(self):
         board = json.loads((ROOT / "configs/board.json").read_text())
@@ -850,10 +909,14 @@ class PublishedBoardTests(unittest.TestCase):
         data = json.loads((ROOT / "data/benchmarks.json").read_text())
         index = json.loads((ROOT / "data/sessions/index.json").read_text())
         published = [row for row in data["rows"] if "evidence" in row]
-        self.assertEqual(len(published), len(index["keys"]))
+        self.assertEqual(len(published), len([entry for entry in index["keys"] if entry["displayed"]]))
         for row in published:
             with self.subTest(row=key_of(row)):
-                self.assertIn(row["configurationId"], board["displayConfigurations"])
+                engine_set = board["engines"][row["engine"]]
+                allowed = {item["id"]: item["backends"] for item in engine_set["configurations"]}
+                self.assertIn(row["backend"], allowed[row["configurationId"]])
+                self.assertEqual(row["build"]["engineVersion"], engine_set["engineVersion"])
+                self.assertEqual(row["build"].get("bindingVersion"), engine_set.get("bindingVersion"))
                 self.assertEqual(row["configurationSha256"], files[row["configurationId"]])
                 self.assertEqual(row["validation"], "verified")
         result = subprocess.run(["node", str(ROOT / "scripts/validate_data.mjs")], capture_output=True, text=True)

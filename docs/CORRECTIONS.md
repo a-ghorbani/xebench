@@ -7,6 +7,56 @@ facts, a short dated label is left where a reader needs it ("Corrected <date>", 
 
 Newest first.
 
+## 2026-10-19 — llama.cpp Hexagon row leaves the board
+
+- **What the board showed.** The llama.cpp NPU row (POCO F8 Ultra, Llama 3.2 1B Q4_0, 197.6
+  prefill / 38.6 decode tok/s) with `validation: "failed"` (see the 2026-10-17/18 entry below),
+  and the finding `llama-cpp-hexagon-output`, headed "one result marked failed", explaining it.
+- **What is true.** The board shows only each engine's latest measurement set and never a failed
+  row ([RUN-CONDITIONS.md, Measurement sets](./RUN-CONDITIONS.md#measurement-sets)). The Q4_0
+  setup is not measured again: its CPU reference misses a correctness probe, so the llama.cpp NPU
+  setup is Llama 3.2 1B Q4_K_M with llama.rn 0.13.0-rc.7, a new key. No llama.cpp NPU row is on
+  the board.
+- **What changed.**
+  - `configs/board.json` lists the row's key in `retiredKeys` ("replaced by Q4_K_M; Q4_0 CPU
+    reference misses a correctness probe", 2026-10-19). `data/benchmarks.json` no longer holds
+    the row; `data/sessions/index.json` keeps it byte for byte, with its numbers and correction
+    note, under `replacedRows` (`reason: "retired"`). `scripts/correct_hexagon_row.mjs --check`
+    finds it there.
+  - The finding `llama-cpp-hexagon-output` is removed from `data/findings.json`; the board does
+    not explain a row it does not show. ENGINES.md and README state that the board has no llama.cpp
+    NPU row.
+  - The 20 July 2026 rows without versions carry their month (`sourceDate` 2026-07) and its basis
+    (`dateBasis`): 18 from their run records, 2 from the first commit carrying them
+    (`scripts/date_legacy_rows.mjs`). No version is backfilled.
+
+## 2026-10-19 — Board labels and vendor notes
+
+- **What the board showed.** Labels in several spellings for the same thing: LiteRT-LM `q8`, SoC
+  `sdm845`, `"not stated"` as a quant, quants carrying extra detail (`4-bit groupwise (g=128)`,
+  `BF16 (unquantized)`, `int4 QAT (529MB, ctx 2048)`), devices `Samsung S26 Ultra` and
+  `iPhone 17 Pro`, and vendor notes in lab jargon (XNNPACK, KleidiAI, cpufreq governor, adb).
+  It also showed a vendor row for a laptop browser: LiteRT-LM GPU, MacBook Pro (M4 Max, platform
+  `macos`), Gemma 4 E2B, 76 tok/s decode via WebGPU in a browser, Google Developers Blog
+  (LiteRT-LM), 2026.
+- **What is true.** The labels name the same quants, chips and phones; only the spelling changes.
+  The board compares phones, and the MacBook figure is a browser deployment, not a phone or a
+  native app.
+- **What changed.** `data/benchmarks.json` uses one vocabulary: `Q8`, `SDM845`, no quant when the
+  source states none, `4-bit groupwise`, `BF16`, `4-bit QAT`, `4-bit QAT + LoRA` (was
+  `QAT+LoRA 4-bit`), `Samsung Galaxy S26 Ultra`,
+  `Apple iPhone 17 Pro`; each vendor note is one plain sentence with the source's meaning. The
+  MacBook Pro row is dropped from the data (its values are above). Lab rows name their source
+  "xebench" (was "PocketPal R&D lab (xebench)") and every row whose phone ships with one chip
+  names it (`chipName`, e.g. "Snapdragon 8 Elite Gen 5"); `scripts/migrate_board_labels.mjs`
+  applies both to the board rows and to the published session rows they equal. The LiteRT-LM NPU
+  finding names the issue in words ("a known LiteRT-LM issue"); the issue link stays in its
+  sources. Every row whose quant names a certain bit width carries it (`quantBits`, contract 1.3),
+  so the board can show "4-bit" next to the exact scheme. The Arm source is titled "Arm Learning
+  Path (ExecuTorch tutorial)". Dropped quant details:
+  group size 128 and the Gemma 3 bundle's 529 MB size and 2048-token context, which do not change
+  how a row compares. `scripts/check_public_text.mjs` enforces the vocabulary in CI.
+
 ## 2026-10-17/18 — llama.cpp Hexagon board row and "functional" claim
 
 PR [#25](https://github.com/a-ghorbani/xebench/pull/25).

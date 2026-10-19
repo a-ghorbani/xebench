@@ -1,6 +1,57 @@
 {
   "schema": "xebench-board",
-  "schemaVersion": 1,
-  "description": "The run configurations whose published sessions data/benchmarks.json displays. A session of another configuration is published only with aggregate.mjs --allow-unlisted-configuration, stays in data/sessions/index.json and is never displayed. See docs/RUN-CONDITIONS.md, Publication policy v1.",
-  "displayConfigurations": ["cpu-reference-v3"]
+  "schemaVersion": 2,
+  "description": "What data/benchmarks.json displays. Each engine shows exactly one measurement set: sessions of the listed configurations, on the backends listed for each (so other runs of a configuration, such as the CPU reference run of an accelerator configuration, never displace a board row), recorded with exactly this engine and binding version, measured on or after measuredFrom; or, for an engine not yet re-measured, its rows from before version recording, all measured in one month. carryover keeps rows without versions displayed until the campaign of the declared set re-measures or retires them. retiredKeys are row keys removed from the board; each reason stays here and in data/sessions/index.json, never on the page. Applied by scripts/aggregate.mjs; see docs/RUN-CONDITIONS.md, Measurement sets.",
+  "engines": {
+    "executorch": {
+      "set": "pre-version-recording",
+      "measured": "2026-07"
+    },
+    "genie-x": {
+      "set": "pre-version-recording",
+      "measured": "2026-07"
+    },
+    "litert-lm": {
+      "set": "pre-version-recording",
+      "measured": "2026-07"
+    },
+    "llama.cpp": {
+      "set": "sessions",
+      "configurations": [
+        {
+          "id": "cpu-reference-v3",
+          "backends": [
+            "cpu"
+          ]
+        }
+      ],
+      "engineVersion": "llama.cpp b11385 (bf9a0cc)",
+      "bindingVersion": "llama.rn 0.13.0-rc.7",
+      "measuredFrom": "2026-10-18",
+      "carryover": {
+        "engineVersion": "llama.cpp b11385 (bf9a0cc)",
+        "bindingVersion": "llama.rn 0.13.0-rc.7",
+        "measured": "2026-07",
+        "reason": "July 2026 llama.cpp rows (no recorded version) stay displayed until the llama.rn 0.13.0-rc.7 campaign re-measures or retires each of them; the campaign publication empties this list.",
+        "keys": [
+          "llama.cpp|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8_0|measured",
+          "llama.cpp|cpu|android|OnePlus 6|Llama 3.2 1B|Q4_K_M|measured",
+          "llama.cpp|cpu|android|OnePlus 6|Qwen2.5 1.5B|Q8_0|measured",
+          "llama.cpp|cpu|android|POCO F8 Ultra|Gemma 3 1B|Q4_0 (QAT)|measured",
+          "llama.cpp|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured",
+          "llama.cpp|cpu|android|Samsung Galaxy S23|Gemma 3 1B|Q4_0 (QAT)|measured",
+          "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
+          "llama.cpp|gpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured",
+          "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured"
+        ]
+      }
+    }
+  },
+  "retiredKeys": [
+    {
+      "key": "llama.cpp|npu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_0|measured",
+      "reason": "replaced by Q4_K_M; Q4_0 CPU reference misses a correctness probe",
+      "retiredAt": "2026-10-19"
+    }
+  ]
 }

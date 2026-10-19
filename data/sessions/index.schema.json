@@ -2,15 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/a-ghorbani/xebench/blob/main/data/sessions/index.schema.json",
   "title": "xebench published sessions",
-  "description": "Every session published from an evidence bundle, per board row key, and which one data/benchmarks.json displays. The displayed session is chosen by the selection rule from the published sessions whose row names a configuration configs/board.json lists (displayConfigurations): the newest verified, else the newest unverified, else the newest failed (newest = latest timestampIso, then sessionId). A session of another configuration stays in the history and is never displayed. Each session keeps the full row it publishes, so the row a key displays is reproducible from this file. replacedRows keeps a legacy or failed row that a published session replaced. Invariants this schema cannot express (key order, row identity, the selection, agreement with data/benchmarks.json) are enforced by scripts/lib/history.mjs.",
+  "description": "Every session published from an evidence bundle per board row key, which one data/benchmarks.json displays, and every measured row that left the board. A key's displayed session is chosen only from its sessions in the engine's displayed measurement set (configs/board.json engines: configuration and backend, engine and binding version, measured from a date): the newest verified, else the newest unverified (newest = latest timestampIso, then sessionId). A failed session is never displayed; a retired key (configs/board.json retiredKeys) displays nothing. Each session keeps the full row it publishes, so the row a key displays is reproducible from this file. replacedRows keeps every row without a session that left data/benchmarks.json: replaced by a session (replace-legacy, replace-failed) or retired (with the reason). Schema 1.0 files (selection by configuration only) are read for migration; the producer writes 1.1. Invariants this schema cannot express (key order, row identity, the selection, agreement with data/benchmarks.json and configs/board.json) are enforced by scripts/lib/history.mjs and scripts/lib/sets.mjs.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "schemaVersion", "policy", "selectionRule", "keys"],
   "properties": {
     "schema": { "const": "xebench-sessions-index" },
-    "schemaVersion": { "const": "1.0" },
+    "schemaVersion": { "enum": ["1.0", "1.1"], "description": "1.1 since measurement sets; 1.0 is read only to migrate" },
     "policy": { "const": "publication-policy-v1", "description": "docs/RUN-CONDITIONS.md, Publication policy v1" },
-    "selectionRule": { "const": "newest-verified-else-newest-unverified-else-newest-failed" },
+    "selectionRule": {
+      "enum": ["newest-verified-else-newest-unverified-else-newest-failed", "engine-set-newest-verified-else-newest-unverified"],
+      "description": "engine-set-newest-verified-else-newest-unverified since 1.1"
+    },
     "keys": { "type": "array", "items": { "$ref": "#/$defs/key" } }
   },
   "$defs": {
@@ -20,9 +23,13 @@
       "required": ["key", "displayed", "rule", "sessions", "replacedRows"],
       "properties": {
         "key": { "type": "string", "minLength": 1, "description": "the row key: engine|backend|platform|device|model|quant|provenance" },
-        "displayed": { "type": "string", "minLength": 1, "description": "sessionId of the session data/benchmarks.json shows for this key" },
-        "rule": { "enum": ["newest-verified", "newest-unverified", "newest-failed"] },
-        "sessions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/session" } },
+        "displayed": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "sessionId of the session data/benchmarks.json shows for this key; null when it shows none (retired, or no session in the engine's set)"
+        },
+        "rule": { "enum": ["newest-verified", "newest-unverified", "no-session-in-set", "retired"] },
+        "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" }, "description": "oldest first; empty for a key whose only history is a retired row" },
         "replacedRows": { "type": "array", "items": { "$ref": "#/$defs/replaced" } }
       }
     },
@@ -43,12 +50,17 @@
     "replaced": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["reason", "replacedBy", "row"],
+      "required": ["reason", "row"],
       "properties": {
-        "reason": { "enum": ["replace-legacy", "replace-failed"] },
-        "replacedBy": { "type": "string", "minLength": 1 },
+        "reason": { "enum": ["replace-legacy", "replace-failed", "retired"] },
+        "replacedBy": { "type": "string", "minLength": 1, "description": "replace-legacy and replace-failed: the session that replaced the row" },
+        "note": { "type": "string", "minLength": 1, "description": "retired: the reason from configs/board.json retiredKeys" },
+        "retiredAt": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "retired: the date from configs/board.json retiredKeys" },
         "row": { "type": "object", "description": "the row data/benchmarks.json showed before, byte for byte as JSON" }
-      }
+      },
+      "if": { "properties": { "reason": { "const": "retired" } } },
+      "then": { "required": ["note", "retiredAt"], "properties": { "replacedBy": false } },
+      "else": { "required": ["replacedBy"], "properties": { "note": false, "retiredAt": false } }
     }
   }
 }
