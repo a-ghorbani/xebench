@@ -56,7 +56,7 @@
       "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/blob/main/LICENSE",
       "gated": false,
       "usedBy": "xebenchapp/configs/cpu-reference-v3-qwen25.json and llamacpp-qwen25-opencl-v1.json",
-      "sha256Source": "Hugging Face LFS oid at this revision; equals the copy behind the July 2026 board rows"
+      "sha256Source": "Hugging Face LFS oid at this revision; equals the sha256sum of the lab copy of this file"
     }
   ]
 }

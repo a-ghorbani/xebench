@@ -941,5 +941,22 @@ class RuntimeVersionsTests(unittest.TestCase):
             with self.subTest(name=name, change=change.__name__):
                 self.assertIn(code, codes(mutate(name, change, source)))
 
+
+class AcceleratorLoadSettingTests(unittest.TestCase):
+    def test_litert_runs_refuse_llama_cpp_load_settings(self):
+        config = json.loads((ROOT / "xebenchapp/configs/f8-gemma3-accelerators-v1.json").read_text())
+        self.assertEqual(raw_session._configuration_accelerator(config), [])
+        litert = next(run for run in config["runs"] if run["engine"] == "litert-lm")
+        litert["useMmap"] = False
+        self.assertEqual({item["code"] for item in raw_session._configuration_accelerator(config)},
+                         {"configuration.run-invalid"})
+
+    def test_board_accelerator_configurations_validate(self):
+        for name in ("llamacpp-qwen25-opencl-v1.json", "llamacpp-llama32-q40-hexagon-v1.json",
+                     "llamacpp-llama32-q4km-hexagon-v1.json"):
+            with self.subTest(name):
+                config = json.loads((ROOT / "xebenchapp/configs" / name).read_text())
+                self.assertEqual(raw_session._configuration_accelerator(config), [])
+
 if __name__ == "__main__":
     unittest.main()

@@ -63,18 +63,18 @@ either, it stages the Q4_K_M file.
 
 [`cpu-reference-v3-qwen25.json`](xebenchapp/configs/cpu-reference-v3-qwen25.json),
 [`cpu-reference-v3-gemma3.json`](xebenchapp/configs/cpu-reference-v3-gemma3.json) and the
-llama.cpp accelerator configurations
-[`llamacpp-qwen25-opencl-v1.json`](xebenchapp/configs/llamacpp-qwen25-opencl-v1.json) and
-[`llamacpp-llama32-hexagon-v1.json`](xebenchapp/configs/llamacpp-llama32-hexagon-v1.json)
-run these files with cpu-reference-v3's settings:
+llama.cpp accelerator configuration
+[`llamacpp-qwen25-opencl-v1.json`](xebenchapp/configs/llamacpp-qwen25-opencl-v1.json) run these
+files with cpu-reference-v3's settings. They are board models, not the second reference model of
+issue #7:
 
 | File | Quant label | Source | Size | SHA-256 | License |
 |---|---|---|---|---|---|
 | `Qwen2.5-1.5B-Instruct-Q8_0.gguf` | Q8_0 | [`bartowski/Qwen2.5-1.5B-Instruct-GGUF`](https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF) at `9eadc66189c7641e1ddd226b8267a9119b2ce2d4` | 1646573312 bytes | `7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f` | [Apache License 2.0](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/blob/main/LICENSE) |
 | `gemma-3-1b-it-q4_0.gguf` | Q4_0 (QAT) | `google/gemma-3-1b-it-qat-q4_0-gguf` (gated), [pinned below](#litert-accelerator-experiment-accelerator-v1) | 1003541152 bytes | `95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a` | Gemma Terms of Use |
 
-The Qwen2.5 file is the copy behind the July 2026 board rows: its SHA-256 equals the Hugging
-Face LFS oid at the pinned revision. Its pin is in
+The pinned Qwen2.5 bytes are the lab's copy of this file (SHA-256 checked on the lab host,
+`sha256sum`), which equals the Hugging Face LFS oid at the pinned revision. Its pin is in
 [`configs/models/reference-models.json`](configs/models/reference-models.json); the Gemma pin
 stays in [`configs/models/experimental-models.json`](configs/models/experimental-models.json).
 Stage them by name:

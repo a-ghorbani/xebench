@@ -1,4 +1,6 @@
 import {parseAcceleratorConfig, parseConfig} from '../src/harness/config';
+import {chatTurn} from '../src/harness/prompts';
+import f8Gemma from '../configs/f8-gemma3-accelerators-v1.json';
 import bundled from '../configs/cpu-reference-v2.json';
 import v1 from '../configs/cpu-reference-v1.json';
 import experiment from '../configs/experiment-charging-ab-v1.json';
@@ -6,7 +8,8 @@ import v3 from '../configs/cpu-reference-v3.json';
 import qwen from '../configs/cpu-reference-v3-qwen25.json';
 import gemma from '../configs/cpu-reference-v3-gemma3.json';
 import qwenOpencl from '../configs/llamacpp-qwen25-opencl-v1.json';
-import hexagon from '../configs/llamacpp-llama32-hexagon-v1.json';
+import q40Hexagon from '../configs/llamacpp-llama32-q40-hexagon-v1.json';
+import q4kmHexagon from '../configs/llamacpp-llama32-q4km-hexagon-v1.json';
 
 test('bundled CPU reference configuration is valid', () => {
   expect(parseConfig(bundled)).toEqual(bundled);
@@ -116,7 +119,7 @@ test('the board configurations for Qwen2.5 and Gemma 3 parse to their files with
     expect(parseConfig(config)).toEqual(config);
     expect(config.runs[0]).toMatchObject({useMmap: false, useMlock: false, noExtraBufts: false, flashAttnType: 'auto'});
   }
-  for (const config of [qwenOpencl, hexagon]) {
+  for (const config of [qwenOpencl, q40Hexagon, q4kmHexagon]) {
     expect(parseAcceleratorConfig(config)).toEqual(config);
     for (const run of config.runs) {
       expect(run).toMatchObject({useMmap: false, useMlock: false, noExtraBufts: false, flashAttnType: 'auto'});
@@ -135,4 +138,19 @@ test('accelerator load settings apply to llama.cpp runs only and are validated',
     expect(() => parseAcceleratorConfig({...qwenOpencl, runs: [qwenOpencl.runs[0], {...qwenOpencl.runs[1], ...change}]}))
       .toThrow();
   }
+});
+
+test('LiteRT-LM runs refuse llama.cpp load settings', () => {
+  const litert = f8Gemma.runs.findIndex(run => run.engine === 'litert-lm');
+  for (const change of [{useMmap: false}, {flashAttnType: 'auto'}]) {
+    const runs = f8Gemma.runs.map((run, index) => (index === litert ? {...run, ...change} : run));
+    expect(() => parseAcceleratorConfig({...f8Gemma, runs})).toThrow('apply to llama.cpp only');
+  }
+});
+
+test('the qwen25 chat template is a ChatML user turn without a system message', () => {
+  expect(chatTurn('qwen25', 'Hi')).toBe('<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n');
+  expect(chatTurn('llama32', 'Hi')).toBe(
+    '<|start_header_id|>user<|end_header_id|>\n\nHi<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n');
+  expect(chatTurn('gemma3', 'Hi')).toBe('<start_of_turn>user\nHi<end_of_turn>\n<start_of_turn>model\n');
 });

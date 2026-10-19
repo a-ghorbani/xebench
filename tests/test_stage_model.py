@@ -383,8 +383,8 @@ class BoardConfigurationPinTests(unittest.TestCase):
         ('cpu-reference-v3-qwen25.json', 'qwen25-1.5b-q80-cpu'): ('Qwen2.5 1.5B', 'Q8_0', 'Qwen2.5-1.5B-Instruct-Q8_0.gguf'),
         ('cpu-reference-v3-gemma3.json', 'gemma3-1b-q40-qat-cpu'): ('Gemma 3 1B', 'Q4_0 (QAT)', 'gemma-3-1b-it-q4_0.gguf'),
         ('llamacpp-qwen25-opencl-v1.json', 'qwen25-1.5b-q80-opencl'): ('Qwen2.5 1.5B', 'Q8_0', 'Qwen2.5-1.5B-Instruct-Q8_0.gguf'),
-        ('llamacpp-llama32-hexagon-v1.json', 'llama32-q40-hexagon'): ('Llama 3.2 1B', 'Q4_0', 'Llama-3.2-1B-Instruct-Q4_0.gguf'),
-        ('llamacpp-llama32-hexagon-v1.json', 'llama32-q4km-hexagon'): ('Llama 3.2 1B', 'Q4_K_M', 'Llama-3.2-1B-Instruct-Q4_K_M.gguf'),
+        ('llamacpp-llama32-q40-hexagon-v1.json', 'llama32-q40-hexagon'): ('Llama 3.2 1B', 'Q4_0', 'Llama-3.2-1B-Instruct-Q4_0.gguf'),
+        ('llamacpp-llama32-q4km-hexagon-v1.json', 'llama32-q4km-hexagon'): ('Llama 3.2 1B', 'Q4_K_M', 'Llama-3.2-1B-Instruct-Q4_K_M.gguf'),
     }
 
     def test_every_run_pins_its_manifest_file_with_the_board_labels(self):

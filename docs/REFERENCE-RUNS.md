@@ -40,12 +40,20 @@ through the accelerator protocol, which adds the output-correctness gate against
 the same file ([litert-accelerators](experiments/litert-accelerators.md)):
 [`llamacpp-qwen25-opencl-v1.json`](../xebenchapp/configs/llamacpp-qwen25-opencl-v1.json)
 (Qwen2.5 1.5B Q8_0, OpenCL, `chatTemplate: qwen25`, a ChatML user turn without a system
-message) and
-[`llamacpp-llama32-hexagon-v1.json`](../xebenchapp/configs/llamacpp-llama32-hexagon-v1.json)
+message),
+[`llamacpp-llama32-q40-hexagon-v1.json`](../xebenchapp/configs/llamacpp-llama32-q40-hexagon-v1.json)
+and
+[`llamacpp-llama32-q4km-hexagon-v1.json`](../xebenchapp/configs/llamacpp-llama32-q4km-hexagon-v1.json)
 (Llama 3.2 1B Q4_0 and Q4_K_M, Hexagon `HTP0`, `chatTemplate: llama32`). Accelerator runs take
 the same optional load fields as reference runs; these set cpu-reference-v3's values on every
-run, the gate's CPU references included. The CPU reference prompt (`std-pp512-v1`) is a
-Llama 3.2 turn for every model.
+run, the gate's CPU references included.
+
+The two protocols measure different prompts. The CPU reference prompt (`std-pp512-v1`) is a
+Llama 3.2 turn for every model; the accelerator protocol measures `std-chat-v1`, the same body
+as one user turn in the model's own template. A row's `asStated` names its prompt. An
+accelerator configuration's CPU run is the gate's reference, not a board CPU measurement:
+only its GPU and NPU sessions are published, so the board's CPU rows keep the reference
+prompt.
 
 A run field that is not set takes the harness default in parentheses
 (`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).

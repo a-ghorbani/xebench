@@ -25,7 +25,8 @@ import s23Config from '../configs/s23-gemma3-accelerators-v1.json';
 import bugReproConfig from '../configs/s23-litert-npu-bugrepro-v1.json';
 import llamaHexagonConfig from '../configs/f8-llama32-hexagon-check-v1.json';
 import qwenOpenclConfig from '../configs/llamacpp-qwen25-opencl-v1.json';
-import boardHexagonConfig from '../configs/llamacpp-llama32-hexagon-v1.json';
+import q40HexagonConfig from '../configs/llamacpp-llama32-q40-hexagon-v1.json';
+import q4kmHexagonConfig from '../configs/llamacpp-llama32-q4km-hexagon-v1.json';
 
 declare const __dirname: string;
 declare const process: {env: Record<string, string | undefined>};
@@ -375,7 +376,7 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
   out['hashMismatch-npu'] = wrong.records['litert-npu'];
 
   // The committed llama.cpp board configurations, exactly as staged (v3 load settings).
-  for (const [prefix, config] of [['qwen25', qwenOpenclConfig], ['board-hexagon', boardHexagonConfig]] as const) {
+  for (const [prefix, config] of [['qwen25', qwenOpenclConfig], ['board-hexagon', q40HexagonConfig], ['board-hexagon', q4kmHexagonConfig]] as const) {
     const board = await runConfiguration(parseAcceleratorConfig(config));
     for (const [id, record] of Object.entries(board.records)) out[`${prefix}-${id}`] = record;
   }
@@ -418,7 +419,8 @@ test('accelerator records match the committed fixture validated by the host sche
   });
   // The board configurations' records carry exactly the committed files and their load settings.
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].configuration).toEqual(qwenOpenclConfig);
-  expect(records['board-hexagon-llama32-q40-hexagon'].configuration).toEqual(boardHexagonConfig);
+  expect(records['board-hexagon-llama32-q40-hexagon'].configuration).toEqual(q40HexagonConfig);
+  expect(records['board-hexagon-llama32-q4km-hexagon'].configuration).toEqual(q4kmHexagonConfig);
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].effectiveSettings!.init).toMatchObject({use_mmap: false,
     use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto', n_gpu_layers: 99});
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].protocol.chatTemplate).toBe('qwen25');
