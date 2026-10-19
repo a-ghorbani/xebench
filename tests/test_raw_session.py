@@ -43,11 +43,13 @@ class AppEmittedRecordTests(unittest.TestCase):
             "cleanupFailedProbePending", "laterReadinessTimeout", "headroomUnavailable", "monitorStopError",
             "decimatedSamples", "onBattery", "riseOverride", "chargingRecordOnly", "noExpectedHash", "modelHashMismatch",
             "stagedConfiguration", "buildUnavailable", "executionUnreported", "referenceV2", "referenceV1Staged",
-        "referenceV3Staged-Q4_K_M", "referenceV3Staged-Q4_0", "referenceV3Staged-Q8_0"})
+        "referenceV3Staged-Q4_K_M", "referenceV3Staged-Q4_0", "referenceV3Staged-Q8_0",
+        "referenceV3Qwen25Staged", "referenceV3Gemma3Staged"})
         self.assertEqual(set(V2_FROZEN), set(APP) - {"noExpectedHash", "modelHashMismatch", "stagedConfiguration",
                                                      "buildUnavailable", "executionUnreported", "referenceV2",
                                                  "referenceV1Staged", "referenceV3Staged-Q4_K_M",
-                                                 "referenceV3Staged-Q4_0", "referenceV3Staged-Q8_0"})
+                                                 "referenceV3Staged-Q4_0", "referenceV3Staged-Q8_0",
+                                                 "referenceV3Qwen25Staged", "referenceV3Gemma3Staged"})
         self.assertEqual({r["protocol"]["version"] for r in V2_FROZEN.values()}, {"cpu-reference-v2"})
         self.assertEqual({r["protocol"]["version"] for r in APP.values()}, {"cpu-reference-v3"})
         for records in (APP, LEGACY, V2_FROZEN):
@@ -938,6 +940,55 @@ class RuntimeVersionsTests(unittest.TestCase):
         for source, name, change, code in cases:
             with self.subTest(name=name, change=change.__name__):
                 self.assertIn(code, codes(mutate(name, change, source)))
+
+
+class AcceleratorLoadSettingTests(unittest.TestCase):
+    def test_litert_runs_refuse_llama_cpp_load_settings(self):
+        config = json.loads((ROOT / "xebenchapp/configs/f8-gemma3-accelerators-v1.json").read_text())
+        self.assertEqual(raw_session._configuration_accelerator(config), [])
+        litert = next(run for run in config["runs"] if run["engine"] == "litert-lm")
+        litert["useMmap"] = False
+        self.assertEqual({item["code"] for item in raw_session._configuration_accelerator(config)},
+                         {"configuration.run-invalid"})
+
+    def test_board_accelerator_configurations_validate(self):
+        for name in ("llamacpp-qwen25-opencl-v1.json", "llamacpp-llama32-q4km-hexagon-v1.json"):
+            with self.subTest(name):
+                config = json.loads((ROOT / "xebenchapp/configs" / name).read_text())
+                self.assertEqual(raw_session._configuration_accelerator(config), [])
+
+
+class MeasuredPromptTests(unittest.TestCase):
+    """accelerator-v2 records measure the prompt their configuration's measuredPrompt names."""
+
+    def accel(self, name):
+        return copy.deepcopy(ACCEL[name])
+
+    def test_board_configurations_measure_the_cpu_reference_prompt(self):
+        for name in ("qwen25-qwen25-1.5b-q80-opencl", "board-hexagon-llama32-q4km-hexagon"):
+            record = self.accel(name)
+            self.assertEqual(record["protocol"]["promptLabel"], "std-pp512-v1")
+            self.assertEqual(raw_session.text_sha256(record["protocol"]["prompt"]), raw_session.STANDARD_PROMPT_SHA256)
+            self.assertEqual(raw_session.validate(record), [])
+            # The CPU reference records carry the same prompt.
+            self.assertEqual(raw_session.text_sha256(APP["referenceV3Qwen25Staged"]["protocol"]["prompt"]),
+                             raw_session.STANDARD_PROMPT_SHA256)
+
+    def test_a_prompt_other_than_the_configured_one_is_refused(self):
+        record = self.accel("qwen25-qwen25-1.5b-q80-opencl")
+        record["configuration"].pop("measuredPrompt")
+        self.assertIn("protocol.prompt", {item["code"] for item in raw_session.validate(record)})
+        record = self.accel("f8-llama-hexagon")
+        record["configuration"]["measuredPrompt"] = "std-pp512-v1"
+        self.assertIn("protocol.prompt", {item["code"] for item in raw_session.validate(record)})
+        record = self.accel("qwen25-qwen25-1.5b-q80-opencl")
+        record["protocol"]["promptFormat"] = "user-turn-chat-template"
+        self.assertIn("protocol.prompt", {item["code"] for item in raw_session.validate(record)})
+
+    def test_std_pp512_needs_llama_cpp_runs_only(self):
+        config = json.loads((ROOT / "xebenchapp/configs/f8-gemma3-accelerators-v1.json").read_text())
+        config["measuredPrompt"] = "std-pp512-v1"
+        self.assertIn("configuration.run-invalid", {item["code"] for item in raw_session._configuration_accelerator(config)})
 
 if __name__ == "__main__":
     unittest.main()

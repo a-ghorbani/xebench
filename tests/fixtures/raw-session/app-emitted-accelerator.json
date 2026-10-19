@@ -7991,6 +7991,3823 @@
         ]
       }
     },
+    "qwen25-qwen25-1.5b-q80-opencl": {
+      "runId": "1767225600000-0-accel",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f",
+        "sizeBytes": 600000000,
+        "expectedSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.8-accelerator",
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 99,
+          "use_mmap": false,
+          "use_mlock": false,
+          "no_extra_bufts": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": true,
+          "reasonNoGPU": null,
+          "devices": [
+            "GPUOpenCL"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 1,
+          "gpu": true,
+          "reasonNoGPU": null,
+          "devices": [
+            "GPUOpenCL"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 2,
+          "gpu": true,
+          "reasonNoGPU": null,
+          "devices": [
+            "GPUOpenCL"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        }
+      ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture (gpu)",
+      "backend": "gpu",
+      "observedBackend": {
+        "status": "confirmed",
+        "source": "engine-report",
+        "repetitions": 3
+      },
+      "platform": "android",
+      "model": "Qwen2.5 1.5B",
+      "quant": "Q8_0",
+      "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+      "purpose": "measurement",
+      "configuration": {
+        "schemaVersion": 2,
+        "id": "llamacpp-qwen25-opencl-v1",
+        "nColdRuns": 3,
+        "cooldownSec": 120,
+        "readinessTimeoutSec": 900,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "chatTemplate": "qwen25",
+        "measuredPrompt": "std-pp512-v1",
+        "runs": [
+          {
+            "id": "qwen25-1.5b-q80-cpu",
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "purpose": "measurement",
+            "model": "Qwen2.5 1.5B",
+            "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+            "quant": "Q8_0",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "referenceRunId": null,
+            "modelSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f",
+            "nGpuLayers": 0,
+            "useMmap": false,
+            "useMlock": false,
+            "noExtraBufts": false,
+            "flashAttnType": "auto"
+          },
+          {
+            "id": "qwen25-1.5b-q80-opencl",
+            "engine": "llama.cpp",
+            "backend": "gpu",
+            "purpose": "measurement",
+            "model": "Qwen2.5 1.5B",
+            "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+            "quant": "Q8_0",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "referenceRunId": "qwen25-1.5b-q80-cpu",
+            "modelSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f",
+            "nGpuLayers": 99,
+            "useMmap": false,
+            "useMlock": false,
+            "noExtraBufts": false,
+            "flashAttnType": "auto"
+          }
+        ]
+      },
+      "configurationRunId": "qwen25-1.5b-q80-opencl",
+      "runOrder": {
+        "method": "mulberry32-fisher-yates-v1",
+        "seed": 7,
+        "seedSource": "generated",
+        "order": [
+          "qwen25-1.5b-q80-opencl",
+          "qwen25-1.5b-q80-cpu"
+        ],
+        "position": 0
+      },
+      "protocol": {
+        "version": "accelerator-v2",
+        "nColdRuns": 3,
+        "cooldownSec": 120,
+        "readinessTimeoutSec": 900,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "promptFormat": "raw-pretemplated",
+        "chatTemplate": "qwen25",
+        "maxDecodeTokens": 128,
+        "sampling": "greedy",
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing and the correctness gate warm OS file and engine caches",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false,
+        "gate": "output-gate-v1"
+      },
+      "status": "complete",
+      "repetitionsPlanned": 3,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": null,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 74
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": true,
+              "devices": [
+                "GPUOpenCL"
+              ],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": null
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1502,
+          "ttftMs": 121,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 903.5,
+          "decodeTps": 40.25,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        },
+        {
+          "runIndex": 1,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 75
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": true,
+              "devices": [
+                "GPUOpenCL"
+              ],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": null
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1503,
+          "ttftMs": 122,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 907,
+          "decodeTps": 40.5,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        },
+        {
+          "runIndex": 2,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 76
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": true,
+              "devices": [
+                "GPUOpenCL"
+              ],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": null
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1504,
+          "ttftMs": 123,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 910.5,
+          "decodeTps": 40.75,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 1503,
+          "iqr": 1,
+          "min": 1502,
+          "max": 1504,
+          "n": 3
+        },
+        "ttftMs": {
+          "median": 122,
+          "iqr": 1,
+          "min": 121,
+          "max": 123,
+          "n": 3
+        },
+        "prefillTps": {
+          "median": 907,
+          "iqr": 3.5,
+          "min": 903.5,
+          "max": 910.5,
+          "n": 3
+        },
+        "decodeTps": {
+          "median": 40.5,
+          "iqr": 0.25,
+          "min": 40.25,
+          "max": 40.75,
+          "n": 3
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "satisfied"
+      },
+      "guardsPassed": null,
+      "guardNotes": [],
+      "gateBackend": {
+        "status": "confirmed",
+        "source": "engine-report",
+        "report": {
+          "gpu": true,
+          "devices": [
+            "GPUOpenCL"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "reasonNoGpu": null
+        },
+        "libraries": null
+      },
+      "correctness": {
+        "version": "output-gate-v1",
+        "role": "candidate",
+        "status": "pass",
+        "reasons": [],
+        "reference": {
+          "configurationRunId": "qwen25-1.5b-q80-cpu",
+          "backend": "cpu",
+          "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+          "artifactSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f",
+          "sameArtifact": true,
+          "status": "pass"
+        },
+        "error": null,
+        "probes": [
+          {
+            "id": "short-capital",
+            "kind": "answer",
+            "prompt": "What is the capital of France? Answer with one word.",
+            "expected": "paris",
+            "maxOutputTokens": 32,
+            "output": "Paris",
+            "passed": true,
+            "reference": {
+              "output": "Paris",
+              "passed": true
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 5
+          },
+          {
+            "id": "long-fact-last",
+            "kind": "answer",
+            "prompt": "The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The secret code word is PELICAN. Question: what is the secret code word? Answer with the code word only.",
+            "expected": "pelican",
+            "maxOutputTokens": 32,
+            "output": "PELICAN",
+            "passed": true,
+            "reference": {
+              "output": "PELICAN",
+              "passed": true
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 7
+          },
+          {
+            "id": "long-fact-first",
+            "kind": "answer",
+            "prompt": "The secret code word is PELICAN. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. Question: what is the secret code word? Answer with the code word only.",
+            "expected": "pelican",
+            "maxOutputTokens": 32,
+            "output": "PELICAN",
+            "passed": true,
+            "reference": {
+              "output": "PELICAN",
+              "passed": true
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 7
+          },
+          {
+            "id": "long-fact-middle",
+            "kind": "answer",
+            "prompt": "The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The meeting room for the review is room 417. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. Question: which room is the review in? Answer with the room number only.",
+            "expected": "417",
+            "maxOutputTokens": 32,
+            "output": "Room 417.",
+            "passed": true,
+            "reference": {
+              "output": "Room 417.",
+              "passed": true
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 9
+          },
+          {
+            "id": "measured-prompt",
+            "kind": "agreement",
+            "prompt": "Summarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.",
+            "expected": null,
+            "maxOutputTokens": 128,
+            "output": "Measurement moved from anatomy to physical constants.",
+            "passed": null,
+            "reference": {
+              "output": "Measurement moved from anatomy to physical constants.",
+              "passed": null
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 53
+          }
+        ]
+      },
+      "comparison": {
+        "status": "valid",
+        "reasons": []
+      }
+    },
+    "qwen25-qwen25-1.5b-q80-cpu": {
+      "runId": "1767225600000-1-accel",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f",
+        "sizeBytes": 600000000,
+        "expectedSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.8-accelerator",
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": false,
+          "use_mlock": false,
+          "no_extra_bufts": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 1,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 2,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        }
+      ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": {
+        "status": "confirmed",
+        "source": "engine-report",
+        "repetitions": 3
+      },
+      "platform": "android",
+      "model": "Qwen2.5 1.5B",
+      "quant": "Q8_0",
+      "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+      "purpose": "measurement",
+      "configuration": {
+        "schemaVersion": 2,
+        "id": "llamacpp-qwen25-opencl-v1",
+        "nColdRuns": 3,
+        "cooldownSec": 120,
+        "readinessTimeoutSec": 900,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "chatTemplate": "qwen25",
+        "measuredPrompt": "std-pp512-v1",
+        "runs": [
+          {
+            "id": "qwen25-1.5b-q80-cpu",
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "purpose": "measurement",
+            "model": "Qwen2.5 1.5B",
+            "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+            "quant": "Q8_0",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "referenceRunId": null,
+            "modelSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f",
+            "nGpuLayers": 0,
+            "useMmap": false,
+            "useMlock": false,
+            "noExtraBufts": false,
+            "flashAttnType": "auto"
+          },
+          {
+            "id": "qwen25-1.5b-q80-opencl",
+            "engine": "llama.cpp",
+            "backend": "gpu",
+            "purpose": "measurement",
+            "model": "Qwen2.5 1.5B",
+            "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+            "quant": "Q8_0",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "referenceRunId": "qwen25-1.5b-q80-cpu",
+            "modelSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f",
+            "nGpuLayers": 99,
+            "useMmap": false,
+            "useMlock": false,
+            "noExtraBufts": false,
+            "flashAttnType": "auto"
+          }
+        ]
+      },
+      "configurationRunId": "qwen25-1.5b-q80-cpu",
+      "runOrder": {
+        "method": "mulberry32-fisher-yates-v1",
+        "seed": 7,
+        "seedSource": "generated",
+        "order": [
+          "qwen25-1.5b-q80-opencl",
+          "qwen25-1.5b-q80-cpu"
+        ],
+        "position": 1
+      },
+      "protocol": {
+        "version": "accelerator-v2",
+        "nColdRuns": 3,
+        "cooldownSec": 120,
+        "readinessTimeoutSec": 900,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "promptFormat": "raw-pretemplated",
+        "chatTemplate": "qwen25",
+        "maxDecodeTokens": 128,
+        "sampling": "greedy",
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing and the correctness gate warm OS file and engine caches",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false,
+        "gate": "output-gate-v1"
+      },
+      "status": "complete",
+      "repetitionsPlanned": 3,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 77
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": false,
+              "devices": [],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": "GPU backend is available but was not selected"
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1501,
+          "ttftMs": 121,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 903.5,
+          "decodeTps": 40.25,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        },
+        {
+          "runIndex": 1,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 78
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": false,
+              "devices": [],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": "GPU backend is available but was not selected"
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1502,
+          "ttftMs": 122,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 907,
+          "decodeTps": 40.5,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        },
+        {
+          "runIndex": 2,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 79
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": false,
+              "devices": [],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": "GPU backend is available but was not selected"
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1503,
+          "ttftMs": 123,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 910.5,
+          "decodeTps": 40.75,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 1502,
+          "iqr": 1,
+          "min": 1501,
+          "max": 1503,
+          "n": 3
+        },
+        "ttftMs": {
+          "median": 122,
+          "iqr": 1,
+          "min": 121,
+          "max": 123,
+          "n": 3
+        },
+        "prefillTps": {
+          "median": 907,
+          "iqr": 3.5,
+          "min": 903.5,
+          "max": 910.5,
+          "n": 3
+        },
+        "decodeTps": {
+          "median": 40.5,
+          "iqr": 0.25,
+          "min": 40.25,
+          "max": 40.75,
+          "n": 3
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "satisfied"
+      },
+      "guardsPassed": null,
+      "guardNotes": [],
+      "gateBackend": {
+        "status": "confirmed",
+        "source": "engine-report",
+        "report": {
+          "gpu": false,
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "reasonNoGpu": "GPU backend is available but was not selected"
+        },
+        "libraries": null
+      },
+      "correctness": {
+        "version": "output-gate-v1",
+        "role": "reference",
+        "status": "pass",
+        "reasons": [],
+        "reference": null,
+        "error": null,
+        "probes": [
+          {
+            "id": "short-capital",
+            "kind": "answer",
+            "prompt": "What is the capital of France? Answer with one word.",
+            "expected": "paris",
+            "maxOutputTokens": 32,
+            "output": "Paris",
+            "passed": true,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          },
+          {
+            "id": "long-fact-last",
+            "kind": "answer",
+            "prompt": "The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The secret code word is PELICAN. Question: what is the secret code word? Answer with the code word only.",
+            "expected": "pelican",
+            "maxOutputTokens": 32,
+            "output": "PELICAN",
+            "passed": true,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          },
+          {
+            "id": "long-fact-first",
+            "kind": "answer",
+            "prompt": "The secret code word is PELICAN. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. Question: what is the secret code word? Answer with the code word only.",
+            "expected": "pelican",
+            "maxOutputTokens": 32,
+            "output": "PELICAN",
+            "passed": true,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          },
+          {
+            "id": "long-fact-middle",
+            "kind": "answer",
+            "prompt": "The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The meeting room for the review is room 417. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. Question: which room is the review in? Answer with the room number only.",
+            "expected": "417",
+            "maxOutputTokens": 32,
+            "output": "Room 417.",
+            "passed": true,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          },
+          {
+            "id": "measured-prompt",
+            "kind": "agreement",
+            "prompt": "Summarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.",
+            "expected": null,
+            "maxOutputTokens": 128,
+            "output": "Measurement moved from anatomy to physical constants.",
+            "passed": null,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          }
+        ]
+      },
+      "comparison": {
+        "status": "valid",
+        "reasons": []
+      }
+    },
+    "board-hexagon-llama32-q4km-hexagon": {
+      "runId": "1767225600000-0-accel",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 600000000,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.8-accelerator",
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 99,
+          "use_mmap": false,
+          "use_mlock": false,
+          "no_extra_bufts": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16",
+          "devices": [
+            "HTP0"
+          ]
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": true,
+          "reasonNoGPU": null,
+          "devices": [
+            "HTP0"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 1,
+          "gpu": true,
+          "reasonNoGPU": null,
+          "devices": [
+            "HTP0"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 2,
+          "gpu": true,
+          "reasonNoGPU": null,
+          "devices": [
+            "HTP0"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        }
+      ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture (npu)",
+      "backend": "npu",
+      "observedBackend": {
+        "status": "confirmed",
+        "source": "engine-report",
+        "repetitions": 3
+      },
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "purpose": "measurement",
+      "configuration": {
+        "schemaVersion": 2,
+        "id": "llamacpp-llama32-q4km-hexagon-v1",
+        "nColdRuns": 3,
+        "cooldownSec": 120,
+        "readinessTimeoutSec": 900,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "chatTemplate": "llama32",
+        "measuredPrompt": "std-pp512-v1",
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "purpose": "measurement",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "referenceRunId": null,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+            "nGpuLayers": 0,
+            "useMmap": false,
+            "useMlock": false,
+            "noExtraBufts": false,
+            "flashAttnType": "auto"
+          },
+          {
+            "id": "llama32-q4km-hexagon",
+            "engine": "llama.cpp",
+            "backend": "npu",
+            "purpose": "measurement",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "referenceRunId": "llama32-q4km-cpu",
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+            "nGpuLayers": 99,
+            "devices": [
+              "HTP0"
+            ],
+            "useMmap": false,
+            "useMlock": false,
+            "noExtraBufts": false,
+            "flashAttnType": "auto"
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-hexagon",
+      "runOrder": {
+        "method": "mulberry32-fisher-yates-v1",
+        "seed": 7,
+        "seedSource": "generated",
+        "order": [
+          "llama32-q4km-hexagon",
+          "llama32-q4km-cpu"
+        ],
+        "position": 0
+      },
+      "protocol": {
+        "version": "accelerator-v2",
+        "nColdRuns": 3,
+        "cooldownSec": 120,
+        "readinessTimeoutSec": 900,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "promptFormat": "raw-pretemplated",
+        "chatTemplate": "llama32",
+        "maxDecodeTokens": 128,
+        "sampling": "greedy",
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing and the correctness gate warm OS file and engine caches",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false,
+        "gate": "output-gate-v1"
+      },
+      "status": "complete",
+      "repetitionsPlanned": 3,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": null,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 82
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": true,
+              "devices": [
+                "HTP0"
+              ],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": null
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1502,
+          "ttftMs": 121,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 903.5,
+          "decodeTps": 40.25,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        },
+        {
+          "runIndex": 1,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 83
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": true,
+              "devices": [
+                "HTP0"
+              ],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": null
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1503,
+          "ttftMs": 122,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 907,
+          "decodeTps": 40.5,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        },
+        {
+          "runIndex": 2,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 84
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": true,
+              "devices": [
+                "HTP0"
+              ],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": null
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1504,
+          "ttftMs": 123,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 910.5,
+          "decodeTps": 40.75,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 1503,
+          "iqr": 1,
+          "min": 1502,
+          "max": 1504,
+          "n": 3
+        },
+        "ttftMs": {
+          "median": 122,
+          "iqr": 1,
+          "min": 121,
+          "max": 123,
+          "n": 3
+        },
+        "prefillTps": {
+          "median": 907,
+          "iqr": 3.5,
+          "min": 903.5,
+          "max": 910.5,
+          "n": 3
+        },
+        "decodeTps": {
+          "median": 40.5,
+          "iqr": 0.25,
+          "min": 40.25,
+          "max": 40.75,
+          "n": 3
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "satisfied"
+      },
+      "guardsPassed": null,
+      "guardNotes": [],
+      "gateBackend": {
+        "status": "confirmed",
+        "source": "engine-report",
+        "report": {
+          "gpu": true,
+          "devices": [
+            "HTP0"
+          ],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "reasonNoGpu": null
+        },
+        "libraries": null
+      },
+      "correctness": {
+        "version": "output-gate-v1",
+        "role": "candidate",
+        "status": "pass",
+        "reasons": [],
+        "reference": {
+          "configurationRunId": "llama32-q4km-cpu",
+          "backend": "cpu",
+          "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+          "artifactSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+          "sameArtifact": true,
+          "status": "pass"
+        },
+        "error": null,
+        "probes": [
+          {
+            "id": "short-capital",
+            "kind": "answer",
+            "prompt": "What is the capital of France? Answer with one word.",
+            "expected": "paris",
+            "maxOutputTokens": 32,
+            "output": "Paris",
+            "passed": true,
+            "reference": {
+              "output": "Paris",
+              "passed": true
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 5
+          },
+          {
+            "id": "long-fact-last",
+            "kind": "answer",
+            "prompt": "The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The secret code word is PELICAN. Question: what is the secret code word? Answer with the code word only.",
+            "expected": "pelican",
+            "maxOutputTokens": 32,
+            "output": "PELICAN",
+            "passed": true,
+            "reference": {
+              "output": "PELICAN",
+              "passed": true
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 7
+          },
+          {
+            "id": "long-fact-first",
+            "kind": "answer",
+            "prompt": "The secret code word is PELICAN. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. Question: what is the secret code word? Answer with the code word only.",
+            "expected": "pelican",
+            "maxOutputTokens": 32,
+            "output": "PELICAN",
+            "passed": true,
+            "reference": {
+              "output": "PELICAN",
+              "passed": true
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 7
+          },
+          {
+            "id": "long-fact-middle",
+            "kind": "answer",
+            "prompt": "The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The meeting room for the review is room 417. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. Question: which room is the review in? Answer with the room number only.",
+            "expected": "417",
+            "maxOutputTokens": 32,
+            "output": "Room 417.",
+            "passed": true,
+            "reference": {
+              "output": "Room 417.",
+              "passed": true
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 9
+          },
+          {
+            "id": "measured-prompt",
+            "kind": "agreement",
+            "prompt": "Summarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.",
+            "expected": null,
+            "maxOutputTokens": 128,
+            "output": "Measurement moved from anatomy to physical constants.",
+            "passed": null,
+            "reference": {
+              "output": "Measurement moved from anatomy to physical constants.",
+              "passed": null
+            },
+            "exactMatch": true,
+            "commonPrefixChars": 53
+          }
+        ]
+      },
+      "comparison": {
+        "status": "valid",
+        "reasons": []
+      }
+    },
+    "board-hexagon-llama32-q4km-cpu": {
+      "runId": "1767225600000-1-accel",
+      "timestampIso": "2026-01-01T00:00:00.000Z",
+      "deviceInfo": {
+        "model": "Fixture",
+        "androidRelease": "16"
+      },
+      "artifact": {
+        "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+        "sizeBytes": 600000000,
+        "expectedSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+      },
+      "build": {
+        "status": "reported",
+        "gitCommit": "0123456789abcdef0123456789abcdef01234567",
+        "gitDirty": false,
+        "flavor": "experimental",
+        "buildType": "release",
+        "versionName": "1.0-experimental",
+        "versionCode": 1,
+        "signingCertSha256": [
+          "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+        ]
+      },
+      "configurationSource": {
+        "kind": "staged",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "schema": "xebench-raw",
+      "schemaVersion": 1,
+      "harnessVersion": "xebench-0.8-accelerator",
+      "effectiveSettings": {
+        "binding": "llama.rn",
+        "init": {
+          "n_ctx": 2048,
+          "n_batch": 512,
+          "n_ubatch": 512,
+          "n_threads": 4,
+          "n_gpu_layers": 0,
+          "use_mmap": false,
+          "use_mlock": false,
+          "no_extra_bufts": false,
+          "flash_attn_type": "auto",
+          "cache_type_k": "f16",
+          "cache_type_v": "f16"
+        },
+        "completion": {
+          "n_predict": 128,
+          "temperature": 0,
+          "seed": 42
+        },
+        "unlisted": "binding-defaults",
+        "distribution": {
+          "source": "npm",
+          "package": "llama.rn",
+          "version": "0.0.0-fixture",
+          "patches": []
+        }
+      },
+      "executionReports": [
+        {
+          "runIndex": 0,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 1,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        },
+        {
+          "runIndex": 2,
+          "gpu": false,
+          "reasonNoGPU": "GPU backend is available but was not selected",
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "systemInfo": "system_info: n_threads = 4 / 8 | CPU : NEON = 1 | ",
+          "nativeLibraries": [
+            {
+              "name": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "cccccccccccccccccccccccccccccccccccccccc"
+            },
+            {
+              "name": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+              "buildId": "dddddddddddddddddddddddddddddddddddddddd"
+            }
+          ]
+        }
+      ],
+      "runtimeVersions": {
+        "llamaCpp": {
+          "buildNumber": 11385,
+          "commit": "bf9a0cc"
+        },
+        "llamaRn": "0.0.0-fixture",
+        "litertLm": null,
+        "litertNpuRuntimeQualcomm": null,
+        "qairt": null,
+        "genie": null
+      },
+      "engine": "llama.cpp",
+      "engineVersion": "llama.rn 0.0.0-fixture",
+      "backend": "cpu",
+      "observedBackend": {
+        "status": "confirmed",
+        "source": "engine-report",
+        "repetitions": 3
+      },
+      "platform": "android",
+      "model": "Llama 3.2 1B",
+      "quant": "Q4_K_M",
+      "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+      "purpose": "measurement",
+      "configuration": {
+        "schemaVersion": 2,
+        "id": "llamacpp-llama32-q4km-hexagon-v1",
+        "nColdRuns": 3,
+        "cooldownSec": 120,
+        "readinessTimeoutSec": 900,
+        "maxBatteryTempRiseC": 2,
+        "maxDecodeTokens": 128,
+        "chatTemplate": "llama32",
+        "measuredPrompt": "std-pp512-v1",
+        "runs": [
+          {
+            "id": "llama32-q4km-cpu",
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "purpose": "measurement",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "referenceRunId": null,
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+            "nGpuLayers": 0,
+            "useMmap": false,
+            "useMlock": false,
+            "noExtraBufts": false,
+            "flashAttnType": "auto"
+          },
+          {
+            "id": "llama32-q4km-hexagon",
+            "engine": "llama.cpp",
+            "backend": "npu",
+            "purpose": "measurement",
+            "model": "Llama 3.2 1B",
+            "modelFile": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            "quant": "Q4_K_M",
+            "nThreads": 4,
+            "nCtx": 2048,
+            "referenceRunId": "llama32-q4km-cpu",
+            "modelSha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83",
+            "nGpuLayers": 99,
+            "devices": [
+              "HTP0"
+            ],
+            "useMmap": false,
+            "useMlock": false,
+            "noExtraBufts": false,
+            "flashAttnType": "auto"
+          }
+        ]
+      },
+      "configurationRunId": "llama32-q4km-cpu",
+      "runOrder": {
+        "method": "mulberry32-fisher-yates-v1",
+        "seed": 7,
+        "seedSource": "generated",
+        "order": [
+          "llama32-q4km-hexagon",
+          "llama32-q4km-cpu"
+        ],
+        "position": 1
+      },
+      "protocol": {
+        "version": "accelerator-v2",
+        "nColdRuns": 3,
+        "cooldownSec": 120,
+        "readinessTimeoutSec": 900,
+        "maxBatteryTempRiseC": 2,
+        "promptLabel": "std-pp512-v1",
+        "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a concise assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nSummarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "promptFormat": "raw-pretemplated",
+        "chatTemplate": "llama32",
+        "maxDecodeTokens": 128,
+        "sampling": "greedy",
+        "nThreads": 4,
+        "nCtx": 2048,
+        "coldDefinition": "fresh engine instance in warm app process; artifact hashing and the correctness gate warm OS file and engine caches",
+        "measurementKind": "fresh-instance-first-request",
+        "warmRequests": "not-measured",
+        "processRestartBetweenRepetitions": false,
+        "gate": "output-gate-v1"
+      },
+      "status": "complete",
+      "repetitionsPlanned": 3,
+      "stopReason": null,
+      "coldRuns": [
+        {
+          "runIndex": 0,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 85
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": false,
+              "devices": [],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": "GPU backend is available but was not selected"
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1501,
+          "ttftMs": 121,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 903.5,
+          "decodeTps": 40.25,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        },
+        {
+          "runIndex": 1,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 86
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": false,
+              "devices": [],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": "GPU backend is available but was not selected"
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1502,
+          "ttftMs": 122,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 907,
+          "decodeTps": 40.5,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        },
+        {
+          "runIndex": 2,
+          "cooldownMs": 120000,
+          "readiness": {
+            "status": "ready",
+            "waitedMs": 0,
+            "polls": 1,
+            "timeoutSec": 900,
+            "baselineBatteryTempC": 30.5,
+            "headroomApplied": true,
+            "notReady": {},
+            "reasons": []
+          },
+          "instance": {
+            "kind": "fresh-instance",
+            "request": "first-request-on-instance",
+            "processInstanceId": "fixture-process",
+            "modelLoadsBeforeInProcess": 87
+          },
+          "conditions": {
+            "before": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "beforeAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "during": {
+              "status": "complete",
+              "intervalMs": 1000,
+              "startedElapsedMs": 5000,
+              "stoppedElapsedMs": 6500,
+              "ticks": 2,
+              "dropped": 0,
+              "expired": false,
+              "maxSampleCostMs": 2.5,
+              "totalSampleCostMs": 4,
+              "summary": {
+                "samples": 2,
+                "incompleteSamples": 0,
+                "failures": [],
+                "maxThermalStatus": 0,
+                "maxThermalHeadroom": 0.4,
+                "maxBatteryTempC": 30.5,
+                "minBatteryPct": 80,
+                "maxRssMb": 1800.5,
+                "maxGapMs": 1000,
+                "externalPower": {
+                  "connected": 2,
+                  "disconnected": 0,
+                  "unknown": 0
+                },
+                "chargingStates": {
+                  "notCharging": 2,
+                  "charging": 0,
+                  "onBattery": 0,
+                  "unknown": 0
+                }
+              },
+              "samples": [
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 5000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                },
+                {
+                  "timestampMs": 1767225600000,
+                  "elapsedMs": 6000,
+                  "batteryPct": 80,
+                  "batteryTempC": 30.5,
+                  "batteryStatus": 4,
+                  "plugged": 2,
+                  "currentNowUa": -1500,
+                  "thermalStatus": 0,
+                  "thermalHeadroom": 0.4,
+                  "focusLossCount": 0,
+                  "processUptimeMs": 60000,
+                  "rssMb": 1800.5,
+                  "pssMb": 412.25,
+                  "charging": true,
+                  "powerSaveMode": false,
+                  "screenOn": true,
+                  "foreground": true,
+                  "keyguardLocked": false,
+                  "probeStatus": "complete",
+                  "unavailable": []
+                }
+              ]
+            },
+            "duringAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "after": {
+              "timestampMs": 1767225600000,
+              "elapsedMs": 5000,
+              "batteryPct": 80,
+              "batteryTempC": 30.5,
+              "batteryStatus": 4,
+              "plugged": 2,
+              "currentNowUa": -1500,
+              "thermalStatus": 0,
+              "thermalHeadroom": 0.4,
+              "focusLossCount": 0,
+              "processUptimeMs": 60000,
+              "rssMb": 1800.5,
+              "pssMb": 412.25,
+              "charging": true,
+              "powerSaveMode": false,
+              "screenOn": true,
+              "foreground": true,
+              "keyguardLocked": false,
+              "probeStatus": "complete",
+              "unavailable": []
+            },
+            "afterAssessment": {
+              "status": "pass",
+              "reasons": []
+            },
+            "charging": "satisfied"
+          },
+          "observedBackend": {
+            "status": "confirmed",
+            "source": "engine-report",
+            "report": {
+              "gpu": false,
+              "devices": [],
+              "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+              "reasonNoGpu": "GPU backend is available but was not selected"
+            },
+            "libraries": null
+          },
+          "status": "complete",
+          "loadMs": 1503,
+          "ttftMs": 123,
+          "promptTokens": 503,
+          "decodeTokens": 96,
+          "prefillTps": 910.5,
+          "decodeTps": 40.75,
+          "prefillMethod": "engine-timings",
+          "decodeMethod": "engine-timings"
+        }
+      ],
+      "summary": {
+        "loadMs": {
+          "median": 1502,
+          "iqr": 1,
+          "min": 1501,
+          "max": 1503,
+          "n": 3
+        },
+        "ttftMs": {
+          "median": 122,
+          "iqr": 1,
+          "min": 121,
+          "max": 123,
+          "n": 3
+        },
+        "prefillTps": {
+          "median": 907,
+          "iqr": 3.5,
+          "min": 903.5,
+          "max": 910.5,
+          "n": 3
+        },
+        "decodeTps": {
+          "median": 40.5,
+          "iqr": 0.25,
+          "min": 40.25,
+          "max": 40.75,
+          "n": 3
+        }
+      },
+      "conditionPolicy": {
+        "version": "run-conditions-v2",
+        "required": [
+          "batteryPct",
+          "batteryTempC",
+          "powerSaveMode",
+          "thermalStatus",
+          "screenOn",
+          "foreground",
+          "keyguardLocked",
+          "focusLossCount"
+        ],
+        "readiness": {
+          "mode": "wait-then-skip",
+          "pollSec": 5,
+          "maxThermalStatus": 0,
+          "maxBatteryTempC": 40,
+          "maxBatteryTempRiseC": 2,
+          "maxThermalHeadroom": 0.8,
+          "headroom": "applied-when-measured",
+          "headroomConfirmMs": 1500
+        },
+        "run": {
+          "mode": "record-and-flag",
+          "minBatteryPct": 50,
+          "maxThermalStatus": 2,
+          "sampling": {
+            "intervalMs": 1000,
+            "maxDurationMs": 900000,
+            "persistedSamples": 30,
+            "maxGapFactor": 2,
+            "signals": "cheap-native-reads-no-pss"
+          },
+          "interruptions": "focus-loss-count"
+        },
+        "memory": "endpoint-pss-and-sampled-rss-not-peak"
+      },
+      "chargingPolicy": {
+        "version": "charging-policy-v3",
+        "name": "tethered-not-charging",
+        "externalPower": "allowed",
+        "notChargingStatuses": [
+          4,
+          5
+        ],
+        "chargingStatus": 2,
+        "dischargingStatus": 3,
+        "onBattery": "not-eligible",
+        "currentNow": "diagnostic-only",
+        "readiness": "wait-while-charging",
+        "unknown": "never-eligible",
+        "effect": "publication-eligibility-only"
+      },
+      "conditionVerdict": {
+        "status": "pass",
+        "reasons": [],
+        "charging": "satisfied"
+      },
+      "guardsPassed": null,
+      "guardNotes": [],
+      "gateBackend": {
+        "status": "confirmed",
+        "source": "engine-report",
+        "report": {
+          "gpu": false,
+          "devices": [],
+          "androidLib": "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl",
+          "reasonNoGpu": "GPU backend is available but was not selected"
+        },
+        "libraries": null
+      },
+      "correctness": {
+        "version": "output-gate-v1",
+        "role": "reference",
+        "status": "pass",
+        "reasons": [],
+        "reference": null,
+        "error": null,
+        "probes": [
+          {
+            "id": "short-capital",
+            "kind": "answer",
+            "prompt": "What is the capital of France? Answer with one word.",
+            "expected": "paris",
+            "maxOutputTokens": 32,
+            "output": "Paris",
+            "passed": true,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          },
+          {
+            "id": "long-fact-last",
+            "kind": "answer",
+            "prompt": "The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The secret code word is PELICAN. Question: what is the secret code word? Answer with the code word only.",
+            "expected": "pelican",
+            "maxOutputTokens": 32,
+            "output": "PELICAN",
+            "passed": true,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          },
+          {
+            "id": "long-fact-first",
+            "kind": "answer",
+            "prompt": "The secret code word is PELICAN. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. Question: what is the secret code word? Answer with the code word only.",
+            "expected": "pelican",
+            "maxOutputTokens": 32,
+            "output": "PELICAN",
+            "passed": true,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          },
+          {
+            "id": "long-fact-middle",
+            "kind": "answer",
+            "prompt": "The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The meeting room for the review is room 417. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. The office opens at nine and closes at six on weekdays. Visitors sign in at the front desk and receive a badge. Meetings are held in the rooms on the second floor, which must be booked in advance through the calendar system. The kitchen is cleaned every evening, and staff are asked to label food in the fridge. Parking is available in the basement for employees with a permit. Question: which room is the review in? Answer with the room number only.",
+            "expected": "417",
+            "maxOutputTokens": 32,
+            "output": "Room 417.",
+            "passed": true,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          },
+          {
+            "id": "measured-prompt",
+            "kind": "agreement",
+            "prompt": "Summarize the following text in three sentences. The history of measurement is a history of standardization. Early units were anthropometric: the cubit was the length of a forearm, the foot the length of a foot, and the inch the width of a thumb. Such units were convenient but inconsistent, since no two forearms are alike, and commerce across regions demanded conversions that were contested and frequently revised. The Egyptians cut royal cubit rods from granite so that builders could check their working copies against a master, an early instance of traceability. Medieval markets relied on local standards kept in town halls, and a merchant traveling between cities carried conversion tables the way a modern traveler carries adapters. The scientific revolution sharpened the demand: instruments could now detect differences far smaller than the variation between regional standards, and natural philosophers began to argue that units should be derived from invariants of nature rather than from artifacts or anatomy. The French Revolution provided the political opening, and the metre was defined as one ten-millionth of the quarter meridian, surveyed at great expense between Dunkirk and Barcelona. The survey contained small errors, so the metre as realized differed slightly from its ideal definition, and the platinum bar deposited in the archives became the de facto truth. A century later the international prototype kilogram and metre bars were distributed to signatory nations, and metrology became a treaty obligation. The twentieth century replaced artifacts one by one: the second was tied to a hyperfine transition of cesium, the metre to the distance light travels in a defined fraction of a second, and finally in 2019 the kilogram was fixed by assigning an exact value to the Planck constant, retiring the last physical artifact. Each redefinition preserved continuity: the new definition was chosen so that the size of the unit did not measurably change, only its foundation. The result is a system in which any suitably equipped laboratory can realize the base units from first principles without reference to any object, and in which the uncertainty of realization, rather than the drift of an artifact, sets the limit of precision. Standardization did not merely serve science; it served trade, engineering, medicine, and law, because a measurement is a claim that others must be able to check.",
+            "expected": null,
+            "maxOutputTokens": 128,
+            "output": "Measurement moved from anatomy to physical constants.",
+            "passed": null,
+            "reference": null,
+            "exactMatch": null,
+            "commonPrefixChars": null
+          }
+        ]
+      },
+      "comparison": {
+        "status": "valid",
+        "reasons": []
+      }
+    },
     "setupFailed-npu": {
       "runId": "1767225600000-99-accel",
       "timestampIso": "2026-01-01T00:00:00.000Z",

@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 2,
+  "id": "llamacpp-qwen25-opencl-v1",
+  "nColdRuns": 3,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "qwen25",
+  "measuredPrompt": "std-pp512-v1",
+  "runs": [
+    {
+      "id": "qwen25-1.5b-q80-cpu",
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Qwen2.5 1.5B",
+      "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+      "quant": "Q8_0",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "nGpuLayers": 0,
+      "useMmap": false,
+      "useMlock": false,
+      "noExtraBufts": false,
+      "flashAttnType": "auto",
+      "referenceRunId": null,
+      "modelSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f"
+    },
+    {
+      "id": "qwen25-1.5b-q80-opencl",
+      "engine": "llama.cpp",
+      "backend": "gpu",
+      "purpose": "measurement",
+      "model": "Qwen2.5 1.5B",
+      "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+      "quant": "Q8_0",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "nGpuLayers": 99,
+      "useMmap": false,
+      "useMlock": false,
+      "noExtraBufts": false,
+      "flashAttnType": "auto",
+      "referenceRunId": "qwen25-1.5b-q80-cpu",
+      "modelSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f"
+    }
+  ]
+}

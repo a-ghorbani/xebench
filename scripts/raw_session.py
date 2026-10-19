@@ -1081,6 +1081,18 @@ GATE_PROBES = (
 # prompts.ts ACCELERATOR_PROMPT / ACCELERATOR_PROMPT_LABEL.
 ACCELERATOR_PROMPT_LABEL = "std-chat-v1"
 ACCELERATOR_PROMPT_SHA256 = "97b05f26c77fa84504cfa238dad74591d882e5e0a6264a47f05dd03605bdb4f8"
+# prompts.ts STANDARD_PROMPT / STANDARD_PROMPT_LABEL: the CPU reference prompt.
+STANDARD_PROMPT_LABEL = "std-pp512-v1"
+STANDARD_PROMPT_SHA256 = "d4af02ae1c169637720a824ed879956385446ffd8823e287b30c8b11756c90f4"
+# What an accelerator configuration's repetitions measure (configuration measuredPrompt; absent
+# means std-chat-v1): label -> (SHA-256 of the recorded prompt, promptFormat).
+MEASURED_PROMPTS = {ACCELERATOR_PROMPT_LABEL: (ACCELERATOR_PROMPT_SHA256, "user-turn-chat-template"),
+                    STANDARD_PROMPT_LABEL: (STANDARD_PROMPT_SHA256, "raw-pretemplated")}
+
+
+def measured_prompt(config):
+    """The measured-prompt label an accelerator configuration selects."""
+    return config.get("measuredPrompt", ACCELERATOR_PROMPT_LABEL)
 
 
 def text_sha256(text):
@@ -1231,9 +1243,14 @@ def _configuration_accelerator(config):
                 errors.append(reason("configuration.run-invalid", where,
                                      "llama.cpp runs need nThreads, nCtx and nGpuLayers/devices matching the backend"))
         elif "nGpuLayers" in run or "devices" in run or run["nCtx"] is not None or (
-                run["backend"] != "cpu" and run["nThreads"] is not None):
+                run["backend"] != "cpu" and run["nThreads"] is not None) or any(
+                field in run for field, _, _ in LOAD_SETTINGS):
             errors.append(reason("configuration.run-invalid", where,
-                                 "LiteRT-LM runs take nCtx null, no nGpuLayers/devices, and nThreads only on CPU"))
+                                 "LiteRT-LM runs take nCtx null, no nGpuLayers/devices or llama.cpp load settings, "
+                                 "and nThreads only on CPU"))
+        if measured_prompt(config) == STANDARD_PROMPT_LABEL and not llama:
+            errors.append(reason("configuration.run-invalid", where,
+                                 "measuredPrompt std-pp512-v1 is pre-templated for llama.cpp runs only"))
         reference = next((item for item in runs if item["id"] == run["referenceRunId"]), None)
         if (run["referenceRunId"] is not None) if run["backend"] == "cpu" else (
                 reference is None or reference["backend"] != "cpu" or reference["engine"] != run["engine"]):
@@ -1358,9 +1375,13 @@ def _semantic_accelerator(record, identity=True):
                               or settings["init"].get("devices") != run.get("devices")):
         errors.append(reason("settings.protocol-mismatch", "/effectiveSettings/init",
                              "n_gpu_layers/devices disagree with the configured run"))
-    if protocol["promptLabel"] != ACCELERATOR_PROMPT_LABEL or text_sha256(protocol["prompt"]) != ACCELERATOR_PROMPT_SHA256:
+    label = measured_prompt(config)
+    digest, prompt_format = MEASURED_PROMPTS.get(label, (None, None))
+    if protocol["promptLabel"] != label or text_sha256(protocol["prompt"]) != digest or (
+            protocol["promptFormat"] != prompt_format):
         errors.append(reason("protocol.prompt", "/protocol/prompt",
-                             "accelerator-v1 measures the std-chat-v1 prompt (prompts.ts ACCELERATOR_PROMPT)"))
+                             "The record measures another prompt than its configuration's measuredPrompt "
+                             "(std-chat-v1 by default; prompts.ts)"))
     if protocol["chatTemplate"] != config["chatTemplate"]:
         errors.append(reason("protocol.configuration-mismatch", "/protocol/chatTemplate",
                              "Protocol chatTemplate disagrees with the configuration"))

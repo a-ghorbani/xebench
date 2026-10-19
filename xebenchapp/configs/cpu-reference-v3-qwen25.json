@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "cpu-reference-v3-qwen25",
+  "nColdRuns": 3,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "runs": [
+    {
+      "id": "qwen25-1.5b-q80-cpu",
+      "engine": "llama.cpp",
+      "model": "Qwen2.5 1.5B",
+      "modelFile": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+      "quant": "Q8_0",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "useMmap": false,
+      "useMlock": false,
+      "noExtraBufts": false,
+      "flashAttnType": "auto",
+      "modelSha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f"
+    }
+  ]
+}

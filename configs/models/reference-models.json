@@ -43,6 +43,20 @@
       "licenseAcceptance": "required",
       "usedBy": "xebenchapp/configs/cpu-reference-v3.json (llama32-q80-cpu)",
       "sha256Source": "Hugging Face LFS oid at this revision (the same revision as the pinned reference Q4_K_M)"
+    },
+    {
+      "id": "qwen25-1.5b-instruct-q8_0",
+      "repo": "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+      "revision": "9eadc66189c7641e1ddd226b8267a9119b2ce2d4",
+      "file": "Qwen2.5-1.5B-Instruct-Q8_0.gguf",
+      "size": 1646573312,
+      "sha256": "7185d306cf45956c8c017cd0d3b05ecc6bc18b3ea8eb5c240dce40e87563db7f",
+      "baseModel": "Qwen/Qwen2.5-1.5B-Instruct",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/blob/main/LICENSE",
+      "gated": false,
+      "usedBy": "xebenchapp/configs/cpu-reference-v3-qwen25.json and llamacpp-qwen25-opencl-v1.json",
+      "sha256Source": "Hugging Face LFS oid at this revision; equals the sha256sum of the lab copy of this file"
     }
   ]
 }

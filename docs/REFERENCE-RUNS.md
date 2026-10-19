@@ -31,6 +31,30 @@ longer for readiness; the 2 °C rise bound (`maxBatteryTempRiseC`) is the same i
 | `cooldownSec` | 30 | 30 | 120 |
 | `readinessTimeoutSec` | 180 | 180 | 900 |
 
+The board's other llama.cpp setups use the same settings and timing in their own files.
+[`cpu-reference-v3-qwen25.json`](../xebenchapp/configs/cpu-reference-v3-qwen25.json) runs
+Qwen2.5 1.5B Instruct Q8_0 and
+[`cpu-reference-v3-gemma3.json`](../xebenchapp/configs/cpu-reference-v3-gemma3.json) runs
+Gemma 3 1B Q4_0 (QAT) on the CPU ([MODELS.md](../MODELS.md)). The GPU and NPU rows run
+through the accelerator protocol, which adds the output-correctness gate against a CPU run of
+the same file ([litert-accelerators](experiments/litert-accelerators.md)):
+[`llamacpp-qwen25-opencl-v1.json`](../xebenchapp/configs/llamacpp-qwen25-opencl-v1.json)
+(Qwen2.5 1.5B Q8_0, OpenCL) and
+[`llamacpp-llama32-q4km-hexagon-v1.json`](../xebenchapp/configs/llamacpp-llama32-q4km-hexagon-v1.json)
+(Llama 3.2 1B Q4_K_M, Hexagon `HTP0`). Accelerator runs take the same optional load fields as
+reference runs; these set cpu-reference-v3's values on every run, the gate's CPU references
+included.
+
+Every llama.cpp board row measures the same prompt and decode length. An accelerator
+configuration's `measuredPrompt` selects what its repetitions measure: `std-chat-v1` (the
+default) is the accelerator body as one user turn in the configuration's chat template;
+`std-pp512-v1` is the CPU reference prompt, pre-templated (`promptFormat: raw-pretemplated`)
+and allowed for llama.cpp runs only. These two configurations set `std-pp512-v1`, which is a
+Llama 3.2 turn for every model, as on the CPU rows. The output-correctness gate keeps its own
+probes in each model's chat template (`chatTemplate: qwen25`, a ChatML user turn without a
+system message, and `llama32`). An accelerator configuration's CPU run is the gate's reference,
+not a board CPU measurement: only its GPU and NPU sessions are published.
+
 A run field that is not set takes the harness default in parentheses
 (`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).
 With llama.rn 0.13.0-rc.7, `use_mmap: true` selects memory-mapped loading
