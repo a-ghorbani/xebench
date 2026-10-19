@@ -101,7 +101,7 @@ class CheckedInSetTests(unittest.TestCase):
                     self.assertEqual(row["sourceDate"], engine_set["measured"])
 
     def test_the_llama_cpp_campaign_state(self):
-        """Sixteen rc.7 rows (14 CPU, 1 GPU, 1 NPU) and no July row; every July llama.cpp setup is
+        """Fifteen rc.7 rows (13 CPU, 1 GPU, 1 NPU) and no July row; every July llama.cpp setup is
         re-measured or retired."""
         self.assertNotIn("carryover", self.board["engines"]["llama.cpp"])
         llama = {key_of(row): row for row in self.data["rows"] if row["engine"] == "llama.cpp"}
@@ -109,7 +109,7 @@ class CheckedInSetTests(unittest.TestCase):
                          {"llama.rn 0.13.0-rc.7"})
         self.assertTrue(all("evidence" in row and row["sourceDate"] == "2026-10" and row["validation"] == "verified"
                             for row in llama.values()))
-        self.assertEqual(sorted(row["backend"] for row in llama.values()), ["cpu"] * 14 + ["gpu", "npu"])
+        self.assertEqual(sorted(row["backend"] for row in llama.values()), ["cpu"] * 13 + ["gpu", "npu"])
         retired = {item["key"] for item in self.board["retiredKeys"]}
         for key in (key for key in JULY_ROWS if key.startswith("llama.cpp|")):
             with self.subTest(key):
@@ -118,6 +118,7 @@ class CheckedInSetTests(unittest.TestCase):
             fx.NPU_KEY,
             "llama.cpp|cpu|android|OnePlus 6|Llama 3.2 1B|Q4_K_M|measured",
             "llama.cpp|cpu|android|OnePlus 6|Qwen2.5 1.5B|Q8_0|measured",
+            "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
             "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
         })
 

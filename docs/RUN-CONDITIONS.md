@@ -388,14 +388,16 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
 `cpu-reference-v3-gemma3` on `cpu`; `llamacpp-qwen25-opencl-v1` on `gpu`;
 `llamacpp-llama32-q4km-hexagon-v1` on `npu`. Every llama.cpp board row is a session of this set;
 the board shows no July 2026 llama.cpp row. The July rows the set replaces stay in
-`data/sessions/index.json` with their month and its basis.
+`data/sessions/index.json` with their month and its basis, and so do the sessions of retired
+setups.
 
-Four llama.cpp setups are retired (`retiredKeys`, each with its reason):
+Five llama.cpp setups are retired (`retiredKeys`, each with its reason):
 
 | Setup | Reason |
 | --- | --- |
 | OnePlus 6, Llama 3.2 1B Q4_K_M, CPU | the device cannot complete the measurement conditions (sustained thermal throttling) |
 | OnePlus 6, Qwen2.5 1.5B Q8_0, CPU | the device cannot complete the measurement conditions (sustained thermal throttling) |
+| Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, CPU | the measurement is unstable within a session (prefill falls across repetitions); to be re-measured once the run conditions include a stability check ([#40](https://github.com/a-ghorbani/xebench/issues/40)) |
 | Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, GPU | the device cannot complete the measurement conditions (the app is killed for low memory) |
 | POCO F8 Ultra, Llama 3.2 1B Q4_0, NPU | replaced by the Q4_K_M NPU setup; the Q4_0 CPU reference misses a correctness probe |
 

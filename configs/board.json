@@ -66,6 +66,11 @@
       "retiredAt": "2026-10-19"
     },
     {
+      "key": "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
+      "reason": "measurement unstable within the session (prefill fell across repetitions); to be re-measured once the run conditions include a stability check",
+      "retiredAt": "2026-10-19"
+    },
+    {
       "key": "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
       "reason": "device cannot complete the measurement conditions (app killed for low memory)",
       "retiredAt": "2026-10-19"

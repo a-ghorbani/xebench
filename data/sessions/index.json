@@ -1324,8 +1324,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
-      "displayed": "1792410922552-0-asgx3e99jhp",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792410922552-0-asgx3e99jhp",
