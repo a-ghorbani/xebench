@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.3",
+  "generatedAt": "2026-10-19T00:00:00Z",
+  "source": "https://github.com/a-ghorbani/xebench",
+  "description": "Contract 1.3 consumer fixture (tests/fixtures/contract-1.3/index.json).",
+  "rowCount": 1,
+  "rows": [
+    {
+      "engine": "litert-lm",
+      "backend": "cpu",
+      "platform": "android",
+      "device": "Google Pixel 7 Pro",
+      "model": "FunctionGemma 270M",
+      "quant": "not stated",
+      "ppTps": 1916,
+      "tgTps": 142,
+      "asStated": "1916 tok/s prefill, 142 tok/s decode on CPU",
+      "sourceName": "Google Developers Blog (AI Edge Gallery)",
+      "sourceUrl": "https://developers.googleblog.com/on-device-function-calling-in-google-ai-edge-gallery/",
+      "sourceDate": "2026-02",
+      "provenance": "vendor",
+      "dateBasis": "measured"
+    }
+  ]
+}

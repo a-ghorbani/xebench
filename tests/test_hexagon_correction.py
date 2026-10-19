@@ -57,10 +57,17 @@ def dump(envelope):
 
 class CheckedInDataTests(unittest.TestCase):
     def test_checked_in_row_is_corrected(self):
+        """Since 2026-10-19 the corrected row is retired from the board and kept in the history."""
         data = load(ROOT / 'data/benchmarks.json')
-        targets = [row for row in data['rows'] if is_target(row)]
-        self.assertEqual(len(targets), 1)
-        row = targets[0]
+        self.assertEqual([row for row in data['rows'] if is_target(row)], [], 'a failed row is never displayed')
+        index = load(ROOT / 'data/sessions/index.json')
+        [entry] = [entry for entry in index['keys'] if entry['key'].startswith('llama.cpp|npu|android|POCO F8 Ultra|')]
+        self.assertEqual((entry['displayed'], entry['rule'], entry['sessions']), (None, 'retired', []))
+        [kept] = entry['replacedRows']
+        self.assertEqual((kept['reason'], kept['note'], kept['retiredAt']),
+                         ('retired', 'replaced by Q4_K_M; Q4_0 CPU reference misses a correctness probe', '2026-10-19'))
+        row = kept['row']
+        self.assertTrue(is_target(row))
         self.assertEqual({k: row[k] for k in PUBLISHED}, PUBLISHED, 'numbers must stay as published')
         self.assertEqual(row['validation'], 'failed')
         self.assertEqual(row['asStated'], CORRECTED_AS_STATED)

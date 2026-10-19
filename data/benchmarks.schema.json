@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/a-ghorbani/xebench/blob/main/data/benchmarks.schema.json",
   "title": "xebench benchmarks",
-  "description": "Canonical cross-engine on-device LLM benchmark results published by xebench. This file is the stable contract for consumers (e.g. the pocketpal.dev leaderboard loads it dynamically). Contract 1.1 is additive over 1.0 and 1.2 over 1.1: every 1.0 and 1.1 file still validates. Additive changes bump the minor and breaking changes bump the major; consumers must reject a major they do not support. Rows are closed (additionalProperties false), so a consumer validating with this schema must be updated before a producer publishes a new minor's fields. Invariants this schema cannot express (dispersion min <= max, a real calendar generatedAt, one build.runtimes entry per name) are enforced by scripts/lib/publication.mjs.",
+  "description": "Canonical cross-engine on-device LLM benchmark results published by xebench. This file is the stable contract for consumers (e.g. the pocketpal.dev leaderboard loads it dynamically). Contract 1.1 is additive over 1.0, 1.2 over 1.1 and 1.3 over 1.2: every 1.0, 1.1 and 1.2 file still validates. Additive changes bump the minor and breaking changes bump the major; consumers must reject a major they do not support. Rows are closed (additionalProperties false), so a consumer validating with this schema must be updated before a producer publishes a new minor's fields. Invariants this schema cannot express (dispersion min <= max, a real calendar generatedAt, one build.runtimes entry per name) are enforced by scripts/lib/publication.mjs.",
   "type": "object",
   "required": ["schemaVersion", "generatedAt", "source", "rows"],
   "properties": {
     "schemaVersion": {
       "type": "string",
       "pattern": "^1\\.(0|[1-9][0-9]*)$",
-      "description": "MAJOR.MINOR of this contract (\"1.0\", \"1.1\" or \"1.2\"); a different major is unsupported and must be rejected as a whole"
+      "description": "MAJOR.MINOR of this contract (\"1.0\" to \"1.3\"); a different major is unsupported and must be rejected as a whole"
     },
     "generatedAt": {
       "type": "string",
@@ -31,6 +31,11 @@
           "configurationId": false, "configurationSha256": false
         } } } }
       }
+    },
+    {
+      "$comment": "dateBasis is a 1.3 field: a 1.0, 1.1 or 1.2 file carries none",
+      "if": { "required": ["schemaVersion"], "properties": { "schemaVersion": { "enum": ["1.0", "1.1", "1.2"] } } },
+      "then": { "properties": { "rows": { "items": { "properties": { "dateBasis": false } } } } }
     }
   ],
   "$defs": {
@@ -61,7 +66,12 @@
         },
         "sourceName": { "type": "string" },
         "sourceUrl": { "type": "string", "format": "uri" },
-        "sourceDate": { "type": "string", "description": "YYYY-MM of the source measurement" },
+        "sourceDate": { "type": "string", "description": "YYYY-MM of the source measurement (on a legacy row with dateBasis first-published: the month the row was first published)" },
+        "dateBasis": {
+          "type": "string",
+          "enum": ["measured", "first-published"],
+          "description": "1.3, legacy rows only, with sourceDate; not displayed. What sourceDate is: 'measured' = the month the row was measured; 'first-published' = the month the row was first published, because its measurement month cannot be established"
+        },
         "sampleCount": { "type": "integer", "description": "n successful repetitions behind the medians" },
         "asStated": { "type": "string", "description": "human-readable methodology caveats for this row (quant, provenance method, protocol)" },
         "validation": {
@@ -166,6 +176,11 @@
           "$comment": "legacy rows carry no dispersion, evidence or configuration; a measured row without validation (1.0) is legacy",
           "if": { "properties": { "validation": { "const": "legacy" } } },
           "then": { "properties": { "dispersion": false, "evidence": false, "configurationId": false, "configurationSha256": false } }
+        },
+        {
+          "$comment": "dateBasis: legacy rows only (validation legacy on a measured row), with sourceDate",
+          "if": { "required": ["dateBasis"] },
+          "then": { "required": ["sourceDate", "validation", "provenance"], "properties": { "validation": { "const": "legacy" }, "provenance": { "const": "measured" } } }
         },
         {
           "$comment": "configurationId comes from an evidence bundle",

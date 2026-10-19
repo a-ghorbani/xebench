@@ -22,6 +22,9 @@
  * to its asStated. Its numbers stay as published (history is preserved); every
  * other row stays byte-identical; generatedAt is re-stamped only when it writes.
  *
+ * Since 2026-10-19 the row is retired from the board (configs/board.json retiredKeys) and kept,
+ * corrected, in data/sessions/index.json replacedRows; --check accepts it there.
+ *
  * Fail-closed: the row is matched on its identity AND its published values. If no
  * row, more than one row, or a row with different values is found, or the input
  * or result fails validation, it exits 1 and leaves the file byte-identical.
@@ -53,6 +56,20 @@ if (args.some((a) => a !== '--check')) {
 }
 
 const DATA = fileURLToPath(new URL('../data/benchmarks.json', import.meta.url));
+const INDEX = fileURLToPath(new URL('../data/sessions/index.json', import.meta.url));
+
+/** The corrected row as kept in the history after its retirement, or null. */
+function retiredRow() {
+  let index;
+  try {
+    index = JSON.parse(readFileSync(INDEX, 'utf8'));
+  } catch {
+    return null;
+  }
+  const kept = (index.keys ?? []).flatMap((entry) => entry.replacedRows ?? [])
+    .filter((item) => item.reason === 'retired' && item.row && matches(item.row, ROW_IDENTITY));
+  return kept.length === 1 ? kept[0].row : null;
+}
 const SCHEMA = fileURLToPath(new URL('../data/benchmarks.schema.json', import.meta.url));
 
 const matches = (row, fields) => Object.entries(fields).every(([k, v]) => row[k] === v);
@@ -69,6 +86,14 @@ try {
   assertBenchmarks(envelope, schema, 'existing data/benchmarks.json');
 
   const indexes = envelope.rows.flatMap((row, i) => (matches(row, ROW_IDENTITY) ? [i] : []));
+  const retired = indexes.length === 0 ? retiredRow() : null;
+  if (retired) {
+    if (!matches(retired, PUBLISHED_VALUES) || retired.validation !== 'failed' || retired.asStated !== CORRECTED_AS_STATED) {
+      throw new PublicationError('the retired target row in data/sessions/index.json is in an unexpected state');
+    }
+    console.error('the llama.cpp Hexagon row has the 2026-10-17 correction and is retired into data/sessions/index.json; nothing to do');
+    process.exit(0);
+  }
   if (indexes.length !== 1) throw new PublicationError(`expected exactly 1 target row, found ${indexes.length}`);
   const index = indexes[0];
   const row = envelope.rows[index];

@@ -120,12 +120,48 @@ def reference_root(target):
     return target
 
 
-def write_board(root, ids):
-    """configs/board.json listing `ids` as the configurations the board displays (the fixture
-    root lists every fixture configuration, so publication tests see their own rows)."""
-    board = {"schema": "xebench-board", "schemaVersion": 1, "description": "Fixture board configuration.",
-             "displayConfigurations": list(ids)}
+FIXTURE_ENGINE_VERSIONS = {"llama.cpp": ("llama.cpp b11385 (bf9a0cc)", "llama.rn 0.0.0-fixture"),
+                           "litert-lm": ("LiteRT-LM 0.18.0", None)}
+NPU_KEY = "llama.cpp|npu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_0|measured"
+
+
+def board_config(root, ids, *, engines=None, retired=None, measured_from="2026-01-01"):
+    """A configs/board.json (schema 2) for a fixture root: llama.cpp and litert-lm display the
+    fixture sessions' versions from `ids` (an id, for every backend, or {"id", "backends"};
+    measured from `measured_from`), carrying over their rows
+    without versions; executorch and genie-x display their July 2026 rows; the failed llama.cpp
+    NPU row of the seeded board is retired. `engines` and `retired` replace those parts."""
+    path = Path(root) / "data/benchmarks.json"
+    data = json.loads(path.read_text()) if path.exists() else {"rows": []}
+    key = lambda row: "|".join(str(row.get(f)) for f in
+                               ("engine", "backend", "platform", "device", "model", "quant", "provenance"))
+    legacy = lambda engine: sorted(key(row) for row in data["rows"]
+                                   if row["engine"] == engine and row.get("validation") == "legacy")
+    if engines is None:
+        engines = {"executorch": {"set": "pre-version-recording", "measured": "2026-07"},
+                   "genie-x": {"set": "pre-version-recording", "measured": "2026-07"}}
+        for engine, (engine_version, binding) in FIXTURE_ENGINE_VERSIONS.items():
+            configurations = [item if isinstance(item, dict) else {"id": item, "backends": ["cpu", "gpu", "npu"]}
+                              for item in ids]
+            entry = {"set": "sessions", "configurations": configurations, "engineVersion": engine_version,
+                     **({"bindingVersion": binding} if binding else {}), "measuredFrom": measured_from}
+            if legacy(engine):
+                entry["carryover"] = {"measured": "2026-07", "reason": "fixture rows without versions",
+                                      "keys": legacy(engine)}
+            engines[engine] = entry
+        engines = dict(sorted(engines.items()))
+    if retired is None:
+        failed = any(key(row) == NPU_KEY and row.get("validation") == "failed" for row in data["rows"])
+        retired = [{"key": NPU_KEY, "reason": "fixture: failed row", "retiredAt": "2026-10-19"}] if failed else []
+    return {"schema": "xebench-board", "schemaVersion": 2, "description": "Fixture board configuration.",
+            "engines": engines, "retiredKeys": retired}
+
+
+def write_board(root, ids, **options):
+    """Write board_config(root, ids, **options) as the root's configs/board.json; returns it."""
+    board = board_config(root, ids, **options)
     (Path(root) / "configs/board.json").write_text(json.dumps(board, indent=2) + "\n")
+    return board
 
 
 def host(bundle_dir, repo_root):

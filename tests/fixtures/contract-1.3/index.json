@@ -1,0 +1,48 @@
+{
+  "contract": "1.3",
+  "description": "Fixtures for the xebench benchmarks contract 1.3 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): dateBasis on rows without versions. Each file is a complete envelope. producerMustNotEmit=true marks a file that breaks a producer rule: scripts/validate_data.mjs refuses it. consumerExpectation is what the website does with it. dateBasis is never displayed; it tells a reader of the data whether sourceDate is the measurement month or the first-published month. tests/test_contract_1_3.py checks producerMustNotEmit against scripts/validate_data.mjs.",
+  "fixtures": [
+    {
+      "file": "dated-rows.json",
+      "producerMustNotEmit": false,
+      "notes": "Two July 2026 rows without versions (dateBasis measured and first-published) and a vendor row",
+      "consumerExpectation": "rendered: each lab row shows \"Jul 2026\" and no version; dateBasis is not shown"
+    },
+    {
+      "file": "v1.2-rows-in-1.3.json",
+      "producerMustNotEmit": false,
+      "notes": "1.3 is additive: rows without dateBasis are unchanged",
+      "consumerExpectation": "rendered unchanged"
+    },
+    {
+      "file": "date-basis-in-1.2.json",
+      "producerMustNotEmit": true,
+      "producerRule": "dateBasis needs schemaVersion 1.3",
+      "consumerExpectation": "rendered; dateBasis is ignored"
+    },
+    {
+      "file": "date-basis-on-verified-row.json",
+      "producerMustNotEmit": true,
+      "producerRule": "dateBasis is only valid on legacy rows",
+      "consumerExpectation": "rendered; dateBasis is ignored"
+    },
+    {
+      "file": "date-basis-on-vendor-row.json",
+      "producerMustNotEmit": true,
+      "producerRule": "dateBasis is only valid on legacy rows",
+      "consumerExpectation": "rendered; dateBasis is ignored"
+    },
+    {
+      "file": "date-basis-without-source-date.json",
+      "producerMustNotEmit": true,
+      "producerRule": "dateBasis requires sourceDate",
+      "consumerExpectation": "rendered without a month; dateBasis is ignored"
+    },
+    {
+      "file": "unknown-date-basis.json",
+      "producerMustNotEmit": true,
+      "producerRule": "dateBasis is measured or first-published",
+      "consumerExpectation": "rendered; dateBasis is ignored"
+    }
+  ]
+}

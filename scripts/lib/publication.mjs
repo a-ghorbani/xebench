@@ -317,8 +317,16 @@ export function compareRows(a, b) {
 export const CONTRACT_VERSION = '1.1';
 /** The minor that adds build.runtimes and the configuration fields; a file declares it only when a row carries one. */
 export const RUNTIMES_CONTRACT_VERSION = '1.2';
+/** The minor that adds dateBasis on rows without versions; a file declares it only when a row carries one. */
+export const DATE_BASIS_CONTRACT_VERSION = '1.3';
 /** Minors at or above the producer's floor: a file at one of them needs no 1.1 migration. */
-const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION]);
+const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION, DATE_BASIS_CONTRACT_VERSION]);
+/**
+ * dateBasis (contract 1.3): what a legacy row's sourceDate is. "measured": the month the row
+ * was measured; "first-published": the month the row was first published, used only when the
+ * measurement month cannot be established. Legacy rows only, with sourceDate. Not displayed.
+ */
+export const DATE_BASES = Object.freeze(['measured', 'first-published']);
 
 /** Closed list of build.runtimes names (contract 1.2). */
 export const RUNTIME_NAMES = Object.freeze([
@@ -382,6 +390,11 @@ export function rowInvariantErrors(row, path = '$') {
       if (Object.hasOwn(row, field)) errors.push(`${path}: legacy rows carry no ${field}`);
     }
   }
+  if (Object.hasOwn(row, 'dateBasis')) {
+    const legacy = row.provenance === 'measured' && (row.validation === 'legacy' || !Object.hasOwn(row, 'validation'));
+    if (!legacy) errors.push(`${path}: dateBasis is only valid on legacy rows`);
+    if (!Object.hasOwn(row, 'sourceDate')) errors.push(`${path}: dateBasis requires sourceDate`);
+  }
   if (CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field))) {
     if (!Object.hasOwn(row, 'configurationId')) errors.push(`${path}: configurationSha256 requires configurationId`);
     if (!Object.hasOwn(row, 'evidence')) errors.push(`${path}: configurationId comes from an evidence bundle and requires evidence`);
@@ -426,6 +439,13 @@ export function assertBenchmarks(envelope, schema, label) {
         if (isObject(row) && Object.hasOwn(row, field)) {
           invariants.push(`$.rows[${index}]: ${field} needs schemaVersion ${RUNTIMES_CONTRACT_VERSION}`);
         }
+      }
+    });
+  }
+  if (['1.0', '1.1', '1.2'].includes(envelope?.schemaVersion) && Array.isArray(envelope.rows)) {
+    envelope.rows.forEach((row, index) => {
+      if (isObject(row) && Object.hasOwn(row, 'dateBasis')) {
+        invariants.push(`$.rows[${index}]: dateBasis needs schemaVersion ${DATE_BASIS_CONTRACT_VERSION}`);
       }
     });
   }
@@ -575,15 +595,16 @@ export function writeAtomic(target, text, expectedBefore) {
 }
 
 /**
- * The schemaVersion an envelope holding `rows` declares: 1.2 as soon as one row
- * carries build.runtimes or a configuration field, otherwise the producer's
+ * The schemaVersion an envelope holding `rows` declares: 1.3 as soon as one row carries
+ * dateBasis, else 1.2 as soon as one row carries build.runtimes or a configuration field, otherwise the producer's
  * CONTRACT_VERSION; never below `floor` (the version the canonical file already declares).
  */
 export function contractVersionFor(rows, floor = CONTRACT_VERSION) {
   const needsRuntimes = rows.some((row) => (isObject(row.build) && Object.hasOwn(row.build, 'runtimes')) ||
     CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field)));
+  const needsDateBasis = rows.some((row) => Object.hasOwn(row, 'dateBasis'));
   const minor = (version) => Number(String(version).split('.')[1]);
-  const wanted = needsRuntimes ? RUNTIMES_CONTRACT_VERSION : CONTRACT_VERSION;
+  const wanted = needsDateBasis ? DATE_BASIS_CONTRACT_VERSION : needsRuntimes ? RUNTIMES_CONTRACT_VERSION : CONTRACT_VERSION;
   return minor(floor) > minor(wanted) ? floor : wanted;
 }
 
