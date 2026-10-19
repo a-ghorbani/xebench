@@ -571,7 +571,10 @@ class FactsFromBundlesTests(unittest.TestCase):
                  # Each of cpu-reference-v3's three runs, from one staged invocation.
                  ("referenceV3Staged-Q4_K_M", "cpu-reference-v3.json", {"flash_attn_type": "off"}),
                  ("referenceV3Staged-Q4_0", "cpu-reference-v3.json", {"use_mmap": True}),
-                 ("referenceV3Staged-Q8_0", "cpu-reference-v3.json", {"flash_attn_type": "off"}))
+                 ("referenceV3Staged-Q8_0", "cpu-reference-v3.json", {"flash_attn_type": "off"}),
+                 # The single-run board configurations for Qwen2.5 1.5B and Gemma 3 1B.
+                 ("referenceV3Qwen25Staged", "cpu-reference-v3-qwen25.json", {"use_mmap": True}),
+                 ("referenceV3Gemma3Staged", "cpu-reference-v3-gemma3.json", {"flash_attn_type": "off"}))
         for index, (name, file, other_settings) in enumerate(cases):
             data = (ROOT / "xebenchapp/configs" / file).read_bytes()
             record = fx.cpu_record(name, f"1767225600000-{index}-anchor")
@@ -595,6 +598,37 @@ class FactsFromBundlesTests(unittest.TestCase):
                 path = f"sessions/1767225600000-{index}-anchor.json"
                 forged = fx.rehash(directory, path,
                                    lambda document: document["record"]["effectiveSettings"]["init"].update(other_settings))
+                report = policy.bundle_report(forged, forged.name)
+                self.assertFalse(report["valid"])
+                self.assertTrue(any("settings.configuration-mismatch" in error for error in report["errors"]),
+                                report["errors"])
+
+    def test_committed_llamacpp_accelerator_configurations_are_reviewed_anchors(self):
+        """Staged sessions of the committed llama.cpp accelerator configurations (OpenCL and Hexagon
+        candidates and their CPU gate references, with v3 load settings) export and come out verified;
+        a session whose engine was given other load settings is refused."""
+        cases = (("qwen25-qwen25-1.5b-q80-opencl", "llamacpp-qwen25-opencl-v1.json"),
+                 ("qwen25-qwen25-1.5b-q80-cpu", "llamacpp-qwen25-opencl-v1.json"),
+                 ("board-hexagon-llama32-q40-hexagon", "llamacpp-llama32-hexagon-v1.json"),
+                 ("board-hexagon-llama32-q4km-hexagon", "llamacpp-llama32-hexagon-v1.json"))
+        for index, (name, file) in enumerate(cases):
+            data = (ROOT / "xebenchapp/configs" / file).read_bytes()
+            record = copy.deepcopy(fx.ACCEL[name])
+            record["runId"] = f"1767225600000-{index}-accanchor"
+            self.assertEqual(record["configuration"], json.loads(data))
+            record["configurationSource"]["sha256"] = hashlib.sha256(data).hexdigest()
+            with self.subTest(name), tempfile.TemporaryDirectory() as root:
+                directory, sha = fx.bundle(root, [record], f"00000000-0000-4000-8000-00000000020{index}")
+                report = policy.bundle_report(directory, sha)
+                self.assertTrue(report["valid"], report["errors"])
+                decision = report["sessions"][0]["decision"]
+                self.assertEqual(decision["validation"], "verified", decision["checks"])
+                self.assertEqual(outcome_of(decision, "artifact"), PASS)
+            with self.subTest(name, settings="harness defaults"), tempfile.TemporaryDirectory() as root:
+                directory, _ = fx.bundle(root, [record], f"00000000-0000-4000-8000-00000000021{index}")
+                path = f"sessions/1767225600000-{index}-accanchor.json"
+                forged = fx.rehash(directory, path, lambda document: document["record"]["effectiveSettings"]["init"]
+                                   .update({"use_mmap": True}))
                 report = policy.bundle_report(forged, forged.name)
                 self.assertFalse(report["valid"])
                 self.assertTrue(any("settings.configuration-mismatch" in error for error in report["errors"]),

@@ -184,6 +184,11 @@ export interface AcceleratorRun {
   referenceRunId: string | null;
   /** Expected SHA-256 of modelFile; a mismatch is recorded unmeasured (model-hash-mismatch). */
   modelSha256?: string;
+  /** llama.cpp only: the load and attention settings of ReferenceRun (LOAD_SETTINGS), when set. */
+  useMmap?: boolean;
+  useMlock?: boolean;
+  noExtraBufts?: boolean;
+  flashAttnType?: FlashAttnType;
 }
 
 export interface AcceleratorConfig {
@@ -218,7 +223,7 @@ function nullableInteger(value: unknown, low: number, high: number): number | nu
 
 function acceleratorRun(item: unknown): AcceleratorRun {
   const run = object(item);
-  fields(run, [...RUN_FIELDS, 'nGpuLayers', 'devices', 'modelSha256']);
+  fields(run, [...RUN_FIELDS, 'nGpuLayers', 'devices', 'modelSha256', ...Object.keys(LOAD_SETTINGS)]);
   if (RUN_FIELDS.some(key => !(key in run))) {
     throw new Error('Every accelerator run field is required');
   }
@@ -262,9 +267,13 @@ function acceleratorRun(item: unknown): AcceleratorRun {
     if (devices !== undefined) {
       result.devices = names;
     }
+    Object.assign(result, loadSettings(run));
   } else {
     if ('nGpuLayers' in run || 'devices' in run) {
       throw new Error('nGpuLayers/devices apply to llama.cpp only');
+    }
+    if (Object.keys(LOAD_SETTINGS).some(key => key in run)) {
+      throw new Error('useMmap/useMlock/noExtraBufts/flashAttnType apply to llama.cpp only');
     }
     if (result.nCtx !== null) {
       throw new Error('LiteRT-LM runs take nCtx null (fixed by the artifact)');

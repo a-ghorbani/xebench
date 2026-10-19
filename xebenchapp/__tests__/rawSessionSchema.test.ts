@@ -12,6 +12,8 @@ import {parseConfig} from '../src/harness/config';
 import configData from '../configs/cpu-reference-v2.json';
 import v1Data from '../configs/cpu-reference-v1.json';
 import v3Data from '../configs/cpu-reference-v3.json';
+import qwenData from '../configs/cpu-reference-v3-qwen25.json';
+import gemmaData from '../configs/cpu-reference-v3-gemma3.json';
 import type {SingleRunMetrics} from '../src/harness/types';
 import * as conditions from '../src/harness/conditions';
 import {ORDER_METHOD, seededOrder} from '../src/harness/order';
@@ -300,6 +302,21 @@ async function emitted(): Promise<Record<string, ReferenceSession>> {
         configurationSource: {kind: 'staged', sha256: 'f'.repeat(64)}}, persist, noSleep,
       context({runOrder: v3RunOrder})))).pop()!;
   }
+  // The single-run board configurations for Qwen2.5 1.5B and Gemma 3 1B, staged as committed.
+  for (const [name, data, sizeBytes] of [['Qwen25', qwenData, 1646573312], ['Gemma3', gemmaData, 1003541152]] as const) {
+    const parsed = parseConfig(data);
+    const [run] = parsed.runs;
+    const engine = {...adapter(), modelLabel: run.model, quantLabel: run.quant, modelFile: run.modelFile,
+      effectiveSettings: (request: {maxDecodeTokens: number}) => {
+        const settings = effective(request);
+        return {...settings, init: {...settings.init, use_mmap: false, flash_attn_type: 'auto' as const}};
+      }};
+    records[`referenceV3${name}Staged`] = (await capture(persist => runSession(engine, parsed, run,
+      {...identity, artifact: {sha256: run.modelSha256!, sizeBytes},
+        configurationSource: {kind: 'staged', sha256: 'f'.repeat(64)}}, persist, noSleep,
+      context({runOrder: {method: ORDER_METHOD, seed: 7, seedSource: 'generated' as const, order: [run.id],
+        position: 0}})))).pop()!;
+  }
   // The per-process ID is random by design; pin it so the fixture is reproducible.
   for (const record of Object.values(records)) {
     for (const attempt of record.coldRuns) {
@@ -333,7 +350,10 @@ test('runSession records match the committed fixture validated by the host schem
     executionUnreported: 'complete/null/pass', chargingRecordOnly: 'complete/null/pass',
     referenceV2: 'complete/null/pass', referenceV1Staged: 'complete/null/pass',
     'referenceV3Staged-Q4_K_M': 'complete/null/pass', 'referenceV3Staged-Q4_0': 'complete/null/pass',
-    'referenceV3Staged-Q8_0': 'complete/null/pass'});
+    'referenceV3Staged-Q8_0': 'complete/null/pass', referenceV3Qwen25Staged: 'complete/null/pass',
+    referenceV3Gemma3Staged: 'complete/null/pass'});
+  expect(records.referenceV3Qwen25Staged.configuration).toEqual(qwenData);
+  expect(records.referenceV3Gemma3Staged.configuration).toEqual(gemmaData);
   for (const quant of ['Q4_K_M', 'Q4_0', 'Q8_0']) {
     expect(records[`referenceV3Staged-${quant}`].configuration).toEqual(v3Data);
   }

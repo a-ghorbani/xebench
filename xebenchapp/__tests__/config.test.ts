@@ -1,8 +1,12 @@
-import {parseConfig} from '../src/harness/config';
+import {parseAcceleratorConfig, parseConfig} from '../src/harness/config';
 import bundled from '../configs/cpu-reference-v2.json';
 import v1 from '../configs/cpu-reference-v1.json';
 import experiment from '../configs/experiment-charging-ab-v1.json';
 import v3 from '../configs/cpu-reference-v3.json';
+import qwen from '../configs/cpu-reference-v3-qwen25.json';
+import gemma from '../configs/cpu-reference-v3-gemma3.json';
+import qwenOpencl from '../configs/llamacpp-qwen25-opencl-v1.json';
+import hexagon from '../configs/llamacpp-llama32-hexagon-v1.json';
 
 test('bundled CPU reference configuration is valid', () => {
   expect(parseConfig(bundled)).toEqual(bundled);
@@ -105,4 +109,30 @@ test('the experiment-only charging readiness flag is kept only when set', () => 
   expect(parseConfig(bundled)).not.toHaveProperty('experimentChargingReadiness');
   expect(parseConfig({...bundled, experimentChargingReadiness: 'record-only'}).experimentChargingReadiness)
     .toBe('record-only');
+});
+
+test('the board configurations for Qwen2.5 and Gemma 3 parse to their files with v3 settings', () => {
+  for (const config of [qwen, gemma]) {
+    expect(parseConfig(config)).toEqual(config);
+    expect(config.runs[0]).toMatchObject({useMmap: false, useMlock: false, noExtraBufts: false, flashAttnType: 'auto'});
+  }
+  for (const config of [qwenOpencl, hexagon]) {
+    expect(parseAcceleratorConfig(config)).toEqual(config);
+    for (const run of config.runs) {
+      expect(run).toMatchObject({useMmap: false, useMlock: false, noExtraBufts: false, flashAttnType: 'auto'});
+    }
+  }
+  expect(qwenOpencl.chatTemplate).toBe('qwen25');
+});
+
+test('accelerator load settings apply to llama.cpp runs only and are validated', () => {
+  const base = parseAcceleratorConfig(qwenOpencl);
+  expect(base.runs[1].useMmap).toBe(false);
+  const {useMmap, useMlock, noExtraBufts, flashAttnType, ...plain} = qwenOpencl.runs[1];
+  expect([useMmap, useMlock, noExtraBufts, flashAttnType]).toEqual([false, false, false, 'auto']);
+  expect(parseAcceleratorConfig({...qwenOpencl, runs: [qwenOpencl.runs[0], plain]}).runs[1]).not.toHaveProperty('useMmap');
+  for (const change of [{useMmap: 'false'}, {flashAttnType: 'enabled'}, {noExtraBufts: 0}]) {
+    expect(() => parseAcceleratorConfig({...qwenOpencl, runs: [qwenOpencl.runs[0], {...qwenOpencl.runs[1], ...change}]}))
+      .toThrow();
+  }
 });

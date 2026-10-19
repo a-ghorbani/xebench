@@ -31,6 +31,22 @@ longer for readiness; the 2 °C rise bound (`maxBatteryTempRiseC`) is the same i
 | `cooldownSec` | 30 | 30 | 120 |
 | `readinessTimeoutSec` | 180 | 180 | 900 |
 
+The board's other llama.cpp setups use the same settings and timing in their own files.
+[`cpu-reference-v3-qwen25.json`](../xebenchapp/configs/cpu-reference-v3-qwen25.json) runs
+Qwen2.5 1.5B Instruct Q8_0 and
+[`cpu-reference-v3-gemma3.json`](../xebenchapp/configs/cpu-reference-v3-gemma3.json) runs
+Gemma 3 1B Q4_0 (QAT) on the CPU ([MODELS.md](../MODELS.md)). The GPU and NPU rows run
+through the accelerator protocol, which adds the output-correctness gate against a CPU run of
+the same file ([litert-accelerators](experiments/litert-accelerators.md)):
+[`llamacpp-qwen25-opencl-v1.json`](../xebenchapp/configs/llamacpp-qwen25-opencl-v1.json)
+(Qwen2.5 1.5B Q8_0, OpenCL, `chatTemplate: qwen25`, a ChatML user turn without a system
+message) and
+[`llamacpp-llama32-hexagon-v1.json`](../xebenchapp/configs/llamacpp-llama32-hexagon-v1.json)
+(Llama 3.2 1B Q4_0 and Q4_K_M, Hexagon `HTP0`, `chatTemplate: llama32`). Accelerator runs take
+the same optional load fields as reference runs; these set cpu-reference-v3's values on every
+run, the gate's CPU references included. The CPU reference prompt (`std-pp512-v1`) is a
+Llama 3.2 turn for every model.
+
 A run field that is not set takes the harness default in parentheses
 (`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).
 With llama.rn 0.13.0-rc.7, `use_mmap: true` selects memory-mapped loading

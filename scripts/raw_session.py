@@ -1231,9 +1231,11 @@ def _configuration_accelerator(config):
                 errors.append(reason("configuration.run-invalid", where,
                                      "llama.cpp runs need nThreads, nCtx and nGpuLayers/devices matching the backend"))
         elif "nGpuLayers" in run or "devices" in run or run["nCtx"] is not None or (
-                run["backend"] != "cpu" and run["nThreads"] is not None):
+                run["backend"] != "cpu" and run["nThreads"] is not None) or any(
+                field in run for field, _, _ in LOAD_SETTINGS):
             errors.append(reason("configuration.run-invalid", where,
-                                 "LiteRT-LM runs take nCtx null, no nGpuLayers/devices, and nThreads only on CPU"))
+                                 "LiteRT-LM runs take nCtx null, no nGpuLayers/devices or llama.cpp load settings, "
+                                 "and nThreads only on CPU"))
         reference = next((item for item in runs if item["id"] == run["referenceRunId"]), None)
         if (run["referenceRunId"] is not None) if run["backend"] == "cpu" else (
                 reference is None or reference["backend"] != "cpu" or reference["engine"] != run["engine"]):

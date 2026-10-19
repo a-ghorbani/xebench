@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "cpu-reference-v3-gemma3",
+  "nColdRuns": 3,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "runs": [
+    {
+      "id": "gemma3-1b-q40-qat-cpu",
+      "engine": "llama.cpp",
+      "model": "Gemma 3 1B",
+      "modelFile": "gemma-3-1b-it-q4_0.gguf",
+      "quant": "Q4_0 (QAT)",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "useMmap": false,
+      "useMlock": false,
+      "noExtraBufts": false,
+      "flashAttnType": "auto",
+      "modelSha256": "95e5b8d891cd6a794f66c2a6fb59a41e9562b4660560b854274eceffb628b22a"
+    }
+  ]
+}
