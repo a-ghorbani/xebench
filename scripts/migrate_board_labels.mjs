@@ -48,8 +48,8 @@ export const VENDOR_QUANTS = Object.freeze({ 'QAT+LoRA 4-bit': '4-bit QAT + LoRA
 /** Vendor source titles and notes in plain words: [field, before, after]. */
 export const VENDOR_TEXT = Object.freeze([
   ['sourceName', 'Arm Learning Path (ExecuTorch + XNNPACK)', 'Arm Learning Path (ExecuTorch tutorial)'],
-  ['asStated', 'Decode on the GPU; the source reports up to 2.2x more with multi-token prediction.',
-    'Measured without multi-token prediction; the source reports up to 2.2x faster generation with it.'],
+  ['asStated', 'Decode on the GPU; the source reports up to 2.2x more with multi-token prediction.', 'Measured without an optional speed-up mode (multi-token prediction); the source reports up to 2.2x faster generation with it.'],
+  ['asStated', 'Measured without multi-token prediction; the source reports up to 2.2x faster generation with it.', 'Measured without an optional speed-up mode (multi-token prediction); the source reports up to 2.2x faster generation with it.'],
 ]);
 
 const args = process.argv.slice(2);

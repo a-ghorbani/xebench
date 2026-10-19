@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.3",
-  "generatedAt": "2026-10-19T08:55:33Z",
+  "generatedAt": "2026-10-19T09:12:57Z",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Cross-engine on-device LLM benchmark results. provenance: measured = xebench lab runs; vendor = engine-maker official published numbers.",
   "rowCount": 43,
@@ -1244,7 +1244,7 @@
       "model": "Gemma 4 E2B",
       "ppTps": null,
       "tgTps": 52,
-      "asStated": "Measured without multi-token prediction; the source reports up to 2.2x faster generation with it.",
+      "asStated": "Measured without an optional speed-up mode (multi-token prediction); the source reports up to 2.2x faster generation with it.",
       "sourceName": "Google Developers Blog (LiteRT-LM)",
       "sourceUrl": "https://developers.googleblog.com/en/blazing-fast-on-device-genai-with-litert-lm/",
       "sourceDate": "2026",
