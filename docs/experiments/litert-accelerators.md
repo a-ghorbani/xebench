@@ -298,8 +298,9 @@ python3 scripts/export_evidence.py export --out <dir> <capture dir>
 python3 scripts/export_evidence.py verify <bundle dir>
 ```
 
-The LiteRT `.litertlm` artifacts are not pinned (MODELS.md). Their SHA-256 values come from
-the session records and are listed with the results.
+The LiteRT `.litertlm` files are pinned with their Hugging Face source and revision in
+[MODELS.md](../../MODELS.md#litert-lm-files); the configurations pin their SHA-256 as
+`modelSha256`, and the values are also listed with the results.
 
 ## Results
 

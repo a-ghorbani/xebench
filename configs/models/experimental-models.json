@@ -35,25 +35,60 @@
   "pinnedArtifacts": [
     {
       "id": "gemma3-1b-it-int4-litertlm",
+      "repo": "litert-community/Gemma3-1B-IT",
+      "revision": "d448835d84411a08f577e25f3afebe528402d73b",
       "file": "gemma3-1b-it-int4.litertlm",
+      "size": 584417280,
       "sha256": "1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be",
-      "source": "source revision unknown",
-      "usedBy": "LiteRT-LM CPU/GPU runs of the accelerator configurations (MODELS.md)"
+      "baseModel": "google/gemma-3-1b-it",
+      "license": "Gemma Terms of Use",
+      "licenseUrl": "https://ai.google.dev/gemma/terms",
+      "gated": true,
+      "usedBy": "LiteRT-LM CPU runs (litertlm-gemma3-int4-cpu-v1, litertlm-gemma3-sm8850-npu-v1) and the CPU/GPU runs of the accelerator experiment (MODELS.md)",
+      "sha256Source": "Hugging Face LFS oid of the file at this revision, read with an authenticated client (the repository is gated)"
     },
     {
       "id": "gemma3-1b-it-q4-ekv1280-sm8850-litertlm",
+      "repo": "litert-community/Gemma3-1B-IT",
+      "revision": "d448835d84411a08f577e25f3afebe528402d73b",
       "file": "Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm",
+      "size": 693747712,
       "sha256": "fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f",
-      "source": "source revision unknown",
-      "usedBy": "LiteRT-LM NPU runs on the POCO F8 Ultra (MODELS.md)"
+      "baseModel": "google/gemma-3-1b-it",
+      "license": "Gemma Terms of Use",
+      "licenseUrl": "https://ai.google.dev/gemma/terms",
+      "gated": true,
+      "usedBy": "LiteRT-LM NPU runs on the POCO F8 Ultra (litertlm-gemma3-sm8850-npu-v1 and the accelerator experiment; MODELS.md)",
+      "sha256Source": "Hugging Face LFS oid of the file at this revision, read with an authenticated client (the repository is gated)"
     },
     {
       "id": "gemma3-1b-it-sm8550-litertlm",
+      "repo": "litert-community/Gemma3-1B-IT",
+      "revision": "d448835d84411a08f577e25f3afebe528402d73b",
       "file": "Gemma3-1B-IT_sm8550.litertlm",
+      "sourceFile": "Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm",
       "size": 690143232,
       "sha256": "29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af",
-      "source": "source revision unknown",
-      "usedBy": "LiteRT-LM NPU bug reproduction on the Galaxy S23 (MODELS.md)"
+      "baseModel": "google/gemma-3-1b-it",
+      "license": "Gemma Terms of Use",
+      "licenseUrl": "https://ai.google.dev/gemma/terms",
+      "gated": true,
+      "usedBy": "LiteRT-LM NPU bug reproduction on the Galaxy S23 (MODELS.md)",
+      "sha256Source": "Hugging Face LFS oid of sourceFile at this revision, read with an authenticated client (the repository is gated); staged under the shorter name in file"
+    },
+    {
+      "id": "qwen25-1.5b-instruct-q8-ekv4096-litertlm",
+      "repo": "litert-community/Qwen2.5-1.5B-Instruct",
+      "revision": "5068b3fd9788a4ed5633dc868687f778143b73f3",
+      "file": "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+      "size": 1597922856,
+      "sha256": "c4a9b7289365ab80fe599b844b77ad253eb3c53fb0e5d963d699146a6f01255e",
+      "baseModel": "Qwen/Qwen2.5-1.5B-Instruct",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/blob/main/LICENSE",
+      "gated": false,
+      "usedBy": "LiteRT-LM CPU runs (litertlm-qwen25-q8-cpu-v1; MODELS.md)",
+      "sha256Source": "Hugging Face LFS oid of the file at this revision; equals the sha256sum of a copy downloaded from it"
     }
   ]
 }

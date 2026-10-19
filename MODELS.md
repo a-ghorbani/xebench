@@ -146,9 +146,9 @@ reproduction (issue #7). It is not chosen yet.
 ## Non-reference models
 
 The models below are used only by the experimental engine adapters. They are
-**not** part of the reference path. They have no pinned revision or expected
-digest, and `stage_model.py` does not stage them. Results from them are not
-reference results.
+**not** part of the reference path, and results from them are not reference results.
+The ExecuTorch files in this table have no pinned revision or expected digest, and
+`stage_model.py` does not stage them.
 
 | Engine | File | Quant | Source |
 |---|---|---|---|
@@ -175,26 +175,55 @@ LiteRT-LM with llama.cpp on Gemma 3 1B. These are not reference models either.
   `fa0390e7c043f89ae1847bd6682d748041a99d4ef3de0e0b27d33b6af97a8be8`, which equals the HF LFS
   hash at that revision. It is listed in the same manifest, and with the same values in
   `configs/models/reference-models.json` for cpu-reference-v3.
-- **LiteRT-LM artifacts: bytes pinned, source revision unknown.** The accelerator
-  configurations pin each file's SHA-256 as `modelSha256` (a different file is recorded
-  unmeasured with `stopReason: model-hash-mismatch`). The Hugging Face source revisions these
-  copies were downloaded from are not recorded:
+- **LiteRT-LM files, pinned.** See [LiteRT-LM files](#litert-lm-files) below; the same pins
+  serve the LiteRT-LM board configurations.
 
-  | File | Used for | SHA-256 |
-  |---|---|---|
-  | `gemma3-1b-it-int4.litertlm` | LiteRT-LM CPU/GPU | `1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be` |
-  | `Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm` | LiteRT-LM NPU, F8 Ultra | `fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f` |
-  | `Gemma3-1B-IT_sm8550.litertlm` | LiteRT-LM NPU, S23 (bug reproduction) | `29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af` |
+### LiteRT-LM files
 
-  The S23 file has the size (690143232 bytes) of `Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm` in
-  the `litert-community/Gemma3-1B-IT` tree; it is staged under the shorter name.
-  `configs/models/experimental-models.json` lists the three files under `pinnedArtifacts`
-  with `"source": "source revision unknown"`. `stage_model.py` stages only `models`
-  entries, which have a pinned revision.
+The LiteRT-LM board configurations
+([`litertlm-gemma3-int4-cpu-v1.json`](xebenchapp/configs/litertlm-gemma3-int4-cpu-v1.json),
+[`litertlm-qwen25-q8-cpu-v1.json`](xebenchapp/configs/litertlm-qwen25-q8-cpu-v1.json),
+[`litertlm-gemma3-sm8850-npu-v1.json`](xebenchapp/configs/litertlm-gemma3-sm8850-npu-v1.json))
+and the accelerator experiment run these `.litertlm` files. Each configuration pins the file's
+SHA-256 as `modelSha256`; a different file is recorded unmeasured with
+`stopReason: model-hash-mismatch`. `configs/models/experimental-models.json` lists them under
+`pinnedArtifacts` with their source. Each SHA-256 is the Hugging Face LFS oid of the file at the
+pinned revision; the Gemma repository is gated, so its oids were read with an authenticated
+client. The Qwen2.5 SHA-256 also equals `sha256sum` of a copy downloaded from that revision.
 
-The experimental adapters take absolute paths in their options
-(`LlamaRnAdapterOptions.modelPath`, `ExecutorchAdapterOptions.modelSource`). To stage
-these files manually, push them to the app's external files directory and point the
+| File | Source | Size | SHA-256 | Used for |
+|---|---|---|---|---|
+| `gemma3-1b-it-int4.litertlm` | [`litert-community/Gemma3-1B-IT`](https://huggingface.co/litert-community/Gemma3-1B-IT) (gated) at `d448835d84411a08f577e25f3afebe528402d73b` | 584417280 bytes | `1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be` | CPU (board), CPU/GPU (experiment) |
+| `Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm` | same repository and revision | 693747712 bytes | `fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f` | NPU on the POCO F8 Ultra (SM8850) |
+| `Gemma3-1B-IT_sm8550.litertlm` | `Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm`, same repository and revision, staged under the shorter name | 690143232 bytes | `29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af` | NPU bug reproduction on the Galaxy S23 |
+| `Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm` | [`litert-community/Qwen2.5-1.5B-Instruct`](https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct) at `5068b3fd9788a4ed5633dc868687f778143b73f3` | 1597922856 bytes | `c4a9b7289365ab80fe599b844b77ad253eb3c53fb0e5d963d699146a6f01255e` | CPU (board) |
+
+Each pinned revision is the repository's `main` when it was pinned; if `main` changes later, the
+pin still names these bytes. The Qwen2.5 file at its pinned revision carries LiteRT-LM 0.18.0
+metadata: a chat template that reads message content as a list of parts, and minimum runtime
+0.18.0. The repository commit that set this metadata
+(`5e6e7a58d03777898b31330a15d2e0a5a9107de3`) states that the weights are unchanged from the file
+of the same name at `19edb84c69a0212f29a6ef17ba0d6f278b6a1614` (1597931520 bytes,
+`faa60663b333290c1496c499828b21d3e3254a788cacd8cce917ce0f761a2dc9`). That file's chat template
+reads message content as a plain string, which LiteRT-LM 0.18.0 does not pass, so xebench does not
+use it. The Gemma files are under the Gemma Terms of Use; the Qwen2.5 file is under the
+[Apache License 2.0](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/blob/main/LICENSE).
+
+`stage_model.py` stages GGUF files only. Download and push a `.litertlm` file by name, then
+check its SHA-256 on the phone:
+
+```bash
+hf download litert-community/Qwen2.5-1.5B-Instruct \
+  Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm \
+  --revision 5068b3fd9788a4ed5633dc868687f778143b73f3 --local-dir models
+D=/sdcard/Android/data/com.xebenchapp/files
+adb -s <serial> push models/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm $D/
+adb -s <serial> shell sha256sum $D/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm
+```
+
+The ExecuTorch adapter takes absolute paths in its options
+(`ExecutorchAdapterOptions.modelSource`). To stage
+the ExecuTorch files manually, push them to the app's external files directory and point the
 options there:
 
 ```bash

@@ -67,8 +67,8 @@ def load_reference(root=None):
         manifests = {}
         for path in sorted((root / "configs/models").glob("*-models.json")):
             manifest = json.loads(path.read_text(encoding="utf-8"))
-            # models[] are downloadable pins (stage_model.py); pinnedArtifacts[] pin bytes whose
-            # source revision is unknown (the LiteRT-LM files, MODELS.md).
+            # models[] are GGUF pins that stage_model.py stages; pinnedArtifacts[] pin the other
+            # files (the LiteRT-LM .litertlm files, MODELS.md).
             for entry in manifest["models"] + manifest.get("pinnedArtifacts", []):
                 manifests.setdefault(entry["file"], set()).add(entry["sha256"])
         devices = {}
