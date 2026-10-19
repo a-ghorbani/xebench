@@ -62,7 +62,13 @@ class CheckedInSetTests(unittest.TestCase):
         self.board = load(ROOT / "configs/board.json")
 
     def test_july_rows_carry_their_month_and_its_basis(self):
-        july = {key_of(row): row for row in self.data["rows"] if row.get("validation") == "legacy"}
+        """Displayed July rows (engines not re-measured) and the July llama.cpp rows the rc.7 set
+        replaced or retired (history only) keep their month and its basis."""
+        displayed = {key_of(row): row for row in self.data["rows"] if row.get("validation") == "legacy"}
+        self.assertEqual(set(displayed), {key for key in JULY_ROWS if not key.startswith("llama.cpp|")})
+        kept = {entry["key"]: replaced["row"] for entry in self.index["keys"] for replaced in entry["replacedRows"]
+                if replaced["row"].get("validation") == "legacy" and replaced["row"].get("sourceDate") == "2026-07"}
+        july = {**kept, **displayed}
         self.assertEqual(set(july), set(JULY_ROWS))
         for key, basis in JULY_ROWS.items():
             with self.subTest(key):
@@ -74,7 +80,7 @@ class CheckedInSetTests(unittest.TestCase):
 
     def test_every_displayed_row_is_in_its_engines_set(self):
         llama = self.board["engines"]["llama.cpp"]
-        carried = set(llama["carryover"]["keys"])
+        carried = set((llama.get("carryover") or {}).get("keys", []))
         for row in self.data["rows"]:
             if row["provenance"] != "measured":
                 continue
@@ -95,13 +101,26 @@ class CheckedInSetTests(unittest.TestCase):
                     self.assertEqual(row["sourceDate"], engine_set["measured"])
 
     def test_the_llama_cpp_campaign_state(self):
-        """Nine rc.7 CPU rows displayed; nine July rows carried over until the campaign lands."""
-        llama = [row for row in self.data["rows"] if row["engine"] == "llama.cpp"]
-        versions = {(row.get("build") or {}).get("bindingVersion") for row in llama}
-        self.assertEqual(versions, {"llama.rn 0.13.0-rc.7", None})
-        self.assertEqual(len([row for row in llama if "evidence" in row]), 9)
-        self.assertEqual(sorted(key_of(row) for row in llama if "evidence" not in row),
-                         self.board["engines"]["llama.cpp"]["carryover"]["keys"])
+        """Fifteen rc.7 rows (13 CPU, 1 GPU, 1 NPU) and no July row; every July llama.cpp setup is
+        re-measured or retired."""
+        self.assertNotIn("carryover", self.board["engines"]["llama.cpp"])
+        llama = {key_of(row): row for row in self.data["rows"] if row["engine"] == "llama.cpp"}
+        self.assertEqual({(row.get("build") or {}).get("bindingVersion") for row in llama.values()},
+                         {"llama.rn 0.13.0-rc.7"})
+        self.assertTrue(all("evidence" in row and row["sourceDate"] == "2026-10" and row["validation"] == "verified"
+                            for row in llama.values()))
+        self.assertEqual(sorted(row["backend"] for row in llama.values()), ["cpu"] * 13 + ["gpu", "npu"])
+        retired = {item["key"] for item in self.board["retiredKeys"]}
+        for key in (key for key in JULY_ROWS if key.startswith("llama.cpp|")):
+            with self.subTest(key):
+                self.assertTrue((key in llama) != (key in retired), "re-measured or retired, not both")
+        self.assertEqual(retired, {
+            fx.NPU_KEY,
+            "llama.cpp|cpu|android|OnePlus 6|Llama 3.2 1B|Q4_K_M|measured",
+            "llama.cpp|cpu|android|OnePlus 6|Qwen2.5 1.5B|Q8_0|measured",
+            "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
+            "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
+        })
 
     def test_board_labels(self):
         """Lab rows say "xebench" and name their chip from configs/devices.json; vendor rows name a
@@ -128,7 +147,7 @@ class CheckedInSetTests(unittest.TestCase):
 
     def test_the_hexagon_row_is_retired_into_the_history(self):
         self.assertNotIn(fx.NPU_KEY, {key_of(row) for row in self.data["rows"]})
-        self.assertEqual([item["key"] for item in self.board["retiredKeys"]], [fx.NPU_KEY])
+        self.assertIn(fx.NPU_KEY, [item["key"] for item in self.board["retiredKeys"]])
         entry = next(entry for entry in self.index["keys"] if entry["key"] == fx.NPU_KEY)
         self.assertEqual(entry["replacedRows"][0]["row"]["validation"], "failed")
         findings = load(ROOT / "data/findings.json")

@@ -7,6 +7,26 @@ facts, a short dated label is left where a reader needs it ("Corrected <date>", 
 
 Newest first.
 
+## 2026-10-19 — llama.cpp board rows measured with llama.rn 0.13.0-rc.7
+
+- **What the board showed.** Nine July 2026 llama.cpp rows without versions next to nine rc.7
+  CPU rows: Qwen2.5 1.5B Q8_0 on CPU on the Pixel 9, OnePlus 6, F8 Ultra and S23; Gemma 3 1B
+  Q4_0 (QAT) on CPU on the F8 Ultra and S23; Llama 3.2 1B Q4_K_M on CPU on the OnePlus 6; and
+  Qwen2.5 1.5B Q8_0 on the OpenCL GPU on the F8 Ultra and S23.
+- **What is true.** Every llama.cpp board row is measured with llama.cpp b11385 (bf9a0cc) and
+  llama.rn 0.13.0-rc.7 under the current run conditions: 13 CPU rows, the F8 Ultra OpenCL GPU
+  row and the F8 Ultra Hexagon NPU row (Llama 3.2 1B Q4_K_M). Four July setups have no row: the
+  OnePlus 6 (two setups) cannot complete the run conditions (sustained thermal throttling); on the
+  S23 the OpenCL run is killed for low memory; and on the S23, Qwen2.5 1.5B Q8_0 on CPU is not
+  stable within a session (prefill falls across repetitions), so it waits for a stability check
+  in the run conditions ([#40](https://github.com/a-ghorbani/xebench/issues/40)).
+- **What changed.** `configs/board.json` adds `cpu-reference-v3-qwen25`,
+  `cpu-reference-v3-gemma3` (CPU), `llamacpp-qwen25-opencl-v1` (GPU) and
+  `llamacpp-llama32-q4km-hexagon-v1` (NPU) to the llama.cpp set, lists the four setups in
+  `retiredKeys` with their reasons, and declares no `carryover`. Five July rows are replaced by
+  rc.7 rows and four setups are retired; `data/sessions/index.json` keeps all nine July rows,
+  with their month and its basis, under `replacedRows`, and keeps the S23 Qwen2.5 CPU session.
+
 ## 2026-10-19 — llama.cpp Hexagon row leaves the board
 
 - **What the board showed.** The llama.cpp NPU row (POCO F8 Ultra, Llama 3.2 1B Q4_0, 197.6
