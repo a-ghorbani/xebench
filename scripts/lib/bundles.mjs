@@ -229,7 +229,9 @@ function rowConfiguration(record, facts) {
 }
 
 function asStated(record, n, decision) {
-  const parts = [`n=${n} cold-run median`, `prompt ${record.protocol.promptLabel}`, `decode ${record.protocol.maxDecodeTokens} tok`];
+  // decodeMode fixed: every repetition decoded exactly maxDecodeTokens, past the end of turn.
+  const decode = `decode ${record.protocol.maxDecodeTokens} tok${record.protocol.decodeMode === 'fixed' ? ', end of turn ignored' : ''}`;
+  const parts = [`n=${n} cold-run median`, `prompt ${record.protocol.promptLabel}`, decode];
   const pm = record.coldRuns.find((attempt) => attempt.status === 'complete')?.prefillMethod;
   if (pm && pm !== 'engine-timings') parts.push(`prefill ${pm} (no engine counter)`);
   const open = decision.checks.filter((check) => check.outcome !== 'pass');

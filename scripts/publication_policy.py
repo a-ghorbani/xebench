@@ -27,6 +27,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import backend_log  # noqa: E402
 import export_evidence  # noqa: E402
 import raw_session  # noqa: E402
 
@@ -318,6 +319,12 @@ def session_facts(doc, capture, reference=None):
                              "reviewedConfigs": _reviewed(record, run, reference),
                              "manifestSha256": reference["manifests"].get(model_file, [])}
     facts["backendEvidence"] = _backend(record, measured)
+    # LiteRT-LM NPU: the app's own log of the capture can confirm the backend (backend_log.py).
+    confirmation = backend_log.confirmation(record, capture.get("backendLog"))
+    facts["backendLog"] = confirmation
+    if version in raw_session.ACCELERATOR_PROTOCOLS and confirmation is not None and \
+            confirmation["status"] == "confirmed" and facts["backendEvidence"] != "mismatch":
+        facts["backendEvidence"] = "confirmed"
     if version in raw_session.ACCELERATOR_PROTOCOLS:
         facts["correctness"], facts["comparison"] = _gate(record, facts["backendEvidence"])
     build = record.get("build")
@@ -394,10 +401,14 @@ def _backend_check(facts):
     accepted = ("confirmed", "consistent") if backend == "cpu" else ("confirmed",)
     if status == "mismatch":
         return _check("backend", FAIL, "backend evidence contradicts the requested backend")
+    log = facts.get("backendLog")
     if status in accepted:
-        return _check("backend", PASS, f"{status} for {backend}")
+        source = f" by the app log ({log['rule']})" if log and log["status"] == "confirmed" else ""
+        return _check("backend", PASS, f"{status} for {backend}{source}")
     needed = " or ".join(accepted)
-    return _check("backend", UNKNOWN, f"{status or 'no evidence'} for {backend}; needs {needed}")
+    missing = sorted({kind for item in (log or {}).get("repetitions", []) for kind in item["missing"]})
+    detail = f"; the app log lacks {', '.join(missing)}" if missing else ""
+    return _check("backend", UNKNOWN, f"{status or 'no evidence'} for {backend}; needs {needed}{detail}")
 
 
 def _gate_checks(facts):

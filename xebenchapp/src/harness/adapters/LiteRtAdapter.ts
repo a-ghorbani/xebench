@@ -59,6 +59,8 @@ export class LiteRtAdapter implements EngineAdapter {
   private opts: LiteRtAdapterOptions;
   private libraries: Libraries | null = null;
   private native: any;
+  /** decodeMode fixed: the decode length of every engine load() creates from now on (0 = until end of turn). */
+  private fixedDecodeTokens = 0;
 
   constructor(opts: LiteRtAdapterOptions) {
     this.native = NativeModules.LiteRtBench;
@@ -85,9 +87,17 @@ export class LiteRtAdapter implements EngineAdapter {
     return {nThreads: this.opts.nThreads ?? null, nCtx: null};
   }
 
+  prepareMeasurement(options: {decodeMode: 'fixed'; decodeTokens: number}) {
+    if (options.decodeMode !== 'fixed' || !Number.isInteger(options.decodeTokens) || options.decodeTokens < 1) {
+      throw new Error('LiteRT-LM fixed decoding needs a positive decode length');
+    }
+    this.fixedDecodeTokens = options.decodeTokens;
+  }
+
   async load(): Promise<number> {
     this.libraries = null;
-    const result = await this.native.load(this.opts.modelPath, this.opts.backend, this.opts.nThreads ?? -1);
+    const result = await this.native.load(this.opts.modelPath, this.opts.backend, this.opts.nThreads ?? -1,
+      this.fixedDecodeTokens);
     this.libraries = {before: strings(result?.librariesBefore), after: strings(result?.librariesAfter)};
     if (!finite(result?.loadMs)) {
       throw new Error('LiteRT-LM load returned no duration');
@@ -126,6 +136,9 @@ export class LiteRtAdapter implements EngineAdapter {
     }
     if (!finite(result.ttftMs) || !finite(info.prefillTps) || !finite(info.decodeTps)) {
       throw new Error('LiteRT-LM returned non-finite timings');
+    }
+    if (this.fixedDecodeTokens > 0 && info.decodeTokens !== this.fixedDecodeTokens) {
+      throw new Error(`LiteRT-LM decoded ${info.decodeTokens} tokens, not the fixed ${this.fixedDecodeTokens}`);
     }
     return {
       loadMs: 0, // filled by the protocol runner from load()

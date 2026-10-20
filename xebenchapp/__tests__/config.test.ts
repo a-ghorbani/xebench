@@ -12,6 +12,9 @@ import q4kmHexagon from '../configs/llamacpp-llama32-q4km-hexagon-v1.json';
 import litertGemmaCpu from '../configs/litertlm-gemma3-int4-cpu-v1.json';
 import litertQwenCpu from '../configs/litertlm-qwen25-q8-cpu-v1.json';
 import litertGemmaNpu from '../configs/litertlm-gemma3-sm8850-npu-v1.json';
+import litertGemmaCpuFixed from '../configs/litertlm-gemma3-int4-cpu-v2.json';
+import litertQwenCpuFixed from '../configs/litertlm-qwen25-q8-cpu-v2.json';
+import litertGemmaNpuFixed from '../configs/litertlm-gemma3-sm8850-npu-v2.json';
 
 test('bundled CPU reference configuration is valid', () => {
   expect(parseConfig(bundled)).toEqual(bundled);
@@ -186,4 +189,23 @@ test('the measured prompts have the SHA-256 values the host validator pins', () 
   const digest = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
   expect(digest(STANDARD_PROMPT)).toBe('d4af02ae1c169637720a824ed879956385446ffd8823e287b30c8b11756c90f4');
   expect(digest(ACCELERATOR_PROMPT)).toBe('97b05f26c77fa84504cfa238dad74591d882e5e0a6264a47f05dd03605bdb4f8');
+});
+
+test('the v2 LiteRT-LM configurations are v1 with decodeMode fixed', () => {
+  for (const [first, v2] of [[litertGemmaCpu, litertGemmaCpuFixed], [litertQwenCpu, litertQwenCpuFixed],
+    [litertGemmaNpu, litertGemmaNpuFixed]] as const) {
+    const {decodeMode, id, ...rest} = parseAcceleratorConfig(v2);
+    expect(decodeMode).toBe('fixed');
+    expect(id).toBe(first.id.replace(/-v1$/, '-v2'));
+    expect({...rest, id: first.id}).toEqual(parseAcceleratorConfig(first));
+    expect(parseAcceleratorConfig(v2)).toEqual(v2);
+  }
+});
+
+test('decodeMode is optional, validated, and fixed needs LiteRT-LM runs on the default thread count', () => {
+  expect(parseAcceleratorConfig(litertGemmaCpu)).not.toHaveProperty('decodeMode');
+  expect(() => parseAcceleratorConfig({...litertGemmaCpu, decodeMode: 'until-128'})).toThrow('decodeMode');
+  expect(() => parseAcceleratorConfig({...qwenOpencl, decodeMode: 'fixed'})).toThrow('LiteRT-LM runs only');
+  const eight = {...litertGemmaCpu, runs: [{...litertGemmaCpu.runs[0], nThreads: 8}]};
+  expect(() => parseAcceleratorConfig({...eight, decodeMode: 'fixed'})).toThrow('nThreads 4');
 });

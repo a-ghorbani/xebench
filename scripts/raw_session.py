@@ -1253,6 +1253,11 @@ def _configuration_accelerator(config):
                 reference is None or reference["backend"] != "cpu" or reference["engine"] != run["engine"]):
             errors.append(reason("configuration.run-invalid", f"{where}/referenceRunId",
                                  "GPU/NPU runs name a CPU run of the same engine; CPU runs take null"))
+        if config.get("decodeMode") == "fixed" and (run["engine"] != "litert-lm" or (
+                run["backend"] == "cpu" and run["nThreads"] not in (None, 4))):
+            # The fixed-length engine (LiteRtFixedDecode.kt, nativeCreateBenchmark) takes no thread count.
+            errors.append(reason("configuration.run-invalid", where,
+                                 "decodeMode fixed applies to LiteRT-LM runs only, with nThreads 4 (or null) on CPU"))
     return errors
 
 
@@ -1382,6 +1387,15 @@ def _semantic_accelerator(record, identity=True):
     if protocol["chatTemplate"] != config["chatTemplate"]:
         errors.append(reason("protocol.configuration-mismatch", "/protocol/chatTemplate",
                              "Protocol chatTemplate disagrees with the configuration"))
+    if protocol.get("decodeMode") != config.get("decodeMode"):
+        errors.append(reason("protocol.configuration-mismatch", "/protocol/decodeMode",
+                             "Protocol decodeMode disagrees with the configuration"))
+    elif config.get("decodeMode") == "fixed":
+        # Every measured repetition decoded exactly the configured length, past the end of turn.
+        for index, attempt in enumerate(record["coldRuns"]):
+            if attempt["status"] == "complete" and attempt["decodeTokens"] != protocol["maxDecodeTokens"]:
+                errors.append(reason("protocol.decode-length", f"/coldRuns/{index}/decodeTokens",
+                                     "decodeMode fixed: a repetition decoded another length than maxDecodeTokens"))
     errors += backend_evidence_errors(record["engine"], record["backend"], record["gateBackend"], "/gateBackend")
     evidence = []
     for index, attempt in enumerate(record["coldRuns"]):

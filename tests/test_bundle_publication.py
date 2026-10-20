@@ -265,6 +265,14 @@ class VerifiedPublicationTests(Workspace):
         self.assertEqual(gpu["validation"], "unverified")
         self.assertIn("backend unknown", gpu["asStated"])
 
+    def test_a_fixed_length_row_says_the_end_of_turn_is_ignored(self):
+        self.bundle(fx.accel_record("board-litert-fixed-gemma3-1b-int4-litertlm-cpu", "1767225600000-0-fixed",
+                                    device="Fixture Phone"))
+        self.publish("1767225600000-0-fixed")
+        row = next(row for key, row in self.rows().items() if key.startswith("litert-lm|cpu|android|Google Fixture"))
+        self.assertIn("decode 128 tok, end of turn ignored;", row["asStated"])
+        self.assert_valid_data()
+
     def test_vendor_and_legacy_rows_are_unchanged(self):
         """Every row stays byte for byte, except the failed row the board retires: it moves into
         the history, byte for byte."""

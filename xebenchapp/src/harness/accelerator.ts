@@ -7,7 +7,7 @@
  */
 import type {RuntimeVersions} from './runtime';
 import type {EngineAdapter, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
-import type {AcceleratorConfig, AcceleratorRun} from './config';
+import type {AcceleratorConfig, AcceleratorRun, DecodeMode} from './config';
 import {ACCELERATOR_PROMPT, ACCELERATOR_PROMPT_LABEL, chatTurn, STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
 import type {ChatTemplate} from './prompts';
 import {CHARGING_POLICY, CONDITION_POLICY} from './conditions';
@@ -67,6 +67,8 @@ export interface AcceleratorSession extends Omit<SessionIdentity, 'artifact'> {
     maxBatteryTempRiseC: number;
     promptLabel: string; prompt: string; promptFormat: 'user-turn-chat-template' | 'raw-pretemplated';
     chatTemplate: ChatTemplate;
+    /** fixed: every repetition decodes exactly maxDecodeTokens, past the end of turn (configuration decodeMode). */
+    decodeMode?: DecodeMode;
     maxDecodeTokens: number; sampling: 'greedy'; nThreads: number | null; nCtx: number | null;
     coldDefinition: string; measurementKind: 'fresh-instance-first-request'; warmRequests: 'not-measured';
     processRestartBetweenRepetitions: false; gate: typeof GATE_VERSION;
@@ -138,6 +140,7 @@ export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' |
       version: 'accelerator-v2', nColdRuns: config.nColdRuns, cooldownSec: config.cooldownSec,
       readinessTimeoutSec: config.readinessTimeoutSec, maxBatteryTempRiseC: config.maxBatteryTempRiseC,
       ...measuredPrompt(config).protocol, chatTemplate: config.chatTemplate,
+      ...(config.decodeMode === undefined ? {} : {decodeMode: config.decodeMode}),
       maxDecodeTokens: config.maxDecodeTokens, sampling: 'greedy', nThreads: run.nThreads, nCtx: run.nCtx,
       coldDefinition: ACCELERATOR_COLD_DEFINITION, measurementKind: 'fresh-instance-first-request',
       warmRequests: 'not-measured', processRestartBetweenRepetitions: false, gate: GATE_VERSION,
@@ -180,6 +183,13 @@ export async function runAcceleratorSession(
   if (adapter.engine !== run.engine || adapter.backend !== run.backend ||
       settings.nThreads !== run.nThreads || settings.nCtx !== run.nCtx) {
     throw new Error('Adapter does not match the configured accelerator run');
+  }
+  if (config.decodeMode === 'fixed') {
+    // The gate ran on the engine's own stopping rule; only the measured repetitions decode a fixed length.
+    if (!adapter.prepareMeasurement) {
+      throw new Error('decodeMode fixed needs an engine adapter that can decode a fixed length');
+    }
+    adapter.prepareMeasurement({decodeMode: 'fixed', decodeTokens: config.maxDecodeTokens});
   }
   const record = createAcceleratorSession(adapter, config, run, identity, context.runOrder ?? null, gate);
   return runRepetitions(record, adapter, {

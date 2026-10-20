@@ -29,6 +29,7 @@ import {STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from '../src/harness/prompts';
 import q4kmHexagonConfig from '../configs/llamacpp-llama32-q4km-hexagon-v1.json';
 import litertQwenCpuConfig from '../configs/litertlm-qwen25-q8-cpu-v1.json';
 import litertGemmaNpuConfig from '../configs/litertlm-gemma3-sm8850-npu-v1.json';
+import litertGemmaNpuFixedConfig from '../configs/litertlm-gemma3-sm8850-npu-v2.json';
 
 declare const __dirname: string;
 declare const process: {env: Record<string, string | undefined>};
@@ -80,6 +81,8 @@ interface FakeOptions {
 function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {loads: number} {
   const answers = {...CORRECT, ...options.answers};
   let measured = 0;
+  // decodeMode fixed (LiteRtAdapter.prepareMeasurement): repetitions decode exactly this many tokens.
+  let fixedDecodeTokens = 0;
   // What the engines report from the APK: llama.rn's BuildInfo, LiteRtBenchModule's constants.
   const versions = () => run.engine === 'litert-lm' ? liteRtRuntimeVersions({litertLmVersion: '0.18.0',
     litertNpuRuntimeQualcommVersion: '2.3.0', qairtVersion: '2.50.0.260828221209'}, run.backend) :
@@ -106,7 +109,7 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
     },
     benchOnce: async (): Promise<SingleRunMetrics> => {
       measured++;
-      return {loadMs: 0, ttftMs: 120 + measured, promptTokens: 503, decodeTokens: 96,
+      return {loadMs: 0, ttftMs: 120 + measured, promptTokens: 503, decodeTokens: fixedDecodeTokens || 96,
         prefillTps: 900 + measured * 3.5, decodeTps: 40 + measured * 0.25,
         prefillMethod: 'engine-timings', decodeMethod: 'engine-timings'};
     },
@@ -128,6 +131,13 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
       options.devices, androidLib: 'rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl',
     reasonNoGpu: gpu ? null : 'GPU backend is available but was not selected'};
   };
+  if (run.engine === 'litert-lm') {
+    Object.assign(adapter, {
+      prepareMeasurement: (measurement: {decodeMode: 'fixed'; decodeTokens: number}) => {
+        fixedDecodeTokens = measurement.decodeTokens;
+      },
+    });
+  }
   if (run.engine === 'llama.cpp') {
     Object.assign(adapter, {
       effectiveSettings: ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
@@ -379,7 +389,8 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
 
   // The committed llama.cpp board configurations, exactly as staged (v3 load settings).
   for (const [prefix, config] of [['qwen25', qwenOpenclConfig], ['board-hexagon', q4kmHexagonConfig],
-    ['board-litert-qwen25', litertQwenCpuConfig], ['board-litert-npu', litertGemmaNpuConfig]] as const) {
+    ['board-litert-qwen25', litertQwenCpuConfig], ['board-litert-npu', litertGemmaNpuConfig],
+    ['board-litert-fixed', litertGemmaNpuFixedConfig]] as const) {
     const board = await runConfiguration(parseAcceleratorConfig(config));
     for (const [id, record] of Object.entries(board.records)) out[`${prefix}-${id}`] = record;
   }
@@ -420,7 +431,16 @@ test('accelerator records match the committed fixture validated by the host sche
     'board-litert-qwen25-qwen25-1.5b-q8-litertlm-cpu': 'complete/null/pass/valid/consistent/consistent',
     'board-litert-npu-gemma3-1b-int4-litertlm-cpu': 'complete/null/pass/valid/consistent/consistent',
     'board-litert-npu-gemma3-1b-sm8850-litertlm-npu': 'complete/null/pass/valid/unknown/consistent',
+    'board-litert-fixed-gemma3-1b-int4-litertlm-cpu': 'complete/null/pass/valid/consistent/consistent',
+    'board-litert-fixed-gemma3-1b-sm8850-litertlm-npu': 'complete/null/pass/valid/unknown/consistent',
   });
+  // decodeMode fixed: the protocol says so and every repetition decoded exactly maxDecodeTokens.
+  for (const key of ['board-litert-fixed-gemma3-1b-int4-litertlm-cpu', 'board-litert-fixed-gemma3-1b-sm8850-litertlm-npu']) {
+    expect(records[key].protocol.decodeMode).toBe('fixed');
+    expect(records[key].coldRuns.map(attempt => attempt.status === 'complete' ? attempt.decodeTokens : null))
+      .toEqual(records[key].coldRuns.map(() => 128));
+  }
+  expect(records['board-litert-npu-gemma3-1b-sm8850-litertlm-npu'].protocol).not.toHaveProperty('decodeMode');
   // The board configurations' records carry exactly the committed files and their load settings.
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].configuration).toEqual(qwenOpenclConfig);
   expect(records['board-hexagon-llama32-q4km-hexagon'].configuration).toEqual(q4kmHexagonConfig);

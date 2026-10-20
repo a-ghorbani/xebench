@@ -41,6 +41,9 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
 
   private val worker = Executors.newSingleThreadExecutor { Thread(it, "litert-bench") }
   private var engine: Engine? = null
+  /** decodeMode fixed: a native engine handle from LiteRtFixedDecode (0 when none is loaded). */
+  private var fixedEngine = 0L
+  private var fixedDecodeTokens = 0
 
   override fun getName() = "LiteRtBench"
 
@@ -75,8 +78,14 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
 
   @OptIn(ExperimentalApi::class)
   @ReactMethod
-  fun load(modelPath: String, backend: String, threads: Int, promise: Promise) = run(promise, "LITERT_LOAD") {
-    check(engine == null) { "A LiteRT-LM engine is already loaded" }
+  fun load(modelPath: String, backend: String, threads: Int, decodeTokens: Int, promise: Promise) =
+    run(promise, "LITERT_LOAD") {
+    check(engine == null && fixedEngine == 0L) { "A LiteRT-LM engine is already loaded" }
+    if (decodeTokens > 0) {
+      LiteRtFixedDecode.requirePinned(BuildConfig.XEBENCH_LITERTLM_VERSION)
+      // nativeCreateBenchmark takes no thread count; the engine's CPU default is 4.
+      check(backend != "cpu" || threads <= 0 || threads == 4) { "Fixed-length decoding runs CPU on 4 threads only" }
+    }
     val nld = reactContext.applicationInfo.nativeLibraryDir
     val be = when (backend) {
       "cpu" -> if (threads > 0) Backend.CPU(threads) else Backend.CPU()
@@ -98,16 +107,24 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
     val before = acceleratorLibraries()
     val cache = File(reactContext.cacheDir, "litert").apply { mkdirs() }
     val t0 = System.nanoTime()
-    val created = Engine(EngineConfig(modelPath = modelPath, backend = be, cacheDir = cache.absolutePath))
-    try {
-      created.initialize()
-    } catch (e: Throwable) {
-      // Keep the initialization error; a failing close must not replace it.
-      runCatching { created.close() }.exceptionOrNull()?.let { e.addSuppressed(it) }
-      throw e
+    if (decodeTokens > 0) {
+      // Created and initialized in one native call; the same backend names as Backend.name.
+      val npuDir = if (be is Backend.NPU) be.nativeLibraryDir else ""
+      fixedEngine = LiteRtFixedDecode.createEngine(modelPath, be.name, decodeTokens, cache.absolutePath, npuDir)
+      check(fixedEngine != 0L) { "LiteRT-LM did not create the fixed-length engine" }
+      fixedDecodeTokens = decodeTokens
+    } else {
+      val created = Engine(EngineConfig(modelPath = modelPath, backend = be, cacheDir = cache.absolutePath))
+      try {
+        created.initialize()
+      } catch (e: Throwable) {
+        // Keep the initialization error; a failing close must not replace it.
+        runCatching { created.close() }.exceptionOrNull()?.let { e.addSuppressed(it) }
+        throw e
+      }
+      engine = created
     }
     val loadMs = (System.nanoTime() - t0) / 1e6
-    engine = created
     Arguments.createMap().apply {
       putDouble("loadMs", loadMs)
       // null (not empty) when /proc/self/maps is unreadable: unknown stays unknown.
@@ -131,6 +148,7 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun generate(text: String, maxOutputTokens: Int, stream: Boolean, raw: Boolean, promise: Promise) =
     run(promise, "LITERT_GENERATE") {
+    if (fixedEngine != 0L) return@run generateFixed(text, maxOutputTokens, stream, raw)
     val loaded = checkNotNull(engine) { "No LiteRT-LM engine is loaded" }
     val config = ConversationConfig(
       samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 1.0, seed = 0),
@@ -184,24 +202,90 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * generate() on a fixed-length engine (decodeMode fixed): the same request, render check and
+   * timing, through LiteRtFixedDecode's JNI calls. The engine decodes exactly fixedDecodeTokens
+   * steps, past the end of turn, and the result must report that many decode tokens.
+   */
+  private fun generateFixed(text: String, maxOutputTokens: Int, stream: Boolean, raw: Boolean): WritableMap {
+    check(stream) { "A fixed-length engine is for measured repetitions only, not for the output gate" }
+    check(maxOutputTokens == fixedDecodeTokens) { "Decode length $maxOutputTokens is not the engine's $fixedDecodeTokens" }
+    val conversation = LiteRtFixedDecode.createConversation(fixedEngine, if (raw) RAW_TEMPLATE else null, maxOutputTokens)
+    check(conversation != 0L) { "LiteRT-LM did not create a conversation" }
+    try {
+      val result = Arguments.createMap()
+      if (raw) {
+        val rendered = LiteRtFixedDecode.render(conversation, text)
+        check(rendered == text) {
+          "LiteRT-LM rendered the raw prompt differently (${rendered.length} vs ${text.length} chars)"
+        }
+        result.putBoolean("rawPromptVerified", true)
+      }
+      val done = CountDownLatch(1)
+      var failure: Throwable? = null
+      var first = -1L
+      var chunks = 0
+      val t0 = System.nanoTime()
+      LiteRtFixedDecode.send(conversation, text, maxOutputTokens, object : LiteRtFixedDecode.Stream {
+        override fun onText(text: String) {
+          if (text.isNotEmpty()) {
+            if (first < 0) first = System.nanoTime()
+            chunks++
+          }
+        }
+        override fun onDone() = done.countDown()
+        override fun onError(statusCode: Int, message: String) {
+          failure = IllegalStateException("LiteRT-LM status $statusCode: $message")
+          done.countDown()
+        }
+      })
+      if (!done.await(10, TimeUnit.MINUTES)) {
+        LiteRtFixedDecode.cancel(conversation)
+        done.await(30, TimeUnit.SECONDS)
+        throw IllegalStateException("LiteRT-LM generation timed out")
+      }
+      failure?.let { throw it }
+      check(first >= 0) { "LiteRT-LM produced no output" }
+      result.putDouble("ttftMs", (first - t0) / 1e6)
+      result.putInt("chunks", chunks)
+      result.putDouble("totalMs", (System.nanoTime() - t0) / 1e6)
+      val info = LiteRtFixedDecode.benchmarkInfo(conversation)
+      check(info.lastDecodeTokenCount == fixedDecodeTokens) {
+        "LiteRT-LM decoded ${info.lastDecodeTokenCount} tokens, not the fixed $fixedDecodeTokens"
+      }
+      result.putMap("benchmark", benchmarkMap(info))
+      result.putBoolean("fixedDecode", true)
+      return result
+    } finally {
+      LiteRtFixedDecode.deleteConversation(conversation)
+    }
+  }
+
   @ReactMethod
   fun release(promise: Promise) = run(promise, "LITERT_RELEASE") {
     engine?.close()
     engine = null
+    if (fixedEngine != 0L) {
+      val handle = fixedEngine
+      fixedEngine = 0L
+      fixedDecodeTokens = 0
+      LiteRtFixedDecode.deleteEngine(handle)
+    }
     null
+  }
+
+  private fun benchmarkMap(info: com.google.ai.edge.litertlm.BenchmarkInfo) = Arguments.createMap().apply {
+    putDouble("timeToFirstTokenMs", info.timeToFirstTokenInSecond * 1000.0)
+    putInt("prefillTokens", info.lastPrefillTokenCount)
+    putDouble("prefillTps", info.lastPrefillTokensPerSecond)
+    putInt("decodeTokens", info.lastDecodeTokenCount)
+    putDouble("decodeTps", info.lastDecodeTokensPerSecond)
   }
 
   @OptIn(ExperimentalApi::class)
   private fun putBenchmark(result: WritableMap, conversation: com.google.ai.edge.litertlm.Conversation) {
     try {
-      val info = conversation.getBenchmarkInfo()
-      result.putMap("benchmark", Arguments.createMap().apply {
-        putDouble("timeToFirstTokenMs", info.timeToFirstTokenInSecond * 1000.0)
-        putInt("prefillTokens", info.lastPrefillTokenCount)
-        putDouble("prefillTps", info.lastPrefillTokensPerSecond)
-        putInt("decodeTokens", info.lastDecodeTokenCount)
-        putDouble("decodeTps", info.lastDecodeTokensPerSecond)
-      })
+      result.putMap("benchmark", benchmarkMap(conversation.getBenchmarkInfo()))
     } catch (e: Throwable) {
       result.putNull("benchmark")
       result.putString("benchmarkError", e.message ?: e.toString())
