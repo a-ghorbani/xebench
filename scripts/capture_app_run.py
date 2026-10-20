@@ -17,6 +17,7 @@ import time
 import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import backend_log  # noqa: E402
 import raw_session  # noqa: E402
 
 APP = "com.xebenchapp"
@@ -121,6 +122,8 @@ class Capture:
         self.rejections = []
         self.done = False
         self.app_identity = {'packageName': APP, 'before': None, 'after': None, 'consistency': 'unverified'}
+        # Backend events of the app process (backend_log.py), in order; None until the log was read.
+        self.backend_lines = None
 
     def read_reference(self, payload, read_file):
         """Resolve a bounded logcat file reference to the exact checksummed bytes."""
@@ -247,7 +250,26 @@ class Capture:
                 if record.get("status") == "failed":
                     self.failed_records += 1
 
+    def ingest_backend_log(self, snapshot, pid):
+        """Keep the backend events (backend_log.EVENTS) of process pid from a filtered logcat snapshot.
+
+        Only matching lines are kept, never the rest of the log."""
+        if self.backend_lines is None:
+            self.backend_lines = []
+        seen = set(self.backend_lines)
+        for line in backend_log.matching_lines(snapshot, pid):
+            if line not in seen:
+                seen.add(line)
+                self.backend_lines.append(line)
+
     def finish(self, status):
+        backend = None
+        if self.backend_lines is not None:
+            data = "".join(line + "\n" for line in self.backend_lines).encode("utf-8")
+            with (self.directory / "backend-log.txt").open("xb") as out:
+                out.write(data)
+            backend = {"rule": backend_log.RULE, "file": "backend-log.txt", "sha256": hashlib.sha256(data).hexdigest(),
+                       "lines": len(self.backend_lines)}
         manifest = {
             "schema": "xebench-local-capture", "schemaVersion": 1,
             "captureId": self.capture_id, "startedAt": self.started_at,
@@ -258,6 +280,8 @@ class Capture:
             "appIdentity": self.app_identity,
             "publicationReady": False,
         }
+        if backend is not None:
+            manifest["backendLog"] = backend
         with (self.directory / "manifest.json").open("x", encoding="utf-8") as out:
             json.dump(manifest, out, indent=2, allow_nan=False)
             out.write("\n")
@@ -356,6 +380,10 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
                 break
             capture.ingest(command("logcat", "-d", "-v", "epoch", "-T", since,
                                    f"--pid={pid}", "ReactNativeJS:I", "*:S"), read_record_file)
+            # The app's own LiteRT-LM and FastRPC lines only (backend_log.LOGCAT_FILTER), read before
+            # XEBENCH_DONE is acted on so the last repetition's load is included.
+            capture.ingest_backend_log(command("logcat", "-d", "-v", "epoch", "-T", since, f"--pid={pid}",
+                                               *backend_log.LOGCAT_FILTER), pid)
             check_interrupted()
             if capture.done:
                 status = "complete" if capture.records and not (capture.errors or capture.invalid or capture.failed_records) else "partial"

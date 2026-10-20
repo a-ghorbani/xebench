@@ -39,6 +39,7 @@ import sys
 import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import backend_log  # noqa: E402
 import raw_session  # noqa: E402
 
 BUNDLE_SCHEMA = "xebench-evidence-bundle"
@@ -247,6 +248,7 @@ REJECTION_CODES = Vocab((
     # accelerator-v1 cross-field checks (raw_session._semantic_accelerator).
     "backend.inconsistent", "backend.recomputed", "comparison.recomputed", "configuration.run-invalid",
     "correctness.inconsistent", "correctness.probe-set", "correctness.recomputed", "protocol.prompt",
+    "protocol.decode-length",
 ))
 
 # Condition signals and reason codes emitted by the app (xebenchapp/src/harness),
@@ -292,6 +294,7 @@ ENUM_WORDS = (
     "correctness-fail", "correctness-unverified", "engine-report", "engine-unavailable", "gate-cleanup-failed",
     "gate-error", "gate-not-run", "greedy", "invalid", "measurement", "mismatch", "none", "process-libraries",
     "reference", "reference-failed", "reference-unavailable", "user-turn-chat-template", "raw-pretemplated", "valid",
+    "fixed",  # configuration and protocol decodeMode (config.ts DECODE_MODES)
 )
 
 
@@ -580,13 +583,14 @@ PROTOCOL = Obj({
     "coldDefinition": COLD_DEFINITION, "measurementKind": ENUM, "warmRequests": ENUM,
     "processRestartBetweenRepetitions": BOOL,
     # accelerator-v1.
-    "promptFormat": ENUM, "chatTemplate": VERSION, "sampling": ENUM, "gate": VERSION,
+    "promptFormat": ENUM, "chatTemplate": VERSION, "sampling": ENUM, "gate": VERSION, "decodeMode": ENUM,
 }, required=("version", "nColdRuns", "promptLabel", "promptSha256", "maxDecodeTokens", "nThreads", "nCtx"),
     excluded=("prompt",), derive=_prompt_digest)
 CONFIGURATION = Obj({
     "schemaVersion": INT, "id": LABEL, "nColdRuns": COUNT, "cooldownSec": NONNEG,
     "readinessTimeoutSec": NONNEG, "maxBatteryTempRiseC": NONNEG, "maxDecodeTokens": COUNT,
     "orderSeed": _number(0, 2 ** 32 - 1, integer=True), "chatTemplate": VERSION, "measuredPrompt": VERSION,
+    "decodeMode": ENUM,
     # EXPERIMENT ONLY (docs/experiments/charging-ab.md): kept so a bundle shows the marker.
     "experimentChargingReadiness": ENUM,
     "runs": Arr(Obj({"id": LABEL, "engine": LABEL, "model": LABEL, "modelFile": MODEL_FILE, "quant": LABEL,
@@ -642,6 +646,12 @@ class RejectionCodes:
         return value
 
 
+# The app's backend events (backend_log.py, rule litert-npu-log-v1), sanitized: each line must still
+# be an event of the kind it claims, so a kind cannot be relabelled.
+BACKEND_LOG = Obj({
+    "rule": Scalar(lambda v: v == backend_log.RULE, backend_log.RULE),
+    "events": Arr(Scalar(backend_log.valid_event, "backend log event"), max_items=backend_log.MAX_EVENTS),
+}, required=("rule", "events"))
 CAPTURE_FILE = Obj({
     "schema": Scalar(lambda v: v == CAPTURE_SCHEMA, CAPTURE_SCHEMA), "schemaVersion": _number(1, 1, True),
     "captureId": UUID, "startedAt": UTC, "finishedAt": UTC,
@@ -652,6 +662,7 @@ CAPTURE_FILE = Obj({
     "appIdentity": APP_IDENTITY,
     "device": Obj({"manufacturer": Nullable(DEVICE_TEXT), "model": Nullable(DEVICE_TEXT),
                    "soc": Nullable(DEVICE_TEXT)}, required=("manufacturer", "model", "soc")),
+    "backendLog": BACKEND_LOG,
 }, required=("schema", "schemaVersion", "captureId", "startedAt", "finishedAt", "status", "doneObserved",
              "engineErrors", "invalidRecords", "failedRecords", "checkpointCount", "sessionIds",
              "rejections", "appIdentity", "device"))
@@ -710,7 +721,7 @@ def privacy_findings(value, path=""):
 
 MANIFEST_FIELDS = {"schema", "schemaVersion", "captureId", "startedAt", "finishedAt", "status", "doneObserved",
                    "engineErrors", "invalidRecords", "rejections", "records", "checkpoints", "failedRecords",
-                   "deviceInfo", "appIdentity", "publicationReady"}
+                   "deviceInfo", "appIdentity", "publicationReady", "backendLog"}
 RECORD_FILE = re.compile(r"(raw|checkpoint)-[0-9a-f-]{36}\.jsonl")
 
 
@@ -835,6 +846,7 @@ def load_capture(directory, ctx):
                                  not isinstance(identity, dict) or identity.get("consistency") == "changed"):
         # capture_app_run.py only reports complete for a clean, finished capture.
         raise Refused("/status", "A complete capture must be finished without errors, rejections or failures")
+    backend = _load_backend_log(directory, manifest.get("backendLog"))
     capture = {
         "schema": CAPTURE_SCHEMA, "schemaVersion": FORMAT_VERSION, "captureId": capture_id,
         "startedAt": UTC.apply(manifest.get("startedAt"), "/startedAt", ctx),
@@ -847,7 +859,31 @@ def load_capture(directory, ctx):
         "appIdentity": APP_IDENTITY.apply(manifest.get("appIdentity"), "/appIdentity", ctx),
         "device": host_device,
     }
+    if backend is not None:
+        capture["backendLog"] = backend
     return capture, sessions
+
+
+def _load_backend_log(directory, entry):
+    """The capture's backend events, sanitized (backend_log.events_from_lines); None without a backend log."""
+    if entry is None:
+        return None
+    if not isinstance(entry, dict) or entry.get("rule") != backend_log.RULE or entry.get("file") != "backend-log.txt" \
+            or not HEX64.check(entry.get("sha256")) or not COUNT.check(entry.get("lines")):
+        raise Refused("/backendLog", f"Expected a {backend_log.RULE} backend log entry")
+    path = directory / "backend-log.txt"
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_RAW_BYTES:
+        raise Refused("/backendLog", "Missing, irregular or oversized backend log")
+    data = path.read_bytes()
+    if sha256(data) != entry["sha256"]:
+        raise Refused("/backendLog", "Backend log checksum mismatch")
+    try:
+        lines = data.decode("utf-8").splitlines()
+        if len(lines) != entry["lines"]:
+            raise ValueError("line count disagrees with the manifest")
+        return {"rule": backend_log.RULE, "events": backend_log.events_from_lines(lines)}
+    except (UnicodeDecodeError, ValueError) as error:
+        raise Refused("/backendLog", f"Invalid backend log ({type(error).__name__})")
 
 
 def build_bundle(capture_dirs):

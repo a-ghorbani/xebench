@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.3",
-  "generatedAt": "2026-10-19T13:37:04Z",
+  "generatedAt": "2026-10-20T12:12:22Z",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Cross-engine on-device LLM benchmark results. provenance: measured = xebench lab runs; vendor = engine-maker official published numbers.",
-  "rowCount": 40,
+  "rowCount": 41,
   "rows": [
     {
       "engine": "litert-lm",
@@ -257,18 +257,52 @@
       "model": "Qwen2.5 1.5B",
       "quant": "Q8",
       "quantBits": 8,
-      "ppTps": 77.3,
-      "tgTps": 8.2,
-      "ttftMs": 6746,
-      "memoryMb": null,
+      "ppTps": 111.7,
+      "tgTps": 12.2,
+      "ttftMs": 4914.3,
       "provenance": "measured",
       "sourceName": "xebench",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
-      "sourceDate": "2026-07",
-      "dateBasis": "measured",
+      "sourceDate": "2026-10",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
-      "validation": "legacy"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+      "validation": "verified",
+      "guardsPassed": true,
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "accelerator-v2",
+      "configurationId": "litertlm-qwen25-q8-cpu-v2",
+      "configurationSha256": "e29d57bf5aa80c4f0cddd32952df92154fdf52f38a5e8d7e7ead13f62e01f5a2",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 0.8,
+          "min": 111.4,
+          "max": 113
+        },
+        "tgTps": {
+          "iqr": 0,
+          "min": 12.2,
+          "max": 12.3
+        }
+      },
+      "evidence": {
+        "sessionIds": [
+          "1792496109933-0-sbwcntrv1nf"
+        ],
+        "bundleSha256": "54762f3d924751b143a85a44a1c4dcabba625fa060175ff11f12027d75c9de6b",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/54762f3d924751b143a85a44a1c4dcabba625fa060175ff11f12027d75c9de6b/manifest.json"
+      },
+      "build": {
+        "engineVersion": "LiteRT-LM 0.18.0",
+        "apkSha256": "7375b363d265c920e59c9af52e62e79a8450f9338869bdfb66aecfbdc69a701a",
+        "harnessCommit": "e4aa8e8c311882c1d9c305900dc743f016b6fc6b",
+        "runtimes": [
+          {
+            "name": "LiteRT-LM",
+            "version": "0.18.0"
+          }
+        ]
+      }
     },
     {
       "engine": "llama.cpp",
@@ -496,18 +530,117 @@
       "model": "Gemma 3 1B",
       "quant": "int4",
       "quantBits": 4,
-      "ppTps": 691.7,
-      "tgTps": 40.6,
-      "ttftMs": 765,
-      "memoryMb": null,
+      "ppTps": 691.2,
+      "tgTps": 47.4,
+      "ttftMs": 815.3,
       "provenance": "measured",
       "sourceName": "xebench",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
-      "sourceDate": "2026-07",
-      "dateBasis": "measured",
+      "sourceDate": "2026-10",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
-      "validation": "legacy"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+      "validation": "verified",
+      "guardsPassed": true,
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "accelerator-v2",
+      "configurationId": "litertlm-gemma3-int4-cpu-v2",
+      "configurationSha256": "3392626264601b55a254cafddc7d96f446f8ed99eae1be0bfca95db72f3dccd4",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 5.1,
+          "min": 685.2,
+          "max": 695.5
+        },
+        "tgTps": {
+          "iqr": 0.1,
+          "min": 47.3,
+          "max": 47.4
+        }
+      },
+      "evidence": {
+        "sessionIds": [
+          "1792478400915-0-54zhyl2gw9e"
+        ],
+        "bundleSha256": "019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6/manifest.json"
+      },
+      "build": {
+        "engineVersion": "LiteRT-LM 0.18.0",
+        "apkSha256": "7375b363d265c920e59c9af52e62e79a8450f9338869bdfb66aecfbdc69a701a",
+        "harnessCommit": "e4aa8e8c311882c1d9c305900dc743f016b6fc6b",
+        "runtimes": [
+          {
+            "name": "LiteRT-LM",
+            "version": "0.18.0"
+          }
+        ]
+      }
+    },
+    {
+      "engine": "litert-lm",
+      "backend": "npu",
+      "platform": "android",
+      "device": "POCO F8 Ultra",
+      "soc": "SM8850",
+      "chipName": "Snapdragon 8 Elite Gen 5",
+      "model": "Gemma 3 1B",
+      "quant": "int4",
+      "quantBits": 4,
+      "ppTps": 4578.9,
+      "tgTps": 56.9,
+      "ttftMs": 181.8,
+      "provenance": "measured",
+      "sourceName": "xebench",
+      "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+      "sourceDate": "2026-10",
+      "sampleCount": 3,
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+      "validation": "verified",
+      "guardsPassed": true,
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "accelerator-v2",
+      "configurationId": "litertlm-gemma3-sm8850-npu-v2",
+      "configurationSha256": "dcb10952eb1d3e0d2116246992c45f3101df4217fd00cb430e3df08fdf771b7f",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 178.7,
+          "min": 4250.5,
+          "max": 4607.9
+        },
+        "tgTps": {
+          "iqr": 2.5,
+          "min": 55.3,
+          "max": 60.3
+        }
+      },
+      "evidence": {
+        "sessionIds": [
+          "1792478801983-0-jva3zm192p"
+        ],
+        "bundleSha256": "019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6/manifest.json"
+      },
+      "build": {
+        "engineVersion": "LiteRT-LM 0.18.0",
+        "apkSha256": "7375b363d265c920e59c9af52e62e79a8450f9338869bdfb66aecfbdc69a701a",
+        "harnessCommit": "e4aa8e8c311882c1d9c305900dc743f016b6fc6b",
+        "runtimes": [
+          {
+            "name": "LiteRT-LM",
+            "version": "0.18.0"
+          },
+          {
+            "name": "litert-npu-runtime-qualcomm",
+            "version": "2.3.0"
+          },
+          {
+            "name": "QAIRT",
+            "version": "2.50.0.260828221209"
+          }
+        ]
+      }
     },
     {
       "engine": "llama.cpp",
@@ -875,18 +1008,52 @@
       "model": "Qwen2.5 1.5B",
       "quant": "Q8",
       "quantBits": 8,
-      "ppTps": 323.8,
-      "tgTps": 24.2,
-      "ttftMs": 1622,
-      "memoryMb": null,
+      "ppTps": 330.3,
+      "tgTps": 25.5,
+      "ttftMs": 1694.2,
       "provenance": "measured",
       "sourceName": "xebench",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
-      "sourceDate": "2026-07",
-      "dateBasis": "measured",
+      "sourceDate": "2026-10",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
-      "validation": "legacy"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+      "validation": "verified",
+      "guardsPassed": true,
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "accelerator-v2",
+      "configurationId": "litertlm-qwen25-q8-cpu-v2",
+      "configurationSha256": "e29d57bf5aa80c4f0cddd32952df92154fdf52f38a5e8d7e7ead13f62e01f5a2",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 6.4,
+          "min": 326.3,
+          "max": 339.1
+        },
+        "tgTps": {
+          "iqr": 0.1,
+          "min": 25.5,
+          "max": 25.6
+        }
+      },
+      "evidence": {
+        "sessionIds": [
+          "1792477982490-0-ega6r3qa36f"
+        ],
+        "bundleSha256": "019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6/manifest.json"
+      },
+      "build": {
+        "engineVersion": "LiteRT-LM 0.18.0",
+        "apkSha256": "7375b363d265c920e59c9af52e62e79a8450f9338869bdfb66aecfbdc69a701a",
+        "harnessCommit": "e4aa8e8c311882c1d9c305900dc743f016b6fc6b",
+        "runtimes": [
+          {
+            "name": "LiteRT-LM",
+            "version": "0.18.0"
+          }
+        ]
+      }
     },
     {
       "engine": "llama.cpp",
@@ -1038,18 +1205,52 @@
       "model": "Gemma 3 1B",
       "quant": "int4",
       "quantBits": 4,
-      "ppTps": 186.6,
-      "tgTps": 36.1,
-      "ttftMs": 2771,
-      "memoryMb": null,
+      "ppTps": 228.1,
+      "tgTps": 38.6,
+      "ttftMs": 2346.1,
       "provenance": "measured",
       "sourceName": "xebench",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
-      "sourceDate": "2026-07",
-      "dateBasis": "first-published",
+      "sourceDate": "2026-10",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
-      "validation": "legacy"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+      "validation": "verified",
+      "guardsPassed": true,
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "accelerator-v2",
+      "configurationId": "litertlm-gemma3-int4-cpu-v2",
+      "configurationSha256": "3392626264601b55a254cafddc7d96f446f8ed99eae1be0bfca95db72f3dccd4",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 0.4,
+          "min": 228,
+          "max": 228.9
+        },
+        "tgTps": {
+          "iqr": 0,
+          "min": 38.6,
+          "max": 38.6
+        }
+      },
+      "evidence": {
+        "sessionIds": [
+          "1792478409685-0-460hv9jut6f"
+        ],
+        "bundleSha256": "a351d335a03be1c905ce659a9e183259cac6fb2784b592e9d4cfde11ec862beb",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/a351d335a03be1c905ce659a9e183259cac6fb2784b592e9d4cfde11ec862beb/manifest.json"
+      },
+      "build": {
+        "engineVersion": "LiteRT-LM 0.18.0",
+        "apkSha256": "7375b363d265c920e59c9af52e62e79a8450f9338869bdfb66aecfbdc69a701a",
+        "harnessCommit": "e4aa8e8c311882c1d9c305900dc743f016b6fc6b",
+        "runtimes": [
+          {
+            "name": "LiteRT-LM",
+            "version": "0.18.0"
+          }
+        ]
+      }
     },
     {
       "engine": "llama.cpp",
@@ -1355,18 +1556,52 @@
       "model": "Qwen2.5 1.5B",
       "quant": "Q8",
       "quantBits": 8,
-      "ppTps": 78.6,
-      "tgTps": 16,
-      "ttftMs": 6578,
-      "memoryMb": null,
+      "ppTps": 112.1,
+      "tgTps": 18.2,
+      "ttftMs": 4787.4,
       "provenance": "measured",
       "sourceName": "xebench",
       "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
-      "sourceDate": "2026-07",
-      "dateBasis": "measured",
+      "sourceDate": "2026-10",
       "sampleCount": 3,
-      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok",
-      "validation": "legacy"
+      "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+      "validation": "verified",
+      "guardsPassed": true,
+      "conditionPolicy": "run-conditions-v2",
+      "protocolVersion": "accelerator-v2",
+      "configurationId": "litertlm-qwen25-q8-cpu-v2",
+      "configurationSha256": "e29d57bf5aa80c4f0cddd32952df92154fdf52f38a5e8d7e7ead13f62e01f5a2",
+      "timingMethod": "engine-timings",
+      "dispersion": {
+        "ppTps": {
+          "iqr": 0.4,
+          "min": 111.4,
+          "max": 112.2
+        },
+        "tgTps": {
+          "iqr": 0,
+          "min": 18.2,
+          "max": 18.3
+        }
+      },
+      "evidence": {
+        "sessionIds": [
+          "1792478841240-0-r571zp0y8or"
+        ],
+        "bundleSha256": "a351d335a03be1c905ce659a9e183259cac6fb2784b592e9d4cfde11ec862beb",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/a351d335a03be1c905ce659a9e183259cac6fb2784b592e9d4cfde11ec862beb/manifest.json"
+      },
+      "build": {
+        "engineVersion": "LiteRT-LM 0.18.0",
+        "apkSha256": "7375b363d265c920e59c9af52e62e79a8450f9338869bdfb66aecfbdc69a701a",
+        "harnessCommit": "e4aa8e8c311882c1d9c305900dc743f016b6fc6b",
+        "runtimes": [
+          {
+            "name": "LiteRT-LM",
+            "version": "0.18.0"
+          }
+        ]
+      }
     },
     {
       "engine": "executorch",

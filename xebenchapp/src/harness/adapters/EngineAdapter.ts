@@ -81,4 +81,9 @@ export interface EngineAdapter {
   generate?(cfg: BenchOnceConfig): Promise<string>;
   /** What the engine or process reported about the backend after the last load(). */
   backendEvidence?(): BackendEvidence;
+  /**
+   * Called once before the measured repetitions (not before the output gate): with decodeMode
+   * fixed, every later load() creates an engine that decodes exactly decodeTokens tokens.
+   */
+  prepareMeasurement?(options: {decodeMode: 'fixed'; decodeTokens: number}): void;
 }

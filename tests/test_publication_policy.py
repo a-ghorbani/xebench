@@ -674,17 +674,20 @@ class FactsFromBundlesTests(unittest.TestCase):
         self.assertFalse(report["valid"])
         self.assertTrue(any("reference data" in error for error in report["errors"]), report["errors"])
 
-    def test_litert_artifacts_are_pinned_without_a_source_revision(self):
+    def test_litert_artifacts_are_pinned_with_a_source_revision(self):
         manifest = json.loads((ROOT / "configs/models/experimental-models.json").read_text())
         pinned = {entry["file"]: entry for entry in manifest["pinnedArtifacts"]}
         self.assertEqual(sorted(pinned), ["Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm", "Gemma3-1B-IT_sm8550.litertlm",
+                                          "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
                                           "gemma3-1b-it-int4.litertlm"])
         models_md = (ROOT / "MODELS.md").read_text()
         configured = {run["modelFile"]: run["modelSha256"] for path in (ROOT / "xebenchapp/configs").glob("*.json")
                       for run in json.loads(path.read_text())["runs"] if run["modelFile"].endswith(".litertlm")}
         for name, entry in pinned.items():
-            self.assertEqual(entry["source"], "source revision unknown")
-            self.assertNotIn("revision", entry)
+            self.assertRegex(entry["repo"], r"^litert-community/")
+            self.assertRegex(entry["revision"], r"^[0-9a-f]{40}$")
+            self.assertIsInstance(entry["size"], int)
+            self.assertIn(entry["revision"], models_md)
             self.assertIn(entry["sha256"], models_md)
             self.assertEqual(configured[name], entry["sha256"], "the configs pin the same bytes")
         # Staging reads only models[]: the downloadable pins still load.

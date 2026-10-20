@@ -228,8 +228,27 @@ function rowConfiguration(record, facts) {
   return { configurationId: id, configurationSha256: sha };
 }
 
+/**
+ * The decode length a row measured. decodeMode fixed: every repetition decoded exactly
+ * maxDecodeTokens, past the end of turn. Otherwise decoding stops at the end of turn or at the
+ * budget; a run that reached the budget states the budget (llama.cpp counts maxDecodeTokens - 1
+ * decoded tokens there, the first one coming from prefill), and one whose median decoded count
+ * stopped short states that count.
+ */
+function decodeStated(record) {
+  const max = record.protocol.maxDecodeTokens;
+  if (record.protocol.decodeMode === 'fixed') return `decode ${max} tok, end of turn ignored`;
+  const counts = record.coldRuns.filter((attempt) => attempt.status === 'complete')
+    .map((attempt) => attempt.decodeTokens).filter((count) => Number.isInteger(count)).sort((a, b) => a - b);
+  if (!counts.length) return `decode ${max} tok`;
+  const middle = counts.length >> 1;
+  const median = counts.length % 2 ? counts[middle] : (counts[middle - 1] + counts[middle]) / 2;
+  return median < max - 1 ? `decode ${median} of ${max} tok, stopped at the end of turn` : `decode ${max} tok`;
+}
+
 function asStated(record, n, decision) {
-  const parts = [`n=${n} cold-run median`, `prompt ${record.protocol.promptLabel}`, `decode ${record.protocol.maxDecodeTokens} tok`];
+  const decode = decodeStated(record);
+  const parts = [`n=${n} cold-run median`, `prompt ${record.protocol.promptLabel}`, decode];
   const pm = record.coldRuns.find((attempt) => attempt.status === 'complete')?.prefillMethod;
   if (pm && pm !== 'engine-timings') parts.push(`prefill ${pm} (no engine counter)`);
   const open = decision.checks.filter((check) => check.outcome !== 'pass');

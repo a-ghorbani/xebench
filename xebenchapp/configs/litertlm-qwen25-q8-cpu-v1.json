@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "id": "litertlm-qwen25-q8-cpu-v1",
+  "nColdRuns": 3,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "qwen25",
+  "measuredPrompt": "std-pp512-v1",
+  "runs": [
+    {
+      "id": "qwen25-1.5b-q8-litertlm-cpu",
+      "engine": "litert-lm",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Qwen2.5 1.5B",
+      "modelFile": "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+      "quant": "Q8",
+      "nThreads": 4,
+      "nCtx": null,
+      "referenceRunId": null,
+      "modelSha256": "c4a9b7289365ab80fe599b844b77ad253eb3c53fb0e5d963d699146a6f01255e"
+    }
+  ]
+}

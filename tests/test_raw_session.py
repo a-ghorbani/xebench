@@ -985,10 +985,63 @@ class MeasuredPromptTests(unittest.TestCase):
         record["protocol"]["promptFormat"] = "user-turn-chat-template"
         self.assertIn("protocol.prompt", {item["code"] for item in raw_session.validate(record)})
 
-    def test_std_pp512_needs_llama_cpp_runs_only(self):
+    def test_std_pp512_applies_to_both_engines(self):
         config = json.loads((ROOT / "xebenchapp/configs/f8-gemma3-accelerators-v1.json").read_text())
         config["measuredPrompt"] = "std-pp512-v1"
+        self.assertEqual(raw_session._configuration_accelerator(config), [])
+
+    def test_litert_board_configurations_measure_the_cpu_reference_prompt(self):
+        for name in ("litertlm-gemma3-int4-cpu-v1.json", "litertlm-qwen25-q8-cpu-v1.json",
+                     "litertlm-gemma3-sm8850-npu-v1.json"):
+            with self.subTest(name):
+                config = json.loads((ROOT / "xebenchapp/configs" / name).read_text())
+                self.assertEqual(config["measuredPrompt"], "std-pp512-v1")
+                self.assertEqual({run["engine"] for run in config["runs"]}, {"litert-lm"})
+                self.assertEqual(raw_session._configuration_accelerator(config), [])
+
+class DecodeModeTests(unittest.TestCase):
+    """decodeMode fixed: LiteRT-LM repetitions decode exactly maxDecodeTokens, past the end of turn."""
+
+    NAME = "board-litert-fixed-gemma3-1b-sm8850-litertlm-npu"
+
+    def record(self):
+        return copy.deepcopy(ACCEL[self.NAME])
+
+    def codes(self, record):
+        return {item["code"] for item in raw_session.validate(record)}
+
+    def test_fixed_records_validate(self):
+        record = self.record()
+        self.assertEqual(record["protocol"]["decodeMode"], "fixed")
+        self.assertEqual(raw_session.validate(record), [])
+
+    def test_a_shorter_repetition_is_refused(self):
+        record = self.record()
+        record["coldRuns"][0]["decodeTokens"] = 12
+        self.assertIn("protocol.decode-length", self.codes(record))
+
+    def test_protocol_and_configuration_must_agree(self):
+        record = self.record()
+        record["protocol"].pop("decodeMode")
+        self.assertIn("protocol.configuration-mismatch", self.codes(record))
+        record = copy.deepcopy(ACCEL["board-litert-npu-gemma3-1b-sm8850-litertlm-npu"])
+        record["protocol"]["decodeMode"] = "fixed"
+        self.assertIn("protocol.configuration-mismatch", self.codes(record))
+
+    def test_fixed_needs_litert_runs_on_the_default_thread_count(self):
+        for name in ("litertlm-gemma3-int4-cpu-v2.json", "litertlm-qwen25-q8-cpu-v2.json",
+                     "litertlm-gemma3-sm8850-npu-v2.json"):
+            with self.subTest(name):
+                config = json.loads((ROOT / "xebenchapp/configs" / name).read_text())
+                self.assertEqual(config["decodeMode"], "fixed")
+                self.assertEqual(raw_session._configuration_accelerator(config), [])
+        config = json.loads((ROOT / "xebenchapp/configs/llamacpp-qwen25-opencl-v1.json").read_text())
+        config["decodeMode"] = "fixed"
         self.assertIn("configuration.run-invalid", {item["code"] for item in raw_session._configuration_accelerator(config)})
+        config = json.loads((ROOT / "xebenchapp/configs/litertlm-gemma3-int4-cpu-v2.json").read_text())
+        config["runs"][0]["nThreads"] = 8
+        self.assertIn("configuration.run-invalid", {item["code"] for item in raw_session._configuration_accelerator(config)})
+
 
 if __name__ == "__main__":
     unittest.main()

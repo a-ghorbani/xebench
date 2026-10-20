@@ -265,6 +265,14 @@ class VerifiedPublicationTests(Workspace):
         self.assertEqual(gpu["validation"], "unverified")
         self.assertIn("backend unknown", gpu["asStated"])
 
+    def test_a_fixed_length_row_says_the_end_of_turn_is_ignored(self):
+        self.bundle(fx.accel_record("board-litert-fixed-gemma3-1b-int4-litertlm-cpu", "1767225600000-0-fixed",
+                                    device="Fixture Phone"))
+        self.publish("1767225600000-0-fixed")
+        row = next(row for key, row in self.rows().items() if key.startswith("litert-lm|cpu|android|Google Fixture"))
+        self.assertIn("decode 128 tok, end of turn ignored;", row["asStated"])
+        self.assert_valid_data()
+
     def test_vendor_and_legacy_rows_are_unchanged(self):
         """Every row stays byte for byte, except the failed row the board retires: it moves into
         the history, byte for byte."""
@@ -780,8 +788,11 @@ class BoardConfigurationTests(Workspace):
                                        {"id": "llamacpp-llama32-q4km-hexagon-v1", "backends": ["npu"]}],
                           "llama.cpp b11385 (bf9a0cc)", "llama.rn 0.13.0-rc.7"))
         self.assertNotIn("carryover", llama)
-        for engine in ("executorch", "genie-x", "litert-lm"):
+        for engine in ("executorch", "genie-x"):
             self.assertEqual(board["engines"][engine], {"set": "pre-version-recording", "measured": "2026-07"})
+        litert = board["engines"]["litert-lm"]
+        self.assertEqual((litert["set"], litert["engineVersion"], litert["measuredFrom"], "bindingVersion" in litert),
+                         ("sessions", "LiteRT-LM 0.18.0", "2026-10-20", False))
         result = subprocess.run(["node", "--input-type=module", "-e",
                                  "import {loadBoard} from './scripts/lib/board.mjs';"
                                  "const b = loadBoard(process.cwd());"

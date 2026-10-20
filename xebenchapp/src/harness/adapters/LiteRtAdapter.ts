@@ -46,7 +46,7 @@ const finite = (value: unknown): value is number => typeof value === 'number' &&
  *
  * load() creates and initializes a fresh Engine on the requested backend; benchOnce()
  * runs one single-turn greedy conversation on the real prompt (the artifact's own chat
- * template) and reports LiteRT-LM's engine counters (Conversation.getBenchmarkInfo):
+ * template, or a pre-templated prompt prefilled verbatim) and reports LiteRT-LM's engine counters (Conversation.getBenchmarkInfo):
  * prefill and decode tok/s are 'engine-timings', like llama.cpp's timings. TTFT is
  * request -> first streamed callback, timed natively on the worker thread.
  */
@@ -59,6 +59,8 @@ export class LiteRtAdapter implements EngineAdapter {
   private opts: LiteRtAdapterOptions;
   private libraries: Libraries | null = null;
   private native: any;
+  /** decodeMode fixed: the decode length of every engine load() creates from now on (0 = until end of turn). */
+  private fixedDecodeTokens = 0;
 
   constructor(opts: LiteRtAdapterOptions) {
     this.native = NativeModules.LiteRtBench;
@@ -85,9 +87,17 @@ export class LiteRtAdapter implements EngineAdapter {
     return {nThreads: this.opts.nThreads ?? null, nCtx: null};
   }
 
+  prepareMeasurement(options: {decodeMode: 'fixed'; decodeTokens: number}) {
+    if (options.decodeMode !== 'fixed' || !Number.isInteger(options.decodeTokens) || options.decodeTokens < 1) {
+      throw new Error('LiteRT-LM fixed decoding needs a positive decode length');
+    }
+    this.fixedDecodeTokens = options.decodeTokens;
+  }
+
   async load(): Promise<number> {
     this.libraries = null;
-    const result = await this.native.load(this.opts.modelPath, this.opts.backend, this.opts.nThreads ?? -1);
+    const result = await this.native.load(this.opts.modelPath, this.opts.backend, this.opts.nThreads ?? -1,
+      this.fixedDecodeTokens);
     this.libraries = {before: strings(result?.librariesBefore), after: strings(result?.librariesAfter)};
     if (!finite(result?.loadMs)) {
       throw new Error('LiteRT-LM load returned no duration');
@@ -101,24 +111,34 @@ export class LiteRtAdapter implements EngineAdapter {
   }
 
   async generate(cfg: BenchOnceConfig): Promise<string> {
-    const result = await this.native.generate(cfg.text ?? cfg.prompt, cfg.maxDecodeTokens, false);
+    const raw = cfg.text === undefined;
+    const result = await this.native.generate(raw ? cfg.prompt : cfg.text, cfg.maxDecodeTokens, false, raw);
     if (typeof result?.text !== 'string') {
       throw new Error('LiteRT-LM returned no text');
     }
     return result.text;
   }
 
+  /**
+   * With cfg.text, the request is a user message in the artifact's chat template (std-chat-v1).
+   * Without it, cfg.prompt is already templated (std-pp512-v1) and is prefilled verbatim: the
+   * native module renders it with a pass-through template and refuses any difference.
+   */
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {
-    if (cfg.text === undefined) {
-      throw new Error('LiteRT-LM takes the prompt as a user message (accelerator protocol)');
+    const raw = cfg.text === undefined;
+    const result = await this.native.generate(raw ? cfg.prompt : cfg.text, cfg.maxDecodeTokens, true, raw);
+    if (raw && result?.rawPromptVerified !== true) {
+      throw new Error('LiteRT-LM did not confirm the verbatim prompt');
     }
-    const result = await this.native.generate(cfg.text, cfg.maxDecodeTokens, true);
     const info = result?.benchmark;
     if (!info) {
       throw new Error(`LiteRT-LM benchmark info unavailable: ${result?.benchmarkError ?? 'not reported'}`);
     }
     if (!finite(result.ttftMs) || !finite(info.prefillTps) || !finite(info.decodeTps)) {
       throw new Error('LiteRT-LM returned non-finite timings');
+    }
+    if (this.fixedDecodeTokens > 0 && info.decodeTokens !== this.fixedDecodeTokens) {
+      throw new Error(`LiteRT-LM decoded ${info.decodeTokens} tokens, not the fixed ${this.fixedDecodeTokens}`);
     }
     return {
       loadMs: 0, // filled by the protocol runner from load()

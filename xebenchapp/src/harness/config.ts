@@ -204,12 +204,22 @@ export interface AcceleratorConfig {
   chatTemplate: ChatTemplate;
   /**
    * The prompt the repetitions measure; absent means std-chat-v1. std-pp512-v1 (the CPU reference
-   * prompt) needs llama.cpp runs only. Kept only when set, so the record echoes the file exactly.
+   * prompt) is prefilled verbatim by both engines (LiteRT-LM through a pass-through template).
+   * Kept only when set, so the record echoes the file exactly.
    */
   measuredPrompt?: MeasuredPrompt;
+  /**
+   * fixed: every repetition decodes exactly maxDecodeTokens tokens, past the end of turn
+   * (LiteRT-LM runs only; LiteRtFixedDecode.java). Absent: decoding stops at the end of turn or at
+   * maxDecodeTokens. Kept only when set, so the record echoes the file exactly.
+   */
+  decodeMode?: DecodeMode;
   orderSeed?: number;
   runs: AcceleratorRun[];
 }
+
+export const DECODE_MODES = ['fixed'] as const;
+export type DecodeMode = typeof DECODE_MODES[number];
 
 const BASENAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 const RUN_FIELDS = ['id', 'engine', 'backend', 'purpose', 'model', 'modelFile', 'quant', 'nThreads', 'nCtx',
@@ -293,7 +303,7 @@ function acceleratorRun(item: unknown): AcceleratorRun {
 export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
   const value = object(input);
   fields(value, ['schemaVersion', 'id', 'nColdRuns', 'cooldownSec', 'readinessTimeoutSec',
-    'maxBatteryTempRiseC', 'maxDecodeTokens', 'chatTemplate', 'measuredPrompt', 'orderSeed', 'runs']);
+    'maxBatteryTempRiseC', 'maxDecodeTokens', 'chatTemplate', 'measuredPrompt', 'decodeMode', 'orderSeed', 'runs']);
   if (value.schemaVersion !== 2) {
     throw new Error('Unsupported configuration version');
   }
@@ -306,8 +316,11 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
   }
   const measuredPrompt = value.measuredPrompt === undefined ? undefined :
     oneOf(value.measuredPrompt, MEASURED_PROMPTS, 'measuredPrompt');
-  if (measuredPrompt === 'std-pp512-v1' && runs.some(run => run.engine !== 'llama.cpp')) {
-    throw new Error('measuredPrompt std-pp512-v1 is a pre-templated prompt for llama.cpp runs only');
+  const decodeMode = value.decodeMode === undefined ? undefined : oneOf(value.decodeMode, DECODE_MODES, 'decodeMode');
+  if (decodeMode === 'fixed' && runs.some(run => run.engine !== 'litert-lm' ||
+      (run.backend === 'cpu' && run.nThreads !== null && run.nThreads !== 4))) {
+    // The fixed-length engine (nativeCreateBenchmark) takes no thread count: LiteRT-LM's CPU default is 4.
+    throw new Error('decodeMode fixed applies to LiteRT-LM runs only, with nThreads 4 (or null) on CPU');
   }
   for (const run of runs) {
     const reference = runs.find(item => item.id === run.referenceRunId);
@@ -323,6 +336,7 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
     maxDecodeTokens: integer(value.maxDecodeTokens, 1, 512),
     chatTemplate: oneOf(value.chatTemplate, CHAT_TEMPLATES, 'chatTemplate'),
     ...(measuredPrompt === undefined ? {} : {measuredPrompt}),
+    ...(decodeMode === undefined ? {} : {decodeMode}),
     ...(value.orderSeed === undefined ? {} : {orderSeed: integer(value.orderSeed, 0, 0xffffffff)}), runs,
   };
 }

@@ -88,7 +88,8 @@ def planted(name, run_id):
     return record
 
 
-def make_capture(root, records, device_info=None, inline=(), checkpoints=(), extra_files=None):
+def make_capture(root, records, device_info=None, inline=(), checkpoints=(), extra_files=None, backend_log=None):
+    """backend_log: a logcat -v epoch snapshot of process 123 the capture reads as the app's backend log."""
     session = capture.Capture(root, dict(device_info or HOST_DEVICE))
     files, lines = dict(extra_files or {}), []
     for index, record in enumerate(list(checkpoints) + list(records)):
@@ -98,6 +99,8 @@ def make_capture(root, records, device_info=None, inline=(), checkpoints=(), ext
         lines.append(f"{100 + index}.000 123 123 I ReactNativeJS: XEBENCH_RESULT_FILE {json.dumps(reference)}")
     lines.extend(f"200.000 123 123 I ReactNativeJS: {line}" for line in [*inline, "XEBENCH_DONE"])
     session.ingest("\n".join(lines), files.__getitem__)
+    if backend_log is not None:
+        session.ingest_backend_log(backend_log, 123)
     session.app_identity.update(before=APKS, after=APKS, consistency="matched")
     # Mirrors capture_device: complete only without errors, rejections or failed records.
     session.finish("partial" if session.errors or session.invalid or session.failed_records else "complete")
@@ -189,7 +192,8 @@ class PrivacyTests(unittest.TestCase):
             self.assertEqual((captured["engineErrors"], captured["checkpointCount"]), (1, 1))
             self.assertEqual(captured["appIdentity"]["after"], APKS)
             self.assertEqual(captured["device"], {"manufacturer": "Google", "model": "Pixel 9", "soc": "Tensor G4"})
-            self.assertEqual(sorted(captured), sorted(evidence.CAPTURE_FILE.fields))
+            # backendLog is present only when the capture read the app's backend log (backend_log.py).
+            self.assertEqual(sorted(captured), sorted(set(evidence.CAPTURE_FILE.fields) - {"backendLog"}))
 
     def test_private_values_in_approved_fields_refuse_the_export(self):
         def model_token(record):

@@ -282,7 +282,7 @@ passes:
 | `charging` | every measured repetition recomputes to `satisfied` under `charging-policy-v3` | `violated` or `on-battery` | `unknown`, or another charging policy |
 | `coverage` | every measured repetition was sampled throughout (the coverage rule above) | — | a gap, expiry, dropped tick or missing monitor |
 | `artifact` | the session's `configurationSource` hash names a reviewed configuration file, the session carries that file's content, its configured run (engine, backend, model, quant, model file, `modelSha256`) is exactly a run of that file, and the artifact SHA-256 equals both that `modelSha256` and the model manifest entry for the file | the artifact differs from the configured `modelSha256` or from the manifest entry | the run pins no `modelSha256`, the session names no reviewed configuration file or carries other content, the run is not in that file, or its file has no manifest entry |
-| `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed` | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU/NPU evidence is at most `consistent` |
+| `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed`; for LiteRT-LM NPU, `confirmed` comes from the app's own log (below) | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU evidence is at most `consistent` |
 | `correctness` (accelerator protocols) | output gate `pass` | `fail` | `unverified` |
 | `comparison` (accelerator protocols) | `valid` | `invalid` | `unverified` |
 | `build` | reported release build, clean tree (`gitDirty: false`), known commit, flavor `reference`, `experimental` or `geniex` | dirty tree | not reported, any field unknown, or a debug build (its JavaScript comes from Metro, so the commit does not identify the code that ran) |
@@ -296,6 +296,41 @@ are attached, so a llama.cpp CPU run also needs effective settings with
 `n_gpu_layers` 0 and no device. A repetition without evidence leaves the check
 unknown. `confirmed` is the engine's own device report, not per-operation execution.
 Correctness and comparison are recomputed from the exported probe verdicts.
+
+### LiteRT-LM NPU: backend confirmed by the app's log (litert-npu-log-v1)
+
+LiteRT-LM reports no executing backend, so its process-library evidence for an NPU run is at most
+`consistent`. Its own log shows the Qualcomm dispatch path doing the work, and
+[`scripts/backend_log.py`](../scripts/backend_log.py) turns that into `confirmed`:
+
+- **Collection.** While a capture runs, `capture_app_run.py` reads the log of the app's process
+  only (`logcat --pid`), filtered to LiteRT-LM's tag (`litert`) and the app's process-name tag, under
+  which the FastRPC client (`libcdsprpc`) logs. It keeps only the lines that match the four events
+  below and stores them with the capture (`backend-log.txt`, hashed in the manifest). No other log
+  line, and nothing from another app, is kept.
+- **Export.** `export_evidence.py` puts the events in the capture document (`backendLog`), each
+  with its device time, kind, tag and log line. Install paths, file URIs and pointer values are
+  removed from the line. `verify` refuses an event whose line is not an event of the kind it
+  claims.
+- **Rule.** A LiteRT-LM NPU repetition is `confirmed` when its capture's log shows:
+
+  | Event | Log line (LiteRT-LM 0.18.0) | Where |
+  | --- | --- | --- |
+  | `qnn-context` | `litert_dispatch_device_context.cc` `Creating new QNN context for bytecode …` | within that repetition's engine load: between its `before` and `after` condition snapshots |
+  | `dispatch-library` | `litert_dispatch.cc` `Loading shared library: libLiteRtDispatch_Qualcomm.so` | in the process, at or before that load |
+  | `htp-backend` | `BackendType : Htp(…)` (the QNN options LiteRT-LM prints when it initializes QNN) | in the process, at or before that load |
+  | `htp-skel-cdsp` | `remote_handle64_open: opened handle … libQnnHtpV…Skel.so … _dom=cdsp` (FastRPC) | at least once in the capture |
+
+  LiteRT-LM loads the dispatch library and initializes QNN once per process, at the first NPU
+  engine load, which is the output gate's; later loads in the process reuse them and log only the
+  new QNN context. The session's backend is `confirmed` when every measured repetition is;
+  otherwise the process-library rule applies (`unknown` or `consistent`) and the check stays
+  unknown, naming the missing events.
+- **Reproduction.** The policy derives the status from the bundle alone
+  (`publication_policy.py`, `backend_log.confirmation`), so `validate_data.mjs` recomputes it when it
+  reproduces rows from their bundles. Captures without a backend log keep the process-library rule.
+  The rule shows a QNN HTP context created from the bundle for each load, and the dispatch library
+  and HTP backend loaded earlier in the same process; it does not show where each operation ran.
 
 Any failed check gives `validation: "failed"` and `guardsPassed: false`. Otherwise,
 any unknown check gives `validation: "unverified"` and `guardsPassed: null`. Unknown
@@ -345,7 +380,7 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
      only and `cpu-reference-v3*` `cpu` only.
    - `"set": "pre-version-recording"`: the engine's rows from before the app recorded engine
      versions, all measured in the month `measured`. They show no version, and none is
-     backfilled. Today ExecuTorch, LiteRT-LM and GENIE-X display their July 2026 rows.
+     backfilled. Today ExecuTorch and GENIE-X display their July 2026 rows.
 2. **Latest set only.** Within a set, a key displays its newest verified session, else its
    newest unverified one. A failed session or row is never displayed. `data/benchmarks.json`
    holds only displayed rows; everything else (staged and superseded sessions, replaced and
@@ -400,6 +435,17 @@ Five llama.cpp setups are retired (`retiredKeys`, each with its reason):
 | Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, CPU | the measurement is unstable within a session (prefill falls across repetitions); to be re-measured once the run conditions include a stability check ([#40](https://github.com/a-ghorbani/xebench/issues/40)) |
 | Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, GPU | the device cannot complete the measurement conditions (the app is killed for low memory) |
 | POCO F8 Ultra, Llama 3.2 1B Q4_0, NPU | replaced by the Q4_K_M NPU setup; the Q4_0 CPU reference misses a correctness probe |
+
+### The LiteRT-LM set (LiteRT-LM 0.18.0)
+
+`engines["litert-lm"]` declares the LiteRT-LM 0.18.0 set, measured from 2026-10-20, with three
+configurations: `litertlm-gemma3-int4-cpu-v2` and `litertlm-qwen25-q8-cpu-v2` on `cpu`, and
+`litertlm-gemma3-sm8850-npu-v2` on `npu` ([REFERENCE-RUNS.md](REFERENCE-RUNS.md#litert-lm-board-configurations)).
+It has no binding version. Every LiteRT-LM lab row is a session of this set: Gemma 3 1B and
+Qwen2.5 1.5B on CPU on the POCO F8 Ultra and Galaxy S23, Qwen2.5 1.5B on CPU on the Pixel 9, and
+Gemma 3 1B on the POCO F8 Ultra's NPU. The July rows the set replaces stay in
+`data/sessions/index.json` with their month and its basis, and so do the sessions of the `-v1`
+configurations and the NPU configuration's CPU reference run. No LiteRT-LM setup is retired.
 
 A set may declare a `carryover` ([`scripts/lib/board.mjs`](../scripts/lib/board.mjs)): frozen
 July rows of [`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs) that stay
