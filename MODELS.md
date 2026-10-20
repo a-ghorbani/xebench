@@ -181,10 +181,10 @@ LiteRT-LM with llama.cpp on Gemma 3 1B. These are not reference models either.
 ### LiteRT-LM files
 
 The LiteRT-LM board configurations
-([`litertlm-gemma3-int4-cpu-v1.json`](xebenchapp/configs/litertlm-gemma3-int4-cpu-v1.json),
-[`litertlm-qwen25-q8-cpu-v1.json`](xebenchapp/configs/litertlm-qwen25-q8-cpu-v1.json),
-[`litertlm-gemma3-sm8850-npu-v1.json`](xebenchapp/configs/litertlm-gemma3-sm8850-npu-v1.json))
-and the accelerator experiment run these `.litertlm` files. Each configuration pins the file's
+([`litertlm-gemma3-int4-cpu-v2.json`](xebenchapp/configs/litertlm-gemma3-int4-cpu-v2.json),
+[`litertlm-qwen25-q8-cpu-v2.json`](xebenchapp/configs/litertlm-qwen25-q8-cpu-v2.json),
+[`litertlm-gemma3-sm8850-npu-v2.json`](xebenchapp/configs/litertlm-gemma3-sm8850-npu-v2.json)),
+their `-v1` versions and the accelerator experiment run these `.litertlm` files. Each configuration pins the file's
 SHA-256 as `modelSha256`; a different file is recorded unmeasured with
 `stopReason: model-hash-mismatch`. `configs/models/experimental-models.json` lists them under
 `pinnedArtifacts` with their source. Each SHA-256 is the Hugging Face LFS oid of the file at the

@@ -695,5 +695,11 @@ export function assertFindings(envelope, schema, label) {
   for (const finding of envelope.findings) {
     if (seen.has(finding.id)) throw new PublicationError(`${label}: duplicate finding id ${finding.id}`);
     seen.add(finding.id);
+    // The board renders steps as a checklist: one step per label.
+    const labels = (finding.steps ?? []).map((step) => step.label);
+    const repeated = labels.filter((item, index) => labels.indexOf(item) !== index);
+    if (repeated.length) {
+      throw new PublicationError(`${label}: finding ${finding.id} repeats step ${JSON.stringify(repeated[0])}`);
+    }
   }
 }

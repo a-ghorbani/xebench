@@ -155,9 +155,9 @@ rows where differences are below about 3% plus the observed CI ([charging A/B de
 ### 6. An accelerator row needs evidence of where it ran
 A GPU or NPU row is verified only when its backend is `confirmed`. For llama.cpp that is
 llama.rn's own report of the devices the model was placed on. LiteRT-LM reports no backend, so
-for its NPU rows the evidence is the app's own log: for every measured repetition, the Qualcomm
-dispatch library and QNN HTP backend in use and a QNN context created from the bundle for that
-repetition's load, plus the HTP library opened on the compute DSP. The capture keeps only those
+for its NPU rows the evidence is the app's own log: a QNN HTP context created from the bundle for
+each load; the dispatch library and HTP backend loaded earlier in the same process; and the HTP
+library opened on the compute DSP. The capture keeps only those
 log lines of the app's process, the evidence bundle carries them, and the publication policy
 recomputes the verdict from the bundle ([rule](docs/RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
 LiteRT-LM GPU rows have no such evidence and stay unverified.
@@ -165,8 +165,10 @@ LiteRT-LM GPU rows have no such evidence and stay unverified.
 ### 7. A fixed decode length where the engine allows it
 LiteRT-LM board rows decode exactly 128 tokens per repetition, past the model's end of turn, so
 decode speed is always measured over the same number of tokens; the row states "end of turn
-ignored". llama.cpp rows decode up to 128 tokens and stop at the end of turn; in every published
-llama.cpp session the model ran to the limit. → `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
+ignored". The output check runs the same file on the same backend through LiteRT-LM's public
+engine API; the measured repetitions use engines created with LiteRT-LM's benchmark parameters.
+llama.cpp rows decode up to 128 tokens and stop at the end of turn; in every published llama.cpp
+session the model ran to the limit. → `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
 
 ## Cold-start is not the whole story (why the sustained phase exists)
 A single cold `pp512/tg128` number materially misrepresents sustained use:

@@ -356,7 +356,7 @@
             "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
             "sourceDate": "2026-01",
             "sampleCount": 2,
-            "asStated": "n=2 cold-run median; prompt std-chat-v1; decode 128 tok; publication-policy-v1 verified",
+            "asStated": "n=2 cold-run median; prompt std-chat-v1; decode 96 of 128 tok, stopped at the end of turn; publication-policy-v1 verified",
             "validation": "verified",
             "guardsPassed": true,
             "conditionPolicy": "run-conditions-v2",

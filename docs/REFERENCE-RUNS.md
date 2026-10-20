@@ -45,15 +45,16 @@ the same file ([litert-accelerators](experiments/litert-accelerators.md)):
 reference runs; these set cpu-reference-v3's values on every run, the gate's CPU references
 included.
 
-Every board row measures the same prompt and decode length. An accelerator configuration's
+Every llama.cpp and LiteRT-LM board row measures the same prompt text with a 128-token decode
+budget (LiteRT-LM rows decode exactly 128 tokens; see below). An accelerator configuration's
 `measuredPrompt` selects what its repetitions measure: `std-chat-v1` (the default) is the
 accelerator body as one user turn in the configuration's chat template; `std-pp512-v1` is the
 CPU reference prompt, pre-templated (`promptFormat: raw-pretemplated`). These two
 configurations set `std-pp512-v1`, which is a Llama 3.2 turn for every model, as on the CPU
 rows. The output-correctness gate keeps its own probes in each model's chat template
-(`chatTemplate: qwen25`, a ChatML user turn without a system message, and `llama32`). An
-accelerator configuration's CPU run is the gate's reference, not a board CPU measurement: only
-its GPU and NPU sessions are published.
+(`chatTemplate: qwen25`, a ChatML user turn without a system message, and `llama32`). In an
+accelerator configuration that also has a GPU or NPU run, the CPU run is the gate's reference, not
+a board CPU measurement: only that configuration's GPU and NPU sessions are displayed.
 
 ### LiteRT-LM board configurations
 
@@ -65,20 +66,26 @@ engine counters, so `LiteRtBenchModule.kt` sends it as the user message of a con
 chat template renders message text verbatim (no role markers, no generation prompt), checks that
 the rendered prompt equals the text byte for byte, and refuses the repetition otherwise.
 LiteRT-LM adds the artifact's start token on the first turn when its metadata names one, as
-llama.cpp adds BOS when the model asks for it; each engine records its own prompt token count. CPU runs use 4 threads. The files
+llama.cpp adds BOS when the model asks for it; each engine records its own prompt token count.
+On the identical prompt text, LiteRT-LM counts 519 tokens for Gemma 3 1B and 520 for Qwen2.5 1.5B;
+llama.cpp counts 518 and 519. CPU runs use 4 threads. The files
 are pinned in [MODELS.md](../MODELS.md#litert-lm-files).
 
 Every repetition decodes exactly 128 tokens (`decodeMode: fixed`), past the model's end of turn,
 so decode speed is always measured over the same number of tokens; the row's note says
-"decode 128 tok, end of turn ignored". LiteRT-LM's public API always stops at the artifact's stop
+"decode 128 tok, end of turn ignored". (A session without `decodeMode` whose median repetition
+stopped at the end of turn before the budget says "decode N of 128 tok, stopped at the end of
+turn"; one that reached the budget says "decode 128 tok".) LiteRT-LM's public API always stops at the artifact's stop
 tokens. Its engine decodes a fixed number of steps only when created for benchmarking with a
 decode count, so [`LiteRtFixedDecode.kt`](../xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt)
 creates the measured engines with `nativeCreateBenchmark` (prefill count 0, so the real prompt is
 used; decode count 128) and runs a greedy conversation on them with the same pass-through
 template, render check and streaming time to first token. These calls are internal to
 litertlm-android and pinned to 0.18.0: the app refuses fixed decoding with another version or a
-missing entry point, and a repetition that reports another decode length. The output gate keeps
-the engine's own stopping rule. The benchmarking engine takes no thread count; LiteRT-LM's CPU
+missing entry point, and a repetition that reports another decode length. The output gate
+checks the same file on the same backend through LiteRT-LM's public engine API, with the engine's
+own stopping rule; the measured repetitions use engines created with LiteRT-LM's benchmark
+parameters. The benchmarking engine takes no thread count; LiteRT-LM's CPU
 default is 4 threads, which is what the configurations state.
 
 | Configuration | Runs | Board backend | Phones |

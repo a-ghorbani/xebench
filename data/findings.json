@@ -14,8 +14,8 @@
           "device": "Samsung Galaxy S23"
         }
       ],
-      "headline": "LiteRT-LM on NPU: on this board for the POCO F8 Ultra, not the Galaxy S23",
-      "deck": "Gemma 3 1B runs with correct output on the POCO F8 Ultra's NPU (Snapdragon 8 Elite Gen 5), and that row is on this board. On the Galaxy S23 (Snapdragon 8 Gen 2 for Galaxy), Google's published model bundle drops part of long prompts, a known LiteRT-LM issue.",
+      "headline": "LiteRT-LM on NPU: POCO F8 Ultra only",
+      "deck": "Gemma 3 1B runs with correct output on the POCO F8 Ultra's NPU (Snapdragon 8 Elite Gen 5). On the Galaxy S23 (Snapdragon 8 Gen 2 for Galaxy), Google's published model bundle drops part of long prompts, a known LiteRT-LM issue.",
       "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/08c8b7fedea19664ab8bd4c7bf78e8a526a5d791/docs/experiments/litert-accelerators.md#litert-lm-on-npu",
       "claims": [
         "The NPU path needs four pieces: the litertlm-android AAR, Google's litert-npu-runtime-qualcomm (it provides libLiteRtDispatch_Qualcomm.so; 2.3.0 tested), a QAIRT version that matches the release's LITERT_REF, and <uses-native-library> manifest declarations.",
@@ -35,14 +35,6 @@
         {
           "label": "S23 (SM8550 bundle): wrong answers when the fact is past the first 128-token chunk",
           "status": "fail"
-        },
-        {
-          "label": "POCO F8 Ultra NPU row on this board",
-          "status": "ok"
-        },
-        {
-          "label": "Galaxy S23 NPU row on this board",
-          "status": "missing"
         },
         {
           "label": "POCO F8 Ultra NPU row on this board",

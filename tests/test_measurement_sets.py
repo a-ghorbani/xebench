@@ -110,6 +110,8 @@ class CheckedInSetTests(unittest.TestCase):
         self.assertTrue(all("evidence" in row and row["sourceDate"] == "2026-10" and row["validation"] == "verified"
                             for row in llama.values()))
         self.assertEqual(sorted(row["backend"] for row in llama.values()), ["cpu"] * 13 + ["gpu", "npu"])
+        # Every llama.cpp session ran to the 128-token budget (127 decoded after the prefill token).
+        self.assertTrue(all("; decode 128 tok; " in row["asStated"] for row in llama.values()))
         retired = {item["key"] for item in self.board["retiredKeys"]}
         for key in (key for key in JULY_ROWS if key.startswith("llama.cpp|")):
             with self.subTest(key):

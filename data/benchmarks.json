@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.3",
-  "generatedAt": "2026-10-20T11:43:14Z",
+  "generatedAt": "2026-10-20T12:12:22Z",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Cross-engine on-device LLM benchmark results. provenance: measured = xebench lab runs; vendor = engine-maker official published numbers.",
   "rowCount": 41,

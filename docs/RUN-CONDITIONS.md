@@ -329,8 +329,8 @@ LiteRT-LM reports no executing backend, so its process-library evidence for an N
 - **Reproduction.** The policy derives the status from the bundle alone
   (`publication_policy.py`, `backend_log.confirmation`), so `validate_data.mjs` recomputes it when it
   reproduces rows from their bundles. Captures without a backend log keep the process-library rule.
-  The rule shows that the HTP backend ran the bundle's compiled graphs for each load, not that every
-  operation ran on the NPU.
+  The rule shows a QNN HTP context created from the bundle for each load, and the dispatch library
+  and HTP backend loaded earlier in the same process; it does not show where each operation ran.
 
 Any failed check gives `validation: "failed"` and `guardsPassed: false`. Otherwise,
 any unknown check gives `validation: "unverified"` and `guardsPassed: null`. Unknown

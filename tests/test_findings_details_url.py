@@ -44,5 +44,27 @@ class DetailsUrlTests(unittest.TestCase):
                                  'detailsUrl must be a commit-pinned docs anchor')
 
 
+class DuplicateStepTests(unittest.TestCase):
+    def test_a_finding_that_repeats_a_step_is_refused(self):
+        script = (
+            "import {assertFindings} from './scripts/lib/publication.mjs';"
+            "import {readFileSync} from 'node:fs';"
+            "const s = JSON.parse(readFileSync('./data/findings.schema.json', 'utf8'));"
+            "const e = JSON.parse(readFileSync('./data/findings.json', 'utf8'));"
+            "const f = e.findings.find((item) => (item.steps ?? []).length);"
+            "const out = [];"
+            "for (const steps of [f.steps, [...f.steps, f.steps[0]]]) {"
+            "  f.steps = steps;"
+            "  try { assertFindings(e, s, 'x'); out.push('ok'); } catch (error) { out.push(error.message); }"
+            "}"
+            "console.log(JSON.stringify(out));"
+        )
+        result = subprocess.run(['node', '--input-type=module', '-e', script], capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        accepted, refused = json.loads(result.stdout)
+        self.assertEqual(accepted, 'ok')
+        self.assertIn('repeats step', refused)
+
+
 if __name__ == '__main__':
     unittest.main()
