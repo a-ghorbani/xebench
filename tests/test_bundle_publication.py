@@ -788,8 +788,11 @@ class BoardConfigurationTests(Workspace):
                                        {"id": "llamacpp-llama32-q4km-hexagon-v1", "backends": ["npu"]}],
                           "llama.cpp b11385 (bf9a0cc)", "llama.rn 0.13.0-rc.7"))
         self.assertNotIn("carryover", llama)
-        for engine in ("executorch", "genie-x", "litert-lm"):
+        for engine in ("executorch", "genie-x"):
             self.assertEqual(board["engines"][engine], {"set": "pre-version-recording", "measured": "2026-07"})
+        litert = board["engines"]["litert-lm"]
+        self.assertEqual((litert["set"], litert["engineVersion"], litert["measuredFrom"], "bindingVersion" in litert),
+                         ("sessions", "LiteRT-LM 0.18.0", "2026-10-20", False))
         result = subprocess.run(["node", "--input-type=module", "-e",
                                  "import {loadBoard} from './scripts/lib/board.mjs';"
                                  "const b = loadBoard(process.cwd());"

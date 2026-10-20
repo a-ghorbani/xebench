@@ -62,10 +62,10 @@ class CheckedInSetTests(unittest.TestCase):
         self.board = load(ROOT / "configs/board.json")
 
     def test_july_rows_carry_their_month_and_its_basis(self):
-        """Displayed July rows (engines not re-measured) and the July llama.cpp rows the rc.7 set
-        replaced or retired (history only) keep their month and its basis."""
+        """Displayed July rows (engines not re-measured) and the July llama.cpp and LiteRT-LM rows their
+        sets replaced or retired (history only) keep their month and its basis."""
         displayed = {key_of(row): row for row in self.data["rows"] if row.get("validation") == "legacy"}
-        self.assertEqual(set(displayed), {key for key in JULY_ROWS if not key.startswith("llama.cpp|")})
+        self.assertEqual(set(displayed), {key for key in JULY_ROWS if not key.startswith(("llama.cpp|", "litert-lm|"))})
         kept = {entry["key"]: replaced["row"] for entry in self.index["keys"] for replaced in entry["replacedRows"]
                 if replaced["row"].get("validation") == "legacy" and replaced["row"].get("sourceDate") == "2026-07"}
         july = {**kept, **displayed}
@@ -90,8 +90,8 @@ class CheckedInSetTests(unittest.TestCase):
                 engine_set = self.board["engines"][row["engine"]]
                 if "evidence" in row:
                     self.assertEqual(engine_set["set"], "sessions")
-                    self.assertEqual((row["build"]["engineVersion"], row["build"]["bindingVersion"]),
-                                     (engine_set["engineVersion"], engine_set["bindingVersion"]))
+                    self.assertEqual((row["build"]["engineVersion"], row["build"].get("bindingVersion")),
+                                     (engine_set["engineVersion"], engine_set.get("bindingVersion")))
                     allowed = {item["id"]: item["backends"] for item in engine_set["configurations"]}
                     self.assertIn(row["backend"], allowed[row["configurationId"]])
                     self.assertGreaterEqual(row["sourceDate"], engine_set["measuredFrom"][:7])
@@ -121,6 +121,26 @@ class CheckedInSetTests(unittest.TestCase):
             "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
             "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
         })
+
+    def test_the_litert_lm_set(self):
+        """Six LiteRT-LM 0.18.0 rows (5 CPU, 1 NPU), every one verified, decoding 128 tokens past the end
+        of turn; no July LiteRT-LM row; the NPU row's backend is confirmed from the app's log."""
+        litert = {key_of(row): row for row in self.data["rows"]
+                  if row["engine"] == "litert-lm" and row["provenance"] == "measured"}
+        self.assertEqual(sorted(row["backend"] for row in litert.values()), ["cpu"] * 5 + ["npu"])
+        self.assertEqual(set(litert), {key for key in JULY_ROWS if key.startswith("litert-lm|")} |
+                         {"litert-lm|npu|android|POCO F8 Ultra|Gemma 3 1B|int4|measured"})
+        for key, row in litert.items():
+            with self.subTest(key):
+                self.assertEqual((row["validation"], row["sourceDate"], row["build"]["engineVersion"]),
+                                 ("verified", "2026-10", "LiteRT-LM 0.18.0"))
+                self.assertNotIn("bindingVersion", row["build"])
+                self.assertIn("decode 128 tok, end of turn ignored;", row["asStated"])
+                self.assertTrue(row["configurationId"].endswith("-v2"))
+        self.assertEqual(self.board["engines"]["litert-lm"]["configurations"], [
+            {"id": "litertlm-gemma3-int4-cpu-v2", "backends": ["cpu"]},
+            {"id": "litertlm-qwen25-q8-cpu-v2", "backends": ["cpu"]},
+            {"id": "litertlm-gemma3-sm8850-npu-v2", "backends": ["npu"]}])
 
     def test_board_labels(self):
         """Lab rows say "xebench" and name their chip from configs/devices.json; vendor rows name a

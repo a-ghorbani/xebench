@@ -224,8 +224,9 @@ selection logic and no new field: it renders every row in `rows` and nothing els
 contract unchanged (removing rows is always valid: the site falls back to its bundled data only for
 an unknown major, malformed JSON or no valid rows), and the producer refuses to write a partial
 set. Each engine's rows come from one set: every llama.cpp row carries llama.cpp b11385 (bf9a0cc),
-llama.rn 0.13.0-rc.7 and its month, and the measured ExecuTorch, LiteRT-LM and GENIE-X rows are
-July 2026 rows (month only). A board that declares a `carryover` would show an engine's July rows next to
+llama.rn 0.13.0-rc.7 and its month; every LiteRT-LM lab row carries LiteRT-LM 0.18.0 (and, on the
+NPU row, litert-npu-runtime-qualcomm 2.3.0 and QAIRT 2.50.0.260828221209) and its month, with no
+binding; and the measured ExecuTorch and GENIE-X rows are July 2026 rows (month only). A board that declares a `carryover` would show an engine's July rows next to
 its new set; the row text tells them apart, and the page should then not present the two as one
 comparable series. No engine declares one.
 

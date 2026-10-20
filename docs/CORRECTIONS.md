@@ -7,6 +7,39 @@ facts, a short dated label is left where a reader needs it ("Corrected <date>", 
 
 Newest first.
 
+## 2026-10-20 — LiteRT-LM board rows measured on the board prompt with LiteRT-LM 0.18.0
+
+- **What the board showed.** Five July 2026 LiteRT-LM CPU rows without versions, each labelled
+  "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok": Qwen2.5 1.5B Q8 on the Pixel 9
+  (77.3 prefill / 8.2 decode tok/s), the POCO F8 Ultra (323.8 / 24.2) and the Galaxy S23
+  (78.6 / 16.0); Gemma 3 1B int4 on the POCO F8 Ultra (691.7 / 40.6) and the Galaxy S23
+  (186.6 / 36.1).
+- **What is true.** Those rows came from LiteRT-LM 0.14.0's built-in `benchmark()` call (the July
+  adapter, `LiteRtAdapter.ts` in commit `88433da`). It prefills 512 synthetic tokens, not the
+  std-pp512-v1 prompt, and then decodes 128 steps; the rows did not measure the std-pp512-v1 text.
+  Every LiteRT-LM lab row is now measured with LiteRT-LM 0.18.0 under the current run conditions, on
+  the std-pp512-v1 prompt prefilled verbatim, decoding exactly 128 tokens with the end of turn
+  ignored, and passing the output-correctness gate:
+
+  | Phone | Model | Backend | Prefill / decode tok/s |
+  | --- | --- | --- | --- |
+  | POCO F8 Ultra | Gemma 3 1B int4 | CPU | 691.2 / 47.4 |
+  | POCO F8 Ultra | Gemma 3 1B int4 (SM8850 bundle) | NPU | 4578.9 / 56.9 |
+  | POCO F8 Ultra | Qwen2.5 1.5B Q8 | CPU | 330.3 / 25.5 |
+  | Galaxy S23 | Gemma 3 1B int4 | CPU | 228.1 / 38.6 |
+  | Galaxy S23 | Qwen2.5 1.5B Q8 | CPU | 112.1 / 18.2 |
+  | Pixel 9 | Qwen2.5 1.5B Q8 | CPU | 111.7 / 12.2 |
+
+  The NPU row's backend is confirmed from the app's own log
+  ([RUN-CONDITIONS.md](./RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
+  The finding `litert-lm-npu-integration` states that the POCO F8 Ultra NPU row is on the board.
+- **What changed.** `configs/board.json` declares the LiteRT-LM 0.18.0 set
+  (`litertlm-gemma3-int4-cpu-v2` and `litertlm-qwen25-q8-cpu-v2` on `cpu`,
+  `litertlm-gemma3-sm8850-npu-v2` on `npu`), measured from 2026-10-20. The five July rows are
+  replaced; `data/sessions/index.json` keeps them, with their month and its basis, under
+  `replacedRows`, and keeps the sessions of the `-v1` configurations (the same runs without the
+  fixed decode length) and the NPU configuration's CPU reference run as history.
+
 ## 2026-10-19 — llama.cpp board rows measured with llama.rn 0.13.0-rc.7
 
 - **What the board showed.** Nine July 2026 llama.cpp rows without versions next to nine rc.7

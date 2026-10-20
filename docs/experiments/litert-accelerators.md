@@ -1,6 +1,6 @@
 # LiteRT-LM on CPU, GPU and NPU next to llama.cpp (accelerator-v1)
 
-Part of [#9](https://github.com/a-ghorbani/xebench/issues/9). Status: **POCO F8 Ultra (2026-10-17/18) and Galaxy S23 (2026-10-18) measured.** llama.cpp rows: see the llama.rn 0.13.0-rc.7 re-check, which supersedes the 0.12.4 rows for comparison with what PocketPal ships.
+Part of [#9](https://github.com/a-ghorbani/xebench/issues/9). Status: **POCO F8 Ultra (2026-10-17/18) and Galaxy S23 (2026-10-18) measured.** llama.cpp rows: see the llama.rn 0.13.0-rc.7 re-check, which supersedes the 0.12.4 rows for comparison with what PocketPal ships. The board's LiteRT-LM rows come from separate configurations (std-pp512-v1 prompt, 128 decode tokens, 3 repetitions): see [REFERENCE-RUNS.md](../REFERENCE-RUNS.md#litert-lm-board-configurations).
 
 ## Question
 
@@ -44,13 +44,18 @@ Corrected 2026-10-17; see [CORRECTIONS.md](../CORRECTIONS.md).
 | Google's NPU runtime is published | ok |
 | F8 Ultra, SM8850 bundle: output correct | ok |
 | S23, [SM8550 bundle](https://huggingface.co/litert-community/Gemma3-1B-IT): wrong answers when the fact is past the first 128-token prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) | fail |
-| LiteRT-LM NPU row on the board | missing |
+| F8 Ultra NPU row on the board (backend confirmed from the app's log) | ok |
+| S23 NPU row on the board | missing |
 
-LiteRT-LM CPU and GPU output also passes the correctness gate on both phones. Gate-passing NPU
-rows are pending publication; the S23 waits for a fixed SM8550 bundle.
+LiteRT-LM CPU and GPU output also passes the correctness gate on both phones. The board's F8 Ultra
+NPU row (Gemma 3 1B, SM8850 bundle, LiteRT-LM 0.18.0) prefills at 4578.9 and decodes at 56.9 tok/s
+over 128 tokens; its backend is confirmed from the app's own log of each measured load
+([RUN-CONDITIONS.md](../RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
+The S23 has no NPU row until a fixed SM8550 bundle is published.
 
 Evidence: [F8 Ultra Gemma 3 runs](../../evidence/c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972/),
-[S23 Gemma 3 runs](../../evidence/1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403/).
+[S23 Gemma 3 runs](../../evidence/1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403/),
+[F8 Ultra board set](../../evidence/019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6/).
 Results: [POCO F8 Ultra](#poco-f8-ultra-sm8850-measured-2026-10-17),
 [Galaxy S23](#galaxy-s23-sm8550-measured-2026-10-18).
 
@@ -159,7 +164,7 @@ the engine or process reported, and a status derived by fixed rules (`backend.ts
 | Status | Meaning |
 |---|---|
 | `confirmed` | The engine itself reported the requested backend: llama.rn's context `gpu` flag and the devices it placed the model on (`HTP0` for Hexagon). This is the engine's own report, not an independent measurement of where each operation ran: layers whose weight type the device backend does not support fall back to the CPU while the status stays `confirmed` (for example Q4_K_M on Hexagon with llama.rn 0.12.4, whose Hexagon matmul supports Q4_0, Q8_0, IQ4_NL, MXFP4 and F16 only). For a CPU run, `gpu: false`. |
-| `consistent` | Indirect evidence only. LiteRT-LM does not report its executing backend, so the record lists the accelerator libraries mapped in the process before and after engine creation (`/proc/self/maps`). NPU and GPU count only when that engine creation **newly** loaded `libLiteRtDispatch_Qualcomm.so` or `libOpenCL.so`; CPU counts when it loaded neither. A loaded runtime is not proof of execution. Also used for a llama.cpp CPU run (`nGpuLayers` 0) that reports `gpu: true`; see "Why a llama.cpp CPU run with `gpu: true` is `consistent`" below. |
+| `consistent` | Indirect evidence only. LiteRT-LM does not report its executing backend, so the record lists the accelerator libraries mapped in the process before and after engine creation (`/proc/self/maps`). (For publication, a LiteRT-LM NPU session's backend can be `confirmed` from the app's own log instead; [RUN-CONDITIONS.md](../RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1).) NPU and GPU count only when that engine creation **newly** loaded `libLiteRtDispatch_Qualcomm.so` or `libOpenCL.so`; CPU counts when it loaded neither. A loaded runtime is not proof of execution. Also used for a llama.cpp CPU run (`nGpuLayers` 0) that reports `gpu: true`; see "Why a llama.cpp CPU run with `gpu: true` is `consistent`" below. |
 | `mismatch` | The engine reported a different backend (for example llama.rn `gpu: false` on an OpenCL run). |
 | `unknown` | No usable evidence. Unknown stays unknown. |
 

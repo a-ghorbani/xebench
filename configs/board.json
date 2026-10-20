@@ -12,8 +12,29 @@
       "measured": "2026-07"
     },
     "litert-lm": {
-      "set": "pre-version-recording",
-      "measured": "2026-07"
+      "set": "sessions",
+      "configurations": [
+        {
+          "id": "litertlm-gemma3-int4-cpu-v2",
+          "backends": [
+            "cpu"
+          ]
+        },
+        {
+          "id": "litertlm-qwen25-q8-cpu-v2",
+          "backends": [
+            "cpu"
+          ]
+        },
+        {
+          "id": "litertlm-gemma3-sm8850-npu-v2",
+          "backends": [
+            "npu"
+          ]
+        }
+      ],
+      "engineVersion": "LiteRT-LM 0.18.0",
+      "measuredFrom": "2026-10-20"
     },
     "llama.cpp": {
       "set": "sessions",

@@ -380,7 +380,7 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
      only and `cpu-reference-v3*` `cpu` only.
    - `"set": "pre-version-recording"`: the engine's rows from before the app recorded engine
      versions, all measured in the month `measured`. They show no version, and none is
-     backfilled. Today ExecuTorch, LiteRT-LM and GENIE-X display their July 2026 rows.
+     backfilled. Today ExecuTorch and GENIE-X display their July 2026 rows.
 2. **Latest set only.** Within a set, a key displays its newest verified session, else its
    newest unverified one. A failed session or row is never displayed. `data/benchmarks.json`
    holds only displayed rows; everything else (staged and superseded sessions, replaced and
@@ -435,6 +435,17 @@ Five llama.cpp setups are retired (`retiredKeys`, each with its reason):
 | Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, CPU | the measurement is unstable within a session (prefill falls across repetitions); to be re-measured once the run conditions include a stability check ([#40](https://github.com/a-ghorbani/xebench/issues/40)) |
 | Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, GPU | the device cannot complete the measurement conditions (the app is killed for low memory) |
 | POCO F8 Ultra, Llama 3.2 1B Q4_0, NPU | replaced by the Q4_K_M NPU setup; the Q4_0 CPU reference misses a correctness probe |
+
+### The LiteRT-LM set (LiteRT-LM 0.18.0)
+
+`engines["litert-lm"]` declares the LiteRT-LM 0.18.0 set, measured from 2026-10-20, with three
+configurations: `litertlm-gemma3-int4-cpu-v2` and `litertlm-qwen25-q8-cpu-v2` on `cpu`, and
+`litertlm-gemma3-sm8850-npu-v2` on `npu` ([REFERENCE-RUNS.md](REFERENCE-RUNS.md#litert-lm-board-configurations)).
+It has no binding version. Every LiteRT-LM lab row is a session of this set: Gemma 3 1B and
+Qwen2.5 1.5B on CPU on the POCO F8 Ultra and Galaxy S23, Qwen2.5 1.5B on CPU on the Pixel 9, and
+Gemma 3 1B on the POCO F8 Ultra's NPU. The July rows the set replaces stay in
+`data/sessions/index.json` with their month and its basis, and so do the sessions of the `-v1`
+configurations and the NPU configuration's CPU reference run. No LiteRT-LM setup is retired.
 
 A set may declare a `carryover` ([`scripts/lib/board.mjs`](../scripts/lib/board.mjs)): frozen
 July rows of [`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs) that stay
