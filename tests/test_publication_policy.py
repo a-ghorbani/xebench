@@ -312,6 +312,39 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy.evaluate(json.loads(before)), first)
 
 
+class ExecutorchTokenizerTests(unittest.TestCase):
+    """ExecuTorch runs pin their tokenizer like the model: the artifact check covers both."""
+
+    TOKENIZER = "d" * 64
+
+    def executorch(self, **tokenizer):
+        base = {"sha256": self.TOKENIZER, "recordedExpected": self.TOKENIZER, "configuredSha256": self.TOKENIZER,
+                "manifestSha256": [self.TOKENIZER]}
+        return accel(engine="executorch", backend="cpu", backendEvidence="confirmed",
+                     tokenizer=None if tokenizer.get("none") else {**base, **tokenizer})
+
+    def test_tokenizer_outcomes(self):
+        cases = (
+            ("pinned and in the manifest", {}, PASS),
+            ("no tokenizer hash", {"none": True}, UNKNOWN),
+            # The reviewer's probe: no configured hash and an arbitrary recorded one.
+            ("config pins no tokenizerSha256", {"configuredSha256": None, "recordedExpected": None,
+                                                 "sha256": "e" * 64}, FAIL),
+            ("differs from the configured hash", {"sha256": "e" * 64}, FAIL),
+            ("recorded expectation differs", {"recordedExpected": "e" * 64}, FAIL),
+            ("differs from the manifest", {"manifestSha256": ["e" * 64]}, FAIL),
+            ("no manifest entry", {"manifestSha256": []}, UNKNOWN),
+        )
+        for label, change, outcome in cases:
+            with self.subTest(label):
+                decision = policy.evaluate(self.executorch(**change))
+                self.assertEqual(outcome_of(decision, "artifact"), outcome)
+                self.assertEqual(decision["validation"] == "verified", outcome == PASS)
+
+    def test_other_engines_need_no_tokenizer(self):
+        self.assertEqual(outcome_of(policy.evaluate(accel()), "artifact"), PASS)
+
+
 class FactsFromBundlesTests(unittest.TestCase):
     """Facts are recomputed from real-shaped bundles, never read from the record's own claims."""
 

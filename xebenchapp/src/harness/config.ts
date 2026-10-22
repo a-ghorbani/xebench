@@ -186,7 +186,7 @@ export interface AcceleratorRun {
   modelSha256?: string;
   /** ExecuTorch only: the tokenizer.json staged next to the .pte (required for ExecuTorch runs). */
   tokenizerFile?: string;
-  /** ExecuTorch only: expected SHA-256 of tokenizerFile; a mismatch is recorded unmeasured (tokenizer-hash-mismatch). */
+  /** ExecuTorch only (required): SHA-256 of tokenizerFile; a mismatch is recorded unmeasured (tokenizer-hash-mismatch). */
   tokenizerSha256?: string;
   /** llama.cpp only: the load and attention settings of ReferenceRun (LOAD_SETTINGS), when set. */
   useMmap?: boolean;
@@ -223,6 +223,8 @@ export interface AcceleratorConfig {
 }
 
 export const DECODE_MODES = ['fixed'] as const;
+/** The engines that can decode a fixed length past the end of turn (decodeMode fixed). */
+export const FIXED_DECODE_ENGINES: readonly AcceleratorEngine[] = ['litert-lm', 'executorch'];
 export type DecodeMode = typeof DECODE_MODES[number];
 
 const BASENAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
@@ -285,12 +287,11 @@ function acceleratorRun(item: unknown): AcceleratorRun {
       throw new Error('ExecuTorch runs are CPU (XNNPACK) only, with nThreads null and nCtx null');
     }
     result.tokenizerFile = tokenizerFile;
-    if (run.tokenizerSha256 !== undefined) {
-      if (typeof run.tokenizerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(run.tokenizerSha256)) {
-        throw new Error('tokenizerSha256 must be 64 lowercase hex characters');
-      }
-      result.tokenizerSha256 = run.tokenizerSha256;
+    // The tokenizer decides the prompt's tokens, so it is pinned like a model file.
+    if (typeof run.tokenizerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(run.tokenizerSha256)) {
+      throw new Error('ExecuTorch runs need tokenizerSha256: 64 lowercase hex characters');
     }
+    result.tokenizerSha256 = run.tokenizerSha256;
   } else if (engine === 'llama.cpp') {
     if (result.nThreads === null || result.nCtx === null) {
       throw new Error('llama.cpp runs need nThreads and nCtx');
@@ -347,7 +348,7 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
   const measuredPrompt = value.measuredPrompt === undefined ? undefined :
     oneOf(value.measuredPrompt, MEASURED_PROMPTS, 'measuredPrompt');
   const decodeMode = value.decodeMode === undefined ? undefined : oneOf(value.decodeMode, DECODE_MODES, 'decodeMode');
-  if (decodeMode === 'fixed' && runs.some(run => run.engine === 'llama.cpp' ||
+  if (decodeMode === 'fixed' && runs.some(run => !FIXED_DECODE_ENGINES.includes(run.engine) ||
       (run.engine === 'litert-lm' && run.backend === 'cpu' && run.nThreads !== null && run.nThreads !== 4))) {
     // LiteRT-LM's fixed-length engine (nativeCreateBenchmark) takes no thread count: its CPU default is 4.
     // ExecuTorch decodes a fixed length natively (ignoreEos with maxNewTokens).

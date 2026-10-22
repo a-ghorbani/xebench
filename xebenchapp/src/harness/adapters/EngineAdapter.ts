@@ -68,7 +68,9 @@ export interface ExecutorchEffectiveSettings {
    * maxNewTokens tokens past the end of turn. numBos/numEos/echo are TextLLMRunner's defaults,
    * which RNE does not change: the prompt is tokenized as given, with no BOS added.
    */
-  generation: {temperature: 0; maxNewTokens: number; ignoreEos: boolean; numBos: 0; numEos: 0; echo: false};
+  /** promptPrefix: text put before every prompt (executorch.ts executorchPromptPrefix: "<bos>" for Gemma). */
+  generation: {temperature: 0; maxNewTokens: number; ignoreEos: boolean; numBos: 0; numEos: 0; echo: false;
+    promptPrefix: '' | '<bos>'};
   /** XNNPACK threadpool size: ExecuTorch's runtime default (RNE sets none). */
   threads: 'runtime-default';
   unlisted: 'binding-defaults';

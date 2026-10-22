@@ -78,7 +78,8 @@ reference protocol.
 Both engines receive the **same pre-templated raw string** (Llama 3.2 chat
 template applied once, by us — not by either engine). llama.rn gets it via
 `completion({ prompt })`, ExecuTorch via its LLM runner's `generate()`
-(react-native-executorch `createLLMRunner`, no BOS token added). Neither applies its own
+(react-native-executorch `createLLMRunner`). The runner adds no BOS token, so for a Gemma model
+the prompt starts with the literal `<bos>` that llama.cpp adds as a token. Neither applies its own
 chat wrapper, so tokenizer input is byte-identical. Each engine's own prompt
 token count is recorded; a mismatch is flagged, not silently averaged.
 → `src/harness/prompts.ts`, both adapters pass `cfg.prompt` unchanged.
@@ -101,10 +102,12 @@ Quality parity is the top v2 item.
 How each tok/s was obtained is a first-class field (`MeasureMethod`):
 - `engine-timings` — the engine's own counters (llama.cpp exposes prefill/decode
   ms and tok/s directly; this is the gold standard). For ExecuTorch they are its
-  LLM runner's statistics: prefill is prompt tokens over the time from the start of
-  inference to the first token (tokenization, every prefill forward and the first
-  token's sampling); decode is the decode loop's tokens over the time from the first
-  token to the end, one forward per token.
+  LLM runner's statistics, in whole wall-clock milliseconds: prefill is prompt tokens
+  over the time from the start of inference to the first token, which includes the
+  tokenization and the first token's sampling (llama.cpp's prompt timing does not) and
+  every prefill forward (at most 512 tokens per forward for Gemma 4 E2B); decode is the
+  decode loop's tokens over the time from the first token to the end, one forward per
+  token: 127 tokens of a fixed 128-token decode.
 - `ttft-derived` / `callback-derived` — for a binding without internal counters,
   prefill is derived from TTFT and decode from JS-side per-token callback
   timestamps. This includes one decode step + a callback

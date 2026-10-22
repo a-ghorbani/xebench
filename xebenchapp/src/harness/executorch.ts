@@ -19,12 +19,24 @@ export const executorchEngineVersion = (versions: RuntimeVersions) =>
   `ExecuTorch ${versions.executorch ?? 'unknown'} + react-native-executorch ` +
   `${versions.reactNativeExecutorch ?? 'unknown'} (xnnpack)`;
 
+/**
+ * The text ExecutorchAdapter puts before every prompt (gate turns and the measured prompt), by the
+ * configuration's chat template. ExecuTorch's TextLLMRunner adds no BOS (num_bos 0, and Gemma's
+ * tokenizer.json post-processor adds none: its template emits {{ bos_token }} itself), while
+ * llama.cpp adds BOS for Gemma GGUFs (add_bos_token true). Gemma prompts therefore start with the
+ * literal "<bos>" (special token 2), so ExecuTorch prefills the tokens llama.cpp prefills for the
+ * same text and the prompt token counts agree. Other templates take no prefix (Qwen adds no BOS).
+ * Mirrored by scripts/raw_session.py (executorch_prompt_prefix).
+ */
+export const executorchPromptPrefix = (chatTemplate: string): '' | '<bos>' =>
+  /^gemma/.test(chatTemplate) ? '<bos>' : '';
+
 /** Every parameter ExecutorchAdapter passes to react-native-executorch for a request. */
 export function executorchEffectiveSettings(request: SettingsRequest,
-  distribution: {version: string; nativeLibsVersion: unknown}): ExecutorchEffectiveSettings {
+  distribution: {version: string; nativeLibsVersion: unknown}, promptPrefix: '' | '<bos>'): ExecutorchEffectiveSettings {
   return {binding: 'react-native-executorch', runner: 'createLLMRunner', load: {loadMode: 'mmap', modalities: []},
     generation: {temperature: 0, maxNewTokens: request.maxDecodeTokens, ignoreEos: request.decodeMode === 'fixed',
-      numBos: 0, numEos: 0, echo: false},
+      numBos: 0, numEos: 0, echo: false, promptPrefix},
     threads: 'runtime-default', unlisted: 'binding-defaults',
     distribution: {source: 'npm', package: 'react-native-executorch', version: distribution.version,
       nativeLibsVersion: version(distribution.nativeLibsVersion), backends: ['xnnpack'], patches: []}};

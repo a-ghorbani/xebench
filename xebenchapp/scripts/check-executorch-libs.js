@@ -32,8 +32,16 @@ const THIRD_PARTY = path.join(PACKAGE, 'third-party');
 const ANDROID_LIBS = path.join(THIRD_PARTY, 'android', 'libs');
 const INCLUDE = path.join(THIRD_PARTY, 'include');
 const VERSION_HEADER = path.join(INCLUDE, 'executorch', 'runtime', 'core', 'version.h');
-// The ABIs the app builds (android/gradle.properties reactNativeArchitectures).
+// The only ABI pinned here. The app must build exactly it (android/gradle.properties
+// reactNativeArchitectures); any other ABI would package ExecuTorch libraries nobody checked.
 const ABIS = ['arm64-v8a'];
+const GRADLE_PROPERTIES = path.join(APP, 'android', 'gradle.properties');
+
+function builtAbis() {
+  const match = /^reactNativeArchitectures=(.*)$/m.exec(fs.readFileSync(GRADLE_PROPERTIES, 'utf8'));
+  if (!match) throw new Error('android/gradle.properties sets no reactNativeArchitectures');
+  return match[1].split(',').map((abi) => abi.trim()).filter(Boolean);
+}
 
 const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const relative = (file) => path.relative(PACKAGE, file).split(path.sep).join('/');
@@ -89,6 +97,11 @@ function differences(expected, actual, where = '') {
 }
 
 function main() {
+  const abis = builtAbis();
+  if (JSON.stringify(abis) !== JSON.stringify(ABIS)) {
+    console.error(`[xebench] the app builds ${abis.join(', ')}; ExecuTorch libraries are pinned for ${ABIS.join(', ')} only`);
+    process.exit(1);
+  }
   const actual = observe();
   if (process.argv.includes('--write')) {
     fs.writeFileSync(LOCK, JSON.stringify(actual, null, 2) + '\n');

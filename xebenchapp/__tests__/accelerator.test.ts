@@ -17,7 +17,7 @@ import {assessBackend, summarizeBackend} from '../src/harness/backend';
 import {liteRtEngineVersion, liteRtRuntimeVersions} from '../src/harness/adapters/LiteRtAdapter';
 import {NO_RUNTIME_VERSIONS} from '../src/harness/runtime';
 import {
-  executorchEffectiveSettings, executorchEngineVersion, executorchMetrics, executorchRuntimeVersions,
+  executorchEffectiveSettings, executorchEngineVersion, executorchMetrics, executorchPromptPrefix, executorchRuntimeVersions,
 } from '../src/harness/executorch';
 import type {EngineAdapter, LlamaRnEffectiveSettings} from '../src/harness/adapters/EngineAdapter';
 import type {SingleRunMetrics} from '../src/harness/types';
@@ -162,7 +162,8 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
         fixedDecodeTokens = measurement.decodeTokens;
       },
       effectiveSettings: (request: {maxDecodeTokens: number; decodeMode?: 'fixed'}) =>
-        executorchEffectiveSettings(request, {version: '0.10.7', nativeLibsVersion: '0.10.6'}),
+        // EXECUTORCH_CONFIG uses the gemma3 template: Gemma prompts carry a literal <bos>.
+        executorchEffectiveSettings(request, {version: '0.10.7', nativeLibsVersion: '0.10.6'}, executorchPromptPrefix('gemma3')),
     });
   }
   if (run.engine === 'litert-lm') {

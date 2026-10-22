@@ -16143,7 +16143,8 @@
           "ignoreEos": true,
           "numBos": 0,
           "numEos": 0,
-          "echo": false
+          "echo": false,
+          "promptPrefix": "<bos>"
         },
         "threads": "runtime-default",
         "unlisted": "binding-defaults",
@@ -16930,7 +16931,8 @@
           "ignoreEos": true,
           "numBos": 0,
           "numEos": 0,
-          "echo": false
+          "echo": false,
+          "promptPrefix": "<bos>"
         },
         "threads": "runtime-default",
         "unlisted": "binding-defaults",
@@ -17159,7 +17161,8 @@
           "ignoreEos": true,
           "numBos": 0,
           "numEos": 0,
-          "echo": false
+          "echo": false,
+          "promptPrefix": "<bos>"
         },
         "threads": "runtime-default",
         "unlisted": "binding-defaults",
@@ -17397,7 +17400,8 @@
           "ignoreEos": true,
           "numBos": 0,
           "numEos": 0,
-          "echo": false
+          "echo": false,
+          "promptPrefix": "<bos>"
         },
         "threads": "runtime-default",
         "unlisted": "binding-defaults",

@@ -77,14 +77,18 @@ export interface ExecutorchAdapterOptions {
   tokenizerPath: string;
   quantLabel: string;
   modelLabel: string;
+  /** Put before every prompt: executorchPromptPrefix(configuration chatTemplate). */
+  promptPrefix: '' | '<bos>';
 }
 
 /**
  * react-native-executorch 0.10 adapter over its low-level LLM runner (createLLMRunner, ExecuTorch's
  * TextLLMRunner) with the XNNPACK backend, on a dedicated worklet thread.
  *
- * - The prompt string goes to generate() verbatim: no chat template, no BOS added (TextLLMRunner's
- *   num_bos 0), greedy (temperature 0 is passed: ExecuTorch's default is 0.8).
+ * - The prompt string goes to generate() verbatim after promptPrefix: no chat template, greedy
+ *   (temperature 0 is passed: ExecuTorch's default is 0.8). TextLLMRunner adds no BOS (num_bos 0),
+ *   so a Gemma prompt carries the literal "<bos>" that llama.cpp adds as a token
+ *   (executorchPromptPrefix).
  * - The runner chunks the prefill: a prompt longer than the program's token-input bound (512 for
  *   the Gemma 4 E2B export) takes several forwards. The bound and the number of forwards are
  *   recorded per request (executorchStats).
@@ -134,7 +138,7 @@ export class ExecutorchAdapter implements EngineAdapter {
   }
 
   effectiveSettings(request: SettingsRequest): ExecutorchEffectiveSettings {
-    return executorchEffectiveSettings(request, {version: RNE_VERSION, nativeLibsVersion});
+    return executorchEffectiveSettings(request, {version: RNE_VERSION, nativeLibsVersion}, this.opts.promptPrefix);
   }
 
   prepareMeasurement(options: {decodeMode: 'fixed'; decodeTokens: number}) {
@@ -180,7 +184,8 @@ export class ExecutorchAdapter implements EngineAdapter {
 
   private async request(prompt: string, maxNewTokens: number, ignoreEos: boolean) {
     if (!this.runner) throw new Error('executorch: load() first');
-    return wrapAsync(timedGenerate, executorchRuntime())(this.runner, prompt, {temperature: 0, maxNewTokens, ignoreEos});
+    return wrapAsync(timedGenerate, executorchRuntime())(this.runner, this.opts.promptPrefix + prompt,
+      {temperature: 0, maxNewTokens, ignoreEos});
   }
 
   /** Greedy reply for the correctness gate: the engine's own stopping rule (end of turn or budget). */

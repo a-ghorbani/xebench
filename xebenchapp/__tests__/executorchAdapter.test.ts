@@ -66,7 +66,8 @@ beforeEach(() => {
 const adapter = () => {
   const {ExecutorchAdapter} = require('../src/harness/adapters/ExecutorchAdapter');
   return new ExecutorchAdapter({modelPath: '/files/gemma_4_e2b_xnnpack_8da4w.pte',
-    tokenizerPath: '/files/tokenizer.json', quantLabel: '8da4w', modelLabel: 'Gemma 4 E2B'});
+    tokenizerPath: '/files/tokenizer.json', quantLabel: '4-bit weights, 8-bit activations', modelLabel: 'Gemma 4 E2B',
+    promptPrefix: '<bos>'});
 };
 
 test('fixed decoding: the verbatim prompt, greedy, exactly the configured tokens past the end of turn', async () => {
@@ -74,7 +75,8 @@ test('fixed decoding: the verbatim prompt, greedy, exactly the configured tokens
   engine.prepareMeasurement({decodeMode: 'fixed', decodeTokens: 128});
   await engine.load();
   const metrics = await engine.benchOnce({prompt: STANDARD_PROMPT, maxDecodeTokens: 128});
-  expect(mockGenerate).toHaveBeenCalledWith(STANDARD_PROMPT, {temperature: 0, maxNewTokens: 128, ignoreEos: true},
+  // Gemma: the literal <bos> llama.cpp adds as a token goes first (TextLLMRunner adds none).
+  expect(mockGenerate).toHaveBeenCalledWith(`<bos>${STANDARD_PROMPT}`, {temperature: 0, maxNewTokens: 128, ignoreEos: true},
     expect.any(Function));
   expect(metrics).toMatchObject({promptTokens: 530, decodeTokens: 128, prefillMethod: 'engine-timings',
     decodeMethod: 'engine-timings', prefillTps: 500, decodeTps: 20,
@@ -94,8 +96,16 @@ test('the output gate keeps the engine stopping rule', async () => {
   engine.prepareMeasurement({decodeMode: 'fixed', decodeTokens: 128});
   await engine.load();
   expect(await engine.generate({prompt: '<prompt>', maxDecodeTokens: 32})).toBe('Measurement' + ' x'.repeat(31));
-  expect(mockGenerate).toHaveBeenCalledWith('<prompt>', {temperature: 0, maxNewTokens: 32, ignoreEos: false},
+  expect(mockGenerate).toHaveBeenCalledWith('<bos><prompt>', {temperature: 0, maxNewTokens: 32, ignoreEos: false},
     expect.any(Function));
+});
+
+test('the prompt prefix follows the chat template: a literal <bos> for Gemma, nothing otherwise', () => {
+  const {executorchPromptPrefix} = require('../src/harness/executorch');
+  expect(executorchPromptPrefix('gemma3')).toBe('<bos>');
+  expect(executorchPromptPrefix('gemma4')).toBe('<bos>');
+  expect(executorchPromptPrefix('qwen25')).toBe('');
+  expect(executorchPromptPrefix('llama32')).toBe('');
 });
 
 test('versions come from the native module and the installed package; settings state every parameter', () => {
@@ -105,7 +115,8 @@ test('versions come from the native module and the installed package; settings s
   expect(engine.engineVersion()).toBe(`ExecuTorch 1.4.1 + react-native-executorch ${RNE_VERSION} (xnnpack)`);
   expect(engine.settings()).toEqual({nThreads: null, nCtx: null});
   expect(engine.effectiveSettings({maxDecodeTokens: 128, decodeMode: 'fixed'})).toMatchObject({
-    binding: 'react-native-executorch', generation: {temperature: 0, maxNewTokens: 128, ignoreEos: true, numBos: 0},
+    binding: 'react-native-executorch', generation: {temperature: 0, maxNewTokens: 128, ignoreEos: true, numBos: 0,
+      promptPrefix: '<bos>'},
     distribution: {package: 'react-native-executorch', version: RNE_VERSION, backends: ['xnnpack'], patches: []}});
   mockNative.ExecutorchBench = {getConstants: () => ({executorchVersion: ''}), libraries: mockLibraries};
   expect(adapter().runtimeVersions().executorch).toBeNull();
@@ -170,7 +181,8 @@ test('metrics are refused when the statistics cannot support them', () => {
 
 test('the reference runner creates the adapter only where ExecuTorch is linked', () => {
   const {executorchAdapter} = require('../src/harness/reference');
-  const options = {modelPath: '/files/m.pte', tokenizerPath: '/files/tokenizer.json', quantLabel: 'q', modelLabel: 'M'};
+  const options = {modelPath: '/files/m.pte', tokenizerPath: '/files/tokenizer.json', quantLabel: 'q', modelLabel: 'M',
+    promptPrefix: '' as const};
   expect(executorchAdapter(options).engine).toBe('executorch');
   delete mockNative.ExecutorchBench;
   expect(() => executorchAdapter(options)).toThrow('not linked');

@@ -1617,7 +1617,7 @@
         },
         "generation": {
           "type": "object",
-          "required": ["temperature", "maxNewTokens", "ignoreEos", "numBos", "numEos", "echo"],
+          "required": ["temperature", "maxNewTokens", "ignoreEos", "numBos", "numEos", "echo", "promptPrefix"],
           "additionalProperties": false,
           "properties": {
             "temperature": {"const": 0},
@@ -1625,7 +1625,8 @@
             "ignoreEos": {"type": "boolean"},
             "numBos": {"const": 0},
             "numEos": {"const": 0},
-            "echo": {"const": false}
+            "echo": {"const": false},
+            "promptPrefix": {"enum": ["", "<bos>"]}
           }
         },
         "threads": {"const": "runtime-default"},

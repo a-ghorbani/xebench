@@ -973,6 +973,10 @@ def runtime_versions_errors(record):
     if record["engine"] == "litert-lm" and record.get("engineVersion") != litert_engine_version(record["backend"], runtimes):
         errors.append(reason("runtime.inconsistent", "/engineVersion",
                              "LiteRT-LM engineVersion disagrees with runtimeVersions"))
+    if record["engine"] == "executorch" and (runtimes.get("executorch") is None or
+                                             runtimes.get("reactNativeExecutorch") is None):
+        errors.append(reason("runtime.inconsistent", "/runtimeVersions",
+                             "ExecuTorch records name the ExecuTorch and react-native-executorch versions"))
     if record["engine"] == "executorch" and record.get("engineVersion") != executorch_engine_version(runtimes):
         errors.append(reason("runtime.inconsistent", "/engineVersion",
                              "ExecuTorch engineVersion disagrees with runtimeVersions"))
@@ -986,6 +990,11 @@ def litert_engine_version(backend, runtimes):
         return (f"LiteRT-LM {litert} + litert-npu-runtime-qualcomm "
                 f"{runtimes['litertNpuRuntimeQualcomm'] or 'unknown'} (npu)")
     return f"LiteRT-LM {litert} ({backend})"
+
+
+def executorch_prompt_prefix(chat_template):
+    """executorch.ts executorchPromptPrefix: Gemma prompts start with a literal <bos> (llama.cpp adds BOS)."""
+    return "<bos>" if chat_template.startswith("gemma") else ""
 
 
 def executorch_engine_version(runtimes):
@@ -1198,9 +1207,11 @@ def assess_backend(engine, requested, evidence):
         delegates = [name for method in methods for name in method["delegates"]]
         if requested != "cpu" or any(name != XNNPACK_BACKEND for name in delegates):
             return "mismatch"
+        forward = next((method for method in methods if method["name"] == "forward"), None)
         libraries = evidence["libraries"]
         after = libraries["after"] if libraries else None
-        confirmed = registered is not None and all(name in registered for name in delegates) and \
+        confirmed = forward is not None and XNNPACK_BACKEND in forward["delegates"] and \
+            registered is not None and XNNPACK_BACKEND in registered and \
             after is not None and not any(foreign_executorch_library(name) for name in after)
         return "confirmed" if confirmed else "unknown"
     return "unknown"
@@ -1263,6 +1274,8 @@ def comparison_status(purpose, correctness, backend_mismatch=False):
 
 # config.ts MODEL_EXTENSIONS.
 MODEL_EXTENSIONS = {"llama.cpp": ".gguf", "litert-lm": ".litertlm", "executorch": ".pte"}
+# config.ts FIXED_DECODE_ENGINES: the engines that can decode a fixed length past the end of turn.
+FIXED_DECODE_ENGINES = ("litert-lm", "executorch")
 
 
 def _configuration_accelerator(config):
@@ -1278,12 +1291,13 @@ def _configuration_accelerator(config):
             errors.append(reason("configuration.run-invalid", where,
                                  "tokenizerFile/tokenizerSha256 apply to ExecuTorch runs only"))
         if run["engine"] == "executorch":
-            if "tokenizerFile" not in run or run["backend"] != "cpu" or run["nThreads"] is not None or \
+            if "tokenizerFile" not in run or "tokenizerSha256" not in run or run["backend"] != "cpu" or \
+                    run["nThreads"] is not None or \
                     run["nCtx"] is not None or "nGpuLayers" in run or "devices" in run or any(
                     field in run for field, _, _ in LOAD_SETTINGS):
                 errors.append(reason("configuration.run-invalid", where,
-                                     "ExecuTorch runs are CPU only, with a tokenizerFile, nThreads null, nCtx null "
-                                     "and no llama.cpp settings"))
+                                     "ExecuTorch runs are CPU only, with a tokenizerFile and its tokenizerSha256, "
+                                     "nThreads null, nCtx null and no llama.cpp settings"))
         elif llama:
             devices = run.get("devices")
             htp = sum(device.upper().startswith("HTP") for device in devices or [])
@@ -1307,7 +1321,7 @@ def _configuration_accelerator(config):
                 reference is None or reference["backend"] != "cpu" or reference["engine"] != run["engine"]):
             errors.append(reason("configuration.run-invalid", f"{where}/referenceRunId",
                                  "GPU/NPU runs name a CPU run of the same engine; CPU runs take null"))
-        if config.get("decodeMode") == "fixed" and (run["engine"] == "llama.cpp" or (
+        if config.get("decodeMode") == "fixed" and (run["engine"] not in FIXED_DECODE_ENGINES or (
                 run["engine"] == "litert-lm" and run["backend"] == "cpu" and run["nThreads"] not in (None, 4))):
             # LiteRT-LM's fixed-length engine (LiteRtFixedDecode.kt, nativeCreateBenchmark) takes no thread
             # count; ExecuTorch decodes a fixed length natively (ignoreEos with maxNewTokens).
@@ -1419,9 +1433,11 @@ def _executorch_identity(record, run):
                        "ExecuTorch records state their react-native-executorch settings and have no executionReports")]
     generation = settings["generation"]
     if generation["maxNewTokens"] != protocol["maxDecodeTokens"] or \
-            generation["ignoreEos"] != (protocol.get("decodeMode") == "fixed"):
+            generation["ignoreEos"] != (protocol.get("decodeMode") == "fixed") or \
+            generation["promptPrefix"] != executorch_prompt_prefix(protocol["chatTemplate"]):
         errors.append(reason("settings.protocol-mismatch", "/effectiveSettings/generation",
-                             "maxNewTokens is maxDecodeTokens, and ignoreEos holds exactly under decodeMode fixed"))
+                             "maxNewTokens is maxDecodeTokens, ignoreEos holds exactly under decodeMode fixed, and "
+                             "promptPrefix follows the chat template"))
     if not record["engineVersion"].endswith(f"react-native-executorch {settings['distribution']['version']} (xnnpack)"):
         errors.append(reason("settings.distribution", "/effectiveSettings/distribution/version",
                              "The installed react-native-executorch version disagrees with engineVersion"))

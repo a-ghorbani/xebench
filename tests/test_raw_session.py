@@ -1110,7 +1110,16 @@ class ExecutorchRecordTests(unittest.TestCase):
         def sampled(record):
             record["effectiveSettings"]["generation"]["temperature"] = 0.8
 
-        cases = ((end_of_turn, "settings.protocol-mismatch"), (other_binding_version, "runtime.inconsistent"),
+        def no_bos(record):
+            # A Gemma template (gemma3 here) needs the literal <bos> llama.cpp adds as a token.
+            record["effectiveSettings"]["generation"]["promptPrefix"] = ""
+
+        def no_executorch_version(record):
+            record["runtimeVersions"]["executorch"] = None
+            record["engineVersion"] = raw_session.executorch_engine_version(record["runtimeVersions"])
+
+        cases = ((end_of_turn, "settings.protocol-mismatch"), (no_bos, "settings.protocol-mismatch"),
+                 (no_executorch_version, "runtime.inconsistent"), (other_binding_version, "runtime.inconsistent"),
                  (engine_version, "runtime.inconsistent"), (litert_runtime, "runtime.inconsistent"),
                  (no_tokenizer, "artifact.expected"), (tokenizer_differs, "artifact.expected"),
                  (no_settings, "settings.engine"), (sampled, "schema.const"))
@@ -1135,6 +1144,10 @@ class ExecutorchRecordTests(unittest.TestCase):
                     "program": {"methods": [{"name": "forward", "delegates": ["XnnpackBackend"]}],
                                 "registeredBackends": ["XnnpackBackend"]}}
         self.assertEqual(raw_session.assess_backend("executorch", "cpu", evidence), "confirmed")
+        # A program whose forward delegates nothing to XNNPACK is no evidence of the XNNPACK CPU path.
+        evidence["program"]["methods"] = [{"name": "forward", "delegates": []}]
+        self.assertEqual(raw_session.assess_backend("executorch", "cpu", evidence), "unknown")
+        evidence["program"]["methods"] = [{"name": "forward", "delegates": ["XnnpackBackend"]}]
         evidence["program"]["registeredBackends"] = None
         self.assertEqual(raw_session.assess_backend("executorch", "cpu", evidence), "unknown")
         evidence["program"] = None
@@ -1143,11 +1156,12 @@ class ExecutorchRecordTests(unittest.TestCase):
     def test_configuration_rules(self):
         config = copy.deepcopy(ACCEL["executorch-cpu"]["configuration"])
         self.assertEqual(raw_session._configuration_accelerator(config), [])
-        for change in ({"nThreads": 4}, {"backend": "gpu"}, {"modelFile": "gemma.gguf"}, {"nGpuLayers": 0}, None):
+        for change in ({"nThreads": 4}, {"backend": "gpu"}, {"modelFile": "gemma.gguf"}, {"nGpuLayers": 0},
+                       "tokenizerFile", "tokenizerSha256"):
             with self.subTest(change):
                 broken = copy.deepcopy(config)
-                if change is None:
-                    del broken["runs"][0]["tokenizerFile"]
+                if isinstance(change, str):
+                    del broken["runs"][0][change]
                 else:
                     broken["runs"][0].update(change)
                 self.assertIn("configuration.run-invalid",
@@ -1156,6 +1170,12 @@ class ExecutorchRecordTests(unittest.TestCase):
         litert["runs"][0]["tokenizerFile"] = "tokenizer.json"
         self.assertIn("configuration.run-invalid",
                       {item["code"] for item in raw_session._configuration_accelerator(litert)})
+        # decodeMode fixed is an allow-list: only engines with a fixed-length decode.
+        self.assertEqual(raw_session.FIXED_DECODE_ENGINES, ("litert-lm", "executorch"))
+        genie = copy.deepcopy(config)
+        genie["runs"][0]["engine"] = "genie-x"
+        self.assertIn("configuration.run-invalid",
+                      {item["code"] for item in raw_session._configuration_accelerator(genie)})
 
 
 if __name__ == "__main__":

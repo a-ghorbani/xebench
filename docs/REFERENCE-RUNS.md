@@ -146,16 +146,26 @@ The board shows these sessions once `configs/board.json` declares the LiteRT-LM 
 ExecuTorch runs (engine `executorch`, `experimental` flavor only) use the same accelerator
 protocol on the CPU: react-native-executorch 0.10 with ExecuTorch's XNNPACK backend, the only
 ExecuTorch backend the APK packages. A run names its `.pte` and the `tokenizerFile` staged next
-to it. The app hashes both before measuring (`modelSha256`, `tokenizerSha256`); a tokenizer that
-differs from its pin is recorded unmeasured (`tokenizer-hash-mismatch`), as a model does.
+to it, and pins both (`modelSha256`, and `tokenizerSha256`, which ExecuTorch runs require): the
+tokenizer decides the prompt's tokens. The app hashes both before measuring; a tokenizer that
+differs from its pin is recorded unmeasured (`tokenizer-hash-mismatch`), as a model does, and
+publication policy v1 checks the recorded tokenizer hash against the configured one and the
+manifest entry for its file, as it checks the model.
 `nThreads` and `nCtx` are null: the export fixes the context, and the XNNPACK threadpool size is
 ExecuTorch's default.
 
 [`ExecutorchAdapter.ts`](../xebenchapp/src/harness/adapters/ExecutorchAdapter.ts) creates the
 runner with `createLLMRunner` (ExecuTorch's `TextLLMRunner`) on a dedicated worklet thread and
-passes the measured text to `generate()` verbatim: no chat template, no BOS token added (the
-runner tokenizes with `num_bos` 0), greedy (temperature 0). With `measuredPrompt: std-pp512-v1`
-it receives the text the llama.cpp CPU rows measure. The runner splits a prompt longer than the
+passes the measured text to `generate()` verbatim after one prefix: no chat template, greedy
+(temperature 0). The runner adds no BOS token (it tokenizes with `num_bos` 0, and the Gemma
+`tokenizer.json` post-processor adds none, because Gemma's chat template writes `{{ bos_token }}`
+itself), while llama.cpp adds BOS for a Gemma GGUF. For a configuration whose `chatTemplate` is a
+Gemma template, every prompt (the output-gate turns and the measured prompt) therefore starts with
+the literal `<bos>`, Gemma's special token 2, so ExecuTorch prefills the tokens llama.cpp prefills
+for the same text and the prompt token counts agree. Other templates take no prefix (Qwen adds no
+BOS). `effectiveSettings.generation.promptPrefix` records it, and the host validator checks it
+against the template. With `measuredPrompt: std-pp512-v1` the runner receives that prefix and the
+text the llama.cpp CPU rows measure. The runner splits a prompt longer than the
 program's token input into several prefill forwards (512 tokens per forward for the Gemma 4 E2B
 export); each repetition records that bound and the number of forwards
 (`executorchStats.prefillChunkTokens`, `prefillChunks`).
@@ -166,12 +176,18 @@ the other 127). The app refuses a repetition that produced another count. The ou
 the same file with the runner's own stopping rule.
 
 The timings (`engine-timings`) are the runner's own statistics (`llm::Stats`, wall-clock
-milliseconds), computed as ExecuTorch's own report computes them:
+milliseconds), computed as ExecuTorch's own report computes them. They differ from llama.cpp's
+counters in what each interval holds:
 
-- prefill tok/s = prompt tokens / (first token − inference start): tokenization, every prefill
-  forward and the sampling of the first token;
+- prefill tok/s = prompt tokens / (first token − inference start). The interval includes the
+  tokenization of the prompt and the sampling of the first token, which llama.cpp's prompt
+  timing leaves out, and every prefill forward: for the Gemma 4 E2B export a forward takes at
+  most 512 tokens, so a longer prompt takes several. The timestamps are whole milliseconds of
+  the wall clock (CLOCK_REALTIME), so a prefill of about one second carries up to about 0.1 %
+  rounding.
 - decode tok/s = decode-loop tokens / (inference end − first token): one forward per token, so
-  the token the prefill sampled is not counted.
+  the token the prefill sampled is not counted. Under fixed decoding that is 127 tokens over the
+  decode interval, while `decodeTokens` reports all 128.
 
 `decodeTokens` is every token the request produced (128 under fixed decoding). TTFT is timed on
 the worklet thread with the steady clock, from just before `generate()` to the first token
@@ -180,12 +196,16 @@ statistics; the host validator recomputes the rates from them.
 
 Backend evidence (`program-delegates`): before the timed loads, the app reads the delegates each
 method of the `.pte` uses from its metadata, and after each load the backends registered in the
-process and the ExecuTorch libraries mapped. A session is `confirmed` on the CPU when every
-delegate is `XnnpackBackend`, that backend is registered and no other ExecuTorch backend library
-is mapped; a delegate to any other backend is a `mismatch`.
+process and the ExecuTorch libraries mapped. A session is `confirmed` on the CPU when `forward`
+delegates to `XnnpackBackend`, every delegate in the program is `XnnpackBackend`, that backend is
+registered and no other ExecuTorch backend library is mapped; a delegate to any other backend is a
+`mismatch`, and a program whose `forward` delegates nothing is `unknown`.
 
-`runtimeVersions` records `executorch` (the `ET_VERSION` of the headers shipped with the linked
-native libraries, embedded at build time) and `reactNativeExecutorch` (the package version).
+`runtimeVersions` records `executorch` and `reactNativeExecutorch`, and the host validator refuses
+an ExecuTorch record without either. ExecuTorch has no runtime version API: `executorch` is the
+`ET_VERSION` of the headers pinned with the linked native libraries
+(`xebenchapp/executorch-libs.lock.json`), embedded in the APK at build time and reported by the
+`ExecutorchBench` module. `reactNativeExecutorch` is the version of the bundled package.
 
 A run field that is not set takes the harness default in parentheses
 (`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).

@@ -5,6 +5,7 @@ import {AcceleratorRun, parseAcceleratorConfig, parseConfig} from './config';
 import {runSession, UNMEASURED_NOTES, unmeasuredSession} from './session';
 import type {ConfigurationSource, ReferenceSession, SessionIdentity} from './session';
 import {LlamaRnAdapter} from './adapters/LlamaRnAdapter';
+import {executorchPromptPrefix} from './executorch';
 import {generateSeed, ORDER_METHOD, seededOrder} from './order';
 import type {ReadinessBaseline} from './readiness';
 import {stopMonitor} from './conditions';
@@ -199,7 +200,7 @@ async function runAccelerators(raw: unknown, root: string, directory: string, lo
     },
     adapter: run => run.engine === 'executorch' ?
       executorchAdapter({modelPath: modelPath(run), tokenizerPath: `${root}/${run.tokenizerFile}`,
-        modelLabel: run.model, quantLabel: run.quant}) : run.engine === 'llama.cpp' ?
+        modelLabel: run.model, quantLabel: run.quant, promptPrefix: executorchPromptPrefix(config.chatTemplate)}) : run.engine === 'llama.cpp' ?
       new LlamaRnAdapter({modelPath: modelPath(run), modelLabel: run.model, quantLabel: run.quant,
         nThreads: run.nThreads!, nCtx: run.nCtx!, nGpuLayers: run.nGpuLayers ?? 0,
         ...(run.devices ? {devices: run.devices} : {}),

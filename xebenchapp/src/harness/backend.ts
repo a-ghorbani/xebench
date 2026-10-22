@@ -9,8 +9,9 @@
  *   consistent  indirect evidence only: creating this engine newly loaded the
  *               accelerator runtime into the process and the engine accepted the
  *               backend (LiteRT-LM, which does not report its executing backend)
- *               (ExecuTorch: every delegate in the loaded program is XnnpackBackend, a CPU-only
- *               delegate, it is registered, and no other ExecuTorch backend library is mapped)
+ *               (ExecuTorch: `forward` delegates to XnnpackBackend, a CPU-only delegate, every
+ *               delegate in the loaded program is XnnpackBackend, it is registered, and no other
+ *               ExecuTorch backend library is mapped)
  *   mismatch    the engine reported a different backend than requested
  *   unknown     no usable evidence
  *
@@ -86,9 +87,12 @@ export function assessBackend(engine: EngineId, requested: BackendId,
     if (methods === null) return 'unknown';
     const delegates = methods.flatMap(method => method.delegates);
     if (requested !== 'cpu' || delegates.some(name => name !== XNNPACK_BACKEND)) return 'mismatch';
+    const forward = methods.find(method => method.name === 'forward');
     const after = evidence.libraries?.after ?? null;
-    return registered !== null && delegates.every(name => registered.includes(name)) && after !== null &&
-      !after.some(isForeignExecutorchLibrary) ? 'confirmed' : 'unknown';
+    // forward (the decoder) must actually delegate to XNNPACK: a program without delegates is not evidence.
+    return forward !== undefined && forward.delegates.includes(XNNPACK_BACKEND) && registered !== null &&
+      registered.includes(XNNPACK_BACKEND) && after !== null && !after.some(isForeignExecutorchLibrary) ?
+      'confirmed' : 'unknown';
   }
   return 'unknown';
 }
