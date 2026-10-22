@@ -229,6 +229,18 @@ class Contract12Tests(Workspace):
             with self.subTest(case=name):
                 self.assertIn('does not run on', self.build_for(engine, versions, backend).get('error', ''))
 
+    def test_build_from_a_genie_x_session(self):
+        """The app-emitted GENIE-X records (accelerator.test.ts): QAIRT is published for NPU runs only."""
+        records = load(ROOT / 'tests/fixtures/raw-session/app-emitted-accelerator.json')['records']
+        npu, cpu = records['geniex-qwen3-1.7b-w4a16-npu'], records['geniex-qwen3-1.7b-q40-cpu']
+        self.assertEqual(self.module(f'p.buildFromSession({json.dumps(npu)})'), {'ok': {
+            'engineVersion': 'geniex-android 0.8.0', 'runtimes': [{'name': 'QAIRT', 'version': '2.50.0.260828221209'},
+                                                                  {'name': 'geniex-android', 'version': '0.8.0'}]}})
+        self.assertEqual(self.module(f'p.buildFromSession({json.dumps(cpu)})'), {'ok': {
+            'engineVersion': 'geniex-android 0.8.0', 'runtimes': [{'name': 'geniex-android', 'version': '0.8.0'}]}})
+        qairt_on_cpu = {**cpu['runtimeVersions'], 'qairt': '2.50.0.260828221209'}
+        self.assertIn('does not run on: qairt', self.build_for('genie-x', qairt_on_cpu, 'cpu').get('error', ''))
+
     def test_runtime_versions_are_at_most_64_characters(self):
         # The website drops a runtime field longer than 64 characters; the pattern alone allows more.
         litert = fixture_row('litert-npu-runtimes.json')

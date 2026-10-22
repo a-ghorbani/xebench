@@ -88,7 +88,10 @@ AAR carries into `app/src/geniex/jniLibs/arm64-v8a` (git-ignored), `app/build.gr
 project's copies first (`pickFirsts`) and keeps them unstripped, and
 `check_reference_apk.py --flavor geniex --qairt-version 2.50.0.260828221209 --qairt-libs …/qairt-libs.json`
 checks that every packaged QNN library names that build and every staged file is packaged byte
-for byte. The plugin negotiates the QNN C API at load time (floor: QAIRT 2.36 headers), so a newer
+for byte. A geniex release build fails without that staging (`checkGeniexQairtStaging` rechecks
+`qairt-libs.json`: flavor geniex, QAIRT 2.50.0, every file's SHA-256), so an unstaged build cannot
+ship QAIRT 2.45 by accident; `-Pxebench.geniexAarQairt=true` builds with the AAR's runtime on
+purpose (the 2.45 comparison build below). The plugin negotiates the QNN C API at load time (floor: QAIRT 2.36 headers), so a newer
 runtime than the bundled one is a supported combination. `runtimeVersions.qairt` records the build
 string of the packaged `libQnnHtp.so`, which is the runtime that loads.
 
@@ -97,7 +100,8 @@ string of the packaged `libQnnHtp.so`, which is the runtime that loads.
 | | |
 | --- | --- |
 | Source | `qualcomm/Qwen3-1.7B` `release_assets.json` at `72c5712` (version 0.65.0), asset `w4a16` / `qualcomm-snapdragon-8-elite-gen5-for-galaxy` / `geniex_qairt` |
-| Zip | `qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy.zip`, 1,538,593,271 bytes, SHA-256 `ab021d189e387ba417e9156fb8d5fcee7a98cf1befd899a8e6f2a9b65dbf9b2b` |
+| Zip | `qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy.zip`, 1,538,593,271 bytes, SHA-256 `ab021d189e387ba417e9156fb8d5fcee7a98cf1befd899a8e6f2a9b65dbf9b2b`, S3 object version `Yb0NrZDlpe5O5Hc3SM4NUGSYelSDiEle` |
+| Pins | both the zip and the unpacked directory (bundle digest) in `configs/models/experimental-models.json` `pinnedArtifacts` and MODELS.md, so the publication policy's artifact check can pass for a GENIE-X NPU session |
 | Unpacked | 11 files, 1,764,416,101 bytes; four context binaries `part1_of_4.bin` … `part4_of_4.bin` |
 | Bundle digest | `c41b7071b62e791b924254f1e8ed3245ee74825013c1723e3a62e8877b2ab5c2` (the run's `modelSha256`) |
 | Target | `htp_backend_ext_config.json`: `soc_model` 87, `dsp_arch` v81, burst, one core, shared buffers, weight sharing; `metadata.json` chipset aliases `qualcomm-snapdragon-8-elite-gen5-for-galaxy`, `sm8850-ad`; reference device "Samsung Galaxy S26 (Family)" |
@@ -176,8 +180,8 @@ in-app path does not depend on Genie; the CLI path is the one that may stop gett
    error from create, or a `soc_model` complaint); every geniex-npu-log-v1 line appears in each
    repetition window with the format above; `runtimeVersions.qairt` is 2.50.0.260828221209; how
    many tokens Qwen3 decodes; and the gate result against the CPU reference. If the bundle
-   refuses QAIRT 2.50 on this phone, build once without the staging (the AAR's QAIRT 2.45) to
-   separate a version problem from a chipset one.
+   refuses QAIRT 2.50 on this phone, build once with `-Pxebench.geniexAarQairt=true` (the AAR's
+   QAIRT 2.45) to separate a version problem from a chipset one.
 
 ```json
 {

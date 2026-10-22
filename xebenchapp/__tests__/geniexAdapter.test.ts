@@ -149,7 +149,7 @@ describe('GENIE-X configuration rules', () => {
     ['no CPU context size', [{...cpuRun, nCtx: null}], 'CPU runs need nThreads and nCtx'],
     ['llama.cpp offload settings', [{...cpuRun, nGpuLayers: 0}], 'llama.cpp only'],
     ['a reference of another engine', [{...cpuRun, engine: 'llama.cpp', nGpuLayers: 0}, npuRun], 'same engine'],
-    ['fixed decoding', [cpuRun, npuRun], 'LiteRT-LM runs only'],
+    ['fixed decoding', [cpuRun, npuRun], 'decodeMode fixed applies to LiteRT-LM runs'],
   ])('%s is refused', (name, runs, message) => {
     const input = {...base, runs, ...(name === 'fixed decoding' ? {decodeMode: 'fixed'} : {})};
     expect(() => parseAcceleratorConfig(input)).toThrow(message);

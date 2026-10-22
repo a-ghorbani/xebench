@@ -52,13 +52,31 @@ class PinTests(unittest.TestCase):
         self.assertEqual(stage.bundle_digest(hashes), bundle["bundleSha256"])
         self.assertEqual(sum(size for size, _ in bundle["files"].values()), bundle["bundleBytes"])
         self.assertEqual(bundle["zip"]["name"], bundle["directory"] + ".zip")
-        self.assertTrue(bundle["url"].endswith("/" + bundle["zip"]["name"]))
+        self.assertTrue(bundle["url"].endswith("/" + bundle["zip"]["name"] + "?versionId=Yb0NrZDlpe5O5Hc3SM4NUGSYelSDiEle"))
         self.assertIn("/releases/" + bundle["aiHubRelease"] + "/", bundle["url"])
         self.assertIn("genie_config.json", bundle["files"])
         # The directory name is the NPU run's modelFile (config.ts BUNDLE_DIRECTORY).
         self.assertRegex(bundle["directory"], r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
         for digest in hashes.values():
             self.assertRegex(digest, r"^[0-9a-f]{64}$")
+
+    def test_the_pins_agree_with_the_model_manifest(self):
+        """configs/models/experimental-models.json pins the zip (what is downloaded) and the bundle
+        directory (what the app loads and a configuration's modelSha256 names)."""
+        manifest = json.loads((ROOT / "configs/models/experimental-models.json").read_text())
+        pinned = {entry["file"]: entry for entry in manifest["pinnedArtifacts"]}
+        bundle = stage.BUNDLE
+        archive = pinned[bundle["zip"]["name"]]
+        self.assertEqual((archive["size"], archive["sha256"], archive["downloadUrl"], archive["revision"],
+                          archive["qairt"]),
+                         (bundle["zip"]["size"], bundle["zip"]["sha256"], bundle["url"], bundle["repoRevision"],
+                          bundle["qairt"]))
+        directory = pinned[bundle["directory"]]
+        self.assertEqual((directory["size"], directory["sha256"], directory["sourceFile"], directory["revision"]),
+                         (bundle["bundleBytes"], bundle["bundleSha256"], bundle["zip"]["name"], bundle["repoRevision"]))
+        models_md = (ROOT / "MODELS.md").read_text()
+        for value in (bundle["zip"]["sha256"], bundle["bundleSha256"], "Yb0NrZDlpe5O5Hc3SM4NUGSYelSDiEle"):
+            self.assertIn(value, models_md)
 
     def test_the_digest_is_the_sha256sum_listing_in_byte_order(self):
         hashes = {"tokenizer_config.json": "b" * 64, "tokenizer.json": "a" * 64}

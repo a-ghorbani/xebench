@@ -673,11 +673,12 @@ const RUNTIME_KEYS = Object.freeze(['llamaCpp', 'llamaRn', 'litertLm', 'litertNp
   'executorch', 'reactNativeExecutorch']);
 /** runtimeVersions keys each engine may report (mirrors ENGINE_RUNTIMES in scripts/raw_session.py). */
 const ENGINE_RUNTIMES = Object.freeze({
-  'llama.cpp': ['llamaCpp', 'llamaRn'], 'litert-lm': ['litertLm', 'litertNpuRuntimeQualcomm', 'qairt'], 'genie-x': ['genie'],
-  executorch: ['executorch', 'reactNativeExecutorch'],
+  'llama.cpp': ['llamaCpp', 'llamaRn'], 'litert-lm': ['litertLm', 'litertNpuRuntimeQualcomm', 'qairt'],
+  'genie-x': ['genie', 'qairt'], executorch: ['executorch', 'reactNativeExecutorch'],
 });
-/** LiteRT-LM runtimes that take part only in NPU runs. */
+/** Qualcomm NPU runtimes that take part only in NPU runs (LiteRT-LM and GENIE-X). */
 const NPU_ONLY_RUNTIMES = Object.freeze(['litertNpuRuntimeQualcomm', 'qairt']);
+const NPU_ONLY_ENGINES = Object.freeze(['litert-lm', 'genie-x']);
 
 /**
  * Contract `build` (engineVersion, bindingVersion, runtimes) from a session's
@@ -696,7 +697,7 @@ export function buildFromSession(rec, where = '$') {
   // Never publish a runtime the row's engine (and backend) does not run on.
   const reported = RUNTIME_KEYS.filter((key) => versions[key] !== undefined && versions[key] !== null);
   const stray = reported.filter((key) => !(ENGINE_RUNTIMES[rec.engine] ?? []).includes(key) ||
-    (rec.engine === 'litert-lm' && rec.backend !== 'npu' && NPU_ONLY_RUNTIMES.includes(key)));
+    (NPU_ONLY_ENGINES.includes(rec.engine) && rec.backend !== 'npu' && NPU_ONLY_RUNTIMES.includes(key)));
   if (stray.length) fail(`names runtimes ${rec.engine} ${rec.backend ?? ''} does not run on: ${stray.join(', ')}`);
   const version = (key) => {
     const value = versions[key];
