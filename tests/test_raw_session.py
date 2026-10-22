@@ -757,6 +757,34 @@ class AcceleratorRecordTests(unittest.TestCase):
         del stripped["build"]
         self.assertTrue(codes(stripped) & {"schema.one-of", "schema.additional-property", "schema.required"}, codes(stripped))
 
+    def test_genie_x_records_follow_their_engine_rules(self):
+        npu, cpu = ACCEL["geniex-qwen3-1.7b-w4a16-npu"], ACCEL["geniex-qwen3-1.7b-q40-cpu"]
+        self.assertEqual(raw_session.validate(npu), [])
+        self.assertEqual(npu["correctness"]["reference"]["sameArtifact"], False)
+        self.assertEqual(npu["observedBackend"]["status"], "unknown")  # only the gate's load maps libQnnHtp.so
+        self.assertEqual(npu["gateBackend"]["status"], "consistent")
+
+        def edit(record, change):
+            changed = copy.deepcopy(record)
+            change(changed)
+            return codes(changed)
+
+        def run_field(index, key, value):
+            return lambda record: record["configuration"]["runs"][index].__setitem__(key, value)
+
+        self.assertIn("runtime.inconsistent", edit(cpu, lambda r: r["runtimeVersions"].__setitem__("qairt", "2.50.0")))
+        self.assertIn("runtime.inconsistent", edit(npu, lambda r: r["runtimeVersions"].__setitem__("litertLm", "0.18.0")))
+        self.assertIn("runtime.inconsistent", edit(npu, lambda r: r.__setitem__("engineVersion", "GENIE-X 0.8.0")))
+        self.assertIn("settings.engine", edit(npu, lambda r: r.__setitem__("executionReports", [
+            copy.deepcopy(ACCEL["f8-llama-cpu"]["executionReports"][0])])))
+        self.assertIn("configuration.run-invalid", edit(npu, run_field(1, "nThreads", 4)))
+        self.assertIn("configuration.run-invalid", edit(npu, run_field(0, "nCtx", None)))
+        self.assertIn("configuration.run-invalid", edit(npu, run_field(1, "modelFile", "bundle.gguf")))
+        self.assertIn("configuration.run-invalid", edit(npu, run_field(0, "modelFile", "bundle_dir")))
+        self.assertIn("configuration.run-invalid", edit(npu, run_field(1, "nGpuLayers", 0)))
+        self.assertIn("backend.recomputed", edit(npu, lambda r: r["coldRuns"][0]["observedBackend"].__setitem__(
+            "status", "consistent")))
+
     def test_fixture_covers_the_decisions_that_matter(self):
         npu = ACCEL["f8-litert-npu"]
         self.assertEqual((npu["correctness"]["status"], npu["comparison"]["status"]), ("fail", "invalid"))

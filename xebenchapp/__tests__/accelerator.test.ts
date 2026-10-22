@@ -15,6 +15,7 @@ import {
 } from '../src/harness/gate';
 import {assessBackend, summarizeBackend} from '../src/harness/backend';
 import {liteRtEngineVersion, liteRtRuntimeVersions} from '../src/harness/adapters/LiteRtAdapter';
+import {genieXEngineVersion, genieXMetrics, genieXRuntimeVersions} from '../src/harness/adapters/GenieXAdapter';
 import {NO_RUNTIME_VERSIONS} from '../src/harness/runtime';
 import {
   executorchEffectiveSettings, executorchEngineVersion, executorchMetrics, executorchPromptPrefix, executorchRuntimeVersions,
@@ -92,12 +93,15 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
   const versions = () => run.engine === 'litert-lm' ? liteRtRuntimeVersions({litertLmVersion: '0.18.0',
     litertNpuRuntimeQualcommVersion: '2.3.0', qairtVersion: '2.50.0.260828221209'}, run.backend) :
     run.engine === 'executorch' ? executorchRuntimeVersions({executorchVersion: '1.4.1'}, '0.10.7') :
+    run.engine === 'genie-x' ? genieXRuntimeVersions({geniexVersion: '0.8.0', qairtVersion: '2.50.0.260828221209'},
+      run.backend) :
       {...NO_RUNTIME_VERSIONS, llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'}, llamaRn: '0.0.0-fixture'};
   const adapter = {
     engine: run.engine, backend: run.backend, modelLabel: run.model, quantLabel: run.quant, modelFile: run.modelFile,
     loads: 0,
     engineVersion: () => run.engine === 'litert-lm' ? liteRtEngineVersion(run.backend, versions()) :
       run.engine === 'executorch' ? executorchEngineVersion(versions()) :
+      run.engine === 'genie-x' ? genieXEngineVersion(run.backend, versions()) :
         `llama.rn 0.0.0-fixture${run.backend === 'cpu' ? '' : ` (${run.backend})`}`,
     runtimeVersions: () => versions(),
     settings: () => ({nThreads: run.nThreads, nCtx: run.nCtx}),
@@ -114,7 +118,7 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
       const probe = PROBES.find(item => item.prompt === cfg.text)!;
       return answers[probe.id];
     },
-    benchOnce: async (): Promise<SingleRunMetrics> => {
+    benchOnce: async (cfg: {maxDecodeTokens: number}): Promise<SingleRunMetrics> => {
       measured++;
       if (run.engine === 'executorch') {
         // What TextLLMRunner reports for a 523-token prompt (two 512-token prefill forwards).
@@ -124,6 +128,18 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
           inferenceStartMs: start, firstTokenMs: start + 1040 + measured, inferenceEndMs: start + 1040 + measured +
             generated * 52}, start: 5000, first: 6062.5 + measured, end: 12700, emitted: generated + 1}, 512,
         fixedDecodeTokens);
+      }
+      if (run.engine === 'genie-x') {
+        // GENIE-X's ProfilingData as GenieXBenchModule returns it: the QAIRT plugin reports its TTFT as
+        // the prompt time and counts the end-of-turn token; the llama_cpp plugin times the prefill alone.
+        const npu = run.backend === 'npu';
+        const ttft = npu ? 140 + measured : 900 + measured;
+        const promptTimeMs = npu ? ttft : ttft - 30;
+        const decodeTimeMs = 2900 + measured * 10;
+        const generatedTokens = npu ? 97 : 96;
+        return genieXMetrics(run.backend, ttft + 2.5, {ttftMs: ttft, promptTimeMs, decodeTimeMs, promptTokens: 532,
+          generatedTokens, prefillSpeed: 532 / (promptTimeMs / 1000),
+          decodingSpeed: generatedTokens / (decodeTimeMs / 1000), stopReason: 'eos'}, cfg.maxDecodeTokens);
       }
       return {loadMs: 0, ttftMs: 120 + measured, promptTokens: 503, decodeTokens: fixedDecodeTokens || 96,
         prefillTps: 900 + measured * 3.5, decodeTps: 40 + measured * 0.25,
@@ -141,9 +157,11 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
       }
       const report = run.engine === 'llama.cpp' ? llamaReport() : null;
       // The first load maps the accelerator runtime; it stays mapped for later loads.
-      const markers = run.backend === 'npu' ? ['libLiteRtDispatch_Qualcomm.so', 'libQnnHtp.so'] :
+      const markers = run.engine === 'genie-x' ? (run.backend === 'npu' ? ['libQnnHtp.so', 'libQnnHtpV81Stub.so',
+        'libcdsprpc.so', 'libgeniex_plugin_qairt.so'] : ['libgeniex_plugin_llama_cpp.so', 'libggml-cpu.so']) :
+        run.backend === 'npu' ? ['libLiteRtDispatch_Qualcomm.so', 'libQnnHtp.so'] :
         run.backend === 'gpu' ? ['libOpenCL.so'] : [];
-      const libraries = run.engine === 'litert-lm' ? options.libraries ??
+      const libraries = run.engine !== 'llama.cpp' ? options.libraries ??
         {before: adapter.loads > 1 ? markers : [], after: markers} : null;
       return {status: assessBackend(run.engine, run.backend, {report, libraries}),
         source: report ? 'engine-report' as const : 'process-libraries' as const, report, libraries};
@@ -243,6 +261,22 @@ async function runConfiguration(config: AcceleratorConfig, options: Record<strin
 
 const f8 = parseAcceleratorConfig(f8Config);
 const small = (config: AcceleratorConfig, nColdRuns = 2) => ({...config, nColdRuns});
+
+/**
+ * GENIE-X in-app NPU on the QAIRT bundle, gated against GENIE-X's llama_cpp plugin on the Q4_0 GGUF
+ * (sameArtifact false). The ChatML template stands in for Qwen3's in this fixture.
+ */
+const GENIEX_CONFIG = {schemaVersion: 2, id: 'fixture-geniex-qwen3', nColdRuns: 3, cooldownSec: 120,
+  readinessTimeoutSec: 900, maxBatteryTempRiseC: 2, maxDecodeTokens: 128, chatTemplate: 'qwen25',
+  measuredPrompt: 'std-pp512-v1', orderSeed: 11, runs: [
+    {id: 'qwen3-1.7b-q40-cpu', engine: 'genie-x', backend: 'cpu', purpose: 'measurement', model: 'Qwen3 1.7B',
+      modelFile: 'Qwen3-1.7B-Q4_0.gguf', quant: 'Q4_0', nThreads: 4, nCtx: 4096, referenceRunId: null,
+      modelSha256: 'a'.repeat(64)},
+    {id: 'qwen3-1.7b-w4a16-npu', engine: 'genie-x', backend: 'npu', purpose: 'measurement', model: 'Qwen3 1.7B',
+      modelFile: 'qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy', quant: 'W4A16',
+      nThreads: null, nCtx: null, referenceRunId: 'qwen3-1.7b-q40-cpu',
+      modelSha256: 'c41b7071b62e791b924254f1e8ed3245ee74825013c1723e3a62e8877b2ab5c2'},
+  ]};
 
 test('versioned matrix configurations parse and pair every accelerator with a CPU reference', () => {
   const s23 = parseAcceleratorConfig(s23Config);
@@ -440,6 +474,8 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
     const board = await runConfiguration(parseAcceleratorConfig(config));
     for (const [id, record] of Object.entries(board.records)) out[`${prefix}-${id}`] = record;
   }
+  const geniex = await runConfiguration(parseAcceleratorConfig(GENIEX_CONFIG));
+  for (const [id, record] of Object.entries(geniex.records)) out[`geniex-${id}`] = record;
 
   // ExecuTorch CPU (XNNPACK): measured, a tokenizer that is not the pinned file, an unreadable
   // tokenizer, and a program that delegates to another backend.
@@ -498,6 +534,8 @@ test('accelerator records match the committed fixture validated by the host sche
     'executorch-tokenizerMismatch': 'failed/tokenizer-hash-mismatch/unverified/unverified/null/null',
     'executorch-tokenizerUnreadable': 'failed/setup-failed/unverified/unverified/null/null',
     'executorch-vulkanProgram': 'complete/null/pass/invalid/mismatch/mismatch',
+    'geniex-qwen3-1.7b-q40-cpu': 'complete/null/pass/valid/consistent/consistent',
+    'geniex-qwen3-1.7b-w4a16-npu': 'complete/null/pass/valid/unknown/consistent',
   });
   // ExecuTorch: the CPU reference prompt verbatim, a fixed 128-token decode, the tokenizer hashed.
   const executorchRecord = records['executorch-cpu'];
@@ -514,6 +552,17 @@ test('accelerator records match the committed fixture validated by the host sche
   expect(records['executorch-tokenizerMismatch'].tokenizerArtifact!.sha256).toBe('f'.repeat(64));
   expect(records['executorch-tokenizerUnreadable'].tokenizerArtifact).toBeNull();
   expect(records['f8-llama-cpu']).not.toHaveProperty('tokenizerArtifact');
+  // GENIE-X: the bundle is compared with a different reference file; versions and metrics as reported.
+  const geniexNpu = records['geniex-qwen3-1.7b-w4a16-npu'];
+  expect(geniexNpu.correctness.reference).toMatchObject({sameArtifact: false, modelFile: 'Qwen3-1.7B-Q4_0.gguf'});
+  expect(geniexNpu.engineVersion).toBe('GENIE-X geniex-android 0.8.0 + QAIRT 2.50.0.260828221209 (npu)');
+  expect(geniexNpu.runtimeVersions).toMatchObject({genie: '0.8.0', qairt: '2.50.0.260828221209'});
+  expect(records['geniex-qwen3-1.7b-q40-cpu'].runtimeVersions).toMatchObject({genie: '0.8.0', qairt: null});
+  expect(geniexNpu.effectiveSettings).toBeNull();
+  expect(geniexNpu.protocol).not.toHaveProperty('decodeMode');
+  const attempt = geniexNpu.coldRuns.find(item => item.status === 'complete')! as SingleRunMetrics;
+  expect([attempt.decodeTokens, attempt.prefillMethod, attempt.decodeMethod]).toEqual([96, 'ttft-derived',
+    'engine-timings']);
   // decodeMode fixed: the protocol says so and every repetition decoded exactly maxDecodeTokens.
   for (const key of ['board-litert-fixed-gemma3-1b-int4-litertlm-cpu', 'board-litert-fixed-gemma3-1b-sm8850-litertlm-npu']) {
     expect(records[key].protocol.decodeMode).toBe('fixed');

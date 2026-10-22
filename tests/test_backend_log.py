@@ -12,6 +12,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 
 import bundle_fixtures as fx
 from test_export_evidence import ACCEL, HOST_DEVICE, capture, evidence, make_capture
@@ -177,7 +178,7 @@ class CaptureTests(unittest.TestCase):
             if args[0] == "exec-out":
                 return json.dumps(record)
             if args[0] == "logcat":
-                return backend if args[-3:] == backend_log.LOGCAT_FILTER else result
+                return backend if args[-len(backend_log.LOGCAT_FILTER):] == backend_log.LOGCAT_FILTER else result
             return "100.000" if args[:2] == ("shell", "date") else "fixture"
 
         def sleep(seconds):
@@ -188,7 +189,7 @@ class CaptureTests(unittest.TestCase):
             directory = next(Path(root).iterdir())
             manifest = json.loads((directory / "manifest.json").read_text())
             kept = (directory / "backend-log.txt").read_text().splitlines()
-        backend_calls = [call for call in calls if call[-3:] == backend_log.LOGCAT_FILTER]
+        backend_calls = [call for call in calls if call[-len(backend_log.LOGCAT_FILTER):] == backend_log.LOGCAT_FILTER]
         self.assertTrue(backend_calls)
         self.assertTrue(all("--pid=123" in call for call in backend_calls))
         self.assertEqual(kept, gate_lines())
@@ -267,6 +268,177 @@ class BundleTests(unittest.TestCase):
                 out.write(line(T, CONTEXT) + "\n")
             with self.assertRaises(evidence.Refused):
                 evidence.export([directory], Path(root) / "bundles")
+
+
+# geniex-npu-log-v1: messages as geniex-android 0.8.0 logs them under its JNI tag (GenieXSdk), written from
+# the format strings in its shipped libgeniex_core.so (pending a device capture).
+GX = backend_log.GENIEX_RULE
+GX_RUNTIME = ("GenieXSdk", f"HTP runtime path: {INSTALL} (auto-resolved from geniex_core directory (flat layout))")
+GX_ARCH = ("GenieXSdk", "HTP arch v81 detected.")
+GX_GRAPHS = ("GenieXSdk", "HTP graphs will execute on 1 core (default; set num_cores or add htp_backend_ext_config.json "
+                          "`cores` entries to request more)")
+GX_PROMPT = ("GenieXSdk", "prompt: 532 tokens, first-turn BOS=false, ids start with [27, 91, 7265, 3575, 4326]")
+GX_WINDOW = (GX_RUNTIME, GX_ARCH, GX_GRAPHS, GX_PROMPT)
+GX_OTHER = ("GenieXSdk", "prefill_speed=3801.000000 tok/s, decoding_speed=33.400000 tok/s")
+GX_NPU, GX_CPU = "geniex-qwen3-1.7b-w4a16-npu", "geniex-qwen3-1.7b-q40-cpu"
+
+
+def gx_record():
+    return copy.deepcopy(ACCEL[GX_NPU])
+
+
+def gx_log(lines):
+    return {"rule": GX, "events": backend_log.events_from_lines(lines, GX)}
+
+
+def gx_gate_lines(time_ms=T - 1000):
+    """The output gate's NPU load and requests: every window event and the skel, before the repetitions."""
+    return [line(time_ms + index, event) for index, event in enumerate((GX_RUNTIME, GX_ARCH, SKEL, GX_GRAPHS,
+                                                                        GX_PROMPT))]
+
+
+class GenieXPatternTests(unittest.TestCase):
+    def test_each_line_is_its_event_and_sanitizes_to_one(self):
+        for kind, event in (("htp-runtime", GX_RUNTIME), ("htp-arch", GX_ARCH), ("htp-graphs", GX_GRAPHS),
+                            ("prompt", GX_PROMPT), ("htp-skel-cdsp", SKEL)):
+            with self.subTest(kind):
+                self.assertEqual(backend_log.classify(*event, rule=GX), kind)
+                clean = backend_log.sanitize(event[1])
+                self.assertEqual(backend_log.classify(event[0], clean, rule=GX), kind)
+                self.assertNotIn("/data/", clean)
+                self.assertEqual(evidence.privacy_findings({"line": clean}), [])
+        self.assertEqual(backend_log.sanitize(GX_RUNTIME[1]),
+                         "HTP runtime path: _ (auto-resolved from geniex_core directory (flat layout))")
+        self.assertIsNone(backend_log.classify(*GX_OTHER, rule=GX))
+
+    def test_debug_builds_prefix_and_other_variants(self):
+        prefixed = ("GenieXSdk", "[core/include/runtime.h:350:resolveHtpPaths] HTP arch v81 detected.")
+        self.assertEqual(backend_log.classify(*prefixed, rule=GX), "htp-arch")
+        multicore = ("GenieXSdk", "HTP multicore enabled: graphs will execute on 2 cores")
+        self.assertEqual(backend_log.classify(*multicore, rule=GX), "htp-graphs")
+        # A runtime the app did not package (an override) is not the event.
+        override = ("GenieXSdk", f"HTP runtime path: {INSTALL} (overridden via GENIEX_QAIRT_LIB)")
+        self.assertIsNone(backend_log.classify(*override, rule=GX))
+
+    def test_rules_keep_their_own_events(self):
+        for event in GX_WINDOW:
+            self.assertIsNone(backend_log.classify(*event))  # not a LiteRT-LM event
+            self.assertIsNone(backend_log.classify("litert", event[1], rule=GX))  # another tag
+        for event in (DISPATCH, HTP, CONTEXT):
+            self.assertIsNone(backend_log.classify(*event, rule=GX))
+        self.assertEqual(backend_log.rule_for_engines({"genie-x", "llama.cpp"}), GX)
+        self.assertEqual(backend_log.rule_for_engines({"litert-lm"}), backend_log.RULE)
+        self.assertEqual(backend_log.rule_for_engines(set()), backend_log.RULE)
+        text = "\n".join([line(T, GX_ARCH), line(T, CONTEXT), line(T, GX_OTHER), line(T, GX_ARCH, pid=999)])
+        self.assertEqual(backend_log.matching_lines(text, 123), [line(T, GX_ARCH), line(T, CONTEXT)])
+        event = backend_log.events_from_lines([line(T, GX_GRAPHS)], GX)[0]
+        self.assertTrue(backend_log.valid_event(event, GX))
+        self.assertFalse(backend_log.valid_event(event))  # not a litert-npu-log-v1 event
+        self.assertFalse(backend_log.valid_event({**event, "kind": "prompt"}, GX))
+        with self.assertRaises(ValueError):
+            backend_log.events_from_lines([line(T, CONTEXT)], GX)
+
+
+class GenieXConfirmationTests(unittest.TestCase):
+    def test_every_window_event_and_the_skel_confirm_every_repetition(self):
+        record = gx_record()
+        result = backend_log.confirmation(record, gx_log(gx_gate_lines() + repetition_lines(record, GX_WINDOW)))
+        self.assertEqual((result["rule"], result["status"]), (GX, "confirmed"))
+        self.assertEqual(len(result["repetitions"]), record["protocol"]["nColdRuns"])
+
+    def test_each_missing_event_is_not_confirmed(self):
+        record = gx_record()
+        complete = gx_gate_lines() + repetition_lines(record, GX_WINDOW)
+        for kind, event in (("htp-runtime", GX_RUNTIME), ("htp-arch", GX_ARCH), ("htp-graphs", GX_GRAPHS),
+                            ("prompt", GX_PROMPT), ("htp-skel-cdsp", SKEL)):
+            with self.subTest(kind):
+                lines = [item for item in complete if event[1] not in item]
+                result = backend_log.confirmation(record, gx_log(lines))
+                self.assertEqual(result["status"], "unconfirmed")
+                self.assertTrue(all(item["missing"] == [kind] for item in result["repetitions"]))
+
+    def test_the_gate_load_alone_confirms_no_repetition(self):
+        result = backend_log.confirmation(gx_record(), gx_log(gx_gate_lines()))
+        self.assertEqual(result["status"], "unconfirmed")
+        self.assertEqual({tuple(item["missing"]) for item in result["repetitions"]},
+                         {("htp-runtime", "htp-arch", "htp-graphs", "prompt")})
+
+    def test_the_rule_applies_to_genie_x_npu_sessions_only(self):
+        lines = gx_gate_lines()
+        self.assertIsNone(backend_log.confirmation(copy.deepcopy(ACCEL[GX_CPU]), gx_log(lines)))
+        self.assertIsNone(backend_log.confirmation(npu_record(), gx_log(lines)))  # a LiteRT-LM session
+        self.assertIsNone(backend_log.confirmation(gx_record(), log_of(gate_lines())))  # the LiteRT-LM rule
+
+    def test_the_rule_is_pending_device_confirmation(self):
+        self.assertIn(GX, backend_log.PENDING_DEVICE_CONFIRMATION)
+        self.assertNotIn(backend_log.RULE, backend_log.PENDING_DEVICE_CONFIRMATION)
+
+
+class GenieXCaptureTests(unittest.TestCase):
+    def test_a_genie_x_capture_keeps_its_rule_and_only_its_events(self):
+        npu, cpu = fx.accel_record(GX_NPU, "1767225600000-0-npu"), fx.accel_record(GX_CPU, "1767225600000-1-cpu")
+        lines = gx_gate_lines() + [line(T, CONTEXT), line(T, DISPATCH), line(T, GX_OTHER)]
+        with tempfile.TemporaryDirectory() as root:
+            directory = make_capture(Path(root) / "results", [npu, cpu], backend_log="\n".join(lines))
+            manifest = json.loads((directory / "manifest.json").read_text())
+            kept = (directory / "backend-log.txt").read_text().splitlines()
+        self.assertEqual(manifest["backendLog"]["rule"], GX)
+        self.assertEqual(kept, gx_gate_lines())
+
+
+class GenieXBundleTests(unittest.TestCase):
+    def bundle(self, root, lines):
+        npu, cpu = fx.accel_record(GX_NPU, "1767225600000-0-npu"), fx.accel_record(GX_CPU, "1767225600000-1-cpu")
+        directory = make_capture(Path(root) / "results", [npu, cpu], device_info={**HOST_DEVICE, "model": "Fixture"},
+                                 backend_log="\n".join(lines))
+        report = evidence.export([directory], Path(root) / "bundles")
+        return Path(report["bundle"]), report["evidence"]["bundleSha256"], npu
+
+    def test_the_bundle_reports_the_rule_but_a_pending_rule_confirms_nothing(self):
+        with tempfile.TemporaryDirectory() as root:
+            npu = fx.accel_record(GX_NPU, "1767225600000-0-npu")
+            bundle, sha, _ = self.bundle(root, gx_gate_lines() + repetition_lines(npu, GX_WINDOW))
+            self.assertTrue(evidence.verify(bundle)["valid"])
+            report = policy.bundle_report(bundle, sha)
+            self.assertTrue(report["valid"], report["errors"])
+            session = {item["sessionId"]: item for item in report["sessions"]}["1767225600000-0-npu"]
+            self.assertEqual(session["facts"]["backendLog"]["status"], "confirmed")
+            self.assertEqual(session["facts"]["backendEvidence"], "unknown")
+            backend = next(c for c in session["decision"]["checks"] if c["check"] == "backend")
+            self.assertEqual(backend["outcome"], "unknown")
+            self.assertIn(f"rule {GX} is pending device confirmation", backend["detail"])
+
+    def test_once_confirmed_on_a_device_the_rule_confirms_the_npu_backend(self):
+        with tempfile.TemporaryDirectory() as root, \
+                unittest.mock.patch.object(policy.backend_log, "PENDING_DEVICE_CONFIRMATION", frozenset()):
+            npu = fx.accel_record(GX_NPU, "1767225600000-0-npu")
+            bundle, sha, _ = self.bundle(root, gx_gate_lines() + repetition_lines(npu, GX_WINDOW))
+            session = {item["sessionId"]: item for item in policy.bundle_report(bundle, sha)["sessions"]}[
+                "1767225600000-0-npu"]
+            self.assertEqual(session["facts"]["backendEvidence"], "confirmed")
+            backend = next(c for c in session["decision"]["checks"] if c["check"] == "backend")
+            self.assertEqual(backend["outcome"], "pass")
+            self.assertIn(GX, backend["detail"])
+
+    def test_verify_refuses_an_event_moved_to_another_rule(self):
+        with tempfile.TemporaryDirectory() as root:
+            npu = fx.accel_record(GX_NPU, "1767225600000-0-npu")
+            bundle, _, _ = self.bundle(root, gx_gate_lines() + repetition_lines(npu, GX_WINDOW))
+            path = next((bundle / "captures").iterdir())
+            document = json.loads(path.read_text())
+            self.assertEqual(document["backendLog"]["rule"], GX)
+            self.assertNotIn("/data/app", path.read_text())
+            document["backendLog"]["rule"] = backend_log.RULE
+            data = evidence.canonical(document)
+            path.write_bytes(data)
+            manifest = json.loads((bundle / "manifest.json").read_text())
+            for item in manifest["files"]:
+                if item["path"] == f"captures/{path.name}":
+                    item.update(sha256=evidence.sha256(data), bytes=len(data))
+            (bundle / "manifest.json").write_bytes(evidence.canonical(manifest))
+            result = evidence.verify(bundle)
+            self.assertFalse(result["valid"])
+            self.assertTrue(any("backend log event" in error for error in result["errors"]), result["errors"])
 
 
 if __name__ == "__main__":

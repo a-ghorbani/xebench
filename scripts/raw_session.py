@@ -945,11 +945,11 @@ def _semantic_v2(record):
 
 # runtimeVersions keys each engine may report (runtime.ts); every other key must be null.
 ENGINE_RUNTIMES = {"llama.cpp": ("llamaCpp", "llamaRn"), "litert-lm": ("litertLm", "litertNpuRuntimeQualcomm", "qairt"),
-                   "genie-x": ("genie",), "executorch": ("executorch", "reactNativeExecutorch")}
+                   "genie-x": ("genie", "qairt"), "executorch": ("executorch", "reactNativeExecutorch")}
 
 
 def runtime_versions_errors(record):
-    """runtimeVersions names only the engine's own runtimes; LiteRT's NPU runtimes only on NPU runs."""
+    """runtimeVersions names only the engine's own runtimes; the Qualcomm NPU runtimes only on NPU runs."""
     runtimes = record.get("runtimeVersions")
     if runtimes is None:
         return []
@@ -959,10 +959,13 @@ def runtime_versions_errors(record):
     if stray:
         errors.append(reason("runtime.inconsistent", "/runtimeVersions",
                              f"{record['engine']} does not run on {stray}"))
-    if record["engine"] == "litert-lm" and record["backend"] != "npu" and (
+    if record["engine"] in ("litert-lm", "genie-x") and record["backend"] != "npu" and (
             runtimes["litertNpuRuntimeQualcomm"] is not None or runtimes["qairt"] is not None):
         errors.append(reason("runtime.inconsistent", "/runtimeVersions",
                              "The Qualcomm NPU runtime and QAIRT take part only in NPU runs"))
+    if record["engine"] == "genie-x" and record.get("engineVersion") != geniex_engine_version(record["backend"], runtimes):
+        errors.append(reason("runtime.inconsistent", "/engineVersion",
+                             "GENIE-X engineVersion disagrees with runtimeVersions"))
     settings = record.get("effectiveSettings") or {}
     distribution = settings.get("distribution")
     # The binding's own runtime key: llama.rn, or react-native-executorch.
@@ -1001,6 +1004,14 @@ def executorch_engine_version(runtimes):
     """The engineVersion ExecutorchAdapter derives from runtimeVersions (executorch.ts executorchEngineVersion)."""
     return (f"ExecuTorch {runtimes.get('executorch') or 'unknown'} + react-native-executorch "
             f"{runtimes.get('reactNativeExecutorch') or 'unknown'} (xnnpack)")
+
+
+def geniex_engine_version(backend, runtimes):
+    """The engineVersion GenieXAdapter derives from runtimeVersions (genieXEngineVersion)."""
+    geniex = f"geniex-android {runtimes['genie'] or 'unknown'}"
+    if backend == "npu":
+        return f"GENIE-X {geniex} + QAIRT {runtimes['qairt'] or 'unknown'} (npu)"
+    return f"GENIE-X {geniex} ({backend})"
 
 
 # config.ts LOAD_SETTINGS: optional run fields, the llama.rn parameter each sets, and the harness
@@ -1140,6 +1151,7 @@ def probe_set_errors(probes, max_decode_tokens, prompt_digest, where):
 
 NPU_DISPATCH_LIB = "libLiteRtDispatch_Qualcomm.so"
 OPENCL_LIB = "libOpenCL.so"
+QNN_HTP_LIB = "libQnnHtp.so"
 _BACKEND_RANK = {"unknown": 0, "consistent": 1, "confirmed": 2, "mismatch": 3}
 XNNPACK_BACKEND = "XnnpackBackend"
 # ECMAScript String.prototype.trim() whitespace, so text comparisons match the app exactly.
@@ -1214,6 +1226,19 @@ def assess_backend(engine, requested, evidence):
             registered is not None and XNNPACK_BACKEND in registered and \
             after is not None and not any(foreign_executorch_library(name) for name in after)
         return "confirmed" if confirmed else "unknown"
+    if engine == "genie-x":
+        # The QAIRT plugin loads the QNN HTP backend at its first model load in the process.
+        libraries = evidence["libraries"]
+        after = libraries["after"] if libraries else None
+        before = libraries["before"] if libraries else None
+        if after is None or before is None:
+            return "unknown"
+        loaded = [name for name in after if name not in before]
+        if requested == "npu":
+            return "consistent" if QNN_HTP_LIB in loaded else "unknown"
+        if requested == "cpu":
+            return "unknown" if QNN_HTP_LIB in loaded else "consistent"
+        return "unknown"
     return "unknown"
 
 
@@ -1283,8 +1308,14 @@ def _configuration_accelerator(config):
     errors, runs = [], config["runs"]
     for index, run in enumerate(runs):
         where = f"/configuration/runs/{index}"
-        llama = run["engine"] == "llama.cpp"
-        if not run["modelFile"].endswith(MODEL_EXTENSIONS.get(run["engine"], "\0")):
+        llama, geniex = run["engine"] == "llama.cpp", run["engine"] == "genie-x"
+        if geniex:
+            # GENIE-X: a GGUF through its llama_cpp plugin on CPU, a QAIRT bundle directory on the NPU.
+            bundle = "." not in run["modelFile"]
+            if run["backend"] == "gpu" or (bundle if run["backend"] == "cpu" else not bundle):
+                errors.append(reason("configuration.run-invalid", f"{where}/modelFile",
+                                     "GENIE-X runs a GGUF on CPU and a QAIRT bundle directory on the NPU"))
+        elif not run["modelFile"].endswith(MODEL_EXTENSIONS.get(run["engine"], "\0")):
             errors.append(reason("configuration.run-invalid", f"{where}/modelFile",
                                  "modelFile extension does not match the engine"))
         if run["engine"] != "executorch" and ("tokenizerFile" in run or "tokenizerSha256" in run):
@@ -1298,6 +1329,14 @@ def _configuration_accelerator(config):
                 errors.append(reason("configuration.run-invalid", where,
                                      "ExecuTorch runs are CPU only, with a tokenizerFile and its tokenizerSha256, "
                                      "nThreads null, nCtx null and no llama.cpp settings"))
+        elif geniex:
+            cpu = run["backend"] == "cpu"
+            if "nGpuLayers" in run or "devices" in run or any(field in run for field, _, _ in LOAD_SETTINGS) or (
+                    (run["nThreads"] is None or run["nCtx"] is None) if cpu else
+                    (run["nThreads"] is not None or run["nCtx"] is not None)):
+                errors.append(reason("configuration.run-invalid", where,
+                                     "GENIE-X runs take nThreads and nCtx on CPU, null on the NPU, and no "
+                                     "nGpuLayers/devices or llama.cpp load settings"))
         elif llama:
             devices = run.get("devices")
             htp = sum(device.upper().startswith("HTP") for device in devices or [])
@@ -1414,7 +1453,7 @@ def backend_evidence_errors(engine, backend, observed, where):
         "engine-report" if observed.get("report") is not None else \
         "process-libraries" if observed.get("libraries") is not None else "none"
     engine_source = {"llama.cpp": "engine-report", "litert-lm": "process-libraries",
-                     "executorch": "program-delegates"}[engine]
+                     "executorch": "program-delegates", "genie-x": "process-libraries"}[engine]
     if observed["source"] != source or source not in (engine_source, "none"):
         errors.append(reason("backend.inconsistent", f"{where}/source",
                              f"{engine} reports backend evidence as {engine_source}"))
@@ -1522,10 +1561,10 @@ def _semantic_accelerator(record, identity=True):
     settings = record["effectiveSettings"] if identity else None
     if not identity:
         pass
-    elif record["engine"] == "litert-lm":
+    elif record["engine"] in ("litert-lm", "genie-x"):
         if settings is not None or record["executionReports"]:
             errors.append(reason("settings.engine", "/effectiveSettings",
-                                 "LiteRT-LM records have no effectiveSettings and no executionReports"))
+                                 "LiteRT-LM and GENIE-X records have no effectiveSettings and no executionReports"))
     elif record["engine"] == "executorch":
         errors += _executorch_identity(record, run)
     elif settings is None or settings["binding"] != "llama.rn":

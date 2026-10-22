@@ -160,8 +160,11 @@ export function parseConfig(input: unknown): ReferenceConfig {
 // docs/experiments/litert-accelerators.md. Every field is explicit (no defaults), so
 // the configuration echoed into each record is exactly what was parsed.
 
-export type AcceleratorEngine = 'llama.cpp' | 'litert-lm' | 'executorch';
+export type AcceleratorEngine = 'llama.cpp' | 'litert-lm' | 'executorch' | 'genie-x';
 export type AcceleratorBackend = 'cpu' | 'gpu' | 'npu';
+export const ACCELERATOR_ENGINES = ['llama.cpp', 'litert-lm', 'executorch', 'genie-x'] as const;
+/** A GENIE-X QAIRT bundle: a directory name, without an extension (scripts/stage_geniex_bundle.py). */
+export const BUNDLE_DIRECTORY = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 
 export interface AcceleratorRun {
   id: string;
@@ -172,9 +175,9 @@ export interface AcceleratorRun {
   model: string;
   modelFile: string;
   quant: string;
-  /** CPU threads; null = engine default (LiteRT-LM GPU/NPU runs, ExecuTorch's XNNPACK threadpool). */
+  /** CPU threads; null = engine default (LiteRT-LM GPU/NPU runs, ExecuTorch's XNNPACK threadpool, GENIE-X NPU runs). */
   nThreads: number | null;
-  /** llama.cpp context size; null for LiteRT-LM and ExecuTorch (fixed by the artifact). */
+  /** llama.cpp (and GENIE-X CPU) context size; null for LiteRT-LM, ExecuTorch and GENIE-X NPU (fixed by the artifact). */
   nCtx: number | null;
   /** llama.cpp only: layers offloaded (0 = CPU). */
   nGpuLayers?: number;
@@ -228,8 +231,8 @@ export const FIXED_DECODE_ENGINES: readonly AcceleratorEngine[] = ['litert-lm', 
 export type DecodeMode = typeof DECODE_MODES[number];
 
 const BASENAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
-/** Model file extension per engine: GGUF, LiteRT-LM bundle, ExecuTorch program. */
-const MODEL_EXTENSIONS: Record<AcceleratorEngine, string> = {'llama.cpp': '.gguf', 'litert-lm': '.litertlm',
+/** Model file extension per engine: GGUF, LiteRT-LM bundle, ExecuTorch program (GENIE-X: by backend, below). */
+const MODEL_EXTENSIONS: Record<Exclude<AcceleratorEngine, 'genie-x'>, string> = {'llama.cpp': '.gguf', 'litert-lm': '.litertlm',
   executorch: '.pte'};
 const RUN_FIELDS = ['id', 'engine', 'backend', 'purpose', 'model', 'modelFile', 'quant', 'nThreads', 'nCtx',
   'referenceRunId'];
@@ -252,12 +255,23 @@ function acceleratorRun(item: unknown): AcceleratorRun {
   if (RUN_FIELDS.some(key => !(key in run))) {
     throw new Error('Every accelerator run field is required');
   }
-  const engine = oneOf(run.engine, ['llama.cpp', 'litert-lm', 'executorch'] as const, 'engine');
+  const engine = oneOf(run.engine, ACCELERATOR_ENGINES, 'engine');
   const backend = oneOf(run.backend, ['cpu', 'gpu', 'npu'] as const, 'backend');
   const modelFile = label(run.modelFile);
-  const extension = MODEL_EXTENSIONS[engine];
-  if (!BASENAME.test(modelFile) || !modelFile.endsWith(extension)) {
-    throw new Error(`modelFile must be a ${extension} basename, not a path or URL`);
+  if (engine === 'genie-x') {
+    // GENIE-X runs a GGUF through its llama_cpp plugin on CPU and a QAIRT bundle on the NPU.
+    if (backend === 'gpu') {
+      throw new Error('GENIE-X runs take backend cpu (llama_cpp plugin) or npu (QAIRT plugin)');
+    }
+    if (backend === 'cpu' ? !BASENAME.test(modelFile) || !modelFile.endsWith('.gguf') :
+      !BUNDLE_DIRECTORY.test(modelFile)) {
+      throw new Error('GENIE-X modelFile must be a .gguf basename on CPU and a QAIRT bundle directory name on the NPU');
+    }
+  } else {
+    const extension = MODEL_EXTENSIONS[engine];
+    if (!BASENAME.test(modelFile) || !modelFile.endsWith(extension)) {
+      throw new Error(`modelFile must be a ${extension} basename, not a path or URL`);
+    }
   }
   const result: AcceleratorRun = {
     id: label(run.id), engine, backend, purpose: oneOf(run.purpose, ['measurement', 'bug-repro'] as const, 'purpose'),
@@ -320,6 +334,13 @@ function acceleratorRun(item: unknown): AcceleratorRun {
     }
     if (Object.keys(LOAD_SETTINGS).some(key => key in run)) {
       throw new Error('useMmap/useMlock/noExtraBufts/flashAttnType apply to llama.cpp only');
+    }
+    if (engine === 'genie-x') {
+      if (backend === 'cpu' ? result.nThreads === null || result.nCtx === null :
+        result.nThreads !== null || result.nCtx !== null) {
+        throw new Error('GENIE-X CPU runs need nThreads and nCtx; NPU runs take null (fixed by the bundle)');
+      }
+      return result;
     }
     if (result.nCtx !== null) {
       throw new Error('LiteRT-LM runs take nCtx null (fixed by the artifact)');

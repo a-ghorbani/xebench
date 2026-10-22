@@ -1139,8 +1139,8 @@
     "acceleratorModelFile": {
       "type": "string",
       "maxLength": 128,
-      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*\\.(gguf|litertlm|pte)$",
-      "description": "accelerator-v1: a GGUF (llama.cpp) or .litertlm (LiteRT-LM) basename; accelerator-v2 adds .pte (ExecuTorch). The engine/extension pairing is checked by raw_session.py."
+      "pattern": "^([a-zA-Z0-9][a-zA-Z0-9._-]*\\.(gguf|litertlm|pte)|[a-zA-Z0-9][a-zA-Z0-9_-]*)$",
+      "description": "accelerator-v1: a GGUF (llama.cpp, GENIE-X CPU) or .litertlm (LiteRT-LM) basename; accelerator-v2 adds .pte (ExecuTorch) and a GENIE-X QAIRT bundle directory name (no extension). The engine/backend pairing is checked by raw_session.py."
     },
     "nullableThreads": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1, "maximum": 32}]},
     "nullableCtx": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1024, "maximum": 32768}]},
@@ -1161,7 +1161,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {"$ref": "#/$defs/label"},
-        "engine": {"enum": ["llama.cpp", "litert-lm", "executorch"]},
+        "engine": {"enum": ["llama.cpp", "litert-lm", "executorch", "genie-x"]},
         "backend": {"enum": ["cpu", "gpu", "npu"]},
         "purpose": {"enum": ["measurement", "bug-repro"]},
         "model": {"$ref": "#/$defs/label"},
@@ -1980,7 +1980,7 @@
         "schema": {"const": "xebench-raw"},
         "schemaVersion": {"const": 1},
         "harnessVersion": {"const": "xebench-0.8-accelerator"},
-        "engine": {"enum": ["llama.cpp", "litert-lm", "executorch"]},
+        "engine": {"enum": ["llama.cpp", "litert-lm", "executorch", "genie-x"]},
         "engineVersion": {"type": "string", "minLength": 1},
         "backend": {"enum": ["cpu", "gpu", "npu"], "description": "Requested backend."},
         "observedBackend": {"$ref": "#/$defs/observedBackend"},
