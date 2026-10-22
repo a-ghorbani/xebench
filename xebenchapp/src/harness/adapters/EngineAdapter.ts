@@ -54,6 +54,39 @@ export interface LlamaRnEffectiveSettings {
 }
 
 /**
+ * Every react-native-executorch parameter the harness passes (ExecutorchAdapter); anything
+ * unlisted is the binding's default. The runner is created with createLLMRunner (ExecuTorch's
+ * TextLLMRunner, text only), and generate() receives the prompt string verbatim.
+ */
+export interface ExecutorchEffectiveSettings {
+  binding: 'react-native-executorch';
+  runner: 'createLLMRunner';
+  /** RNE's TextLLMRunner load mode (llm_runner.cpp kLoadMode) and the text-only modality list. */
+  load: {loadMode: 'mmap'; modalities: []};
+  /**
+   * GenerationConfig passed to generate(). ignoreEos true (decodeMode fixed) decodes exactly
+   * maxNewTokens tokens past the end of turn. numBos/numEos/echo are TextLLMRunner's defaults,
+   * which RNE does not change: the prompt is tokenized as given, with no BOS added.
+   */
+  generation: {temperature: 0; maxNewTokens: number; ignoreEos: boolean; numBos: 0; numEos: 0; echo: false};
+  /** XNNPACK threadpool size: ExecuTorch's runtime default (RNE sets none). */
+  threads: 'runtime-default';
+  unlisted: 'binding-defaults';
+  distribution: {source: 'npm'; package: 'react-native-executorch'; version: string;
+    /** The GitHub release of the prebuilt native libraries (package.json nativeLibsVersion). */
+    nativeLibsVersion: string | null; backends: ['xnnpack']; patches: []};
+}
+
+export type EffectiveSettings = LlamaRnEffectiveSettings | ExecutorchEffectiveSettings;
+
+/** What effectiveSettings() needs to state the parameters of a request. */
+export interface SettingsRequest {
+  maxDecodeTokens: number;
+  /** Configuration decodeMode (ExecuTorch: ignoreEos on the measured repetitions). */
+  decodeMode?: 'fixed';
+}
+
+/**
  * Uniform engine surface for the protocol runner.
  * Contract: load() creates a FRESH engine/model instance; release() destroys it.
  * A cold run in this harness = load() -> benchOnce() -> release() in a warm
@@ -68,8 +101,8 @@ export interface EngineAdapter {
   engineVersion(): string;
   /** Engine knobs actually in effect, for the protocol record */
   settings(): { nThreads: number | null; nCtx: number | null };
-  /** The full parameter set passed to the engine for a request of this size (llama.rn only). */
-  effectiveSettings?(request: Pick<BenchOnceConfig, 'maxDecodeTokens'>): LlamaRnEffectiveSettings;
+  /** The full parameter set passed to the engine for a request of this size (llama.rn, ExecuTorch). */
+  effectiveSettings?(request: SettingsRequest): EffectiveSettings;
   /** What the engine reported about the context created by the last successful load(). */
   executionReport?(): ExecutionReport;
   /** Versions of the runtimes this adapter runs on, from the shipped artifacts (runtime.ts). */

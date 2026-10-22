@@ -1,10 +1,12 @@
 /**
  * Versions of the inference runtimes a session ran on, taken from the shipped artifacts:
  * llama.rn's exported BuildInfo (the vendored llama.cpp build number and commit) and its
- * package version, and the LiteRT-LM / Qualcomm NPU runtime / QAIRT / GENIE-X versions that
+ * package version, the LiteRT-LM / Qualcomm NPU runtime / QAIRT / GENIE-X versions that
  * the engine bridges report from the APK (Gradle-resolved AARs, the QAIRT build string in
- * libQnnHtp.so). A component the session does not use, or that reports nothing usable, is
- * null; nothing is typed by hand.
+ * libQnnHtp.so), and ExecuTorch: the ET_VERSION of the headers shipped with the native
+ * libraries it links (ExecutorchBenchModule) and react-native-executorch's package version.
+ * A component the session does not use, or that reports nothing usable, is null; nothing
+ * is typed by hand.
  *
  * Mirrored by scripts/raw_session.py and scripts/export_evidence.py; keep in step.
  */
@@ -16,10 +18,13 @@ export interface RuntimeVersions {
   litertNpuRuntimeQualcomm: string | null;
   qairt: string | null;
   genie: string | null;
+  /** The ExecuTorch runtime react-native-executorch links (libexecutorch.so's release headers). */
+  executorch: string | null;
+  reactNativeExecutorch: string | null;
 }
 
 export const NO_RUNTIME_VERSIONS: RuntimeVersions = {llamaCpp: null, llamaRn: null, litertLm: null,
-  litertNpuRuntimeQualcomm: null, qairt: null, genie: null};
+  litertNpuRuntimeQualcomm: null, qairt: null, genie: null, executorch: null, reactNativeExecutorch: null};
 
 /** Short version strings only: digits/letters with . + - separators, no spaces or free text. */
 export const VERSION = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$/;

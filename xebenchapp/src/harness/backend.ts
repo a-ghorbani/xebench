@@ -9,6 +9,8 @@
  *   consistent  indirect evidence only: creating this engine newly loaded the
  *               accelerator runtime into the process and the engine accepted the
  *               backend (LiteRT-LM, which does not report its executing backend)
+ *               (ExecuTorch: every delegate in the loaded program is XnnpackBackend, a CPU-only
+ *               delegate, it is registered, and no other ExecuTorch backend library is mapped)
  *   mismatch    the engine reported a different backend than requested
  *   unknown     no usable evidence
  *
@@ -26,18 +28,34 @@ export interface EngineReport {
   reasonNoGpu: string | null;
 }
 
+/**
+ * ExecuTorch: the delegates each method of the loaded .pte uses (the program's method metadata)
+ * and the backends registered in the ExecuTorch runtime of this process. null when unreadable.
+ */
+export interface ProgramReport {
+  methods: {name: string; delegates: string[]}[] | null;
+  registeredBackends: string[] | null;
+}
+
 export interface BackendEvidence {
   status: BackendStatus;
-  source: 'engine-report' | 'process-libraries' | 'none';
+  source: 'engine-report' | 'process-libraries' | 'program-delegates' | 'none';
   report: EngineReport | null;
   libraries: {before: string[] | null; after: string[] | null} | null;
+  /** ExecuTorch only (source program-delegates). */
+  program?: ProgramReport | null;
 }
 
 export const NPU_DISPATCH_LIB = 'libLiteRtDispatch_Qualcomm.so';
 export const OPENCL_LIB = 'libOpenCL.so';
+/** ExecuTorch's XNNPACK delegate: CPU only. */
+export const XNNPACK_BACKEND = 'XnnpackBackend';
+/** ExecuTorch backend libraries other than XNNPACK (Vulkan GPU, QNN NPU). */
+export const isForeignExecutorchLibrary = (name: string) =>
+  (/^lib.*_executorch_backend\.so$/.test(name) && name !== 'libxnnpack_executorch_backend.so') || /^libQnn/.test(name);
 
 export function assessBackend(engine: EngineId, requested: BackendId,
-  evidence: Pick<BackendEvidence, 'report' | 'libraries'>): BackendStatus {
+  evidence: Pick<BackendEvidence, 'report' | 'libraries' | 'program'>): BackendStatus {
   if (engine === 'llama.cpp') {
     const report = evidence.report;
     if (!report || report.gpu === null) return 'unknown';
@@ -62,13 +80,24 @@ export function assessBackend(engine: EngineId, requested: BackendId,
     if (requested === 'gpu') return loaded.includes(OPENCL_LIB) ? 'consistent' : 'unknown';
     return loaded.includes(NPU_DISPATCH_LIB) || loaded.includes(OPENCL_LIB) ? 'unknown' : 'consistent';
   }
+  if (engine === 'executorch') {
+    const methods = evidence.program?.methods ?? null;
+    const registered = evidence.program?.registeredBackends ?? null;
+    if (methods === null) return 'unknown';
+    const delegates = methods.flatMap(method => method.delegates);
+    if (requested !== 'cpu' || delegates.some(name => name !== XNNPACK_BACKEND)) return 'mismatch';
+    const after = evidence.libraries?.after ?? null;
+    return registered !== null && delegates.every(name => registered.includes(name)) && after !== null &&
+      !after.some(isForeignExecutorchLibrary) ? 'confirmed' : 'unknown';
+  }
   return 'unknown';
 }
 
 export function backendEvidence(engine: EngineId, requested: BackendId,
   source: BackendEvidence['source'], report: EngineReport | null,
-  libraries: BackendEvidence['libraries']): BackendEvidence {
-  return {status: assessBackend(engine, requested, {report, libraries}), source, report, libraries};
+  libraries: BackendEvidence['libraries'], program?: ProgramReport | null): BackendEvidence {
+  return {status: assessBackend(engine, requested, {report, libraries, program}), source, report, libraries,
+    ...(program === undefined ? {} : {program})};
 }
 
 const RANK: Record<BackendStatus, number> = {unknown: 0, consistent: 1, confirmed: 2, mismatch: 3};

@@ -1043,5 +1043,120 @@ class DecodeModeTests(unittest.TestCase):
         self.assertIn("configuration.run-invalid", {item["code"] for item in raw_session._configuration_accelerator(config)})
 
 
+class ExecutorchRecordTests(unittest.TestCase):
+    """ExecuTorch CPU (XNNPACK): settings, tokenizer, runner statistics and program evidence are checked."""
+
+    def codes(self, record):
+        return {item["code"] for item in raw_session.validate(record)}
+
+    def test_fixture_records_validate_and_cover_the_cases(self):
+        for name in ("executorch-cpu", "executorch-tokenizerMismatch", "executorch-tokenizerUnreadable",
+                     "executorch-vulkanProgram"):
+            with self.subTest(name):
+                self.assertEqual(raw_session.validate(ACCEL[name]), [])
+        record = ACCEL["executorch-cpu"]
+        self.assertEqual(record["engineVersion"], "ExecuTorch 1.4.1 + react-native-executorch 0.10.7 (xnnpack)")
+        self.assertEqual((record["observedBackend"]["status"], record["observedBackend"]["source"]),
+                         ("confirmed", "program-delegates"))
+        self.assertEqual([attempt["decodeTokens"] for attempt in record["coldRuns"]], [128, 128])
+        self.assertEqual(ACCEL["executorch-vulkanProgram"]["comparison"]["reasons"], ["backend-mismatch"])
+        self.assertEqual(ACCEL["executorch-tokenizerMismatch"]["stopReason"], "tokenizer-hash-mismatch")
+
+    def test_claims_the_statistics_do_not_support_are_rejected(self):
+        def faster_prefill(record):
+            record["coldRuns"][0]["prefillTps"] *= 2
+
+        def extra_token(record):
+            record["coldRuns"][0]["executorchStats"]["emittedTokens"] += 1
+
+        def single_chunk(record):
+            record["coldRuns"][0]["executorchStats"]["prefillChunks"] = 1
+
+        def without_stats(record):
+            del record["coldRuns"][0]["executorchStats"]
+
+        def short_decode(record):
+            record["coldRuns"][0]["decodeTokens"] = 97
+
+        cases = ((faster_prefill, "execution.inconsistent"), (extra_token, "execution.inconsistent"),
+                 (single_chunk, "execution.inconsistent"), (without_stats, "execution.inconsistent"),
+                 (short_decode, "protocol.decode-length"))
+        for change, code in cases:
+            with self.subTest(change.__name__):
+                self.assertIn(code, self.codes(mutate("executorch-cpu", change, ACCEL)))
+
+    def test_settings_versions_and_tokenizer_must_agree(self):
+        def end_of_turn(record):
+            record["effectiveSettings"]["generation"]["ignoreEos"] = False
+
+        def other_binding_version(record):
+            record["effectiveSettings"]["distribution"]["version"] = "0.9.2"
+
+        def engine_version(record):
+            record["runtimeVersions"]["executorch"] = "1.3.0"
+
+        def litert_runtime(record):
+            record["runtimeVersions"]["litertLm"] = "0.18.0"
+
+        def no_tokenizer(record):
+            del record["tokenizerArtifact"]
+
+        def tokenizer_differs(record):
+            record["tokenizerArtifact"]["sha256"] = "f" * 64
+
+        def no_settings(record):
+            record["effectiveSettings"] = None
+
+        def sampled(record):
+            record["effectiveSettings"]["generation"]["temperature"] = 0.8
+
+        cases = ((end_of_turn, "settings.protocol-mismatch"), (other_binding_version, "runtime.inconsistent"),
+                 (engine_version, "runtime.inconsistent"), (litert_runtime, "runtime.inconsistent"),
+                 (no_tokenizer, "artifact.expected"), (tokenizer_differs, "artifact.expected"),
+                 (no_settings, "settings.engine"), (sampled, "schema.const"))
+        for change, code in cases:
+            with self.subTest(change.__name__):
+                self.assertIn(code, self.codes(mutate("executorch-cpu", change, ACCEL)))
+        # Other engines carry neither a tokenizer artifact nor runner statistics.
+        llama = copy.deepcopy(ACCEL["f8-llama-cpu"])
+        llama["tokenizerArtifact"] = None
+        self.assertIn("artifact.expected", self.codes(llama))
+
+    def test_backend_evidence_is_recomputed_from_the_program(self):
+        def claim_confirmed(record):
+            record["coldRuns"][0]["observedBackend"]["status"] = "confirmed"
+
+        def vulkan_mapped(record):
+            record["coldRuns"][0]["observedBackend"]["libraries"]["after"].append("libvulkan_executorch_backend.so")
+
+        self.assertIn("backend.recomputed", self.codes(mutate("executorch-vulkanProgram", claim_confirmed, ACCEL)))
+        self.assertIn("backend.recomputed", self.codes(mutate("executorch-cpu", vulkan_mapped, ACCEL)))
+        evidence = {"report": None, "libraries": {"before": [], "after": ["libxnnpack_executorch_backend.so"]},
+                    "program": {"methods": [{"name": "forward", "delegates": ["XnnpackBackend"]}],
+                                "registeredBackends": ["XnnpackBackend"]}}
+        self.assertEqual(raw_session.assess_backend("executorch", "cpu", evidence), "confirmed")
+        evidence["program"]["registeredBackends"] = None
+        self.assertEqual(raw_session.assess_backend("executorch", "cpu", evidence), "unknown")
+        evidence["program"] = None
+        self.assertEqual(raw_session.assess_backend("executorch", "cpu", evidence), "unknown")
+
+    def test_configuration_rules(self):
+        config = copy.deepcopy(ACCEL["executorch-cpu"]["configuration"])
+        self.assertEqual(raw_session._configuration_accelerator(config), [])
+        for change in ({"nThreads": 4}, {"backend": "gpu"}, {"modelFile": "gemma.gguf"}, {"nGpuLayers": 0}, None):
+            with self.subTest(change):
+                broken = copy.deepcopy(config)
+                if change is None:
+                    del broken["runs"][0]["tokenizerFile"]
+                else:
+                    broken["runs"][0].update(change)
+                self.assertIn("configuration.run-invalid",
+                              {item["code"] for item in raw_session._configuration_accelerator(broken)})
+        litert = json.loads((ROOT / "xebenchapp/configs/litertlm-gemma3-int4-cpu-v2.json").read_text())
+        litert["runs"][0]["tokenizerFile"] = "tokenizer.json"
+        self.assertIn("configuration.run-invalid",
+                      {item["code"] for item in raw_session._configuration_accelerator(litert)})
+
+
 if __name__ == "__main__":
     unittest.main()

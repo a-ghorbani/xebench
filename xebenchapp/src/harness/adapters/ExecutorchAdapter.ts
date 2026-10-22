@@ -1,35 +1,97 @@
-import { LLMModule } from 'react-native-executorch';
-import type { SingleRunMetrics } from '../types';
-import type { BenchOnceConfig, EngineAdapter } from './EngineAdapter';
+import {NativeModules} from 'react-native';
+import {createWorkletRuntime} from 'react-native-worklets';
+import {getRegisteredBackends, loadModel, wrapAsync} from 'react-native-executorch';
+import {createLLMRunner} from 'react-native-executorch/llm';
+import type {LLMRunner} from 'react-native-executorch/llm';
+import type {SingleRunMetrics} from '../types';
+import type {BenchOnceConfig, EngineAdapter, ExecutorchEffectiveSettings, SettingsRequest} from './EngineAdapter';
+import {monotonicNow} from '../clock';
+import {backendEvidence, BackendEvidence} from '../backend';
+import type {RuntimeVersions} from '../runtime';
+import {
+  executorchEffectiveSettings, executorchEngineVersion, executorchMetrics, executorchRuntimeVersions, inspection, LIBRARY,
+  NAME, ProgramInspection, strings, TimedRequest,
+} from '../executorch';
 
-const RN_EXECUTORCH_VERSION = '0.9.2'; // keep in sync with package.json
+import {nativeLibsVersion, version as RNE_VERSION} from 'react-native-executorch/package.json';
+
+/**
+ * ExecutorchBenchModule (experimental flavor): the ET_VERSION of the headers shipped with the
+ * native libraries it links (embedded at build time) and the mapped ExecuTorch-family libraries.
+ * Other flavors do not link ExecuTorch and have no such module.
+ */
+interface ExecutorchBenchNative {
+  getConstants?: () => {executorchVersion?: unknown};
+  executorchVersion?: unknown;
+  libraries: () => Promise<unknown>;
+}
+
+function inspectProgram(path: string) {
+  'worklet';
+  // eagerLoadMethods false: method metadata only; no delegate is initialized.
+  const model = loadModel(path, {eagerLoadMethods: false});
+  try {
+    let maxSeqLen: unknown = null;
+    try {
+      maxSeqLen = model.execute('get_max_seq_len', [], [])[0];
+    } catch {
+      maxSeqLen = null;
+    }
+    return {backends: model.backends, schema: model.schema, maxSeqLen};
+  } finally {
+    model.dispose();
+  }
+}
+
+/** One request on the worklet thread: steady clock around generate(), the first callback timestamped. */
+function timedGenerate(runner: LLMRunner, prompt: string,
+  config: {temperature: number; maxNewTokens: number; ignoreEos: boolean}): TimedRequest & {text: string} {
+  'worklet';
+  // Worklet runtimes provide performance.now() on std::chrono::steady_clock, like the RN runtime.
+  const clock = (globalThis as unknown as {performance: {now(): number}}).performance;
+  // A fresh KV position for every request (the gate sends several on one instance).
+  runner.reset();
+  let first = -1;
+  let emitted = 0;
+  let text = '';
+  const start = clock.now();
+  const stats = runner.generate(prompt, config, (piece: string) => {
+    if (first < 0) first = clock.now();
+    emitted += 1;
+    text += piece;
+  });
+  const end = clock.now();
+  return {stats: {numPromptTokens: stats.numPromptTokens, numGeneratedTokens: stats.numGeneratedTokens,
+    firstTokenMs: stats.firstTokenMs, inferenceStartMs: stats.inferenceStartMs, inferenceEndMs: stats.inferenceEndMs},
+  start, first, end, emitted, text};
+}
+
+let runtime: ReturnType<typeof createWorkletRuntime> | null = null;
+/** One dedicated worklet thread for ExecuTorch work, created when the first adapter needs it. */
+const executorchRuntime = () => runtime ?? (runtime = createWorkletRuntime({name: 'XebenchExecuTorch'}));
 
 export interface ExecutorchAdapterOptions {
-  /** file:// path or HF URL for the .pte (SpinQuant XNNPACK export) */
-  modelSource: string;
-  /** tokenizer.json (HF tokenizers format) */
-  tokenizerSource: string;
-  /** tokenizer_config.json */
-  tokenizerConfigSource: string;
-  quantLabel: string; // e.g. 'SpinQuant 4-bit'
-  modelLabel: string; // e.g. 'Llama 3.2 1B'
+  /** Absolute path to the .pte on device */
+  modelPath: string;
+  /** Absolute path to its tokenizer.json */
+  tokenizerPath: string;
+  quantLabel: string;
+  modelLabel: string;
 }
 
 /**
- * react-native-executorch v0.10 adapter (XNNPACK backend).
+ * react-native-executorch 0.10 adapter over its low-level LLM runner (createLLMRunner, ExecuTorch's
+ * TextLLMRunner) with the XNNPACK backend, on a dedicated worklet thread.
  *
- * Measurement notes (methodology-relevant):
- * - forward() takes the raw pre-templated string -> same input bytes as llama.rn.
- * - No maxTokens knob exists; we count tokens in the callback and interrupt()
- *   at the budget. The runner may emit one extra token after interrupt — we
- *   compute decode t/s from callback timestamps over the counted window, so
- *   the overshoot does not skew the number.
- * - generationConfig outputTokenBatchSize=1, batchTimeInterval=0 so every
- *   token reaches JS individually -> honest TTFT and per-token timestamps.
- * - No engine-internal timing counters are exposed; prefill is TTFT-derived
- *   (promptTokens / (firstToken - start)) and flagged as such. This includes
- *   one decode step + JS callback hop; with a ~512-token prompt the bias is
- *   small and it biases AGAINST the engine (conservative).
+ * - The prompt string goes to generate() verbatim: no chat template, no BOS added (TextLLMRunner's
+ *   num_bos 0), greedy (temperature 0 is passed: ExecuTorch's default is 0.8).
+ * - The runner chunks the prefill: a prompt longer than the program's token-input bound (512 for
+ *   the Gemma 4 E2B export) takes several forwards. The bound and the number of forwards are
+ *   recorded per request (executorchStats).
+ * - decodeMode fixed: ignoreEos with maxNewTokens N decodes exactly N tokens (the first sampled by
+ *   the prefill, N - 1 by the decode loop), past the end of turn.
+ * - load() creates the runner (program load, method init with the XNNPACK delegate, tokenizer);
+ *   release() disposes it. Each load is a fresh instance.
  */
 export class ExecutorchAdapter implements EngineAdapter {
   readonly engine = 'executorch' as const;
@@ -38,97 +100,110 @@ export class ExecutorchAdapter implements EngineAdapter {
   readonly modelLabel: string;
   readonly modelFile: string;
   private opts: ExecutorchAdapterOptions;
-  private llm: LLMModule | null = null;
-
-  // per-run token timing state, written by the module-level token callback
-  private tokenTimestamps: number[] = [];
-  private maxDecodeTokens = Infinity;
+  private native: ExecutorchBenchNative;
+  private runner: LLMRunner | null = null;
+  private program: ProgramInspection | null = null;
+  private evidence: BackendEvidence | null = null;
+  /** decodeMode fixed: the decode length of every later measured request (0 = until end of turn). */
+  private fixedDecodeTokens = 0;
 
   constructor(opts: ExecutorchAdapterOptions) {
+    const module = NativeModules.ExecutorchBench as ExecutorchBenchNative | undefined;
+    if (!module) {
+      throw new Error('ExecutorchBench native module not linked — build the experimental flavor');
+    }
+    this.native = module;
     this.opts = opts;
     this.quantLabel = opts.quantLabel;
     this.modelLabel = opts.modelLabel;
-    this.modelFile = opts.modelSource.split('/').pop() ?? opts.modelSource;
+    this.modelFile = opts.modelPath.split('/').pop() ?? opts.modelPath;
+  }
+
+  runtimeVersions(): RuntimeVersions {
+    const constants = typeof this.native.getConstants === 'function' ? this.native.getConstants() : this.native;
+    return executorchRuntimeVersions(constants, RNE_VERSION);
   }
 
   engineVersion(): string {
-    return `react-native-executorch ${RN_EXECUTORCH_VERSION} (XNNPACK)`;
+    return executorchEngineVersion(this.runtimeVersions());
   }
 
   settings() {
-    // Context length is baked into the .pte at export time (2048 for the
-    // software-mansion Llama 3.2 exports); thread count is runtime-internal.
-    return { nThreads: null, nCtx: 2048 };
+    // The context is fixed by the export; the XNNPACK threadpool size is ExecuTorch's default.
+    return {nThreads: null, nCtx: null};
   }
 
-  // Batch tokens per callback so the JS bridge doesn't block the native decode
-  // loop per-token. Decode is measured from total forward() wall-time minus TTFT.
-  private static readonly BATCH = 16;
-  private batchCount = 0;
+  effectiveSettings(request: SettingsRequest): ExecutorchEffectiveSettings {
+    return executorchEffectiveSettings(request, {version: RNE_VERSION, nativeLibsVersion});
+  }
+
+  prepareMeasurement(options: {decodeMode: 'fixed'; decodeTokens: number}) {
+    if (options.decodeMode !== 'fixed' || !Number.isInteger(options.decodeTokens) || options.decodeTokens < 1) {
+      throw new Error('ExecuTorch fixed decoding needs a positive decode length');
+    }
+    this.fixedDecodeTokens = options.decodeTokens;
+  }
+
+  private async libraries(): Promise<string[] | null> {
+    try {
+      return strings(await this.native.libraries(), LIBRARY);
+    } catch {
+      return null;
+    }
+  }
 
   async load(): Promise<number> {
-    const t0 = Date.now();
-    this.llm = await LLMModule.fromCustomModel(
-      this.opts.modelSource,
-      this.opts.tokenizerSource,
-      this.opts.tokenizerConfigSource,
-      () => {}, // download progress (no-op: sources should be local/pre-cached)
-      (_token: string) => {
-        this.tokenTimestamps.push(Date.now());
-        this.batchCount += 1;
-        // interrupt once we've generated ~maxDecodeTokens (batchCount * BATCH)
-        if (this.batchCount * ExecutorchAdapter.BATCH >= this.maxDecodeTokens && this.llm) {
-          this.llm.interrupt();
-        }
-      },
-    );
-    this.llm.configure({
-      generationConfig: {
-        temperature: 0,
-        outputTokenBatchSize: ExecutorchAdapter.BATCH,
-        batchTimeInterval: 0,
-      },
-    });
-    return Date.now() - t0;
+    this.evidence = null;
+    if (this.program === null) {
+      // Once per adapter, before any timed load: the program's delegates and prefill bound.
+      this.program = inspection(await wrapAsync(inspectProgram, executorchRuntime())(this.opts.modelPath)
+        .catch(() => null));
+    }
+    const before = await this.libraries();
+    const t0 = monotonicNow();
+    this.runner = await wrapAsync(createLLMRunner, executorchRuntime())(this.opts.modelPath, this.opts.tokenizerPath);
+    const loadMs = monotonicNow() - t0;
+    let registered: string[] | null;
+    try {
+      registered = strings(getRegisteredBackends(), NAME, 64);
+    } catch {
+      registered = null;
+    }
+    this.evidence = backendEvidence(this.engine, this.backend, 'program-delegates', null,
+      {before, after: await this.libraries()}, {methods: this.program.methods, registeredBackends: registered});
+    return loadMs;
   }
 
+  backendEvidence(): BackendEvidence {
+    return this.evidence ?? backendEvidence(this.engine, this.backend, 'none', null, null);
+  }
+
+  private async request(prompt: string, maxNewTokens: number, ignoreEos: boolean) {
+    if (!this.runner) throw new Error('executorch: load() first');
+    return wrapAsync(timedGenerate, executorchRuntime())(this.runner, prompt, {temperature: 0, maxNewTokens, ignoreEos});
+  }
+
+  /** Greedy reply for the correctness gate: the engine's own stopping rule (end of turn or budget). */
+  async generate(cfg: BenchOnceConfig): Promise<string> {
+    return (await this.request(cfg.prompt, cfg.maxDecodeTokens, false)).text;
+  }
+
+  /** cfg.prompt is already templated (or the raw std-pp512-v1 text) and goes to the runner verbatim. */
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {
-    if (!this.llm) throw new Error('executorch: load() first');
-    this.tokenTimestamps = [];
-    this.batchCount = 0;
-    this.maxDecodeTokens = cfg.maxDecodeTokens;
-
-    const t0 = Date.now();
-    await this.llm.forward(cfg.prompt); // raw, pre-templated — no chat wrapper
-    const tEnd = Date.now();
-
-    if (this.tokenTimestamps.length < 1) {
-      throw new Error('executorch: no token callbacks — cannot compute metrics');
+    const fixed = this.fixedDecodeTokens > 0;
+    if (fixed && cfg.maxDecodeTokens !== this.fixedDecodeTokens) {
+      throw new Error('ExecuTorch fixed decoding length disagrees with the request');
     }
-    const tFirst = this.tokenTimestamps[0]; // ~time to first batch
-    const ttftMs = tFirst - t0;
-    const promptTokens = this.llm.getPromptTokensCount();
-    const decodeTokens = this.llm.getGeneratedTokenCount(); // engine's own count
-
-    // decode measured over the whole decode phase (total wall-time - prefill),
-    // amortizing per-batch bridge overhead rather than paying it per token.
-    const decodeMs = Math.max(1, tEnd - tFirst);
-    return {
-      loadMs: 0, // filled by protocol runner
-      ttftMs,
-      promptTokens,
-      prefillTps: promptTokens > 0 && ttftMs > 0 ? (promptTokens / ttftMs) * 1000 : 0,
-      prefillMethod: 'ttft-derived',
-      decodeTokens,
-      decodeTps: decodeTokens > 1 ? ((decodeTokens - ExecutorchAdapter.BATCH) / decodeMs) * 1000 : 0,
-      decodeMethod: 'total-time-derived',
-    };
+    const result = await this.request(cfg.prompt, cfg.maxDecodeTokens, fixed);
+    return executorchMetrics(result, this.program?.prefillChunkTokens ?? null, this.fixedDecodeTokens);
   }
 
   async release(): Promise<void> {
-    if (this.llm) {
-      this.llm.delete();
-      this.llm = null;
+    this.evidence = null;
+    if (this.runner) {
+      const runner = this.runner;
+      this.runner = null;
+      runner.dispose();
     }
   }
 }

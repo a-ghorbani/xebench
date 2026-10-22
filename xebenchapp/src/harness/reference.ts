@@ -1,5 +1,5 @@
 import * as FS from '@dr.pogodin/react-native-fs';
-import {Platform} from 'react-native';
+import {NativeModules, Platform} from 'react-native';
 import bundledConfig from '../../configs/cpu-reference-v2.json';
 import {AcceleratorRun, parseAcceleratorConfig, parseConfig} from './config';
 import {runSession, UNMEASURED_NOTES, unmeasuredSession} from './session';
@@ -12,6 +12,22 @@ import {readBuildInfo} from './build';
 import type {BuildIdentity} from './build';
 import {AcceleratorSession, runAcceleratorConfiguration} from './accelerator';
 import {LiteRtAdapter} from './adapters/LiteRtAdapter';
+import type {EngineAdapter} from './adapters/EngineAdapter';
+import type {ExecutorchAdapterOptions} from './adapters/ExecutorchAdapter';
+
+/**
+ * ExecuTorch runs (experimental flavor only). react-native-executorch installs its JSI library
+ * when it is imported, and other flavors do not package that library, so the adapter module is
+ * required only after the flavor's ExecutorchBench module is found; otherwise the run is
+ * recorded as engine-unavailable.
+ */
+export function executorchAdapter(options: ExecutorchAdapterOptions): EngineAdapter {
+  if (!NativeModules.ExecutorchBench) {
+    throw new Error('ExecuTorch is not linked in this build (experimental flavor only)');
+  }
+  const {ExecutorchAdapter} = require('./adapters/ExecutorchAdapter') as typeof import('./adapters/ExecutorchAdapter');
+  return new ExecutorchAdapter(options);
+}
 
 let sequence = 0;
 
@@ -158,7 +174,7 @@ function persister(directory: string, runId: string, label: string, planned: num
   };
 }
 
-/** accelerator-v1 configuration (schemaVersion 2): LiteRT-LM and llama.cpp CPU/GPU/NPU. */
+/** accelerator-v2 configuration (schemaVersion 2): llama.cpp and LiteRT-LM CPU/GPU/NPU, ExecuTorch CPU. */
 async function runAccelerators(raw: unknown, root: string, directory: string, log: (message: string) => void,
   deviceInfo: {model: string; androidRelease: string}, build: BuildIdentity,
   configurationSource: ConfigurationSource) {
@@ -177,7 +193,13 @@ async function runAccelerators(raw: unknown, root: string, directory: string, lo
   await runAcceleratorConfiguration(config, runs, (_run, position) => ({method: ORDER_METHOD, seed,
     seedSource: config.orderSeed === undefined ? 'generated' : 'configured', order, position}), {
     artifact: async run => ({sha256: await FS.hash(modelPath(run), 'sha256'), sizeBytes: (await FS.stat(modelPath(run))).size}),
-    adapter: run => run.engine === 'llama.cpp' ?
+    tokenizer: async run => {
+      const path = `${root}/${run.tokenizerFile}`;
+      return {sha256: await FS.hash(path, 'sha256'), sizeBytes: (await FS.stat(path)).size};
+    },
+    adapter: run => run.engine === 'executorch' ?
+      executorchAdapter({modelPath: modelPath(run), tokenizerPath: `${root}/${run.tokenizerFile}`,
+        modelLabel: run.model, quantLabel: run.quant}) : run.engine === 'llama.cpp' ?
       new LlamaRnAdapter({modelPath: modelPath(run), modelLabel: run.model, quantLabel: run.quant,
         nThreads: run.nThreads!, nCtx: run.nCtx!, nGpuLayers: run.nGpuLayers ?? 0,
         ...(run.devices ? {devices: run.devices} : {}),

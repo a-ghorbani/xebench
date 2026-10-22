@@ -141,6 +141,52 @@ The board shows these sessions once `configs/board.json` declares the LiteRT-LM 
 `litertlm-gemma3-sm8850-npu-v2` goes into the history only, with
 `--allow-unlisted-configuration`.
 
+### ExecuTorch configurations
+
+ExecuTorch runs (engine `executorch`, `experimental` flavor only) use the same accelerator
+protocol on the CPU: react-native-executorch 0.10 with ExecuTorch's XNNPACK backend, the only
+ExecuTorch backend the APK packages. A run names its `.pte` and the `tokenizerFile` staged next
+to it. The app hashes both before measuring (`modelSha256`, `tokenizerSha256`); a tokenizer that
+differs from its pin is recorded unmeasured (`tokenizer-hash-mismatch`), as a model does.
+`nThreads` and `nCtx` are null: the export fixes the context, and the XNNPACK threadpool size is
+ExecuTorch's default.
+
+[`ExecutorchAdapter.ts`](../xebenchapp/src/harness/adapters/ExecutorchAdapter.ts) creates the
+runner with `createLLMRunner` (ExecuTorch's `TextLLMRunner`) on a dedicated worklet thread and
+passes the measured text to `generate()` verbatim: no chat template, no BOS token added (the
+runner tokenizes with `num_bos` 0), greedy (temperature 0). With `measuredPrompt: std-pp512-v1`
+it receives the text the llama.cpp CPU rows measure. The runner splits a prompt longer than the
+program's token input into several prefill forwards (512 tokens per forward for the Gemma 4 E2B
+export); each repetition records that bound and the number of forwards
+(`executorchStats.prefillChunkTokens`, `prefillChunks`).
+
+Fixed decoding is native: `decodeMode: fixed` passes `ignoreEos` with `maxNewTokens` 128, which
+decodes exactly 128 tokens past the end of turn (the prefill samples the first, the decode loop
+the other 127). The app refuses a repetition that produced another count. The output gate runs
+the same file with the runner's own stopping rule.
+
+The timings (`engine-timings`) are the runner's own statistics (`llm::Stats`, wall-clock
+milliseconds), computed as ExecuTorch's own report computes them:
+
+- prefill tok/s = prompt tokens / (first token − inference start): tokenization, every prefill
+  forward and the sampling of the first token;
+- decode tok/s = decode-loop tokens / (inference end − first token): one forward per token, so
+  the token the prefill sampled is not counted.
+
+`decodeTokens` is every token the request produced (128 under fixed decoding). TTFT is timed on
+the worklet thread with the steady clock, from just before `generate()` to the first token
+callback. `engineInternal` keeps the two intervals and rates and `executorchStats` the raw
+statistics; the host validator recomputes the rates from them.
+
+Backend evidence (`program-delegates`): before the timed loads, the app reads the delegates each
+method of the `.pte` uses from its metadata, and after each load the backends registered in the
+process and the ExecuTorch libraries mapped. A session is `confirmed` on the CPU when every
+delegate is `XnnpackBackend`, that backend is registered and no other ExecuTorch backend library
+is mapped; a delegate to any other backend is a `mismatch`.
+
+`runtimeVersions` records `executorch` (the `ET_VERSION` of the headers shipped with the linked
+native libraries, embedded at build time) and `reactNativeExecutorch` (the package version).
+
 A run field that is not set takes the harness default in parentheses
 (`LLAMA_RN_DEFAULTS` in [`LlamaRnAdapter.ts`](../xebenchapp/src/harness/adapters/LlamaRnAdapter.ts)).
 With llama.rn 0.13.0-rc.7, `use_mmap: true` selects memory-mapped loading
@@ -191,8 +237,8 @@ A successful Gradle build alone does not prove that the runtime libraries were
 packaged. The check fails if any llama.rn CPU variant or the JS bundle is missing,
 or if the APK carries a native library outside React Native core and llama.rn CPU
 (for example Hexagon/HTP, OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X or ExecuTorch) or a
-LiteRT-LM/GENIE-X engine bridge. ExecuTorch's Java glue remains because autolinking
-is not flavor-aware. The application ID stays `com.xebenchapp`.
+LiteRT-LM/GENIE-X/ExecuTorch engine bridge. The Java glue of react-native-executorch and
+react-native-worklets remains because autolinking is not flavor-aware. The application ID stays `com.xebenchapp`.
 
 ## Build identity and reproducibility
 
