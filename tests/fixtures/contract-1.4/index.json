@@ -1,6 +1,6 @@
 {
   "contract": "1.4",
-  "description": "Fixtures for the xebench benchmarks contract 1.4 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): ExecuTorch in build. Next to build.runtimes, a row may name the runtimes ExecuTorch and react-native-executorch, with engineVersion \"ExecuTorch <version>\" and bindingVersion \"react-native-executorch <version>\". Each file is a complete envelope. producerMustNotEmit=true marks a file that breaks a producer rule: scripts/validate_data.mjs refuses it. consumerExpectation is what the website does with it. tests/test_contract_1_4.py checks producerMustNotEmit against scripts/validate_data.mjs.",
+  "description": "Fixtures for the xebench benchmarks contract 1.4 (data/benchmarks.schema.json, docs/WEBSITE-HANDOFF.md): ExecuTorch in build. Next to build.runtimes, a row may name the runtimes ExecuTorch and react-native-executorch, with engineVersion \"ExecuTorch <version>\" and bindingVersion \"react-native-executorch <version>\". Each file is a complete envelope. producerMustNotEmit=true marks a file that breaks a producer rule: scripts/validate_data.mjs refuses it. consumerExpectation is what the website does with it: the site keeps no closed runtime list, does not gate fields on the minor version and does not send build.runtimes to the client. tests/test_contract_1_4.py checks producerMustNotEmit against scripts/validate_data.mjs.",
   "fixtures": [
     {
       "file": "executorch-runtimes.json",
@@ -18,25 +18,25 @@
       "file": "executorch-runtimes-in-1.3.json",
       "producerMustNotEmit": true,
       "producerRule": "build.runtimes ExecuTorch needs schemaVersion 1.4",
-      "consumerExpectation": "rendered; the unknown runtime names and engineVersion/bindingVersion are dropped"
+      "consumerExpectation": "rendered; the runtimes are harmless (not sent to the client); engine and binding versions shown"
     },
     {
       "file": "binding-only-in-1.3.json",
       "producerMustNotEmit": true,
       "producerRule": "build.runtimes react-native-executorch needs schemaVersion 1.4",
-      "consumerExpectation": "rendered; the unknown runtime name and bindingVersion are dropped"
+      "consumerExpectation": "rendered; the runtime is harmless (not sent to the client); binding version shown"
     },
     {
       "file": "unknown-runtime-name.json",
       "producerMustNotEmit": true,
       "producerRule": "build.runtimes names are a closed list",
-      "consumerExpectation": "rendered; the runtime entry is dropped"
+      "consumerExpectation": "shown"
     },
     {
       "file": "engine-version-form.json",
       "producerMustNotEmit": true,
       "producerRule": "with runtimes, engineVersion is \"ExecuTorch <version>\"",
-      "consumerExpectation": "rendered; engineVersion is not displayed"
+      "consumerExpectation": "shown sanitised (e.g. 'ExecuTorch v1.4.1')"
     }
   ]
 }

@@ -301,8 +301,8 @@ Their evidence URLs name the fixture bundles' real hashes but do not resolve.
 
 Contract 1.4 is additive over 1.3. It adds no field. It widens three existing `build` values on
 measured rows so that an ExecuTorch row can state its versions, and a file declares "1.4" only
-when a row carries one of them. The rollout rule holds: the website accepts 1.4 in production
-before the producer pull request that publishes the first ExecuTorch row with versions merges.
+when a row carries one of them. The rollout rule (the website accepts 1.4 in production before
+the first ExecuTorch row with versions is published) is met: the website accepts 1.4 as it is.
 
 | Field | What 1.4 adds | Invariants |
 | --- | --- | --- |
@@ -320,13 +320,11 @@ Example (an ExecuTorch CPU row):
 }
 ```
 
-What changes for the website:
-
-1. Accept `schemaVersion` "1.4" (the same major, so a 1.3 consumer that rejects unknown minors
-   must be updated first).
-2. Accept the two runtime names above, with the same version-token check as the other names.
-3. Accept the two engine and binding forms above, and display them like the llama.cpp ones:
-   engine version "ExecuTorch 1.4.1", binding "react-native-executorch 0.10.7".
+What this means for the website: no change. It keeps no closed runtime list, does not gate
+fields on the minor version and does not send `build.runtimes` to the client, so it accepts
+`schemaVersion` "1.4" and the two runtime names as they are. It displays the engine and binding
+versions like the llama.cpp ones: engine version "ExecuTorch 1.4.1", binding
+"react-native-executorch 0.10.7"; an engine version outside the fixed forms is shown sanitised.
 
 Nothing else changes: no new row field, no change in meaning for any 1.3 field, and rows
 without ExecuTorch versions are unchanged. Every 1.0 to 1.3 file still validates.
@@ -338,10 +336,10 @@ listed in `index.json` with `producerMustNotEmit` and `consumerExpectation` as f
 | --- | --- | --- | --- |
 | `executorch-runtimes.json` | false | Rendered: engine version "ExecuTorch 1.4.1", binding "react-native-executorch 0.10.7" | Synthetic ExecuTorch CPU row with both runtimes |
 | `v1.3-rows-in-1.4.json` | false | Rendered unchanged | A 1.4 file whose rows carry no 1.4 value |
-| `executorch-runtimes-in-1.3.json` | true | Rendered; the unknown runtime names and the engine and binding versions are dropped | The ExecuTorch row in a file that declares 1.3 |
-| `binding-only-in-1.3.json` | true | Rendered; the unknown runtime name and the binding version are dropped | `react-native-executorch` alone in a file that declares 1.3 |
-| `unknown-runtime-name.json` | true | Rendered; that runtime entry is dropped | A `name` outside the closed list (`XNNPACK`) |
-| `engine-version-form.json` | true | Rendered; the engine version is not displayed | With `runtimes`, an `engineVersion` outside the fixed forms |
+| `executorch-runtimes-in-1.3.json` | true | Rendered; the runtimes are harmless (not sent to the client); engine and binding versions shown | The ExecuTorch row in a file that declares 1.3 |
+| `binding-only-in-1.3.json` | true | Rendered; the runtime is harmless (not sent to the client); binding version shown | `react-native-executorch` alone in a file that declares 1.3 |
+| `unknown-runtime-name.json` | true | Shown | A `name` outside the closed list (`XNNPACK`) |
+| `engine-version-form.json` | true | Shown sanitised (e.g. "ExecuTorch v1.4.1") | With `runtimes`, an `engineVersion` outside the fixed forms |
 
 ## Contract and display
 
