@@ -52,8 +52,10 @@ BUNDLE = {
     "chipset": "qualcomm-snapdragon-8-elite-gen5-for-galaxy",
     "qairt": "2.50.0.260828221209",
     "license": "Apache-2.0 (model card metadata); Qualcomm AI Hub usage limitations on the card",
+    # The S3 object version the SHA-256 was taken from (configs/models/experimental-models.json downloadUrl).
     "url": "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models/models/qwen3_1_7b/releases/"
-           "v0.65.0/qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy.zip",
+           "v0.65.0/qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy.zip"
+           "?versionId=Yb0NrZDlpe5O5Hc3SM4NUGSYelSDiEle",
     "zip": {"name": "qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy.zip",
             "size": 1538593271, "sha256": "ab021d189e387ba417e9156fb8d5fcee7a98cf1befd899a8e6f2a9b65dbf9b2b"},
     # The archive's only top-level entry; the configuration's modelFile for the NPU run.

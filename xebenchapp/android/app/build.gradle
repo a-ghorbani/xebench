@@ -265,6 +265,40 @@ def vendorNative = ["**/libQnn*.so", "**/libQairt*.so", "**/libSNPE*.so", "**/li
 // The QNN runtime files geniex-android packages (scripts/stage_qairt_libs.py GENIEX_LIBS).
 def geniexQairtRuntime = ["**/libQnn*.so", "**/libCalculator_skel.so", "**/libcalculator.so",
                           "**/libhta_hexagon_runtime_*.so", "**/libPlatformValidatorShared.so"]
+// A geniex release build packages the staged QAIRT 2.50 runtime, never silently the AAR's 2.45:
+// it fails unless scripts/stage_qairt_libs.py --flavor geniex staged every file (qairt-libs.json,
+// each SHA-256 rechecked here). -Pxebench.geniexAarQairt=true builds with the AAR's own runtime on
+// purpose (a QAIRT 2.45 comparison build); runtimeVersions.qairt then records 2.45.
+def geniexQairtExpected = "2.50.0"
+def geniexAarQairt = (findProperty("xebench.geniexAarQairt") ?: "false").toString() == "true"
+def checkGeniexQairtStaging = tasks.register("checkGeniexQairtStaging") {
+    def staged = file("src/geniex/jniLibs")
+    inputs.dir(staged).optional()
+    doLast {
+        def manifest = new File(staged, "qairt-libs.json")
+        if (!manifest.isFile()) {
+            throw new GradleException("geniex release: no QAIRT staging (${manifest}). Run scripts/stage_qairt_libs.py " +
+                "--qairt <QAIRT ${geniexQairtExpected} root> --flavor geniex, or pass -Pxebench.geniexAarQairt=true " +
+                "to package geniex-android's own QAIRT 2.45 runtime.")
+        }
+        def listing = new groovy.json.JsonSlurper().parse(manifest)
+        if (listing.flavor != "geniex" || listing.qairtVersion != geniexQairtExpected) {
+            throw new GradleException("geniex release: ${manifest} stages QAIRT ${listing.qairtVersion} for " +
+                "${listing.flavor}, not QAIRT ${geniexQairtExpected} for geniex")
+        }
+        listing.libraries.each { library ->
+            def lib = new File(staged, "arm64-v8a/${library.name}")
+            def digest = lib.isFile() ? java.security.MessageDigest.getInstance("SHA-256").digest(lib.bytes)
+                .encodeHex().toString() : null
+            if (digest != library.sha256) {
+                throw new GradleException("geniex release: staged ${library.name} is missing or differs from ${manifest}")
+            }
+        }
+    }
+}
+tasks.matching { it.name == "mergeGeniexReleaseNativeLibs" }.configureEach {
+    if (!geniexAarQairt) dependsOn(checkGeniexQairtStaging)
+}
 // S23 (SM8550): llama.rn's combined hexagon_opencl library hangs at first model load.
 // `-Pxebench.excludeLlamaHexagon=true` drops it from experimental so llama.cpp uses CPU.
 def excludeLlamaHexagon = (findProperty("xebench.excludeLlamaHexagon") ?: "false").toString() == "true"

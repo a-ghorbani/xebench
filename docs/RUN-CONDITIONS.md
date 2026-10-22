@@ -358,6 +358,12 @@ unknown and names the pending rule. A device check that shows every event remove
 set in a reviewed change. Design and sources:
 [docs/experiments/geniex-inapp.md](experiments/geniex-inapp.md).
 
+Two measurement facts of GENIE-X NPU sessions: the prefill speed is `ttft-derived` (prompt tokens
+over GENIE-X's own time to the first token, which includes sampling that token; its QAIRT plugin
+reports no separate prefill time), and the decode length varies with the end of turn (GENIE-X
+0.8.0 cannot decode past it), so `decodeTokens` is at most 128 and a row states the median it
+decoded when that is below 128.
+
 Any failed check gives `validation: "failed"` and `guardsPassed: false`. Otherwise,
 any unknown check gives `validation: "unverified"` and `guardsPassed: null`. Unknown
 is never a pass. Three kinds of session are never published at all:

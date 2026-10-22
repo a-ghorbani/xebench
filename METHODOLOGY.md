@@ -183,8 +183,12 @@ engine API; the measured repetitions use engines created with LiteRT-LM's benchm
 llama.cpp rows decode up to 128 tokens and stop at the end of turn; in every published llama.cpp
 session the model ran to the limit. → `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
 GENIE-X measured in the app (geniex-android 0.8.0) has no option to decode past the end of turn: it
-decodes up to 128 tokens and stops there, and the record keeps the number of tokens it produced
+decodes up to 128 tokens and stops there, so its decode length varies from run to run with where the
+model ends its turn, and the record keeps the number of tokens it produced
 ([notes](docs/experiments/geniex-inapp.md#decode-length-genie-x-080-cannot-decode-past-the-end-of-turn)).
+Its NPU prefill speed is TTFT-derived (`ttft-derived`): prompt tokens over GENIE-X's own time to the
+first token, which includes sampling that token, because its QAIRT plugin reports no separate prefill
+time ([notes](docs/experiments/geniex-inapp.md#timings-what-each-number-is-and-where-it-comes-from)).
 
 ## Cold-start is not the whole story (why the sustained phase exists)
 A single cold `pp512/tg128` number materially misrepresents sustained use:
