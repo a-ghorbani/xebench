@@ -126,12 +126,14 @@
       "sourceFile": "e2b/xnnpack/gemma_4_e2b_xnnpack_8da4w.pte",
       "size": 3215277312,
       "sha256": "d11e8587cd20015e01aed66c0880e3a2cefd464073a2f80b74a666246ab71cc7",
-      "baseModel": "google/gemma-4-E2B-it",
-      "license": "Apache License 2.0",
-      "licenseUrl": "https://ai.google.dev/gemma/docs/gemma_4_license",
+      "baseModel": "google/gemma-4-E2B",
+      "license": "gemma",
+      "licenseUrl": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4",
       "gated": false,
+      "licenseSource": "the repository card metadata (license: gemma, base_model: google/gemma-4-E2B)",
       "usedBy": "ExecuTorch XNNPACK runs of Gemma 4 E2B (board model, MODELS.md)",
-      "sha256Source": "Hugging Face LFS oid of sourceFile at this revision; equals the sha256sum of a copy streamed from it; staged under the name in file"
+      "sha256Source": "Hugging Face LFS oid of sourceFile at this revision; equals the sha256sum of a copy streamed from it; staged under the name in file",
+      "note": "The tokenizer_config.json in this repository carries the instruction-tuned (google/gemma-4-E2B-it) chat template, so the output gate treats the export as the instruction-tuned model; the gate decides."
     },
     {
       "id": "gemma4-e2b-executorch-tokenizer",
@@ -141,12 +143,14 @@
       "sourceFile": "e2b/tokenizer.json",
       "size": 32169868,
       "sha256": "23f2c12a98a259a87ba6b24df2750aa238f8f688935a9a89e1ce1e86ef7f095a",
-      "baseModel": "google/gemma-4-E2B-it",
-      "license": "Apache License 2.0",
-      "licenseUrl": "https://ai.google.dev/gemma/docs/gemma_4_license",
+      "baseModel": "google/gemma-4-E2B",
+      "license": "gemma",
+      "licenseUrl": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4",
       "gated": false,
+      "licenseSource": "the repository card metadata (license: gemma, base_model: google/gemma-4-E2B)",
       "usedBy": "ExecuTorch runs of Gemma 4 E2B: tokenizer (MODELS.md)",
-      "sha256Source": "Hugging Face LFS oid of sourceFile at this revision; equals the sha256sum of a copy streamed from it; staged under the name in file"
+      "sha256Source": "Hugging Face LFS oid of sourceFile at this revision; equals the sha256sum of a copy streamed from it; staged under the name in file",
+      "note": "The tokenizer_config.json in this repository carries the instruction-tuned (google/gemma-4-E2B-it) chat template, so the output gate treats the export as the instruction-tuned model; the gate decides."
     },
     {
       "id": "gemma4-e2b-executorch-tokenizer-config",
@@ -156,12 +160,14 @@
       "sourceFile": "e2b/tokenizer_config.json",
       "size": 22312,
       "sha256": "728f10e49dc4571c7679124165390d546d8930be3b9042a7a4e2fcefc45650b2",
-      "baseModel": "google/gemma-4-E2B-it",
-      "license": "Apache License 2.0",
-      "licenseUrl": "https://ai.google.dev/gemma/docs/gemma_4_license",
+      "baseModel": "google/gemma-4-E2B",
+      "license": "gemma",
+      "licenseUrl": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4",
       "gated": false,
+      "licenseSource": "the repository card metadata (license: gemma, base_model: google/gemma-4-E2B)",
       "usedBy": "ExecuTorch runs of Gemma 4 E2B: tokenizer configuration and chat template (MODELS.md)",
-      "sha256Source": "sha256sum of sourceFile downloaded at this revision (a plain git file, no LFS oid); staged under the name in file"
+      "sha256Source": "sha256sum of sourceFile downloaded at this revision (a plain git file, no LFS oid); staged under the name in file",
+      "note": "The tokenizer_config.json in this repository carries the instruction-tuned (google/gemma-4-E2B-it) chat template, so the output gate treats the export as the instruction-tuned model; the gate decides."
     },
     {
       "id": "qwen3-1.7b-xnnpack-8da4w-pte",

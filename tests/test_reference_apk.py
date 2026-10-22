@@ -160,6 +160,24 @@ class ReferenceApkTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'only to the experimental'):
                 apk_check.check_apk(path, 'reference', require_qnn=True)
 
+    def test_experimental_hexagon_build_requires_the_hexagon_variant_and_htp_libraries(self):
+        self.assertIn('assets/ggml-hexagon/libggml-htp-v81.so', apk_check.HEXAGON_LIBS)
+        self.assertIn('lib/arm64-v8a/librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so', apk_check.HEXAGON_LIBS)
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'fixture.apk'
+            write_apk(path, 'experimental')
+            with self.assertRaisesRegex(ValueError, 'missing .*libggml-htp-v81.so'):
+                apk_check.check_apk(path, 'experimental', require_hexagon=True)
+            for dropped in sorted(apk_check.HEXAGON_LIBS):
+                with self.subTest(dropped=dropped):
+                    write_apk(path, 'experimental', extra=sorted(apk_check.HEXAGON_LIBS - {dropped}))
+                    with self.assertRaisesRegex(ValueError, 'missing .*' + re.escape(dropped)):
+                        apk_check.check_apk(path, 'experimental', require_hexagon=True)
+            write_apk(path, 'experimental', extra=sorted(apk_check.HEXAGON_LIBS | apk_check.QNN_NPU_LIBS))
+            apk_check.check_apk(path, 'experimental', require_qnn=True, require_hexagon=True)
+            with self.assertRaisesRegex(ValueError, 'only to the experimental'):
+                apk_check.check_apk(path, 'reference', require_hexagon=True)
+
 
 
 class BundledConfigurationTests(unittest.TestCase):

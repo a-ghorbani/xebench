@@ -85,12 +85,24 @@ QNN_NPU_LIBS = {LIB + name for name in (
 )}
 
 
-def check_apk(path, flavor='reference', require_qnn=False):
+# llama.cpp's Hexagon NPU backend: llama.rn's Hexagon/OpenCL variant (core and JNI) and the DSP
+# libraries it syncs into assets/ggml-hexagon, for Hexagon v73 (SM8550) to v81 (SM8850). Absent
+# when llama.rn found no Hexagon SDK at build time or the build set xebench.excludeLlamaHexagon.
+HEXAGON_LIBS = {LIB + f'librnllama{kind}_v8_2_dotprod_i8mm_hexagon_opencl.so' for kind in ('', '_jni')} | {
+    f'assets/ggml-hexagon/libggml-htp-{arch}.so' for arch in ('v73', 'v75', 'v79', 'v81')
+}
+
+
+def check_apk(path, flavor='reference', require_qnn=False, require_hexagon=False):
     if require_qnn and flavor != 'experimental':
         raise ValueError('--require-qnn applies only to the experimental flavor')
+    if require_hexagon and flavor != 'experimental':
+        raise ValueError('--require-hexagon applies only to the experimental flavor')
     spec = dict(FLAVORS[flavor])
     if require_qnn:
         spec['required'] = spec['required'] | QNN_NPU_LIBS
+    if require_hexagon:
+        spec['required'] = spec['required'] | HEXAGON_LIBS
     with ZipFile(path) as apk:
         entries = apk.infolist()
         present = {entry.filename for entry in entries if entry.file_size > 0}
@@ -134,6 +146,9 @@ if __name__ == '__main__':
     parser.add_argument('--flavor', choices=sorted(FLAVORS), default='reference')
     parser.add_argument('--require-qnn', action='store_true',
                         help='experimental only: also require the staged QAIRT libs for LiteRT NPU')
+    parser.add_argument('--require-hexagon', action='store_true',
+                        help="experimental only: also require llama.rn's Hexagon variant and the "
+                             'libggml-htp-v73 to v81 DSP libraries (llama.cpp NPU)')
     args = parser.parse_args()
-    check_apk(args.apk, args.flavor, args.require_qnn)
+    check_apk(args.apk, args.flavor, args.require_qnn, args.require_hexagon)
     print(f'{args.flavor} APK packages its expected runtimes; device validation is still required.')
