@@ -162,8 +162,8 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
         fixedDecodeTokens = measurement.decodeTokens;
       },
       effectiveSettings: (request: {maxDecodeTokens: number; decodeMode?: 'fixed'}) =>
-        // EXECUTORCH_CONFIG uses the gemma3 template: Gemma prompts carry a literal <bos>.
-        executorchEffectiveSettings(request, {version: '0.10.7', nativeLibsVersion: '0.10.6'}, executorchPromptPrefix('gemma3')),
+        // EXECUTORCH_CONFIG uses the gemma4 template: Gemma prompts carry a literal <bos>.
+        executorchEffectiveSettings(request, {version: '0.10.7', nativeLibsVersion: '0.10.6'}, executorchPromptPrefix('gemma4')),
     });
   }
   if (run.engine === 'litert-lm') {
@@ -204,10 +204,11 @@ const TOKENIZER_SHA = (run: AcceleratorRun) => run.tokenizerSha256 ?? 'a'.repeat
 
 /** An ExecuTorch CPU configuration as the board would stage it: std-pp512-v1 and a fixed 128-token decode. */
 const EXECUTORCH_CONFIG = {schemaVersion: 2, id: 'executorch-gemma4-cpu-fixture', nColdRuns: 2, cooldownSec: 120,
-  readinessTimeoutSec: 900, maxBatteryTempRiseC: 2, maxDecodeTokens: 128, chatTemplate: 'gemma3',
+  readinessTimeoutSec: 900, maxBatteryTempRiseC: 2, maxDecodeTokens: 128, chatTemplate: 'gemma4',
   measuredPrompt: 'std-pp512-v1', decodeMode: 'fixed', runs: [{id: 'gemma4-e2b-8da4w-pte-cpu', engine: 'executorch',
     backend: 'cpu', purpose: 'measurement', model: 'Gemma 4 E2B', modelFile: 'gemma_4_e2b_xnnpack_8da4w.pte',
-    quant: '8da4w', nThreads: null, nCtx: null, referenceRunId: null, tokenizerFile: 'tokenizer.json',
+    quant: '8da4w', nThreads: null, nCtx: null, referenceRunId: null,
+    tokenizerFile: 'gemma_4_e2b_tokenizer.json',
     modelSha256: '3'.repeat(64), tokenizerSha256: '4'.repeat(64)}]};
 
 async function runConfiguration(config: AcceleratorConfig, options: Record<string, FakeOptions> = {},
@@ -505,10 +506,10 @@ test('accelerator records match the committed fixture validated by the host sche
   expect(executorchRecord.coldRuns.map(attempt => attempt.status === 'complete' &&
     [attempt.decodeTokens, attempt.executorchStats!.numGeneratedTokens, attempt.executorchStats!.prefillChunks]))
     .toEqual([[128, 127, 2], [128, 127, 2]]);
-  expect(executorchRecord.tokenizerArtifact).toEqual({file: 'tokenizer.json', sha256: '4'.repeat(64),
+  expect(executorchRecord.tokenizerArtifact).toEqual({file: 'gemma_4_e2b_tokenizer.json', sha256: '4'.repeat(64),
     sizeBytes: 32000000, expectedSha256: '4'.repeat(64)});
   expect(executorchRecord.effectiveSettings).toMatchObject({binding: 'react-native-executorch',
-    generation: {maxNewTokens: 128, ignoreEos: true, temperature: 0}});
+    generation: {maxNewTokens: 128, ignoreEos: true, temperature: 0, promptPrefix: '<bos>'}});
   expect(executorchRecord.runtimeVersions).toMatchObject({executorch: '1.4.1', reactNativeExecutorch: '0.10.7'});
   expect(records['executorch-tokenizerMismatch'].tokenizerArtifact!.sha256).toBe('f'.repeat(64));
   expect(records['executorch-tokenizerUnreadable'].tokenizerArtifact).toBeNull();

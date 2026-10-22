@@ -66,7 +66,7 @@ beforeEach(() => {
 const adapter = () => {
   const {ExecutorchAdapter} = require('../src/harness/adapters/ExecutorchAdapter');
   return new ExecutorchAdapter({modelPath: '/files/gemma_4_e2b_xnnpack_8da4w.pte',
-    tokenizerPath: '/files/tokenizer.json', quantLabel: '4-bit weights, 8-bit activations', modelLabel: 'Gemma 4 E2B',
+    tokenizerPath: '/files/tokenizer.json', quantLabel: '8da4w', modelLabel: 'Gemma 4 E2B',
     promptPrefix: '<bos>'});
 };
 
