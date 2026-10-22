@@ -312,7 +312,7 @@ class LiteRtBenchModule(private val reactContext: ReactApplicationContext) :
   companion object {
     /**
      * Renders every message's text parts verbatim: no role markers, no generation prompt.
-     * LiteRT-LM 0.18.0 passes message content as a list of parts; a plain string is accepted too.
+     * LiteRT-LM 0.18 passes message content as a list of parts; a plain string is accepted too.
      */
     private const val RAW_TEMPLATE =
       "{%- for message in messages -%}" +

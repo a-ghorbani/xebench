@@ -207,10 +207,11 @@ dependencies {
     }
 
     // LiteRT-LM (Google): no RN binding; driven via src/experimental LiteRtBenchModule.kt.
-    // 0.18.0 pairs with litert-npu-runtime-qualcomm 2.3.0 and QAIRT 2.50.0.260828 (the
-    // dispatch lib and QAIRT must match the LiteRT-LM release's LITERT_REF; a mismatch
-    // logs "Unsupported dispatch runtime version" and engine creation fails).
-    experimentalImplementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
+    // 0.18.1 (LITERT_REF ca21dc9) runs with litert-npu-runtime-qualcomm 2.3.0 and QAIRT
+    // 2.50.0.260828 (the dispatch lib and QAIRT must match the LiteRT-LM release's
+    // LITERT_REF; a mismatch logs "Unsupported dispatch runtime version" and engine
+    // creation fails).
+    experimentalImplementation("com.google.ai.edge.litertlm:litertlm-android:0.18.1")
     // Google-published Qualcomm NPU dispatch (libLiteRtDispatch_Qualcomm.so and
     // libLiteRtCompilerPlugin_Qualcomm.so), Google Maven.
     experimentalImplementation("com.google.ai.edge.litert:litert-npu-runtime-qualcomm:2.3.0")

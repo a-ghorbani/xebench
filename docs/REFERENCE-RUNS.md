@@ -88,7 +88,7 @@ decode count, so [`LiteRtFixedDecode.kt`](../xebenchapp/android/app/src/experime
 creates the measured engines with `nativeCreateBenchmark` (prefill count 0, so the real prompt is
 used; decode count 128) and runs a greedy conversation on them with the same pass-through
 template, render check and streaming time to first token. These calls are internal to
-litertlm-android and pinned to 0.18.0: the app refuses fixed decoding with another version or a
+litertlm-android and pinned to 0.18.1: the app refuses fixed decoding with another version or a
 missing entry point, and a repetition that reports another decode length. The output gate
 checks the same file on the same backend through LiteRT-LM's public engine API, with the engine's
 own stopping rule; the measured repetitions use engines created with LiteRT-LM's benchmark

@@ -23,7 +23,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DEST = ROOT / "xebenchapp/android/app/src/experimental/jniLibs/arm64-v8a"
-# The QAIRT release that litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0
+# The QAIRT release that litertlm-android 0.18.0 and 0.18.1 + litert-npu-runtime-qualcomm 2.3.0
 # were validated against (docs/experiments/litert-accelerators.md).
 EXPECTED_VERSION = "2.50.0"
 # (source path relative to the SDK root, staged file name). Host-side stubs are arm64
