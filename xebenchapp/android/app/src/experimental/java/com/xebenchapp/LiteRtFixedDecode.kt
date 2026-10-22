@@ -12,7 +12,7 @@ import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 /**
- * Fixed-length decoding for LiteRT-LM 0.18.0 (configuration decodeMode "fixed").
+ * Fixed-length decoding for LiteRT-LM 0.18.1 (configuration decodeMode "fixed").
  *
  * LiteRT-LM's public Kotlin API cannot decode past the end of turn: stop tokens come from the
  * artifact's metadata, and suppressed tokens are not applied by the NPU executor. The engine decodes
@@ -24,11 +24,11 @@ import java.lang.reflect.Proxy
  *
  * LiteRtLmJni is internal to the litertlm-android module, so Kotlin cannot name it; its natives
  * are public in the bytecode and are called here by reflection, with the argument lists of
- * litertlm-android 0.18.0 exactly. [requirePinned] refuses any other version and any missing
+ * litertlm-android 0.18.1 exactly (the same as 0.18.0). [requirePinned] refuses any other version and any missing
  * entry point, so a LiteRT-LM update fails loudly instead of measuring something else.
  */
 internal object LiteRtFixedDecode {
-  const val PINNED_LITERTLM_VERSION = "0.18.0"
+  const val PINNED_LITERTLM_VERSION = "0.18.1"
   private const val JNI_CLASS = "com.google.ai.edge.litertlm.LiteRtLmJni"
   private const val CALLBACK_CLASS = "com.google.ai.edge.litertlm.LiteRtLmJni\$JniMessageCallback"
 
