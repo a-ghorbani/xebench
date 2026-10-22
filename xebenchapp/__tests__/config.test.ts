@@ -1,5 +1,5 @@
 import {parseAcceleratorConfig, parseConfig} from '../src/harness/config';
-import {ACCELERATOR_PROMPT, chatTurn, STANDARD_PROMPT} from '../src/harness/prompts';
+import {ACCELERATOR_PROMPT, CHAT_TEMPLATES, chatTurn, STANDARD_PROMPT} from '../src/harness/prompts';
 import f8Gemma from '../configs/f8-gemma3-accelerators-v1.json';
 import bundled from '../configs/cpu-reference-v2.json';
 import v1 from '../configs/cpu-reference-v1.json';
@@ -159,6 +159,42 @@ test('the qwen25 chat template is a ChatML user turn without a system message', 
   expect(chatTurn('llama32', 'Hi')).toBe(
     '<|start_header_id|>user<|end_header_id|>\n\nHi<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n');
   expect(chatTurn('gemma3', 'Hi')).toBe('<start_of_turn>user\nHi<end_of_turn>\n<start_of_turn>model\n');
+});
+
+// Each string is what the model's own chat template renders for messages [{role: user, content: 'Hi'}]
+// with add_generation_prompt, minus the BOS the tokenizer adds. Gemma 4: the GGUF's
+// tokenizer.chat_template (google/gemma-4-E2B-it-qat-q4_0-gguf @ 675cff4), equal to
+// google/gemma-4-E2B-it's chat_template.jinja, the LiteRT-LM repository's chat_template.jinja
+// (@ 41c5569) and the ExecuTorch tokenizer_config.json (@ 27ecbb4); thinking is off by default.
+// Qwen3 with enable_thinking false: the GGUF's template (unsloth/Qwen3-1.7B-GGUF @ d7f544e), equal to
+// Qwen/Qwen3-1.7B's tokenizer_config.json and the ExecuTorch tokenizer_config.json (@ 764c9b7).
+test('the gemma4 and qwen3 chat templates are the models\' own single user turns, thinking off', () => {
+  expect(chatTurn('gemma4', 'Hi')).toBe('<|turn>user\nHi<turn|>\n<|turn>model\n');
+  expect(chatTurn('qwen3', 'Hi')).toBe('<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n');
+  for (const chatTemplate of ['gemma4', 'qwen3'] as const) {
+    expect(parseAcceleratorConfig({...qwenOpencl, chatTemplate}).chatTemplate).toBe(chatTemplate);
+  }
+  expect(() => parseAcceleratorConfig({...qwenOpencl, chatTemplate: 'qwen3-thinking'})).toThrow('chatTemplate');
+});
+
+test('the raw-session schema accepts exactly the app\'s chat templates', () => {
+  const schema = require('../../schemas/raw-session-v1.json');
+  const enums: string[][] = [];
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (node && typeof node === 'object') {
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'chatTemplate' && value && typeof value === 'object' && 'enum' in value) {
+          enums.push((value as {enum: string[]}).enum);
+        } else {
+          walk(value);
+        }
+      }
+    }
+  };
+  walk(schema);
+  // The configuration and accelerator-v2 take every template; the frozen accelerator-v1 protocol keeps its two.
+  expect(enums).toEqual([[...CHAT_TEMPLATES], ['gemma3', 'llama32'], [...CHAT_TEMPLATES]]);
 });
 
 test('measuredPrompt is optional, validated, and std-pp512-v1 applies to both engines', () => {

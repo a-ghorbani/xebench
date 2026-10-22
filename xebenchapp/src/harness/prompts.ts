@@ -98,11 +98,25 @@ export const llama32Turn = (text: string) =>
  */
 export const qwen25Turn = (text: string) => `<|im_start|>user\n${text}<|im_end|>\n<|im_start|>assistant\n`;
 
-export type ChatTemplate = 'gemma3' | 'llama32' | 'qwen25';
-export const CHAT_TEMPLATES = ['gemma3', 'llama32', 'qwen25'] as const;
+/**
+ * Gemma 4 instruction-tuned single user turn, no system turn, thinking off (the template's
+ * default: no `<|think|>` system turn). BOS is added by the tokenizer, not here.
+ */
+export const gemma4Turn = (text: string) => `<|turn>user\n${text}<turn|>\n<|turn>model\n`;
+
+/**
+ * Qwen3 single user turn (ChatML), no system message, thinking off: the turn the model's own
+ * template renders with enable_thinking false, an empty think block after the assistant header.
+ */
+export const qwen3Turn = (text: string) =>
+  `<|im_start|>user\n${text}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n`;
+
+export const CHAT_TEMPLATES = ['gemma3', 'gemma4', 'llama32', 'qwen25', 'qwen3'] as const;
+export type ChatTemplate = typeof CHAT_TEMPLATES[number];
+const TURNS: Record<ChatTemplate, (text: string) => string> = {
+  gemma3: gemma3Turn, gemma4: gemma4Turn, llama32: llama32Turn, qwen25: qwen25Turn, qwen3: qwen3Turn};
 /** The raw single-turn prompt for engines that take a pre-templated string (llama.cpp). */
-export const chatTurn = (template: ChatTemplate, text: string) =>
-  template === 'llama32' ? llama32Turn(text) : template === 'qwen25' ? qwen25Turn(text) : gemma3Turn(text);
+export const chatTurn = (template: ChatTemplate, text: string) => TURNS[template](text);
 
 /** Decode budget per run — comparable to llama-bench tg128 convention. */
 export const MAX_DECODE_TOKENS = 128;

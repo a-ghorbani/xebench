@@ -1209,7 +1209,7 @@
         "readinessTimeoutSec": {"type": "integer", "minimum": 10, "maximum": 900},
         "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10},
         "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
-        "chatTemplate": {"enum": ["gemma3", "llama32", "qwen25"]},
+        "chatTemplate": {"enum": ["gemma3", "gemma4", "llama32", "qwen25", "qwen3"]},
         "measuredPrompt": {"enum": ["std-chat-v1", "std-pp512-v1"]},
         "decodeMode": {"enum": ["fixed"], "description": "fixed: every repetition decodes exactly maxDecodeTokens, past the end of turn (LiteRT-LM runs only)."},
         "orderSeed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
@@ -1911,7 +1911,7 @@
             "processRestartBetweenRepetitions": {"const": false},
             "maxBatteryTempRiseC": {"type": "number", "minimum": 0.5, "maximum": 10},
             "promptFormat": {"enum": ["user-turn-chat-template", "raw-pretemplated"]},
-            "chatTemplate": {"enum": ["gemma3", "llama32", "qwen25"]},
+            "chatTemplate": {"enum": ["gemma3", "gemma4", "llama32", "qwen25", "qwen3"]},
             "decodeMode": {"enum": ["fixed"]},
             "sampling": {"const": "greedy"},
             "gate": {"const": "output-gate-v1"}
