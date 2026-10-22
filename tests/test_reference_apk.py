@@ -21,7 +21,7 @@ SAMPLES = {
     'litert': 'lib/arm64-v8a/liblitertlm_jni.so',
     'genie': 'lib/arm64-v8a/libGenie.so',
     'executorch': 'lib/arm64-v8a/libexecutorch.so',
-    'executorch-jsi': 'lib/arm64-v8a/libreact-native-executorch.so',
+    'executorch-jsi': 'lib/arm64-v8a/libRnExecutorch.so',
     'executorch-xnnpack': 'lib/arm64-v8a/libxnnpack_executorch_backend.so',
     'executorch-vulkan': 'lib/arm64-v8a/libvulkan_executorch_backend.so',
     'executorch-qnn': 'lib/arm64-v8a/libqnn_executorch_backend.so',

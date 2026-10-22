@@ -14,7 +14,7 @@
  *     block in package.json); no other backend library is present;
  *   - the SHA-256 of every Android arm64-v8a library and of executorch.jar;
  *   - a digest of the headers (third-party/include), which are compiled into
- *     libreact-native-executorch.so, and the ExecuTorch version they declare.
+ *     libRnExecutorch.so, and the ExecuTorch version they declare.
  *
  * After an intended bump: npm install, review, then `node scripts/check-executorch-libs.js --write`
  * and commit the lock.
