@@ -123,7 +123,10 @@ android {
         jniLibs {
             // QNN libs (user-supplied in experimental, bundled by geniex-android) include
             // Hexagon-DSP ELFs such as libQnnHtpV73Skel.so; arm64 strip would corrupt them.
-            keepDebugSymbols += ["**/libQnn*.so"]
+            // The other QAIRT runtime files geniex-android carries are packaged as shipped too,
+            // so check_reference_apk.py --qairt-libs can match every staged file by hash.
+            keepDebugSymbols += ["**/libQnn*.so", "**/libCalculator_skel.so", "**/libcalculator.so",
+                                 "**/libhta_hexagon_runtime_*.so", "**/libPlatformValidatorShared.so"]
         }
     }
 
@@ -166,7 +169,10 @@ android {
             versionNameSuffix "-experimental"
         }
         // GENIE-X (Maven Central) + llama.rn CPU. Its Hexagon runtime conflicts with
-        // llama.rn's, so llama.rn accelerators are excluded here.
+        // llama.rn's, so llama.rn accelerators are excluded here. geniex-android 0.8.0 packages
+        // the QAIRT 2.45 QNN runtime; scripts/stage_qairt_libs.py --flavor geniex stages the
+        // QAIRT 2.50 build of the same files into src/geniex/jniLibs/arm64-v8a (git-ignored),
+        // which this flavor packages in their place (pickFirsts below).
         geniex {
             dimension "runtime"
             versionNameSuffix "-geniex"
@@ -226,8 +232,10 @@ dependencies {
     experimentalImplementation("com.google.ai.edge.litert:litert-npu-runtime-qualcomm:2.3.0")
     // GENIE-X (Qualcomm, Maven Central): no RN binding; driven via src/geniex
     // GenieXBenchModule.kt. Bundles its own llama.cpp+Hexagon runtime, which conflicts
-    // with llama.rn's HTP path, hence its own flavor.
-    geniexImplementation("com.qualcomm.qti:geniex-android:0.3.1")
+    // with llama.rn's HTP path, hence its own flavor. GenieXNative.java is pinned to this
+    // version's JNI calls. Its POM declares no dependencies; the bridge uses none of the
+    // SDK's coroutine wrappers.
+    geniexImplementation("com.qualcomm.qti:geniex-android:0.8.0")
 
     // JVM unit tests for pure-Kotlin helpers (e.g. MonitorSchedule); no device needed.
     testImplementation("junit:junit:4.13.2")
@@ -254,6 +262,9 @@ def executorchOtherBackends = ["**/libvulkan_executorch_backend.so", "**/libqnn_
 // in case someone stages them under src/main/jniLibs.
 def vendorNative = ["**/libQnn*.so", "**/libQairt*.so", "**/libSNPE*.so", "**/libGenie*.so",
                     "**/libcdsprpc.so", "**/libLiteRt*.so", "**/liblitertlm*.so"]
+// The QNN runtime files geniex-android packages (scripts/stage_qairt_libs.py GENIEX_LIBS).
+def geniexQairtRuntime = ["**/libQnn*.so", "**/libCalculator_skel.so", "**/libcalculator.so",
+                          "**/libhta_hexagon_runtime_*.so", "**/libPlatformValidatorShared.so"]
 // S23 (SM8550): llama.rn's combined hexagon_opencl library hangs at first model load.
 // `-Pxebench.excludeLlamaHexagon=true` drops it from experimental so llama.cpp uses CPU.
 def excludeLlamaHexagon = (findProperty("xebench.excludeLlamaHexagon") ?: "false").toString() == "true"
@@ -291,6 +302,9 @@ androidComponents {
         } else if (flavor == "geniex") {
             jniExcludes.addAll(llamaRnAccelerators + executorchNative)
             variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
+            // QAIRT files staged in src/geniex/jniLibs replace geniex-android's copies (the
+            // project's own native libraries come first). Without a staging there is one copy.
+            variant.packaging.jniLibs.pickFirsts.addAll(geniexQairtRuntime)
         } else if (flavor == "experimental") {
             jniExcludes.addAll(executorchOtherBackends)
             if (excludeLlamaHexagon) {

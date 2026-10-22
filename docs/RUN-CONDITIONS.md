@@ -282,7 +282,7 @@ passes:
 | `charging` | every measured repetition recomputes to `satisfied` under `charging-policy-v3` | `violated` or `on-battery` | `unknown`, or another charging policy |
 | `coverage` | every measured repetition was sampled throughout (the coverage rule above) | — | a gap, expiry, dropped tick or missing monitor |
 | `artifact` | the session's `configurationSource` hash names a reviewed configuration file, the session carries that file's content, its configured run (engine, backend, model, quant, model file, `modelSha256`) is exactly a run of that file, and the artifact SHA-256 equals both that `modelSha256` and the model manifest entry for the file | the artifact differs from the configured `modelSha256` or from the manifest entry | the run pins no `modelSha256`, the session names no reviewed configuration file or carries other content, the run is not in that file, or its file has no manifest entry |
-| `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed`; for LiteRT-LM NPU, `confirmed` comes from the app's own log (below) | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU evidence is at most `consistent` |
+| `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed`; for LiteRT-LM NPU, `confirmed` comes from the app's own log (below), and for GENIE-X NPU from its own log rule once that rule is confirmed on a device (below) | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU evidence is at most `consistent` |
 | `correctness` (accelerator protocols) | output gate `pass` | `fail` | `unverified` |
 | `comparison` (accelerator protocols) | `valid` | `invalid` | `unverified` |
 | `build` | reported release build, clean tree (`gitDirty: false`), known commit, flavor `reference`, `experimental` or `geniex` | dirty tree | not reported, any field unknown, or a debug build (its JavaScript comes from Metro, so the commit does not identify the code that ran) |
@@ -331,6 +331,32 @@ LiteRT-LM reports no executing backend, so its process-library evidence for an N
   reproduces rows from their bundles. Captures without a backend log keep the process-library rule.
   The rule shows a QNN HTP context created from the bundle for each load, and the dispatch library
   and HTP backend loaded earlier in the same process; it does not show where each operation ran.
+
+### GENIE-X NPU: backend from the app's log (geniex-npu-log-v1, pending device confirmation)
+
+GENIE-X (geniex-android, the `geniex` flavor) reports no executing backend either. Its
+process-library evidence for an NPU run is `consistent` when the load newly maps `libQnnHtp.so`,
+which only the first NPU load in a process does, and `unknown` otherwise. geniex-android logs its
+SDK and QAIRT plugin messages under the tag `GenieXSdk`, and the same collection, export and
+reproduction apply (`capture_app_run.py` adds the tag to its filter; a capture that recorded a
+GENIE-X session keeps its log under this rule, any other under litert-npu-log-v1):
+
+| Event | Log line (geniex-android 0.8.0) | Where |
+| --- | --- | --- |
+| `htp-runtime` | `HTP runtime path: … (auto-resolved from geniex_core directory (flat layout))`: the QNN runtime the APK packages, not an override | within the repetition's engine load and request |
+| `htp-arch` | `HTP arch vNN detected.`: the compute DSP's answer to a FastRPC query | within the repetition |
+| `htp-graphs` | `HTP graphs will execute on …`: logged only after every QNN context of the load was created from the bundle on the HTP backend and its graphs retrieved | within the repetition |
+| `prompt` | `prompt: N tokens, first-turn BOS=…`: the request prefilled by the QAIRT pipeline | within the repetition |
+| `htp-skel-cdsp` | the FastRPC skel line of litert-npu-log-v1 | at least once in the capture |
+
+GENIE-X's QAIRT plugin logs the first four for every model load and request, so each repetition
+must show its own. The patterns are written from geniex-android 0.8.0's sources and the format
+strings in its shipped libraries; no device capture has shown them. Until one does, the rule is
+listed in `backend_log.PENDING_DEVICE_CONFIRMATION`: captures keep its events and the policy reports
+its result, but it does not confirm a backend, so a GENIE-X NPU session's `backend` check stays
+unknown and names the pending rule. A device check that shows every event removes it from that
+set in a reviewed change. Design and sources:
+[docs/experiments/geniex-inapp.md](experiments/geniex-inapp.md).
 
 Any failed check gives `validation: "failed"` and `guardsPassed: false`. Otherwise,
 any unknown check gives `validation: "unverified"` and `guardsPassed: null`. Unknown

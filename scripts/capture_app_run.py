@@ -124,6 +124,8 @@ class Capture:
         self.app_identity = {'packageName': APP, 'before': None, 'after': None, 'consistency': 'unverified'}
         # Backend events of the app process (backend_log.py), in order; None until the log was read.
         self.backend_lines = None
+        # Engines of the records kept: they select the backend log's rule (backend_log.rule_for_engines).
+        self.engines = set()
 
     def read_reference(self, payload, read_file):
         """Resolve a bounded logcat file reference to the exact checksummed bytes."""
@@ -247,6 +249,8 @@ class Capture:
                 if source_file is not None:
                     entry["sourceFile"] = source_file
                 entries.append(entry)
+                if isinstance(record.get("engine"), str):
+                    self.engines.add(record["engine"])
                 if record.get("status") == "failed":
                     self.failed_records += 1
 
@@ -265,11 +269,15 @@ class Capture:
     def finish(self, status):
         backend = None
         if self.backend_lines is not None:
-            data = "".join(line + "\n" for line in self.backend_lines).encode("utf-8")
+            # One rule per capture: GENIE-X's when it recorded a GENIE-X session, else LiteRT-LM's.
+            rule = backend_log.rule_for_engines(self.engines)
+            lines = [line for line in self.backend_lines
+                     if backend_log.classify(*backend_log.parse_line(line)[1:], rule=rule)]
+            data = "".join(line + "\n" for line in lines).encode("utf-8")
             with (self.directory / "backend-log.txt").open("xb") as out:
                 out.write(data)
-            backend = {"rule": backend_log.RULE, "file": "backend-log.txt", "sha256": hashlib.sha256(data).hexdigest(),
-                       "lines": len(self.backend_lines)}
+            backend = {"rule": rule, "file": "backend-log.txt", "sha256": hashlib.sha256(data).hexdigest(),
+                       "lines": len(lines)}
         manifest = {
             "schema": "xebench-local-capture", "schemaVersion": 1,
             "captureId": self.capture_id, "startedAt": self.started_at,
@@ -380,7 +388,7 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
                 break
             capture.ingest(command("logcat", "-d", "-v", "epoch", "-T", since,
                                    f"--pid={pid}", "ReactNativeJS:I", "*:S"), read_record_file)
-            # The app's own LiteRT-LM and FastRPC lines only (backend_log.LOGCAT_FILTER), read before
+            # The app's own LiteRT-LM, GENIE-X and FastRPC lines only (backend_log.LOGCAT_FILTER), read before
             # XEBENCH_DONE is acted on so the last repetition's load is included.
             capture.ingest_backend_log(command("logcat", "-d", "-v", "epoch", "-T", since, f"--pid={pid}",
                                                *backend_log.LOGCAT_FILTER), pid)

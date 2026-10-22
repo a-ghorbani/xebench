@@ -108,7 +108,7 @@ keep the application ID `com.xebenchapp`, so installing one replaces another.
 |---|---|---|---|
 | `reference` | `assembleReferenceRelease` | llama.rn CPU only | No — builds from a clean checkout |
 | `experimental` | `assembleExperimentalRelease` | llama.rn CPU + Hexagon/OpenCL, LiteRT-LM, ExecuTorch (XNNPACK) | Only for LiteRT NPU: QAIRT libs in `app/src/experimental/jniLibs/arm64-v8a/` |
-| `geniex` | `assembleGeniexRelease` | llama.rn CPU + GENIE-X (`geniex-android`, which bundles its own QNN and llama.cpp Hexagon runtime) | For the NPU path: Genie context binaries (model files) |
+| `geniex` | `assembleGeniexRelease` | llama.rn CPU + GENIE-X (`geniex-android` 0.8.0, which bundles its own QNN runtime and llama.cpp) | For the NPU path: the QAIRT 2.50 libs in `app/src/geniex/jniLibs/arm64-v8a/` (they replace the AAR's QAIRT 2.45), and a QAIRT bundle staged on the phone |
 
 Prerequisites for a clean-checkout reference build (other flavors add only the
 files in the table). This list is the single source; CI
@@ -187,7 +187,7 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 - **Models** — GGUF / `.pte` / `.litertlm` / QNN context binaries. See **[MODELS.md](./MODELS.md)** for exact files and sources.
 - **QAIRT SDK** (Qualcomm AI Runtime) — needed for the LiteRT-NPU path and the CLI `genie-t2t-run` Genie measurements. Download the *Community* track (direct download) from Qualcomm, then stage the libraries LiteRT NPU needs with `python3 scripts/stage_qairt_libs.py --qairt <QAIRT root>`. It copies the `lib/aarch64-android/` host libs and the v73/v81 `libQnnHtpVNNSkel.so` into `app/src/experimental/jniLibs/arm64-v8a/` (git-ignored — Qualcomm-licensed, do not redistribute), refuses a destination git would track, and records each file's SHA-256 in `app/src/experimental/jniLibs/qairt-libs.json`. Check an NPU-capable APK with `scripts/check_reference_apk.py --flavor experimental --require-qnn <apk>`. Never put them in `app/src/main/jniLibs`. For **LiteRT-LM**, the QAIRT version must match the `LITERT_REF` of the LiteRT-LM release you use. The dispatch lib (`libLiteRtDispatch_Qualcomm.so`) is not part of QAIRT: it comes from Google's `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` Maven artifact, or from the per-arch `litert_npu_runtime_libraries.zip` on LiteRT GitHub releases. The `experimental` flavor pins `litertlm-android` 0.18.0 + `litert-npu-runtime-qualcomm` 2.3.0, validated with QAIRT 2.50.0.260828 (see [docs/experiments/litert-accelerators.md](./docs/experiments/litert-accelerators.md)).
 - **Hexagon SDK** — needed for llama.cpp's Hexagon NPU backend in the `experimental` flavor. llama.rn compiles the backend's Android side only when it finds the SDK at `HEXAGON_SDK_ROOT` and `HEXAGON_TOOLS_ROOT`; llama.rn 0.13.0-rc.8 looks in `~/.hexagon-sdk/6.7.0.0` and its `tools/HEXAGON_Tools/21.0.04` when they are unset. Without the SDK the build still succeeds, but the APK has no Hexagon backend. The DSP libraries (`libggml-htp-v73.so` to `libggml-htp-v85.so`) are llama.rn's npm prebuilts. Check a Hexagon-capable APK with `scripts/check_reference_apk.py --flavor experimental --require-hexagon <apk>`: it requires llama.rn's Hexagon variant and the v73 to v81 DSP libraries, and combines with `--require-qnn`.
-- **GENIE-X** (`com.qualcomm.qti:geniex-android`) — Maven Central dependency of the `geniex` flavor only.
+- **GENIE-X** (`com.qualcomm.qti:geniex-android` 0.8.0) — Maven Central dependency of the `geniex` flavor only. Its AAR packages the QAIRT 2.45 QNN runtime and cannot load another one at run time, so for QAIRT 2.50 bundles stage the 2.50 build of the same files with `python3 scripts/stage_qairt_libs.py --qairt <QAIRT root> --flavor geniex` (into `app/src/geniex/jniLibs/arm64-v8a/`, git-ignored; the flavor packages them in place of the AAR's) and check the APK with `scripts/check_reference_apk.py --flavor geniex --qairt-version <build> --qairt-libs app/src/geniex/jniLibs/qairt-libs.json <apk>`. The Qualcomm AI Hub QAIRT bundle is staged on the phone, never packaged: `python3 scripts/stage_geniex_bundle.py` downloads, verifies and unpacks it into `models/geniex/`, and `--push --serial <serial>` copies it to the app's files. See [docs/experiments/geniex-inapp.md](./docs/experiments/geniex-inapp.md).
 - **Genie context binaries** — per-SoC, per-QAIRT-version compiled `.bin` bundles (e.g. from `runanywhere/genie-npu-models` or Qualcomm AI Hub). They must match *both* your device's Hexagon arch (v73/v75/v79/v81) *and* a QAIRT version you can obtain.
 
 ### Toolchain gotchas (hard-won)
@@ -251,7 +251,7 @@ Publication fails closed: on any error it exits 1 and leaves `data/benchmarks.js
 Good first issues:
 - Add a **quality metric** (perplexity or a small task-accuracy set) so the board isn't speed-only — the top methodology gap (see METHODOLOGY §quant).
 - New device rows (MediaTek / more Snapdragons), new engines (MLX/CoreML need an iOS harness).
-- A Rule-0-clean, in-app Genie NPU path (currently CLI-measured).
+- A device check of the in-app GENIE-X NPU log rule ([docs/experiments/geniex-inapp.md](./docs/experiments/geniex-inapp.md)); the board's GENIE-X rows are CLI-measured.
 
 Please keep every number traceable to a raw JSONL record and label its provenance and quant honestly — that transparency is the whole point.
 

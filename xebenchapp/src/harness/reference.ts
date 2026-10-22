@@ -15,6 +15,9 @@ import {AcceleratorSession, runAcceleratorConfiguration} from './accelerator';
 import {LiteRtAdapter} from './adapters/LiteRtAdapter';
 import type {EngineAdapter} from './adapters/EngineAdapter';
 import type {ExecutorchAdapterOptions} from './adapters/ExecutorchAdapter';
+import {GenieXAdapter} from './adapters/GenieXAdapter';
+import {bundleArtifact} from './bundle';
+import type {ChatTemplate} from './prompts';
 
 /**
  * ExecuTorch runs (experimental flavor only). react-native-executorch installs its JSI library
@@ -175,7 +178,35 @@ function persister(directory: string, runId: string, label: string, planned: num
   };
 }
 
-/** accelerator-v2 configuration (schemaVersion 2): llama.cpp and LiteRT-LM CPU/GPU/NPU, ExecuTorch CPU. */
+/**
+ * A fresh engine adapter for an accelerator run; throws when the engine is not linked in this build.
+ * ExecuTorch runs also take their tokenizer path and the configuration's chat template.
+ */
+export function acceleratorAdapter(run: AcceleratorRun, modelPath: string,
+  options: {tokenizerPath?: string; chatTemplate?: ChatTemplate} = {}): EngineAdapter {
+  if (run.engine === 'executorch') {
+    return executorchAdapter({modelPath, tokenizerPath: options.tokenizerPath!, modelLabel: run.model,
+      quantLabel: run.quant, promptPrefix: executorchPromptPrefix(options.chatTemplate!)});
+  }
+  if (run.engine === 'llama.cpp') {
+    return new LlamaRnAdapter({modelPath, modelLabel: run.model, quantLabel: run.quant,
+      nThreads: run.nThreads!, nCtx: run.nCtx!, nGpuLayers: run.nGpuLayers ?? 0,
+      ...(run.devices ? {devices: run.devices} : {}),
+      // Unset load settings (undefined) keep the adapter defaults.
+      useMmap: run.useMmap, useMlock: run.useMlock, noExtraBufts: run.noExtraBufts, flashAttnType: run.flashAttnType});
+  }
+  if (run.engine === 'genie-x') {
+    return new GenieXAdapter({modelPath, backend: run.backend === 'npu' ? 'npu' : 'cpu', modelLabel: run.model,
+      quantLabel: run.quant, nThreads: run.nThreads, nCtx: run.nCtx});
+  }
+  return new LiteRtAdapter({modelPath, backend: run.backend, modelLabel: run.model, quantLabel: run.quant,
+    nThreads: run.nThreads});
+}
+
+/**
+ * accelerator-v2 configuration (schemaVersion 2): llama.cpp and LiteRT-LM CPU/GPU/NPU, ExecuTorch CPU,
+ * GENIE-X CPU/NPU.
+ */
 async function runAccelerators(raw: unknown, root: string, directory: string, log: (message: string) => void,
   deviceInfo: {model: string; androidRelease: string}, build: BuildIdentity,
   configurationSource: ConfigurationSource) {
@@ -193,21 +224,16 @@ async function runAccelerators(raw: unknown, root: string, directory: string, lo
   const modelPath = (run: AcceleratorRun) => `${root}/${run.modelFile}`;
   await runAcceleratorConfiguration(config, runs, (_run, position) => ({method: ORDER_METHOD, seed,
     seedSource: config.orderSeed === undefined ? 'generated' : 'configured', order, position}), {
-    artifact: async run => ({sha256: await FS.hash(modelPath(run), 'sha256'), sizeBytes: (await FS.stat(modelPath(run))).size}),
+    // A GENIE-X QAIRT bundle is a directory: its artifact is the bundle digest (bundle.ts).
+    artifact: async run => run.engine === 'genie-x' && run.backend === 'npu' ?
+      bundleArtifact(FS, modelPath(run), `${FS.CachesDirectoryPath}/xebench-bundle-listing.txt`) :
+      {sha256: await FS.hash(modelPath(run), 'sha256'), sizeBytes: (await FS.stat(modelPath(run))).size},
     tokenizer: async run => {
       const path = `${root}/${run.tokenizerFile}`;
       return {sha256: await FS.hash(path, 'sha256'), sizeBytes: (await FS.stat(path)).size};
     },
-    adapter: run => run.engine === 'executorch' ?
-      executorchAdapter({modelPath: modelPath(run), tokenizerPath: `${root}/${run.tokenizerFile}`,
-        modelLabel: run.model, quantLabel: run.quant, promptPrefix: executorchPromptPrefix(config.chatTemplate)}) : run.engine === 'llama.cpp' ?
-      new LlamaRnAdapter({modelPath: modelPath(run), modelLabel: run.model, quantLabel: run.quant,
-        nThreads: run.nThreads!, nCtx: run.nCtx!, nGpuLayers: run.nGpuLayers ?? 0,
-        ...(run.devices ? {devices: run.devices} : {}),
-        // Unset load settings (undefined) keep the adapter defaults.
-        useMmap: run.useMmap, useMlock: run.useMlock, noExtraBufts: run.noExtraBufts, flashAttnType: run.flashAttnType}) :
-      new LiteRtAdapter({modelPath: modelPath(run), backend: run.backend, modelLabel: run.model,
-        quantLabel: run.quant, nThreads: run.nThreads}),
+    adapter: run => acceleratorAdapter(run, modelPath(run),
+      {tokenizerPath: `${root}/${run.tokenizerFile}`, chatTemplate: config.chatTemplate}),
     identity: () => ({runId: `${Date.now()}-${sequence++}-${Math.random().toString(36).slice(2)}`,
       timestampIso: new Date().toISOString(), artifact: null, deviceInfo, build, configurationSource}),
     persister: (run, identity) => persister(directory, identity.runId, run.id, config.nColdRuns, log) as

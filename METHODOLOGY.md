@@ -169,7 +169,11 @@ each load; the dispatch library and HTP backend loaded earlier in the same proce
 library opened on the compute DSP. The capture keeps only those
 log lines of the app's process, the evidence bundle carries them, and the publication policy
 recomputes the verdict from the bundle ([rule](docs/RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
-LiteRT-LM GPU rows have no such evidence and stay unverified.
+LiteRT-LM GPU rows have no such evidence and stay unverified. GENIE-X measured in the app reports no
+backend either; its log rule (the QNN runtime the app packages, the bundle's HTP graphs and the
+request's prefill, for each load) is written from geniex-android 0.8.0's sources and has not been
+checked against a device log, so it does not verify a row
+([rule](docs/RUN-CONDITIONS.md#genie-x-npu-backend-from-the-apps-log-geniex-npu-log-v1-pending-device-confirmation)).
 
 ### 7. A fixed decode length where the engine allows it
 LiteRT-LM board rows decode exactly 128 tokens per repetition, past the model's end of turn, so
@@ -178,6 +182,9 @@ ignored". The output check runs the same file on the same backend through LiteRT
 engine API; the measured repetitions use engines created with LiteRT-LM's benchmark parameters.
 llama.cpp rows decode up to 128 tokens and stop at the end of turn; in every published llama.cpp
 session the model ran to the limit. → `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
+GENIE-X measured in the app (geniex-android 0.8.0) has no option to decode past the end of turn: it
+decodes up to 128 tokens and stops there, and the record keeps the number of tokens it produced
+([notes](docs/experiments/geniex-inapp.md#decode-length-genie-x-080-cannot-decode-past-the-end-of-turn)).
 
 ## Cold-start is not the whole story (why the sustained phase exists)
 A single cold `pp512/tg128` number materially misrepresents sustained use:

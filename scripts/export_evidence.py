@@ -220,8 +220,10 @@ HEX64 = _text(r"[0-9a-f]{64}", "lowercase SHA-256")
 RUN_ID = _text(r"[A-Za-z0-9][A-Za-z0-9-]{0,99}", "run id")
 UUID = _text(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "UUID")
 UTC = _text(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|\+00:00)", "UTC timestamp")
-# GGUF (llama.cpp), .litertlm (LiteRT-LM, accelerator-v1) or .pte (ExecuTorch, accelerator-v2) basenames.
-MODEL_FILE = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,118}\.(gguf|litertlm|pte)", "model file basename")
+# GGUF (llama.cpp, GENIE-X CPU), .litertlm (LiteRT-LM, accelerator-v1) or .pte (ExecuTorch,
+# accelerator-v2) basenames, or the directory name of a GENIE-X QAIRT bundle (no extension).
+MODEL_FILE = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,118}\.(gguf|litertlm|pte)|[A-Za-z0-9][A-Za-z0-9_-]{0,118}",
+                   "model file basename")
 # ExecuTorch runs: the tokenizer.json staged next to the .pte.
 TOKENIZER_FILE = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,122}\.json", "tokenizer file basename")
 APK_NAME = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,123}\.apk", "APK file name")
@@ -687,12 +689,22 @@ class RejectionCodes:
         return value
 
 
-# The app's backend events (backend_log.py, rule litert-npu-log-v1), sanitized: each line must still
-# be an event of the kind it claims, so a kind cannot be relabelled.
-BACKEND_LOG = Obj({
-    "rule": Scalar(lambda v: v == backend_log.RULE, backend_log.RULE),
-    "events": Arr(Scalar(backend_log.valid_event, "backend log event"), max_items=backend_log.MAX_EVENTS),
-}, required=("rule", "events"))
+class BackendLog:
+    """The app's backend events (backend_log.py, rule litert-npu-log-v1 or geniex-npu-log-v1), sanitized:
+    each line must still be an event of the kind it claims under the log's rule, so a kind cannot be
+    relabelled and an event cannot move to another rule."""
+
+    def apply(self, value, path, ctx):
+        rule = value.get("rule") if isinstance(value, dict) else None
+        if not isinstance(rule, str) or rule not in backend_log.RULES:
+            raise Refused(_pointer(path, "rule"), "Approved field is not a backend log rule")
+        event = Scalar(lambda v: backend_log.valid_event(v, rule), "backend log event")
+        return Obj({"rule": Scalar(lambda v: v == rule, rule),
+                    "events": Arr(event, max_items=backend_log.MAX_EVENTS)},
+                   required=("rule", "events")).apply(value, path, ctx)
+
+
+BACKEND_LOG = BackendLog()
 CAPTURE_FILE = Obj({
     "schema": Scalar(lambda v: v == CAPTURE_SCHEMA, CAPTURE_SCHEMA), "schemaVersion": _number(1, 1, True),
     "captureId": UUID, "startedAt": UTC, "finishedAt": UTC,
@@ -909,9 +921,10 @@ def _load_backend_log(directory, entry):
     """The capture's backend events, sanitized (backend_log.events_from_lines); None without a backend log."""
     if entry is None:
         return None
-    if not isinstance(entry, dict) or entry.get("rule") != backend_log.RULE or entry.get("file") != "backend-log.txt" \
+    rule = entry.get("rule") if isinstance(entry, dict) else None
+    if not isinstance(rule, str) or rule not in backend_log.RULES or entry.get("file") != "backend-log.txt" \
             or not HEX64.check(entry.get("sha256")) or not COUNT.check(entry.get("lines")):
-        raise Refused("/backendLog", f"Expected a {backend_log.RULE} backend log entry")
+        raise Refused("/backendLog", f"Expected a backend log entry ({', '.join(backend_log.RULES)})")
     path = directory / "backend-log.txt"
     if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_RAW_BYTES:
         raise Refused("/backendLog", "Missing, irregular or oversized backend log")
@@ -922,7 +935,7 @@ def _load_backend_log(directory, entry):
         lines = data.decode("utf-8").splitlines()
         if len(lines) != entry["lines"]:
             raise ValueError("line count disagrees with the manifest")
-        return {"rule": backend_log.RULE, "events": backend_log.events_from_lines(lines)}
+        return {"rule": rule, "events": backend_log.events_from_lines(lines, rule)}
     except (UnicodeDecodeError, ValueError) as error:
         raise Refused("/backendLog", f"Invalid backend log ({type(error).__name__})")
 
