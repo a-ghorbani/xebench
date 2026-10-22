@@ -18,7 +18,8 @@ track is refused), refuses
 an archive member outside the bundle directory, a link, or a file the pins do not list, and writes
 geniex-bundle.json beside the bundle directory (outside it, so the digest covers the bundle only)
 with every hash. --push copies the directory to the app's external files directory under a
-temporary name, hashes every file on the phone (sha256sum), and only then renames it into place.
+temporary name, hashes every file on the phone (sha256sum), only then renames it into place, and
+opens the directory to the app (adb leaves it shell-owned, mode 2770, which the app cannot enter).
 Standard library only.
 """
 import argparse
@@ -38,6 +39,8 @@ APP = "com.xebenchapp"
 # Context.getExternalFilesDir(null): the app loads `${ExternalDirectoryPath}/<modelFile>/genie_config.json`.
 DEVICE_DIR = f"/sdcard/Android/data/{APP}/files"
 MANIFEST = "geniex-bundle.json"
+# The pushed bundle directory's mode: readable and enterable by the app (make_readable).
+READABLE_MODE = "2775"
 
 BUNDLE = {
     "id": "qwen3-1.7b-geniex-qairt-w4a16-sm8850-galaxy",
@@ -244,11 +247,24 @@ class Adb:
         return found
 
 
+def make_readable(adb, target):
+    """adb creates the directory as shell, mode 2770 (group ext_data_rw), which the app's uid cannot
+    enter, so creating the model fails. Open it to others (2775, as the files directory's own entries
+    are) and check the mode afterwards."""
+    adb.shell("chmod", READABLE_MODE, target)
+    result = adb.shell("stat", "-c", "%a", target, check=False)
+    mode = result.stdout.strip()
+    if result.returncode != 0 or not mode.isdigit() or int(mode, 8) & 0o005 != 0o005:
+        raise StageError(f"{target} is mode {mode or 'unknown'} on {adb.serial}; the app cannot read it")
+    return mode
+
+
 def push(directory, adb, bundle=BUNDLE, out=print):
     expected = {name: digest for name, (_, digest) in bundle["files"].items()}
     target = f"{DEVICE_DIR}/{bundle['directory']}"
     if adb.hashes(target) == expected:
-        out(f"{target} already present and verified on {adb.serial}; not pushing")
+        mode = make_readable(adb, target)
+        out(f"{target} already present and verified on {adb.serial} (mode {mode}); not pushing")
         return target
     partial = f"{target}.partial"
     adb.shell("rm", "-rf", partial)
@@ -267,7 +283,9 @@ def push(directory, adb, bundle=BUNDLE, out=print):
     if adb.hashes(target) != expected:
         adb.shell("rm", "-rf", target, check=False)
         raise StageError(f"device-side hashes of {target} do not match after the rename; removed it")
-    out(f"staged {target} on {adb.serial}: every file matches its pin (bundle digest {bundle['bundleSha256']})")
+    mode = make_readable(adb, target)
+    out(f"staged {target} on {adb.serial} (mode {mode}): every file matches its pin "
+        f"(bundle digest {bundle['bundleSha256']})")
     return target
 
 

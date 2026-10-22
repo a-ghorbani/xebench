@@ -277,8 +277,10 @@ GX_RUNTIME = ("GenieXSdk", f"HTP runtime path: {INSTALL} (auto-resolved from gen
 GX_ARCH = ("GenieXSdk", "HTP arch v81 detected.")
 GX_GRAPHS = ("GenieXSdk", "HTP graphs will execute on 1 core (default; set num_cores or add htp_backend_ext_config.json "
                           "`cores` entries to request more)")
-GX_PROMPT = ("GenieXSdk", "prompt: 532 tokens, first-turn BOS=false, ids start with [27, 91, 7265, 3575, 4326]")
-GX_WINDOW = (GX_RUNTIME, GX_ARCH, GX_GRAPHS, GX_PROMPT)
+# The QAIRT pipeline prepends the bundle's bos-token (151643) on the first turn.
+GX_PROMPT = ("GenieXSdk", "prompt: 520 tokens, first-turn BOS=true, ids start with [151643, 27, 91, 7265, 3575]")
+# In the order geniex-android 0.8.0 logs them on the POCO F8 Ultra: arch, runtime, graphs, prompt.
+GX_WINDOW = (GX_ARCH, GX_RUNTIME, GX_GRAPHS, GX_PROMPT)
 GX_OTHER = ("GenieXSdk", "prefill_speed=3801.000000 tok/s, decoding_speed=33.400000 tok/s")
 GX_NPU, GX_CPU = "geniex-qwen3-1.7b-w4a16-npu", "geniex-qwen3-1.7b-q40-cpu"
 
@@ -293,11 +295,24 @@ def gx_log(lines):
 
 def gx_gate_lines(time_ms=T - 1000):
     """The output gate's NPU load and requests: every window event and the skel, before the repetitions."""
-    return [line(time_ms + index, event) for index, event in enumerate((GX_RUNTIME, GX_ARCH, SKEL, GX_GRAPHS,
+    return [line(time_ms + index, event) for index, event in enumerate((GX_ARCH, GX_RUNTIME, SKEL, GX_GRAPHS,
                                                                         GX_PROMPT))]
 
 
 class GenieXPatternTests(unittest.TestCase):
+    def test_the_lines_the_poco_f8_ultra_logged_are_the_events_in_its_order(self):
+        """The device spike's lines, unprefixed, in the order the device logged them within one load."""
+        logged = [(T + 10, GX_ARCH), (T + 11, GX_RUNTIME), (T + 900, GX_GRAPHS), (T + 2000, GX_PROMPT)]
+        events = backend_log.events_from_lines([line(time_ms, event) for time_ms, event in logged], GX)
+        self.assertEqual([event["kind"] for event in events], ["htp-arch", "htp-runtime", "htp-graphs", "prompt"])
+        self.assertEqual(events[3]["line"], GX_PROMPT[1])
+        record = gx_record()
+        window = [line(attempt["conditions"]["before"]["timestampMs"] + offset, event)
+                  for attempt in record["coldRuns"] if attempt["status"] == "complete"
+                  for offset, event in ((0, GX_ARCH), (0, GX_RUNTIME), (0, GX_GRAPHS), (0, GX_PROMPT))]
+        result = backend_log.confirmation(record, gx_log([line(T - 1000, SKEL)] + window))
+        self.assertEqual(result["status"], "confirmed")
+
     def test_each_line_is_its_event_and_sanitizes_to_one(self):
         for kind, event in (("htp-runtime", GX_RUNTIME), ("htp-arch", GX_ARCH), ("htp-graphs", GX_GRAPHS),
                             ("prompt", GX_PROMPT), ("htp-skel-cdsp", SKEL)):

@@ -196,7 +196,11 @@ export class GenieXAdapter implements EngineAdapter {
     return result.text;
   }
 
-  /** cfg.prompt is sent verbatim as the raw prompt (cfg.text, a plain user message, is not used). */
+  /**
+   * cfg.prompt is sent verbatim as the raw prompt (cfg.text, a plain user message, is not used). The
+   * QAIRT pipeline prepends the bundle's genie_config bos-token on the first turn (151643 for Qwen3),
+   * which promptTokens counts.
+   */
   async benchOnce(cfg: BenchOnceConfig): Promise<SingleRunMetrics> {
     const result = await this.native.generate(cfg.prompt, cfg.maxDecodeTokens);
     return genieXMetrics(this.backend, result?.ttftMs, result?.profile, cfg.maxDecodeTokens);

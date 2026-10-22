@@ -28,11 +28,15 @@ kotlinx-coroutines 1.7.3); the bridge uses none of its coroutine wrappers.
 Every request:
 
 - **sends the pre-templated prompt as the raw prompt.** `Llm.generate(prompt)` applies no chat
-  template. The QAIRT pipeline tokenizes the string with the bundle's `tokenizer.json` and
-  prepends a BOS token only for Gemma 4 (`LLMPipeline::setBosTokenId` is called only there), so a
-  Qwen3 prompt gets none; it logs the count and the first ids (`prompt: N tokens, first-turn
-  BOS=…`). The llama_cpp plugin uses `common_tokenize(…, add_special=true, parse_special=true)`,
-  as llama.rn does.
+  template. The QAIRT pipeline tokenizes the string with the bundle's `tokenizer.json` and, on the
+  first turn, prepends the `bos-token` of the bundle's `genie_config.json` unless the prompt already
+  starts with it (the default text pipeline, `auto_llm::makePipeline` with `prepend_bos`). This
+  Qwen3 bundle's `bos-token` is 151643 (`<|endoftext|>`), so the NPU prompt is the text plus that
+  one token; the pipeline logs it (`prompt: N tokens, first-turn BOS=true, ids start with
+  [151643, …]`). The llama_cpp plugin uses `common_tokenize(…, add_special=true,
+  parse_special=true)`, as llama.rn does, and adds a BOS only when the GGUF asks for one, which
+  the Qwen3 GGUF does not. On the POCO F8 Ultra the std-pp512-v1 prompt is 520 tokens on the NPU
+  and 519 on the CPU; each run records its own count, and prefill speed uses it.
 - **is greedy.** Both plugins treat a temperature below zero as argmax; the bridge passes −1 with
   top-k 1. Temperature 0 would not be greedy: the QAIRT plugin reads 0 as "use the bundle's
   sampler", which is `temp 0.8, top-k 40, top-p 0.95, seed 42` in this bundle's `genie_config.json`.
@@ -116,8 +120,10 @@ configuration pins the bundle with `modelSha256` like a GGUF.
 refuses any member outside the bundle directory, any link and any file it does not pin, unpacks
 into `models/geniex/` (git-ignored), checks every file and the digest, and writes
 `geniex-bundle.json` beside it. `--check` re-verifies; `--push --serial …` copies it to
-`/sdcard/Android/data/com.xebenchapp/files/<bundle>.partial`, hashes every file on the phone and
-only then renames it into place. `check_reference_apk.py` refuses any bundle file in any flavor,
+`/sdcard/Android/data/com.xebenchapp/files/<bundle>.partial`, hashes every file on the phone,
+only then renames it into place, and sets the directory to mode 2775 and checks it: adb creates it
+owned by `shell` with mode 2770 (group `ext_data_rw`), which the app's uid cannot enter, so model
+creation fails. `check_reference_apk.py` refuses any bundle file in any flavor,
 by name and by content.
 
 ## Output gate: GENIE-X's llama_cpp plugin is the reference
@@ -128,8 +134,8 @@ The accelerator protocol compares a candidate with a CPU run of the **same engin
 - it is the file Qualcomm's own card lists as GENIE-X's llama.cpp asset for this model
   (`GENIEX_LLAMACPP`, q4_0), and the GGUF the llama.cpp rows of the refresh use;
 - it goes through the same SDK request path as the NPU run (raw prompt, greedy sampler, no stop
-  words, stop at the end of turn), so a difference between the two is the backend and the
-  quantization, not the harness;
+  words, stop at the end of turn), so a difference between the two is the backend, the
+  quantization and the BOS token the QAIRT pipeline adds, not the harness;
 - llama.rn CPU would also fit in the APK, but as another engine it needs a cross-engine reference
   rule the protocol does not have.
 

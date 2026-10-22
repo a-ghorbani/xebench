@@ -169,8 +169,9 @@ class UnpackTests(unittest.TestCase):
 class FakePhone:
     """adb over a dict of device files: push, sh -c 'cd … && sha256sum -- *', rm -rf, mkdir -p, mv."""
 
-    def __init__(self, corrupt=None):
-        self.files, self.corrupt, self.calls = {}, corrupt, []
+    def __init__(self, corrupt=None, chmod_works=True):
+        # adb creates directories as shell, mode 2770 (group ext_data_rw), as the POCO F8 Ultra does.
+        self.files, self.corrupt, self.calls, self.modes, self.chmod_works = {}, corrupt, [], {}, chmod_works
 
     def __call__(self, argv, capture_output, text):
         args = argv[3:]
@@ -190,10 +191,21 @@ class FakePhone:
             elif command.startswith("rm -rf "):
                 prefix = command.split()[-1] + "/"
                 self.files = {path: data for path, data in self.files.items() if not path.startswith(prefix)}
+                self.modes.pop(command.split()[-1], None)
+            elif command.startswith("mkdir -p "):
+                self.modes[command.split()[-1]] = "2770"
             elif command.startswith("mv "):
                 source, target = command.split()[1:3]
                 self.files = {(target + path[len(source):] if path.startswith(source + "/") else path): data
                               for path, data in self.files.items()}
+                self.modes[target] = self.modes.pop(source, "2770")
+            elif command.startswith("chmod "):
+                mode, target = command.split()[1:3]
+                if self.chmod_works and target in self.modes:
+                    self.modes[target] = mode
+            elif command.startswith("stat -c %a "):
+                target = command.split()[-1]
+                out, code = (self.modes[target] + "\n", 0) if target in self.modes else ("", 1)
         return subprocess.CompletedProcess(argv, code, out, "")
 
 
@@ -215,6 +227,26 @@ class PushTests(unittest.TestCase):
             pushes = sum(1 for call in phone.calls if call[0] == "push")
             stage.push(directory, stage.Adb("SERIAL1", runner=phone), bundle, out=lambda _: None)
             self.assertEqual(sum(1 for call in phone.calls if call[0] == "push"), pushes)
+
+    def test_the_pushed_directory_is_readable_by_the_app(self):
+        """adb leaves it shell-owned, mode 2770, which the app's uid cannot enter (the F8 spike's setup-failed)."""
+        with tempfile.TemporaryDirectory() as root:
+            directory, bundle = self.unpacked(root)
+            phone = FakePhone()
+            target = stage.push(directory, stage.Adb("SERIAL1", runner=phone), bundle, out=lambda _: None)
+            self.assertEqual(phone.modes[target], "2775")
+            self.assertIn(["shell", f"stat -c %a {target}"], phone.calls)
+            # A bundle already in place is still opened to the app.
+            phone.modes[target] = "2770"
+            stage.push(directory, stage.Adb("SERIAL1", runner=phone), bundle, out=lambda _: None)
+            self.assertEqual(phone.modes[target], "2775")
+
+    def test_a_directory_the_app_cannot_read_is_refused(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory, bundle = self.unpacked(root)
+            phone = FakePhone(chmod_works=False)
+            with self.assertRaisesRegex(stage.StageError, "mode 2770 .*the app cannot read it"):
+                stage.push(directory, stage.Adb("SERIAL1", runner=phone), bundle, out=lambda _: None)
 
     def test_a_corrupted_copy_is_never_renamed_into_place(self):
         with tempfile.TemporaryDirectory() as root:
