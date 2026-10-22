@@ -329,7 +329,8 @@ export function quantBitsFor(quant) {
   if (/^Q4_(0|1|K_[SM])( \(QAT\))?$/.test(quant)) return 4;
   if (/^Q8(_0)?$/.test(quant)) return 8;
   if (/^(BF16|F16)$/.test(quant)) return 16;
-  if (/^(int4|W4A16|SpinQuant 4-bit|4-bit groupwise|4-bit groupwise \+ 4-bit embedding|4-bit QAT|4-bit QAT \+ LoRA)$/.test(quant)) return 4;
+  if (/^(int4|W4A16|SpinQuant 4-bit|4-bit groupwise|4-bit groupwise \+ 4-bit embedding|4-bit QAT|4-bit QAT \+ LoRA|4-bit weights, 8-bit activations)$/.test(quant)) return 4;
+  // mixed 2/4/8-bit and mixed 4/16-bit name no single weight width.
   return null;
 }
 

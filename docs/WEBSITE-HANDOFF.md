@@ -287,7 +287,7 @@ merges.
 | Field | Type | Meaning | Invariants |
 | --- | --- | --- | --- |
 | `dateBasis` | `"measured"` \| `"first-published"` | What `sourceDate` is on a row without versions: the month the row was measured, or (only when that cannot be established) the month it was first published | Legacy measured rows only, with `sourceDate`; in `schemaVersion` "1.3" files only. Not displayed. |
-| `quantBits` | `4` \| `8` \| `16` | The weight bit width the `quant` scheme names | Any row, only where the width is certain (`scripts/lib/publication.mjs` `quantBitsFor`: Q4_0, Q4_K_M, int4, W4A16, SpinQuant 4-bit, 4-bit groupwise, 4-bit QAT (+ LoRA) are 4; Q8, Q8_0 are 8; BF16 is 16); must equal that mapping; in "1.3" files only. Displayed as "4-bit" with the scheme as secondary text. |
+| `quantBits` | `4` \| `8` \| `16` | The weight bit width the `quant` scheme names | Any row, only where the width is certain (`scripts/lib/publication.mjs` `quantBitsFor`: Q4_0, Q4_K_M, int4, W4A16, SpinQuant 4-bit, 4-bit groupwise, 4-bit QAT (+ LoRA) and `4-bit weights, 8-bit activations` are 4; Q8, Q8_0 are 8; BF16 is 16; the mixed labels `mixed 2/4/8-bit` and `mixed 4/16-bit` have none); must equal that mapping; in "1.3" files only. Displayed as "4-bit" with the scheme as secondary text. |
 
 Consumer fixtures are in [`tests/fixtures/contract-1.3/`](../tests/fixtures/contract-1.3/),
 listed in `index.json` with `producerMustNotEmit` and `consumerExpectation` as for 1.2. The
