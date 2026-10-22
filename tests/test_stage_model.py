@@ -417,5 +417,73 @@ class BoardConfigurationPinTests(unittest.TestCase):
             self.assertIn(value, text)
 
 
+class ModelRefreshPinTests(unittest.TestCase):
+    """Gemma 4 E2B and Qwen3 1.7B (#43): every engine's file is pinned once, with its repository,
+    revision, size and SHA-256, and documented in MODELS.md. GGUF files are stageable."""
+
+    # file -> (manifest, repo, revision, size, sha256)
+    PINS = {
+        'gemma-4-E2B_q4_0-it.gguf': ('reference', 'google/gemma-4-E2B-it-qat-q4_0-gguf',
+                                     '675cff42a74c774d6cb76f76d8eacb49b48c9b93', 3349516256,
+                                     'fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634'),
+        'Qwen3-1.7B-Q4_0.gguf': ('reference', 'unsloth/Qwen3-1.7B-GGUF', 'd7f544eead698dbd1f15126ef60b45a1e1933222',
+                                 1056782912, 'c876f159707a4e4f70e045106c69db15bfc935a4981706fd4f65c6e7ea1e81c5'),
+        'gemma-4-E2B-it.litertlm': ('experimental', 'litert-community/gemma-4-E2B-it-litert-lm',
+                                    '41c5569623a7c189d6eec3e5225260c58cedbce7', 2588147712,
+                                    '181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c'),
+        'Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm': ('experimental', 'litert-community/Qwen3-1.7B',
+                                                     '79bf0667b32ae025b972e5fe555fe72ca6e8816c', 977184032,
+                                                     '2a72330b504a6596d53a2c00923c57173b10f1b83e6a541213ffec08d1fc5de8'),
+        'gemma_4_e2b_xnnpack_8da4w.pte': ('experimental', 'software-mansion/react-native-executorch-gemma-4',
+                                          '27ecbb4d21feaaeb0e1908bd06aceaf6eddb313a', 3215277312,
+                                          'd11e8587cd20015e01aed66c0880e3a2cefd464073a2f80b74a666246ab71cc7'),
+        'gemma_4_e2b_tokenizer.json': ('experimental', 'software-mansion/react-native-executorch-gemma-4',
+                                       '27ecbb4d21feaaeb0e1908bd06aceaf6eddb313a', 32169868,
+                                       '23f2c12a98a259a87ba6b24df2750aa238f8f688935a9a89e1ce1e86ef7f095a'),
+        'gemma_4_e2b_tokenizer_config.json': ('experimental', 'software-mansion/react-native-executorch-gemma-4',
+                                              '27ecbb4d21feaaeb0e1908bd06aceaf6eddb313a', 22312,
+                                              '728f10e49dc4571c7679124165390d546d8930be3b9042a7a4e2fcefc45650b2'),
+        'qwen_3_1_7b_xnnpack_8da4w.pte': ('experimental', 'software-mansion/react-native-executorch-qwen-3',
+                                          '764c9b7f1c964ef43f3591d2ec513cad4d19c12f', 1307933568,
+                                          'c2ae1a4ec67602badb0cfd4156177d7c4a619abd73b398a8e6653b041e1a314b'),
+        'qwen_3_tokenizer.json': ('experimental', 'software-mansion/react-native-executorch-qwen-3',
+                                  '764c9b7f1c964ef43f3591d2ec513cad4d19c12f', 11422654,
+                                  'aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4'),
+        'qwen_3_tokenizer_config.json': ('experimental', 'software-mansion/react-native-executorch-qwen-3',
+                                         '764c9b7f1c964ef43f3591d2ec513cad4d19c12f', 8426,
+                                         '40baaad5ff41e28668add0a761c0e004fc7d79ff4b3c37e83762363f1cabae03'),
+        'qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy.zip': (
+            'experimental', 'qualcomm/Qwen3-1.7B', '72c571233b88645979859e0f0e91004494d32559', 1538593271,
+            'ab021d189e387ba417e9156fb8d5fcee7a98cf1befd899a8e6f2a9b65dbf9b2b'),
+    }
+
+    def test_each_file_is_pinned_once_and_documented(self):
+        entries = {}
+        for name in ('reference', 'experimental'):
+            data = json.loads((ROOT / f'configs/models/{name}-models.json').read_text())
+            for entry in data['models'] + data.get('pinnedArtifacts', []):
+                entries.setdefault(entry['file'], []).append((name, entry))
+        models_md = (ROOT / 'MODELS.md').read_text()
+        for file, (manifest, repo, revision, size, sha256) in self.PINS.items():
+            with self.subTest(file):
+                [(name, entry)] = entries[file]
+                self.assertEqual((name, entry['repo'], entry['revision'], entry['size'], entry['sha256']),
+                                 (manifest, repo, revision, size, sha256))
+                self.assertFalse(entry['gated'])
+                self.assertTrue(entry['sha256Source'])
+                for value in (file, revision, str(size), sha256):
+                    self.assertIn(value, models_md)
+                if 'sourceFile' in entry:
+                    self.assertEqual(Path(entry['sourceFile']).suffix, Path(file).suffix)
+
+    def test_the_gguf_files_stage_by_name(self):
+        models = stage_model.load_manifest(stage_model.MANIFEST)
+        for file in ('gemma-4-E2B_q4_0-it.gguf', 'Qwen3-1.7B-Q4_0.gguf'):
+            model = stage_model.select(models, file=f'models/{file}')
+            self.assertEqual(model['file'], file)
+            self.assertEqual(stage_model.download_url(model),
+                             f'https://huggingface.co/{model["repo"]}/resolve/{model["revision"]}/{file}')
+
+
 if __name__ == '__main__':
     unittest.main()
