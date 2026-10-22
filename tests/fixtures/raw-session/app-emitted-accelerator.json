@@ -16411,12 +16411,12 @@
             "libraries": {
               "before": [
                 "libexecutorch.so",
-                "libreact-native-executorch.so",
+                "libRnExecutorch.so",
                 "libxnnpack_executorch_backend.so"
               ],
               "after": [
                 "libexecutorch.so",
-                "libreact-native-executorch.so",
+                "libRnExecutorch.so",
                 "libxnnpack_executorch_backend.so"
               ]
             },
@@ -16628,12 +16628,12 @@
             "libraries": {
               "before": [
                 "libexecutorch.so",
-                "libreact-native-executorch.so",
+                "libRnExecutorch.so",
                 "libxnnpack_executorch_backend.so"
               ],
               "after": [
                 "libexecutorch.so",
-                "libreact-native-executorch.so",
+                "libRnExecutorch.so",
                 "libxnnpack_executorch_backend.so"
               ]
             },
@@ -16779,12 +16779,12 @@
         "libraries": {
           "before": [
             "libexecutorch.so",
-            "libreact-native-executorch.so",
+            "libRnExecutorch.so",
             "libxnnpack_executorch_backend.so"
           ],
           "after": [
             "libexecutorch.so",
-            "libreact-native-executorch.so",
+            "libRnExecutorch.so",
             "libxnnpack_executorch_backend.so"
           ]
         },
@@ -17668,12 +17668,12 @@
             "libraries": {
               "before": [
                 "libexecutorch.so",
-                "libreact-native-executorch.so",
+                "libRnExecutorch.so",
                 "libxnnpack_executorch_backend.so"
               ],
               "after": [
                 "libexecutorch.so",
-                "libreact-native-executorch.so",
+                "libRnExecutorch.so",
                 "libxnnpack_executorch_backend.so"
               ]
             },
@@ -17885,12 +17885,12 @@
             "libraries": {
               "before": [
                 "libexecutorch.so",
-                "libreact-native-executorch.so",
+                "libRnExecutorch.so",
                 "libxnnpack_executorch_backend.so"
               ],
               "after": [
                 "libexecutorch.so",
-                "libreact-native-executorch.so",
+                "libRnExecutorch.so",
                 "libxnnpack_executorch_backend.so"
               ]
             },
@@ -18038,12 +18038,12 @@
         "libraries": {
           "before": [
             "libexecutorch.so",
-            "libreact-native-executorch.so",
+            "libRnExecutorch.so",
             "libxnnpack_executorch_backend.so"
           ],
           "after": [
             "libexecutorch.so",
-            "libreact-native-executorch.so",
+            "libRnExecutorch.so",
             "libxnnpack_executorch_backend.so"
           ]
         },

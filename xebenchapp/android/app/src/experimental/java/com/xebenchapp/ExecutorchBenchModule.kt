@@ -40,7 +40,7 @@ class ExecutorchBenchModule(context: ReactApplicationContext) : ReactContextBase
   companion object {
     private val MARKERS = listOf(
       Regex("libexecutorch\\.so"),
-      Regex("libreact-native-executorch\\.so"),
+      Regex("libRnExecutorch\\.so"),
       Regex("lib[A-Za-z0-9]+_executorch_backend\\.so"),
       Regex("libQnn[A-Za-z0-9]*\\.so"),
     )

@@ -53,7 +53,7 @@ beforeEach(() => {
   jest.resetModules();
   mockNative.ExecutorchBench = {getConstants: () => ({executorchVersion: '1.4.1'}), libraries: mockLibraries};
   mockLibraries.mockResolvedValue(['libxnnpack_executorch_backend.so', 'libexecutorch.so',
-    'libreact-native-executorch.so']);
+    'libRnExecutorch.so']);
   mockRegistered.mockReturnValue(['XnnpackBackend']);
   mockGenerate.mockReset().mockImplementation(runner());
   mockDispose.mockReset();
@@ -126,8 +126,8 @@ test('backend evidence: an XNNPACK-only program on a registered XNNPACK backend 
   const engine = adapter();
   await engine.load();
   expect(engine.backendEvidence()).toEqual({status: 'confirmed', source: 'program-delegates', report: null,
-    libraries: {before: ['libexecutorch.so', 'libreact-native-executorch.so', 'libxnnpack_executorch_backend.so'],
-      after: ['libexecutorch.so', 'libreact-native-executorch.so', 'libxnnpack_executorch_backend.so']},
+    libraries: {before: ['libRnExecutorch.so', 'libexecutorch.so', 'libxnnpack_executorch_backend.so'],
+      after: ['libRnExecutorch.so', 'libexecutorch.so', 'libxnnpack_executorch_backend.so']},
     program: {methods: [{name: 'forward', delegates: ['XnnpackBackend']}, {name: 'get_max_seq_len', delegates: []}],
       registeredBackends: ['XnnpackBackend']}});
   const program = (delegates: string[], registered: string[] | null) =>

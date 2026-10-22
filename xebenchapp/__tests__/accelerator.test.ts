@@ -131,8 +131,8 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
     },
     backendEvidence: () => {
       if (run.engine === 'executorch') {
-        const libraries = {before: ['libexecutorch.so', 'libreact-native-executorch.so',
-          'libxnnpack_executorch_backend.so'], after: ['libexecutorch.so', 'libreact-native-executorch.so',
+        const libraries = {before: ['libexecutorch.so', 'libRnExecutorch.so',
+          'libxnnpack_executorch_backend.so'], after: ['libexecutorch.so', 'libRnExecutorch.so',
           'libxnnpack_executorch_backend.so']};
         const program = {methods: [{name: 'forward', delegates: options.delegates ?? ['XnnpackBackend']},
           {name: 'get_max_seq_len', delegates: []}], registeredBackends: ['XnnpackBackend']};
