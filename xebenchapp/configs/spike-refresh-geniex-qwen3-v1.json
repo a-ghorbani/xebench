@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "id": "spike-refresh-geniex-qwen3-v1",
+  "nColdRuns": 1,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "qwen3",
+  "measuredPrompt": "std-pp512-v1",
+  "runs": [
+    {
+      "id": "qwen3-1.7b-q40-geniex-cpu",
+      "engine": "genie-x",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Qwen3 1.7B",
+      "modelFile": "Qwen3-1.7B-Q4_0.gguf",
+      "quant": "Q4_0",
+      "nThreads": 4,
+      "nCtx": 4096,
+      "referenceRunId": null,
+      "modelSha256": "c876f159707a4e4f70e045106c69db15bfc935a4981706fd4f65c6e7ea1e81c5"
+    },
+    {
+      "id": "qwen3-1.7b-w4a16-geniex-npu",
+      "engine": "genie-x",
+      "backend": "npu",
+      "purpose": "measurement",
+      "model": "Qwen3 1.7B",
+      "modelFile": "qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy",
+      "quant": "W4A16",
+      "nThreads": null,
+      "nCtx": null,
+      "referenceRunId": "qwen3-1.7b-q40-geniex-cpu",
+      "modelSha256": "c41b7071b62e791b924254f1e8ed3245ee74825013c1723e3a62e8877b2ab5c2"
+    }
+  ]
+}
