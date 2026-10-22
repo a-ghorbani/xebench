@@ -255,7 +255,7 @@ def llamaRnHtpAssets = ["!.svn", "!.git", "!.ds_store", "!*.scc", ".*", "<dir>_*
 // react-native-executorch: its JSI library, the ExecuTorch runtime and one library per
 // backend (only XNNPACK is downloaded: scripts/check-executorch-libs.js), and
 // react-native-worklets, whose runtimes react-native-executorch runs inference on.
-def executorchNative = ["**/libexecutorch.so", "**/libreact-native-executorch.so",
+def executorchNative = ["**/libexecutorch.so", "**/libRnExecutorch.so",
                         "**/lib*_executorch_backend.so", "**/libworklets.so"]
 // ExecuTorch backends other than XNNPACK never ship, even if an install provides one.
 def executorchOtherBackends = ["**/libvulkan_executorch_backend.so", "**/libqnn_executorch_backend.so"]

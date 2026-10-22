@@ -65,7 +65,7 @@ QAIRT_BUNDLE_SHA256 = {digest for _, digest in stage_geniex_bundle.BUNDLE['files
 BUNDLE_SIZES = {size for size, _ in stage_geniex_bundle.BUNDLE['files'].values()}
 # react-native-executorch: its JSI library, the ExecuTorch runtime, one library per
 # backend, and react-native-worklets, whose runtimes it runs inference on.
-EXECUTORCH = ['lib/*/libexecutorch.so', 'lib/*/libreact-native-executorch.so',
+EXECUTORCH = ['lib/*/libexecutorch.so', 'lib/*/libRnExecutorch.so',
               'lib/*/lib*_executorch_backend.so', 'lib/*/libworklets.so']
 # The one ExecuTorch backend experimental packages (CPU); any other backend library is unexpected.
 EXECUTORCH_BACKENDS = 'lib/*/lib*_executorch_backend.so'
@@ -91,7 +91,7 @@ FLAVORS = {
             # Google's Qualcomm dispatch (litert-npu-runtime-qualcomm, Maven).
             LIB + 'libLiteRtDispatch_Qualcomm.so',
             LIB + 'libexecutorch.so',
-            LIB + 'libreact-native-executorch.so',
+            LIB + 'libRnExecutorch.so',
             LIB + XNNPACK_BACKEND,
             LIB + 'libworklets.so',
         },
