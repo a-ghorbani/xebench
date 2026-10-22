@@ -49,9 +49,10 @@ react {
     //   and Windows. ONLY aarch64-Linux hosts need an override: RN's OS detection has
     //   no aarch64 hermesc folder, but the shipped x86-64 hermesc runs fine via
     //   emulation. (JS engine choice does not affect native benchmark numbers.)
+    //   Since React Native 0.83 hermesc ships in the hermes-compiler package.
     if (System.getProperty("os.name").toLowerCase().contains("linux")
             && System.getProperty("os.arch") == "aarch64") {
-        hermesCommand = "$rootDir/../node_modules/react-native/sdks/hermesc/linux64-bin/hermesc"
+        hermesCommand = "$rootDir/../node_modules/hermes-compiler/hermesc/linux64-bin/hermesc"
     }
     //
     //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
