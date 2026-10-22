@@ -21,27 +21,34 @@ SAMPLES = {
     'litert': 'lib/arm64-v8a/liblitertlm_jni.so',
     'genie': 'lib/arm64-v8a/libGenie.so',
     'executorch': 'lib/arm64-v8a/libexecutorch.so',
-    'executorch-helper': 'lib/arm64-v8a/libpthreadpool.so',
+    'executorch-jsi': 'lib/arm64-v8a/libreact-native-executorch.so',
+    'executorch-xnnpack': 'lib/arm64-v8a/libxnnpack_executorch_backend.so',
+    'executorch-vulkan': 'lib/arm64-v8a/libvulkan_executorch_backend.so',
+    'executorch-qnn': 'lib/arm64-v8a/libqnn_executorch_backend.so',
+    'worklets': 'lib/arm64-v8a/libworklets.so',
     'ggml-htp': 'lib/arm64-v8a/libggml-htp-v81.so',
     'ggml-opencl': 'lib/arm64-v8a/libggml-opencl.so',
 }
+EXECUTORCH_SAMPLES = {'executorch', 'executorch-jsi', 'executorch-xnnpack', 'executorch-vulkan', 'executorch-qnn',
+                      'worklets'}
 FORBIDDEN = {
     'reference': set(SAMPLES),
-    'experimental': {'genie'},
+    # ExecuTorch ships with its XNNPACK (CPU) backend only.
+    'experimental': {'genie', 'executorch-vulkan', 'executorch-qnn'},
     # geniex-android bundles its own QNN and ggml Hexagon/OpenCL libraries.
-    'geniex': {'llama-hexagon', 'llama-opencl', 'htp-asset', 'litert', 'executorch',
-               'executorch-helper'},
+    'geniex': {'llama-hexagon', 'llama-opencl', 'htp-asset', 'litert'} | EXECUTORCH_SAMPLES,
 }
 DEX_SAMPLES = {
     'litert': b'Lcom/google/ai/edge/litertlm/Engine;',
     'litert-bridge': b'Lcom/xebenchapp/LiteRtBenchModule;',
     'geniex': b'Lcom/geniex/sdk/GenieXSdk;',
     'geniex-bridge': b'Lcom/xebenchapp/GenieXBenchModule;',
+    'executorch-bridge': b'Lcom/xebenchapp/ExecutorchBenchModule;',
 }
 FORBIDDEN_DEX = {
     'reference': set(DEX_SAMPLES),
     'experimental': {'geniex', 'geniex-bridge'},
-    'geniex': {'litert', 'litert-bridge'},
+    'geniex': {'litert', 'litert-bridge', 'executorch-bridge'},
 }
 
 

@@ -4,8 +4,9 @@
 The default ``reference`` flavor must contain the JS bundle and every llama.rn
 CPU variant, and no native library outside React Native core and llama.rn CPU:
 in particular nothing from the accelerator or vendor runtimes (Hexagon/HTP,
-OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X, ExecuTorch). Packaging is only one
-check: device validation is still required.
+OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X, ExecuTorch and the react-native-worklets
+runtime it needs). ``experimental`` carries ExecuTorch with its XNNPACK backend
+only. Packaging is only one check: device validation is still required.
 """
 import argparse
 from fnmatch import fnmatchcase
@@ -41,12 +42,18 @@ GGML_ACCELERATORS = ['*libggml-htp-*.so', '*libggml-hexagon*.so', '*libggml-open
 VENDOR_QNN = ['*libQnn*.so', '*libQairt*.so', '*libSNPE*.so', '*libcdsprpc.so']
 LITERT = ['*liblitertlm*.so', '*libLiteRt*.so']
 GENIEX = ['*libGenie*.so', '*libgeniex*.so']
+# react-native-executorch: its JSI library, the ExecuTorch runtime, one library per
+# backend, and react-native-worklets, whose runtimes it runs inference on.
 EXECUTORCH = ['lib/*/libexecutorch.so', 'lib/*/libreact-native-executorch.so',
-              'lib/*/libcpuinfo.so', 'lib/*/libpthreadpool.so']
+              'lib/*/lib*_executorch_backend.so', 'lib/*/libworklets.so']
+# The one ExecuTorch backend experimental packages (CPU); any other backend library is unexpected.
+EXECUTORCH_BACKENDS = 'lib/*/lib*_executorch_backend.so'
+XNNPACK_BACKEND = 'libxnnpack_executorch_backend.so'
 
 # Dex type descriptors of engine bridges and SDKs that a flavor must not contain.
 DEX_LITERT = [b'Lcom/google/ai/edge/litertlm/', b'Lcom/google/ai/edge/litert/', b'Lcom/xebenchapp/LiteRtBench']
 DEX_GENIEX = [b'Lcom/geniex/sdk/', b'Lcom/xebenchapp/GenieXBench']
+DEX_EXECUTORCH = [b'Lcom/xebenchapp/ExecutorchBench']
 
 FLAVORS = {
     'reference': {
@@ -54,7 +61,7 @@ FLAVORS = {
         'forbidden': (LLAMA_ACCELERATORS + GGML_ACCELERATORS + VENDOR_QNN + LITERT
                       + GENIEX + EXECUTORCH),
         # Qualcomm Java SDKs (QNN/QAIRT/GENIE-X packaging) have no place in reference.
-        'forbidden_dex': DEX_LITERT + DEX_GENIEX + [b'Lcom/qualcomm/'],
+        'forbidden_dex': DEX_LITERT + DEX_GENIEX + DEX_EXECUTORCH + [b'Lcom/qualcomm/'],
         'allowed_libs': REFERENCE_LIBS,
     },
     'experimental': {
@@ -64,15 +71,18 @@ FLAVORS = {
             LIB + 'libLiteRtDispatch_Qualcomm.so',
             LIB + 'libexecutorch.so',
             LIB + 'libreact-native-executorch.so',
+            LIB + XNNPACK_BACKEND,
+            LIB + 'libworklets.so',
         },
         'forbidden': GENIEX,
+        'only_executorch_backend': XNNPACK_BACKEND,
         'forbidden_dex': DEX_GENIEX,
-        'required_dex': [b'Lcom/xebenchapp/LiteRtBench'],
+        'required_dex': [b'Lcom/xebenchapp/LiteRtBench', b'Lcom/xebenchapp/ExecutorchBench'],
     },
     'geniex': {
         'required': COMMON_REQUIRED | {LIB + 'libgeniex.so'},
         'forbidden': LLAMA_ACCELERATORS + LITERT + EXECUTORCH,
-        'forbidden_dex': DEX_LITERT,
+        'forbidden_dex': DEX_LITERT + DEX_EXECUTORCH,
         'required_dex': [b'Lcom/geniex/sdk/', b'Lcom/xebenchapp/GenieXBench'],
     },
 }
@@ -123,6 +133,10 @@ def check_apk(path, flavor='reference', require_qnn=False, require_hexagon=False
     names = {entry.filename for entry in entries}
     unexpected = sorted(name for name in names
                         if any(fnmatchcase(name, pattern) for pattern in spec['forbidden']))
+    if 'only_executorch_backend' in spec:
+        unexpected += sorted(name for name in names - set(unexpected)
+                             if fnmatchcase(name, EXECUTORCH_BACKENDS)
+                             and name.rsplit('/', 1)[-1] != spec['only_executorch_backend'])
     if 'allowed_libs' in spec:
         unexpected += sorted(
             name for name in names - set(unexpected)

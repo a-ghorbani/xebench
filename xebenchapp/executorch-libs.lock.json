@@ -1,0 +1,25 @@
+{
+  "package": {
+    "name": "react-native-executorch",
+    "version": "0.10.7",
+    "nativeLibsVersion": "0.10.6"
+  },
+  "executorch": "1.4.1",
+  "buildConfig": {
+    "enableOpencv": false,
+    "enablePhonemis": false,
+    "enableXnnpack": true,
+    "enableCoreml": false,
+    "enableMlx": false,
+    "enableVulkan": false
+  },
+  "files": {
+    "third-party/android/libs/executorch/arm64-v8a/libexecutorch.so": "7f681ddaa9f85346ed419ca36ed92c07c1f5f9171b4cc363874ab2b66393b442",
+    "third-party/android/libs/executorch/arm64-v8a/libxnnpack_executorch_backend.so": "f92810f20729bca9da4c3055798081385ab405ae778a518cf35f5f5e598b4dbd",
+    "third-party/android/libs/executorch.jar": "54cde9192ef34737c94e6073e6acae29cabd0ef1491258d83d19ec58f339e620"
+  },
+  "headers": {
+    "files": 3967,
+    "sha256": "7216b5ec93d9501fc2baf330d9c48659628c877f314a803f961efbb555b5cd0c"
+  }
+}
