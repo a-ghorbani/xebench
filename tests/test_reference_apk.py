@@ -55,15 +55,16 @@ FORBIDDEN_DEX = {
 }
 
 
-def write_apk(path, flavor, extra=(), dex=b'', drop=None, empty=None):
+def write_apk(path, flavor, extra=(), dex=b'', drop=None, empty=None, content=None):
     spec = apk_check.FLAVORS[flavor]
+    content = content or {}
     with ZipFile(path, 'w') as apk:
         for name in spec['required']:
             if name == drop:
                 continue
-            apk.writestr(name, b'' if name == empty else b'fixture')
+            apk.writestr(name, b'' if name == empty else content.get(name, b'fixture'))
         for name in set(extra) - spec['required']:
-            apk.writestr(name, b'fixture')
+            apk.writestr(name, content.get(name, b'fixture'))
         required_dex = apk_check.COMMON_REQUIRED_DEX + spec.get('required_dex', [])
         apk.writestr('classes.dex', b'dex\n' + b''.join(required_dex) + dex)
 
@@ -183,7 +184,13 @@ class ReferenceApkTests(unittest.TestCase):
                     write_apk(path, 'experimental', extra=sorted(apk_check.HEXAGON_LIBS - {dropped}))
                     with self.assertRaisesRegex(ValueError, 'missing .*' + re.escape(dropped)):
                         apk_check.check_apk(path, 'experimental', require_hexagon=True)
+            # The variant and the DSP libraries without the Hexagon backend inside: built without the SDK.
             write_apk(path, 'experimental', extra=sorted(apk_check.HEXAGON_LIBS | apk_check.QNN_NPU_LIBS))
+            with self.assertRaisesRegex(ValueError, 'has no Hexagon backend'):
+                apk_check.check_apk(path, 'experimental', require_hexagon=True)
+            apk_check.check_apk(path, 'experimental', require_qnn=True)  # not asked: passes
+            write_apk(path, 'experimental', extra=sorted(apk_check.HEXAGON_LIBS | apk_check.QNN_NPU_LIBS),
+                      content={apk_check.HEXAGON_VARIANT: b'\x7fELF...' + apk_check.HEXAGON_MARKER + b'...'})
             apk_check.check_apk(path, 'experimental', require_qnn=True, require_hexagon=True)
             with self.assertRaisesRegex(ValueError, 'only to the experimental'):
                 apk_check.check_apk(path, 'reference', require_hexagon=True)

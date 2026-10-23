@@ -477,7 +477,9 @@ class ModelRefreshPinTests(unittest.TestCase):
                     self.assertEqual(Path(entry['sourceFile']).suffix, Path(file).suffix)
                 if repo == 'software-mansion/react-native-executorch-gemma-4':
                     # The repository card's own values, not the upstream -it model's.
-                    self.assertEqual((entry['license'], entry['baseModel']), ('gemma', 'google/gemma-4-E2B'))
+                    self.assertEqual((entry['license'], entry['licenseUrl'], entry['baseModel']),
+                                     ('Gemma Terms of Use', 'https://ai.google.dev/gemma/terms', 'google/gemma-4-E2B'))
+                    self.assertIn('license: gemma', entry['licenseSource'])
                     self.assertIn('chat template', entry['note'])
 
     def test_the_gguf_files_stage_by_name(self):
