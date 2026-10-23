@@ -889,6 +889,7 @@ class BoardConfigurationTests(Workspace):
         cases = {
             "unknown configuration": ["cpu-reference-unknown"],
             "experiment configuration": ["experiment-charging-ab-v1"],
+            "spike configuration": ["spike-refresh-llamacpp-gemma3-v1"],
             "empty": [],
             "duplicate": ["cpu-reference-v2", "cpu-reference-v2"],
             "not an id": ["CPU Reference"],

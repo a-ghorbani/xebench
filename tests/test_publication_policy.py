@@ -50,6 +50,8 @@ def facts(**changes):
                   "buildType": "release"},
         "appIdentity": "matched",
         "device": {"model": "SM-S911B", "soc": "SM8550", "tableSoc": "SM8550"},
+        "decode": {"decodeMode": None, "protocolDecodeMode": None, "maxDecodeTokens": 128, "counts": [127, 127, 127],
+                   "budgetSlack": 1},
     }
     base.update(copy.deepcopy(changes))
     return base
@@ -84,6 +86,12 @@ def build(**changes):
 def artifact(**changes):
     def mutate(f):
         f["artifact"] = None if changes.get("none") else {**f["artifact"], **changes}
+    return mutate
+
+
+def decode(**changes):
+    def mutate(f):
+        f["decode"] = None if changes.get("none") else {**f["decode"], **changes}
     return mutate
 
 
@@ -170,6 +178,25 @@ DIMENSIONS = {
         ("unknown build type", build(buildType=None), "build", UNKNOWN),
         ("unavailable", build(status="unavailable"), "build", UNKNOWN),
         ("not recorded", build(none=True), "build", UNKNOWN),
+    ],
+    "decode": [
+        ("reached the budget (llama.cpp counts one less)", decode(), "decode", PASS),
+        ("one length short of the budget, the same in every repetition", decode(counts=[85, 85, 85]), "decode", PASS),
+        ("one repetition stopped short", decode(counts=[127, 16, 127]), "decode", UNKNOWN),
+        ("different short lengths", decode(counts=[79, 83, 85]), "decode", UNKNOWN),
+        ("fixed, every repetition at the budget",
+         decode(decodeMode="fixed", protocolDecodeMode="fixed", counts=[128, 128, 128], budgetSlack=0), "decode", PASS),
+        ("fixed, one repetition short",
+         decode(decodeMode="fixed", protocolDecodeMode="fixed", counts=[128, 127, 128], budgetSlack=0), "decode", FAIL),
+        ("fixed in the protocol only", decode(protocolDecodeMode="fixed", counts=[128, 128, 128]), "decode", FAIL),
+        ("fixed in the configuration only",
+         decode(decodeMode="fixed", counts=[128, 128, 128], budgetSlack=0), "decode", FAIL),
+        ("more than the budget", decode(counts=[129, 129, 129]), "decode", FAIL),
+        ("unknown mode", decode(decodeMode="sampled", protocolDecodeMode="sampled"), "decode", UNKNOWN),
+        ("a count missing", decode(counts=[127, None, 127]), "decode", UNKNOWN),
+        ("a count is not a number", decode(counts=[127, True, 127]), "decode", UNKNOWN),
+        ("no counts", decode(counts=[]), "decode", UNKNOWN),
+        ("no decode facts", decode(none=True), "decode", UNKNOWN),
     ],
     "app-identity": [
         ("matched", setter(appIdentity="matched"), "app-identity", PASS),
@@ -290,6 +317,7 @@ class PolicyTests(unittest.TestCase):
     def test_refusals(self):
         cases = {
             "experiment": (facts(experiment=["experiment-* configuration id"]), "experiment session"),
+            "spike": (accel(experiment=["spike-* configuration id"]), "spike-* configuration id"),
             "bug-repro": (accel(purpose="bug-repro"), "bug-repro session"),
             "no measured repetition": (facts(status="failed", measured=0, attempts=0, stopReason="setup-failed"),
                                        "no measured repetition"),
@@ -302,6 +330,37 @@ class PolicyTests(unittest.TestCase):
         # A refusal holds even when every check passes.
         self.assertFalse(policy.evaluate(accel(purpose="bug-repro"))["publishable"])
         self.assertEqual(policy.evaluate(accel(purpose="bug-repro"))["validation"], "verified")
+
+    def test_the_decode_check_states_the_count(self):
+        """A session that stops at the end of turn states its length; it never reads as the budget."""
+        cases = {
+            "llama.cpp at the budget": (decode(), "every repetition reached the 128-token budget"),
+            "llama.cpp stopped after 16 tokens":
+                (decode(counts=[16]), "every repetition decoded 16 of 128 tokens, stopped at the end of turn"),
+            "one of three stopped short": (decode(counts=[127, 16, 127]),
+                                           "repetitions decoded different lengths (127, 16, 127 of 128 tokens)"),
+            "GENIE-X one token short": (decode(counts=[127, 127, 127], budgetSlack=0),
+                                        "every repetition decoded 127 of 128 tokens, stopped at the end of turn"),
+            "fixed": (decode(decodeMode="fixed", protocolDecodeMode="fixed", counts=[128, 128, 128], budgetSlack=0),
+                      "fixed: every repetition decoded 128 tokens"),
+            "fixed but short": (decode(decodeMode="fixed", protocolDecodeMode="fixed", counts=[128, 16, 128]),
+                                "fixed, but repetitions decoded 128, 16, 128 tokens, not 128"),
+        }
+        for name, (mutate, detail) in cases.items():
+            with self.subTest(name):
+                value = facts()
+                mutate(value)
+                check = next(item for item in policy.evaluate(value)["checks"] if item["check"] == "decode")
+                self.assertEqual(check["detail"], detail)
+
+    def test_spike_and_experiment_markers_come_from_the_configuration_id(self):
+        record = {"configuration": {"id": "spike-refresh-llamacpp-gemma3-v1"}}
+        self.assertEqual(policy._experiment_markers(record), ["spike-* configuration id"])
+        record = {"configuration": {"id": "experiment-charging-ab-v1"}}
+        self.assertEqual(policy._experiment_markers(record), ["experiment-* configuration id"])
+        # Only the prefix counts.
+        for other in ("llamacpp-spike-v1", "f8-gemma3-accelerators-v1", "cpu-reference-v3"):
+            self.assertEqual(policy._experiment_markers({"configuration": {"id": other}}), [])
 
     def test_evaluate_is_pure(self):
         value = facts()

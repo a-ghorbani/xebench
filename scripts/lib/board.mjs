@@ -55,13 +55,16 @@ export const keyParts = (key) => {
   return parts.length === 7 && parts.every((part) => part !== '') && parts[6] === 'measured' ? parts : null;
 };
 
-/** The ids of the committed, non-experiment run configurations under xebenchapp/configs/. */
+/** Configuration id prefixes that never name a board set: experiments and device spikes. */
+export const NEVER_ON_BOARD_PREFIXES = ['experiment-', 'spike-'];
+
+/** The ids of the committed run configurations under xebenchapp/configs/ a set may name (no experiment or spike). */
 export function reviewedConfigurationIds(root) {
   const ids = new Set();
   for (const name of readdirSync(join(root, 'xebenchapp/configs')).sort()) {
     if (!name.endsWith('.json')) continue;
     const id = JSON.parse(readFileSync(join(root, 'xebenchapp/configs', name), 'utf8')).id;
-    if (typeof id === 'string' && !id.startsWith('experiment-')) ids.add(id);
+    if (typeof id === 'string' && !NEVER_ON_BOARD_PREFIXES.some((prefix) => id.startsWith(prefix))) ids.add(id);
   }
   return ids;
 }
@@ -116,7 +119,7 @@ function engineErrors(engine, entry, reviewedIds, errors) {
       if (typeof id !== 'string' || !CONFIGURATION_ID.test(id)) {
         errors.push(`${where}: ${JSON.stringify(id)} is not a configuration id`);
       } else if (!reviewedIds.has(id)) {
-        errors.push(`${where}: ${id} is not a committed, non-experiment configuration under xebenchapp/configs/`);
+        errors.push(`${where}: ${id} is not a committed configuration under xebenchapp/configs/ (experiment-* and spike-* never are)`);
       }
       if (!Array.isArray(backends) || !backends.length || backends.some((backend) => !BACKENDS.includes(backend)) ||
           new Set(backends).size !== backends.length) {

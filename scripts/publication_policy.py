@@ -38,7 +38,10 @@ CHARGING_POLICY = "charging-policy-v3"
 # Protocols whose repetitions carry run-condition evidence (run-conditions-v2).
 CONDITION_PROTOCOLS = ("cpu-reference-v2", "cpu-reference-v3") + raw_session.ACCELERATOR_PROTOCOLS
 CHECKS = ("complete", "conditions", "charging", "coverage", "artifact", "backend", "correctness", "comparison",
-          "build", "app-identity", "device")
+          "decode", "build", "app-identity", "device")
+# Configuration id prefixes whose sessions are never published: experiments and device spikes
+# (docs/experiments/). Their sessions are still decided, so lab notes can cite each check.
+NEVER_PUBLISHED_PREFIXES = {"experiment-": "experiment-* configuration id", "spike-": "spike-* configuration id"}
 ROOT = Path(__file__).resolve().parents[1]
 # A configured run's model identity; a reviewed run must agree on every one of these.
 RUN_IDENTITY = ("engine", "backend", "model", "quant", "modelFile", "modelSha256")
@@ -152,9 +155,20 @@ def _experiment_markers(record):
         markers.append("record-only-experiment charging readiness")
     if "experimentChargingReadiness" in config:
         markers.append("experimentChargingReadiness configuration")
-    if str(config.get("id", "")).startswith("experiment-"):
-        markers.append("experiment-* configuration id")
+    markers += [marker for prefix, marker in NEVER_PUBLISHED_PREFIXES.items()
+                if str(config.get("id", "")).startswith(prefix)]
     return markers
+
+
+def _decode(record, measured):
+    """The decode length the session measured: the configuration's decodeMode (None: stop at the
+    end of turn or at the budget), the protocol's, the budget and each measured repetition's count."""
+    protocol = record["protocol"]
+    return {"decodeMode": record["configuration"].get("decodeMode"), "protocolDecodeMode": protocol.get("decodeMode"),
+            "maxDecodeTokens": protocol.get("maxDecodeTokens"),
+            "counts": [attempt.get("decodeTokens") for attempt in measured],
+            # llama.cpp counts the tokens after the first, which the prompt evaluation samples.
+            "budgetSlack": 1 if record["engine"] == "llama.cpp" else 0}
 
 
 def _cpu_offload(record):
@@ -299,6 +313,7 @@ def session_facts(doc, capture, reference=None):
         "device": {"model": doc["device"].get("model"), "soc": doc["device"].get("soc"),
                    "tableSoc": device_soc(doc, reference)[0]},
         "configurationFile": configuration_file(record, reference),
+        "decode": _decode(record, measured),
     }
     if version in CONDITION_PROTOCOLS:
         repetitions = []
@@ -455,6 +470,42 @@ def _gate_checks(facts):
             _check("comparison", comparison, f"comparison {facts['comparison']}")]
 
 
+def _is_count(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _decode_check(facts):
+    """decodeMode fixed: every measured repetition decoded exactly maxDecodeTokens. Otherwise each
+    repetition stops at the end of turn or at the budget, and the check states the count: it passes
+    when every repetition reached the budget or all decoded the same count, and is unknown when the
+    counts differ, so a short repetition never hides in a median taken at the budget."""
+    decode = facts.get("decode")
+    if not isinstance(decode, dict):
+        return _check("decode", UNKNOWN, "no decode length recorded")
+    mode, budget, counts = decode.get("decodeMode"), decode.get("maxDecodeTokens"), decode.get("counts") or []
+    if decode.get("protocolDecodeMode") != mode:
+        return _check("decode", FAIL, "the protocol's decodeMode differs from the configuration's")
+    if not counts:
+        return _check("decode", UNKNOWN, "no measured repetition")
+    if not _is_count(budget) or not budget or not all(_is_count(count) for count in counts):
+        return _check("decode", UNKNOWN, "no decoded token count for every measured repetition")
+    listed = ", ".join(str(count) for count in counts)
+    if mode == "fixed":
+        if all(count == budget for count in counts):
+            return _check("decode", PASS, f"fixed: every repetition decoded {budget} tokens")
+        return _check("decode", FAIL, f"fixed, but repetitions decoded {listed} tokens, not {budget}")
+    if mode is not None:
+        return _check("decode", UNKNOWN, "unknown decodeMode")
+    if any(count > budget for count in counts):
+        return _check("decode", FAIL, f"repetitions decoded {listed} tokens, more than the {budget}-token budget")
+    if all(count >= budget - decode.get("budgetSlack", 0) for count in counts):
+        return _check("decode", PASS, f"every repetition reached the {budget}-token budget")
+    if len(set(counts)) == 1:
+        return _check("decode", PASS, f"every repetition decoded {counts[0]} of {budget} tokens, "
+                                      "stopped at the end of turn")
+    return _check("decode", UNKNOWN, f"repetitions decoded different lengths ({listed} of {budget} tokens)")
+
+
 def _build(facts):
     build = facts["build"]
     if build is None or build.get("status") != "reported":
@@ -491,8 +542,8 @@ def evaluate(facts):
     """publication-policy-v1. Pure: the same facts always give the same decision.
 
     verified needs every check to pass; any failed check gives failed, otherwise any
-    unknown gives unverified. Unknown is never a pass. Experiments, bug reproductions and
-    sessions without a measured repetition are never publishable at all.
+    unknown gives unverified. Unknown is never a pass. Experiments and spikes, bug
+    reproductions and sessions without a measured repetition are never publishable at all.
     """
     refusal = None
     if facts["experiment"]:
@@ -502,7 +553,7 @@ def evaluate(facts):
     elif not facts["measured"]:
         refusal = "no measured repetition"
     checks = [_complete(facts), *_conditions(facts), _artifact(facts), _backend_check(facts), *_gate_checks(facts),
-              _build(facts), _app_identity(facts), _device(facts)]
+              _decode_check(facts), _build(facts), _app_identity(facts), _device(facts)]
     if tuple(item["check"] for item in checks) != CHECKS:
         raise AssertionError("publication-policy-v1 checks are out of order")
     outcome = _worst([item["outcome"] for item in checks])
