@@ -17,7 +17,7 @@
       "purpose": "measurement",
       "model": "Qwen3 1.7B",
       "modelFile": "qwen_3_1_7b_xnnpack_8da4w.pte",
-      "quant": "4-bit weights 8-bit activations",
+      "quant": "4-bit weights, 8-bit activations",
       "nThreads": null,
       "nCtx": null,
       "referenceRunId": null,

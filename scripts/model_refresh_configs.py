@@ -21,20 +21,16 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIGS = ROOT / "xebenchapp/configs"
 MANIFESTS = ROOT / "configs/models"
 
-# The quant label each artifact's runs carry (the row's quant). export_evidence.py's label alphabet
-# refuses "/" and ",", so three files carry export-safe spellings of their board labels (docs/STYLE.md):
-#   mixed 2-4-8-bit                  -> mixed 2/4/8-bit
-#   mixed 4-16-bit                   -> mixed 4/16-bit
-#   4-bit weights 8-bit activations  -> 4-bit weights, 8-bit activations
-# Once the export accepts the board spellings, switch them here and run --write before any session.
+# The quant label each artifact's runs carry: the row's quant, in the board vocabulary
+# (docs/STYLE.md, scripts/check_public_text.mjs).
 QUANT_LABELS = {
     "gemma-4-E2B_q4_0-it.gguf": "Q4_0 (QAT)",
     "Qwen3-1.7B-Q4_0.gguf": "Q4_0",
     "gemma-3-1b-it-q4_0.gguf": "Q4_0 (QAT)",
-    "gemma-4-E2B-it.litertlm": "mixed 2-4-8-bit",
+    "gemma-4-E2B-it.litertlm": "mixed 2/4/8-bit",
     "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm": "int4",
-    "gemma_4_e2b_xnnpack_8da4w.pte": "mixed 4-16-bit",
-    "qwen_3_1_7b_xnnpack_8da4w.pte": "4-bit weights 8-bit activations",
+    "gemma_4_e2b_xnnpack_8da4w.pte": "mixed 4/16-bit",
+    "qwen_3_1_7b_xnnpack_8da4w.pte": "4-bit weights, 8-bit activations",
     "qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy": "W4A16",
 }
 
@@ -101,7 +97,8 @@ def configurations():
     sha = pins()
     out = []
     for model, (_, template, _, _) in MODELS.items():
-        # The board's llama.cpp CPU rows (all phones).
+        # The board's llama.cpp CPU rows: every phone, except Gemma 4 E2B on the Galaxy S23, where the
+        # fully loaded GGUF does not fit (docs/REFERENCE-RUNS.md, Model-refresh board configurations).
         out.append(configuration(f"cpu-reference-v4-{model}", template, [llama_run(model, "cpu", None, sha)]))
         # POCO F8 Ultra: OpenCL and Hexagon, gated against the CPU run of the same file.
         cpu = llama_run(model, "cpu", None, sha)

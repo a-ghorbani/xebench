@@ -17,7 +17,7 @@
       "purpose": "measurement",
       "model": "Gemma 4 E2B",
       "modelFile": "gemma_4_e2b_xnnpack_8da4w.pte",
-      "quant": "mixed 4-16-bit",
+      "quant": "mixed 4/16-bit",
       "nThreads": null,
       "nCtx": null,
       "referenceRunId": null,

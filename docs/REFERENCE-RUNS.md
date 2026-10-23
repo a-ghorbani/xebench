@@ -278,14 +278,19 @@ writes them from one table: the model and tokenizer pins come from the manifests
 
 | Configuration | Runs | Board backend | Phones |
 | --- | --- | --- | --- |
-| [`cpu-reference-v4-gemma4`](../xebenchapp/configs/cpu-reference-v4-gemma4.json), [`-qwen3`](../xebenchapp/configs/cpu-reference-v4-qwen3.json), [`-gemma3`](../xebenchapp/configs/cpu-reference-v4-gemma3.json) | llama.cpp, the model's GGUF on the CPU | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9, POCO X8 Pro |
+| [`cpu-reference-v4-gemma4`](../xebenchapp/configs/cpu-reference-v4-gemma4.json) | llama.cpp, the Gemma 4 E2B GGUF on the CPU | `cpu` | POCO F8 Ultra, Pixel 9, POCO X8 Pro |
+| [`cpu-reference-v4-qwen3`](../xebenchapp/configs/cpu-reference-v4-qwen3.json), [`cpu-reference-v4-gemma3`](../xebenchapp/configs/cpu-reference-v4-gemma3.json) | llama.cpp, the model's GGUF on the CPU | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9, POCO X8 Pro |
 | [`llamacpp-gemma4-opencl-hexagon-v1`](../xebenchapp/configs/llamacpp-gemma4-opencl-hexagon-v1.json), [`llamacpp-qwen3-…`](../xebenchapp/configs/llamacpp-qwen3-opencl-hexagon-v1.json), [`llamacpp-gemma3-…`](../xebenchapp/configs/llamacpp-gemma3-opencl-hexagon-v1.json) | llama.cpp: the GGUF on the CPU (gate reference), OpenCL (`nGpuLayers` 99) and Hexagon (`HTP0`) | `gpu`, `npu` | POCO F8 Ultra |
 | [`litertlm-gemma4-cpu-v2`](../xebenchapp/configs/litertlm-gemma4-cpu-v2.json), [`litertlm-qwen3-int4-cpu-v2`](../xebenchapp/configs/litertlm-qwen3-int4-cpu-v2.json), [`litertlm-gemma3-int4-cpu-v2`](../xebenchapp/configs/litertlm-gemma3-int4-cpu-v2.json) | LiteRT-LM 0.18.1, CPU | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9, POCO X8 Pro |
 | [`litertlm-gemma3-sm8850-npu-v2`](../xebenchapp/configs/litertlm-gemma3-sm8850-npu-v2.json) | LiteRT-LM 0.18.1: Gemma 3 1B `int4` on the CPU (gate reference), the SM8850 bundle on the NPU | `npu` | POCO F8 Ultra |
 | [`executorch-gemma4-cpu-v1`](../xebenchapp/configs/executorch-gemma4-cpu-v1.json), [`executorch-qwen3-cpu-v1`](../xebenchapp/configs/executorch-qwen3-cpu-v1.json) | ExecuTorch, XNNPACK | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9, POCO X8 Pro |
 | [`geniex-qwen3-sm8850-npu-v1`](../xebenchapp/configs/geniex-qwen3-sm8850-npu-v1.json) | GENIE-X: the Qwen3 GGUF through its llama_cpp plugin (gate reference), the SM8850 QAIRT bundle on the NPU | `npu` | POCO F8 Ultra |
 
-The POCO X8 Pro rows are optional. The two Gemma 3 LiteRT-LM configurations are the files the
+The POCO X8 Pro rows are optional. llama.cpp does not measure Gemma 4 E2B on the Galaxy S23: with
+the board's full loading (`useMmap: false`, the weights read into memory), the 3.35 GB file does
+not fit next to what the 8 GB phone keeps resident, and lmkd ends the app while the model loads
+([model-refresh](experiments/model-refresh.md)). LiteRT-LM and ExecuTorch measure Gemma 4 E2B on
+the Galaxy S23. The two Gemma 3 LiteRT-LM configurations are the files the
 LiteRT-LM board already lists; their sessions run on LiteRT-LM 0.18.1. The `cpu-reference-v4-*`
 files are accelerator configurations with a single CPU run, which is its own gate reference: the
 accelerator protocol is the one with a fixed decode.
@@ -332,19 +337,14 @@ pass-through template and render check as the measured prompt. That turn is what
 template renders with `enable_thinking: false`: the user turn, the assistant header and an empty
 think block. The measured prompt is `std-pp512-v1` verbatim, as for every LiteRT-LM run.
 
-**GENIE-X** has no fixed decode: a GENIE-X row whose median repetition stopped at the end of turn
-before 128 tokens says "decode N of 128 tok, stopped at the end of turn".
+**GENIE-X** has no fixed decode: a GENIE-X row whose repetitions stopped at the end of turn before
+128 tokens states the length they decoded, for example "decode N of 128 tok, stopped at the end of
+turn".
 
-**Quant labels.** The evidence export's label alphabet has no `/` or `,`, so three files carry
-another spelling of their board label in these configurations. `QUANT_LABELS` in
-`scripts/model_refresh_configs.py` holds them in one place, to switch to the board spellings with
-`--write` once the export accepts them, before any session runs:
-
-| File | Configuration `quant` | Board label ([STYLE.md](STYLE.md)) |
-| --- | --- | --- |
-| `gemma-4-E2B-it.litertlm` | `mixed 2-4-8-bit` | mixed 2/4/8-bit |
-| `gemma_4_e2b_xnnpack_8da4w.pte` | `mixed 4-16-bit` | mixed 4/16-bit |
-| `qwen_3_1_7b_xnnpack_8da4w.pte` | `4-bit weights 8-bit activations` | 4-bit weights, 8-bit activations |
+**Quant labels.** Each run's `quant` is its board label ([STYLE.md](STYLE.md)), held in one table,
+`QUANT_LABELS` in `scripts/model_refresh_configs.py`: `Q4_0 (QAT)` and `Q4_0` for the GGUF files,
+`mixed 2/4/8-bit` and `int4` for LiteRT-LM's Gemma 4 E2B and Qwen3 1.7B files, `mixed 4/16-bit` and
+`4-bit weights, 8-bit activations` for ExecuTorch's, and `W4A16` for the GENIE-X bundle.
 
 Sessions per setup (one configuration on one phone), fixed before any measurement:
 
