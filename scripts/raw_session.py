@@ -1552,7 +1552,11 @@ def _llama_fixed_decode(record, run):
     fixed = protocol.get("decodeMode") == "fixed"
     bias = settings["completion"].get("logit_bias")
     expected = [[token, False] for token in run.get("eogTokenIds", [])] if fixed else None
-    if bias != expected:
+    # Exactly [int, false] pairs: in Python 0 == False and 1 == True, so equality alone would let
+    # a numeric bias such as [106, 0] pass for [106, false].
+    pairs = isinstance(bias, list) and all(
+        isinstance(pair, list) and len(pair) == 2 and type(pair[0]) is int and pair[1] is False for pair in bias)
+    if bias != expected or (bias is not None and not pairs):
         errors.append(reason("settings.protocol-mismatch", "/effectiveSettings/completion/logit_bias",
                              "logit_bias is [id, false] for every configured eogTokenIds entry exactly under "
                              "decodeMode fixed"))

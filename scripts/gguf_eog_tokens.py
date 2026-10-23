@@ -12,14 +12,15 @@ llama.cpp that llama.rn vendors: b11804, c7fc509, for llama.rn 0.13.0-rc.8):
 2. every token spelled as one of EOG_TEXTS;
 3. the EOS, EOT and EOM tokens (tokenizer.ggml.{eos,eot,eom}_token_id metadata; EOT and EOM are
    otherwise found by spelling, and those spellings are all in EOG_TEXTS already);
-4. minus "<|end|>" when "<|return|>" and "<|call|>" (or "<|calls|>" and "<|flush|>") are EOG, and
+4. minus "<|end|>" when "<|call|>" or "<|calls|>" is EOG together with "<|return|>" or "<|flush|>", and
    minus "</s>" when "<|tool_response>" or "<|plamo:eos|>" is EOG or the vocabulary has the token
    '<rfl:parameter name="'.
 
 This script reads only the GGUF's metadata (no tensors) and applies those rules. It refuses a GGUF
 whose vocabulary has more than one spelling candidate for a FIM token without metadata (llama.cpp
-then takes whichever its hash map yields first) and the "flint" pre-tokenizer (whose extra EOG rule
-is not reproduced here). Check its output against llama.cpp itself when pinning a model: build the
+then takes whichever its hash map yields first), the "flint" pre-tokenizer (whose extra EOG rule
+is not reproduced here), and a GGUF without tokenizer.ggml.eos_token_id (llama.cpp then takes a
+default EOS that depends on the tokenizer model, which this script does not reproduce). Check its output against llama.cpp itself when pinning a model: build the
 vendored llama.cpp and list the ids for which llama_vocab_is_eog() is true on a vocab_only load
 (docs/REFERENCE-RUNS.md).
 
@@ -120,14 +121,17 @@ def eog_token_ids(metadata):
         if index is not None and valid(index):
             eog.add(index)
     eog.update(by_text[text] for text in EOG_TEXTS if text in by_text)
+    if not valid(metadata.get("tokenizer.ggml.eos_token_id")):
+        raise GgufError("no tokenizer.ggml.eos_token_id: llama.cpp would use its tokenizer-model default EOS")
     for name in ("eos", "eot", "eom"):
         index = metadata.get(f"tokenizer.ggml.{name}_token_id")
         if index is not None and valid(index):
             eog.add(index)
     texts = {index: tokens[index] for index in eog}
     present = set(texts.values())
-    if ("<|return|>" in present and "<|call|>" in present or "<|calls|>" in present and "<|flush|>" in present) \
-            and "<|end|>" in present:
+    # llama-vocab.cpp: has_call is "<|call|>" or "<|calls|>"; "<|end|>" leaves with return or flush.
+    has_call = "<|call|>" in present or "<|calls|>" in present
+    if has_call and ("<|return|>" in present or "<|flush|>" in present) and "<|end|>" in present:
         eog -= {index for index, text in texts.items() if text == "<|end|>"}
     if "<|tool_response>" in present or "<|plamo:eos|>" in present or '<rfl:parameter name="' in by_text:
         eog -= {index for index, text in texts.items() if text == "</s>"}

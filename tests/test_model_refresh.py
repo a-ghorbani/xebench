@@ -58,10 +58,20 @@ class LlamaFixedDecodeRecordTests(unittest.TestCase):
         for change in (lambda s: s["completion"].pop("logit_bias"),
                        lambda s: s["completion"]["logit_bias"].pop(),
                        lambda s: s["completion"]["logit_bias"].__setitem__(0, [2, False]),
-                       lambda s: s["init"].pop("state_cache_budget_mb")):
+                       lambda s: s["init"].pop("state_cache_budget_mb"),
+                       # A numeric bias of 0 is not -infinity, although 0 == False in Python.
+                       lambda s: s["completion"]["logit_bias"].__setitem__(0, [1, 0])):
             record = copy.deepcopy(ACCEL[LLAMA_FIXED])
             change(record["effectiveSettings"])
             self.assertIn("settings.protocol-mismatch", codes(record))
+        # The semantic rule is type-strict on its own (the schema also refuses a float id).
+        for pair in ([1, 0], [1.0, False], [True, False]):
+            with self.subTest(pair):
+                record = copy.deepcopy(ACCEL[LLAMA_FIXED])
+                record["effectiveSettings"]["completion"]["logit_bias"][0] = pair
+                run = record["configuration"]["runs"][0]
+                self.assertIn("settings.protocol-mismatch",
+                              {item["code"] for item in raw_session._llama_fixed_decode(record, run)})
         # A record without decodeMode carries no bias.
         plain = copy.deepcopy(ACCEL["qwen25-qwen25-1.5b-q80-cpu"])
         plain["effectiveSettings"]["completion"]["logit_bias"] = [[151645, False]]
@@ -131,9 +141,18 @@ class EndOfGenerationTests(unittest.TestCase):
                                                                   "tokenizer.ggml.eot_token_id": 2,
                                                                   "tokenizer.ggml.fim_pad_token_id": 0})),
                          [0, 1, 2])
-        # <|end|> leaves the set when <|return|> and <|call|> are EOG (o200k_harmony).
-        self.assertEqual(list(self.eog(["<|return|>", "<|call|>", "<|end|>"])), [0, 1])
-        self.assertEqual(list(self.eog(["<|end|>", "x"])), [0])
+        # <|end|> leaves the set when <|call|> or <|calls|> is EOG with <|return|> or <|flush|>
+        # (o200k_harmony, solar-open; llama.cpp's has_call takes either spelling).
+        eos = {"tokenizer.ggml.eos_token_id": 0}
+        for tokens in (["<|return|>", "<|call|>", "<|end|>"], ["<|return|>", "<|calls|>", "<|end|>"],
+                       ["<|flush|>", "<|calls|>", "<|end|>"], ["<|flush|>", "<|call|>", "<|end|>"]):
+            with self.subTest(tokens):
+                self.assertEqual(list(self.eog(tokens, eos)), [0, 1])
+        self.assertEqual(list(self.eog(["<|end|>", "x"], eos)), [0])
+        self.assertEqual(list(self.eog(["x", "<|return|>", "<|end|>"], eos)), [0, 1, 2])
+        # Without an EOS id llama.cpp takes a tokenizer-model default, which the script refuses to guess.
+        with self.assertRaises(eog.GgufError):
+            self.eog(["<|end|>", "x"])
 
     def test_refusals(self):
         with self.assertRaises(eog.GgufError):

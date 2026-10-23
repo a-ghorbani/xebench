@@ -75,10 +75,11 @@ the rendered prompt equals the text byte for byte, and refuses the repetition ot
 LiteRT-LM adds the artifact's start token on the first turn when its metadata names one, as
 llama.cpp adds BOS when the model asks for it; each engine records its own prompt token count.
 On the identical prompt text, LiteRT-LM counts 519 tokens for Gemma 3 1B and 520 for Qwen2.5 1.5B;
-llama.cpp prefills 519 for both. The llama.cpp sessions of these configurations record 518 for
-Gemma 3 1B: with llama.rn's prompt state cache on, the BOS token is decoded alone and llama.cpp's
-prompt counters leave it out (see [Model-refresh board configurations](#model-refresh-board-configurations)).
-CPU runs use 4 threads. The files
+llama.cpp prefills 519 for both. llama.cpp sessions recorded without `state_cache_budget_mb`
+(llama.rn's prompt state cache on, for example `cpu-reference-v3-gemma3`) record 518 for Gemma 3
+1B: the BOS token is decoded alone and llama.cpp's prompt counters leave it out (see
+[Model-refresh board configurations](#model-refresh-board-configurations)). CPU runs use 4
+threads. The files
 are pinned in [MODELS.md](../MODELS.md#litert-lm-files).
 
 Every repetition decodes exactly 128 tokens (`decodeMode: fixed`), past the model's end of turn,
@@ -268,9 +269,19 @@ react-native-worklets remains because autolinking is not flavor-aware. The appli
 
 These configurations measure the board's three models, Gemma 4 E2B, Qwen3 1.7B and Gemma 3 1B
 ([#43](https://github.com/a-ghorbani/xebench/issues/43); files in [MODELS.md](../MODELS.md)). Each
-is an accelerator configuration with cpu-reference-v3's timing and load settings: 3 repetitions,
-120 s cooldown, 900 s readiness timeout, 2 °C rise bound, 4 CPU threads, `n_ctx` 2048, no memory
-map, no mlock, repacking on, flash attention `auto`. Every one measures `std-pp512-v1` with a
+is an accelerator configuration with cpu-reference-v3's timing: 3 repetitions, 120 s cooldown,
+900 s readiness timeout, 2 °C rise bound. The engine settings differ by engine:
+
+- llama.cpp runs take cpu-reference-v3's settings: 4 CPU threads, `n_ctx` 2048, no memory map, no
+  mlock, repacking on, flash attention `auto`.
+- LiteRT-LM CPU runs use 4 threads; LiteRT-LM has no context setting (the file fixes it).
+- ExecuTorch runs keep the runtime's XNNPACK threadpool: ExecuTorch 1.4.1 sizes it to the cores it
+  counts as performant, all 8 on the SM8850, and react-native-executorch 0.10.7 does not resize it.
+  The export fixes the context.
+- GENIE-X's CPU reference (its llama_cpp plugin) uses 4 threads and `n_ctx` 4096; the QAIRT bundle
+  fixes both on the NPU.
+
+Every one measures `std-pp512-v1` with a
 128-token decode, and every engine except GENIE-X decodes exactly 128 tokens past the end of turn
 (`decodeMode: fixed`). [`scripts/model_refresh_configs.py`](../scripts/model_refresh_configs.py)
 writes them from one table: the model and tokenizer pins come from the manifests in
@@ -330,8 +341,9 @@ sliding-window model and counts 519 either way.
 
 **LiteRT-LM Qwen3 gate.** Qwen3's `.litertlm` chat template thinks unless `enable_thinking` is
 false, and the file declares a `thought` channel for `<think>`…`</think>`, which LiteRT-LM keeps
-out of the reply text the gate reads: through that template every gate answer was empty on the
-POCO F8 Ultra. For a configuration whose `chatTemplate` is `qwen3`, the
+out of the reply text the gate reads: through that template every gate answer is empty, on the
+POCO F8 Ultra and the Galaxy S23 ([model-refresh](experiments/model-refresh.md)). For a
+configuration whose `chatTemplate` is `qwen3`, the
 LiteRT-LM gate sends the harness's `qwen3` turn as an already templated prompt, through the same
 pass-through template and render check as the measured prompt. That turn is what the artifact's own
 template renders with `enable_thinking: false`: the user turn, the assistant header and an empty
