@@ -90,7 +90,8 @@ def _pointer(path, key):
 # ── Allowlist specification ──────────────────────────────────────────────────
 # Approved fields must match their form or the export is refused; fields that
 # are not approved are dropped and reported. Free text is never approved: every
-# string form below excludes '/', '\\', '@' and control characters.
+# string form below excludes '\\', '@' and control characters, and '/' except
+# between two digits in a label (LABEL), so no form can hold a path segment.
 
 class Scalar:
     def __init__(self, check, describe):
@@ -214,7 +215,12 @@ class Variant:
 # digits, so serials and hex identifiers are refused. Versions may hold digits.
 ENUM_FORM = _text(r"[a-z][a-z-]{0,63}", "lowercase enumerated value")
 VERSION = _text(r"[A-Za-z][A-Za-z0-9._-]{0,63}", "version identifier")
-LABEL = _text(r"[A-Za-z0-9][A-Za-z0-9 ._+()-]{0,127}", "label")
+# A label is 1-128 characters of a closed alphabet ([A-Za-z0-9 ._+()-]) plus the two separators
+# the board's quant labels use (docs/STYLE.md: "mixed 2/4/8-bit", "4-bit weights, 8-bit
+# activations"), each only where those labels put it: '/' between two digits, so a label never
+# holds a path segment, and ',' after a letter or digit and before a space.
+LABEL = _text(r"(?=.{1,128}\Z)[A-Za-z0-9](?:[A-Za-z0-9 ._+()-]|(?<=[0-9])/(?=[0-9])|(?<=[A-Za-z0-9]),(?= ))*",
+              "label")
 PROSE = _text(r"[A-Za-z0-9][A-Za-z0-9 ,.;:()'_-]{0,199}", "short plain-text constant")
 HEX64 = _text(r"[0-9a-f]{64}", "lowercase SHA-256")
 RUN_ID = _text(r"[A-Za-z0-9][A-Za-z0-9-]{0,99}", "run id")
@@ -775,6 +781,8 @@ def privacy_findings(value, path=""):
 MANIFEST_FIELDS = {"schema", "schemaVersion", "captureId", "startedAt", "finishedAt", "status", "doneObserved",
                    "engineErrors", "invalidRecords", "rejections", "records", "checkpoints", "failedRecords",
                    "deviceInfo", "appIdentity", "publicationReady", "backendLog"}
+# Capture procedure kept in the local manifest only (capture_app_run.prepare_screen: wake key, keyguard).
+MANIFEST_LOCAL_ONLY = {"screenPreparation"}
 RECORD_FILE = re.compile(r"(raw|checkpoint)-[0-9a-f-]{36}\.jsonl")
 
 
@@ -837,7 +845,7 @@ def load_capture(directory, ctx):
             manifest.get("schemaVersion") != 1:
         raise Refused("/schema", "Not a xebench-local-capture v1 manifest")
     for key in sorted(set(manifest) - MANIFEST_FIELDS):
-        ctx.drop(_pointer("", key), "unknown-field")
+        ctx.drop(_pointer("", key), "excluded" if key in MANIFEST_LOCAL_ONLY else "unknown-field")
     if "publicationReady" in manifest:
         ctx.drop("/publicationReady", "excluded")  # Validation is not publication eligibility.
     capture_id = UUID.apply(manifest.get("captureId"), "/captureId", ctx)
