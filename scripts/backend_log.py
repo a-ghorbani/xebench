@@ -89,8 +89,11 @@ RULES = {
 }
 # Rules whose patterns no device log has confirmed yet: confirmation() still evaluates them, but the
 # publication policy does not let them confirm a backend. A device check that shows every event on a
-# real capture removes the rule from this set in a reviewed change.
-PENDING_DEVICE_CONFIRMATION = frozenset({GENIEX_RULE})
+# real capture removes the rule from this set in a reviewed change. Both rules are confirmed:
+# litert-npu-log-v1 on the POCO F8 Ultra with LiteRT-LM 0.18.0, geniex-npu-log-v1 on the POCO F8 Ultra
+# with geniex-android 0.8.0 (docs/experiments/model-refresh.md, section 5: every event of the GENIE-X
+# NPU capture matched these patterns as written).
+PENDING_DEVICE_CONFIRMATION = frozenset()
 KINDS = tuple(EVENTS)
 MAX_LINE = 300
 MAX_EVENTS = 5000
