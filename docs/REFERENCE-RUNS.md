@@ -300,7 +300,8 @@ writes them from one table: the model and tokenizer pins come from the manifests
 The POCO X8 Pro rows are optional. llama.cpp does not measure Gemma 4 E2B on the Galaxy S23: with
 the board's full loading (`useMmap: false`, the weights read into memory), the 3.35 GB file does
 not fit next to what the 8 GB phone keeps resident, and lmkd ends the app while the model loads
-([model-refresh](experiments/model-refresh.md)). LiteRT-LM and ExecuTorch measure Gemma 4 E2B on
+(["Galaxy S23: Gemma 4 E2B memory probe"](https://github.com/a-ghorbani/xebench/blob/5f4e14053854c216a9cc18c128b8d1d34f5dcd96/docs/experiments/model-refresh.md#galaxy-s23-gemma-4-e2b-memory-probe-2026-10-23)).
+LiteRT-LM and ExecuTorch measure Gemma 4 E2B on
 the Galaxy S23. The two Gemma 3 LiteRT-LM configurations are the files the
 LiteRT-LM board already lists; their sessions run on LiteRT-LM 0.18.1. The `cpu-reference-v4-*`
 files are accelerator configurations with a single CPU run, which is its own gate reference: the
@@ -342,7 +343,8 @@ sliding-window model and counts 519 either way.
 **LiteRT-LM Qwen3 gate.** Qwen3's `.litertlm` chat template thinks unless `enable_thinking` is
 false, and the file declares a `thought` channel for `<think>`…`</think>`, which LiteRT-LM keeps
 out of the reply text the gate reads: through that template every gate answer is empty, on the
-POCO F8 Ultra and the Galaxy S23 ([model-refresh](experiments/model-refresh.md)). For a
+POCO F8 Ultra and the Galaxy S23 (model-refresh notes, ["LiteRT-LM 0.18.1 CPU"](https://github.com/a-ghorbani/xebench/blob/5f4e14053854c216a9cc18c128b8d1d34f5dcd96/docs/experiments/model-refresh.md#3-litert-lm-0181-cpu-gemma-4-e2b-qwen3-17b)
+and ["Galaxy S23"](https://github.com/a-ghorbani/xebench/blob/5f4e14053854c216a9cc18c128b8d1d34f5dcd96/docs/experiments/model-refresh.md#galaxy-s23-gemma-4-e2b-memory-probe-2026-10-23)). For a
 configuration whose `chatTemplate` is `qwen3`, the
 LiteRT-LM gate sends the harness's `qwen3` turn as an already templated prompt, through the same
 pass-through template and render check as the measured prompt. That turn is what the artifact's own
