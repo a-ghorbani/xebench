@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "id": "litertlm-qwen3-int4-cpu-v2",
+  "nColdRuns": 3,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "qwen3",
+  "measuredPrompt": "std-pp512-v1",
+  "decodeMode": "fixed",
+  "runs": [
+    {
+      "id": "qwen3-1.7b-int4-litertlm-cpu",
+      "engine": "litert-lm",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Qwen3 1.7B",
+      "modelFile": "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm",
+      "quant": "int4",
+      "nThreads": 4,
+      "nCtx": null,
+      "referenceRunId": null,
+      "modelSha256": "2a72330b504a6596d53a2c00923c57173b10f1b83e6a541213ffec08d1fc5de8"
+    }
+  ]
+}

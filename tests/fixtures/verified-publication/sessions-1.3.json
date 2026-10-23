@@ -336,8 +336,8 @@
         {
           "sessionId": "1767225600000-4-npu",
           "timestampIso": "2026-01-01T00:00:00.000Z",
-          "bundleSha256": "5bcc47a81f9bbb90120eee234b3510ad3564bbfacd4f3ad232ed602ceb4a5797",
-          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/5bcc47a81f9bbb90120eee234b3510ad3564bbfacd4f3ad232ed602ceb4a5797/manifest.json",
+          "bundleSha256": "63947b4497ac98c6b58530be3ba05eb1d775edfd61ff21a07848ddbfc3423919",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/63947b4497ac98c6b58530be3ba05eb1d775edfd61ff21a07848ddbfc3423919/manifest.json",
           "validation": "verified",
           "guardsPassed": true,
           "row": {
@@ -380,8 +380,8 @@
               "sessionIds": [
                 "1767225600000-4-npu"
               ],
-              "bundleSha256": "5bcc47a81f9bbb90120eee234b3510ad3564bbfacd4f3ad232ed602ceb4a5797",
-              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/5bcc47a81f9bbb90120eee234b3510ad3564bbfacd4f3ad232ed602ceb4a5797/manifest.json"
+              "bundleSha256": "63947b4497ac98c6b58530be3ba05eb1d775edfd61ff21a07848ddbfc3423919",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/63947b4497ac98c6b58530be3ba05eb1d775edfd61ff21a07848ddbfc3423919/manifest.json"
             },
             "build": {
               "engineVersion": "llama.cpp b11385 (bf9a0cc)",

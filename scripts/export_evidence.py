@@ -450,14 +450,21 @@ BUILD = Obj({
     excluded=("signingCertSha256",), derive=_signing_key)
 CONFIGURATION_SOURCE = Obj({"kind": ENUM, "sha256": Nullable(HEX64)}, required=("kind", "sha256"))
 CACHE_TYPE = Vocab(("f16", "f32", "bf16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_0", "q5_1"))
+TOKEN_ID = _number(0, 2147483647, integer=True)
+# decodeMode fixed: llama.rn's [token id, false] spelling of a -infinity bias on one end-of-generation token.
+LOGIT_BIAS = Scalar(lambda v: isinstance(v, list) and len(v) == 2 and TOKEN_ID.check(v[0]) and v[1] is False,
+                    "[token id, false] logit bias")
 LLAMA_RN_SETTINGS = Obj({
     "binding": Vocab(("llama.rn",)), "unlisted": ENUM,
     "init": Obj({"n_ctx": COUNT, "n_batch": COUNT, "n_ubatch": COUNT, "n_threads": N_COUNT, "n_gpu_layers": INT,
                  "use_mmap": BOOL, "use_mlock": BOOL, "no_extra_bufts": BOOL, "flash_attn_type": ENUM,
                  "cache_type_k": CACHE_TYPE, "cache_type_v": CACHE_TYPE,
                  # accelerator-v1 llama.cpp runs (ggml device names, e.g. HTP0).
-                 "devices": Arr(LABEL, max_items=4)}, required=("n_ctx", "n_batch", "n_threads", "n_gpu_layers")),
-    "completion": Obj({"n_predict": COUNT, "temperature": NONNEG, "seed": COUNT},
+                 "devices": Arr(LABEL, max_items=4),
+                 # llama.rn's prompt state cache budget (0: off).
+                 "state_cache_budget_mb": COUNT}, required=("n_ctx", "n_batch", "n_threads", "n_gpu_layers")),
+    "completion": Obj({"n_predict": COUNT, "temperature": NONNEG, "seed": COUNT,
+                       "logit_bias": Arr(LOGIT_BIAS, max_items=32)},
                       required=("n_predict", "temperature", "seed")),
     "distribution": Obj({"source": Vocab(("npm",)), "package": Vocab(("llama.rn",)),
                          "version": _text(r"[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?", "package version"),
@@ -644,7 +651,9 @@ CONFIGURATION = Obj({
                      "backend": ENUM, "purpose": ENUM, "nGpuLayers": COUNT, "devices": Arr(LABEL, max_items=4),
                      "referenceRunId": Nullable(LABEL),
                      # ExecuTorch runs (accelerator-v2).
-                     "tokenizerFile": TOKENIZER_FILE, "tokenizerSha256": HEX64}, required=("id",)), max_items=64),
+                     "tokenizerFile": TOKENIZER_FILE, "tokenizerSha256": HEX64,
+                     # llama.cpp runs under decodeMode fixed: the end-of-generation token ids.
+                     "eogTokenIds": Arr(TOKEN_ID, max_items=32)}, required=("id",)), max_items=64),
 }, required=("id", "runs"))
 RECORD = Obj({
     "runId": RUN_ID, "timestampIso": UTC, "schema": VERSION, "schemaVersion": INT,

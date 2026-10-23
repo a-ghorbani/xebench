@@ -730,7 +730,8 @@
             "no_extra_bufts": {"type": "boolean"},
             "flash_attn_type": {"enum": ["auto", "on", "off"]},
             "cache_type_k": {"const": "f16"},
-            "cache_type_v": {"const": "f16"}
+            "cache_type_v": {"const": "f16"},
+            "state_cache_budget_mb": {"const": 0, "description": "llama.rn's prompt state cache is off. Absent in records of builds that did not pass it (llama.rn's default, 160)."}
           }
         },
         "completion": {
@@ -740,7 +741,19 @@
           "properties": {
             "n_predict": {"type": "integer", "minimum": 1, "maximum": 512},
             "temperature": {"type": "number", "minimum": 0, "maximum": 2},
-            "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295}
+            "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+            "logit_bias": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "description": "decodeMode fixed only: [token id, false] for every configured eogTokenIds entry, llama.rn's spelling of a -infinity bias (scripts/raw_session.py checks the pairs against the configuration).",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 2147483647}, {"const": false}]}
+              }
+            }
           }
         },
         "unlisted": {"const": "binding-defaults"},
@@ -1194,6 +1207,13 @@
         "tokenizerSha256": {
           "$ref": "#/$defs/sha256",
           "description": "ExecuTorch runs only: expected SHA-256 of tokenizerFile; a different file is recorded unmeasured with stopReason tokenizer-hash-mismatch."
+        },
+        "eogTokenIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+          "description": "llama.cpp runs under decodeMode fixed only (required there): the model's end-of-generation token ids (llama_vocab_is_eog), distinct and ascending; each gets a logit bias of -infinity in the measured repetitions."
         }
       }
     },
@@ -1222,7 +1242,7 @@
         "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
         "chatTemplate": {"enum": ["gemma3", "gemma4", "llama32", "qwen25", "qwen3"]},
         "measuredPrompt": {"enum": ["std-chat-v1", "std-pp512-v1"]},
-        "decodeMode": {"enum": ["fixed"], "description": "fixed: every repetition decodes exactly maxDecodeTokens, past the end of turn (LiteRT-LM and ExecuTorch runs only)."},
+        "decodeMode": {"enum": ["fixed"], "description": "fixed: every repetition decodes exactly maxDecodeTokens, past the end of turn (LiteRT-LM, ExecuTorch and llama.cpp runs only)."},
         "orderSeed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
         "runs": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/acceleratorRun"}}
       }
@@ -1543,6 +1563,7 @@
             "flash_attn_type": {"enum": ["auto", "on", "off"]},
             "cache_type_k": {"const": "f16"},
             "cache_type_v": {"const": "f16"},
+            "state_cache_budget_mb": {"const": 0, "description": "llama.rn's prompt state cache is off. Absent in records of builds that did not pass it (llama.rn's default, 160)."},
             "devices": {
               "type": "array",
               "minItems": 1,
@@ -1558,7 +1579,19 @@
           "properties": {
             "n_predict": {"type": "integer", "minimum": 1, "maximum": 512},
             "temperature": {"type": "number", "minimum": 0, "maximum": 2},
-            "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295}
+            "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+            "logit_bias": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "description": "decodeMode fixed only: [token id, false] for every configured eogTokenIds entry, llama.rn's spelling of a -infinity bias (scripts/raw_session.py checks the pairs against the configuration).",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 2147483647}, {"const": false}]}
+              }
+            }
           }
         },
         "unlisted": {"const": "binding-defaults"},
