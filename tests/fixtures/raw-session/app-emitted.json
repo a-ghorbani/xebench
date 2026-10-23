@@ -93,7 +93,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -568,7 +570,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -1507,7 +1511,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -2084,7 +2090,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -2501,7 +2509,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -3115,7 +3125,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -3705,7 +3717,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -4096,7 +4110,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -4464,7 +4480,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -4770,7 +4788,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -5056,7 +5076,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -5309,7 +5331,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -5614,7 +5638,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -5975,7 +6001,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -6359,7 +6387,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -6739,7 +6769,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -7126,7 +7158,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -7419,7 +7453,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -7835,7 +7871,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -8228,7 +8266,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -8498,7 +8538,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -8922,7 +8964,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -9334,7 +9378,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -9728,7 +9774,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -10018,7 +10066,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -10604,7 +10654,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -10844,7 +10896,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -11226,7 +11280,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -11576,7 +11632,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -11996,7 +12054,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -12465,7 +12525,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -12881,7 +12943,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -13206,7 +13270,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -14211,7 +14277,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -14427,7 +14495,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -14819,7 +14889,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -15035,7 +15107,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -15445,7 +15519,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -15893,7 +15969,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -16687,7 +16765,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -17432,7 +17512,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -17880,7 +17962,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -18712,7 +18796,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -19544,7 +19630,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Llama 3.2 1B",
@@ -20376,7 +20464,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Qwen2.5 1.5B",
@@ -21178,7 +21268,9 @@
         "litertLm": null,
         "litertNpuRuntimeQualcomm": null,
         "qairt": null,
-        "genie": null
+        "genie": null,
+        "executorch": null,
+        "reactNativeExecutorch": null
       },
       "platform": "android",
       "model": "Gemma 3 1B",

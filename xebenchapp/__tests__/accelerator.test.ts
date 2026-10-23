@@ -16,7 +16,10 @@ import {
 import {assessBackend, summarizeBackend} from '../src/harness/backend';
 import {liteRtEngineVersion, liteRtRuntimeVersions} from '../src/harness/adapters/LiteRtAdapter';
 import {NO_RUNTIME_VERSIONS} from '../src/harness/runtime';
-import type {EngineAdapter} from '../src/harness/adapters/EngineAdapter';
+import {
+  executorchEffectiveSettings, executorchEngineVersion, executorchMetrics, executorchPromptPrefix, executorchRuntimeVersions,
+} from '../src/harness/executorch';
+import type {EngineAdapter, LlamaRnEffectiveSettings} from '../src/harness/adapters/EngineAdapter';
 import type {SingleRunMetrics} from '../src/harness/types';
 import * as conditions from '../src/harness/conditions';
 import {ORDER_METHOD, seededOrder} from '../src/harness/order';
@@ -75,6 +78,8 @@ interface FakeOptions {
   failLoadAt?: number[];
   failGate?: boolean;
   failRelease?: boolean;
+  /** ExecuTorch: the program's delegates for forward (default XnnpackBackend). */
+  delegates?: string[];
 }
 
 /** An engine adapter that answers gate probes from a table and reports fixed timings. */
@@ -86,12 +91,14 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
   // What the engines report from the APK: llama.rn's BuildInfo, LiteRtBenchModule's constants.
   const versions = () => run.engine === 'litert-lm' ? liteRtRuntimeVersions({litertLmVersion: '0.18.0',
     litertNpuRuntimeQualcommVersion: '2.3.0', qairtVersion: '2.50.0.260828221209'}, run.backend) :
-    {...NO_RUNTIME_VERSIONS, llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'}, llamaRn: '0.0.0-fixture'};
+    run.engine === 'executorch' ? executorchRuntimeVersions({executorchVersion: '1.4.1'}, '0.10.7') :
+      {...NO_RUNTIME_VERSIONS, llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'}, llamaRn: '0.0.0-fixture'};
   const adapter = {
     engine: run.engine, backend: run.backend, modelLabel: run.model, quantLabel: run.quant, modelFile: run.modelFile,
     loads: 0,
     engineVersion: () => run.engine === 'litert-lm' ? liteRtEngineVersion(run.backend, versions()) :
-      `llama.rn 0.0.0-fixture${run.backend === 'cpu' ? '' : ` (${run.backend})`}`,
+      run.engine === 'executorch' ? executorchEngineVersion(versions()) :
+        `llama.rn 0.0.0-fixture${run.backend === 'cpu' ? '' : ` (${run.backend})`}`,
     runtimeVersions: () => versions(),
     settings: () => ({nThreads: run.nThreads, nCtx: run.nCtx}),
     load: async () => {
@@ -109,11 +116,29 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
     },
     benchOnce: async (): Promise<SingleRunMetrics> => {
       measured++;
+      if (run.engine === 'executorch') {
+        // What TextLLMRunner reports for a 523-token prompt (two 512-token prefill forwards).
+        const generated = (fixedDecodeTokens || 97) - 1;
+        const start = 1767225600000 + measured * 100000;
+        return executorchMetrics({stats: {numPromptTokens: 523, numGeneratedTokens: generated,
+          inferenceStartMs: start, firstTokenMs: start + 1040 + measured, inferenceEndMs: start + 1040 + measured +
+            generated * 52}, start: 5000, first: 6062.5 + measured, end: 12700, emitted: generated + 1}, 512,
+        fixedDecodeTokens);
+      }
       return {loadMs: 0, ttftMs: 120 + measured, promptTokens: 503, decodeTokens: fixedDecodeTokens || 96,
         prefillTps: 900 + measured * 3.5, decodeTps: 40 + measured * 0.25,
         prefillMethod: 'engine-timings', decodeMethod: 'engine-timings'};
     },
     backendEvidence: () => {
+      if (run.engine === 'executorch') {
+        const libraries = {before: ['libexecutorch.so', 'libRnExecutorch.so',
+          'libxnnpack_executorch_backend.so'], after: ['libexecutorch.so', 'libRnExecutorch.so',
+          'libxnnpack_executorch_backend.so']};
+        const program = {methods: [{name: 'forward', delegates: options.delegates ?? ['XnnpackBackend']},
+          {name: 'get_max_seq_len', delegates: []}], registeredBackends: ['XnnpackBackend']};
+        return {status: assessBackend(run.engine, run.backend, {report: null, libraries, program}),
+          source: 'program-delegates' as const, report: null, libraries, program};
+      }
       const report = run.engine === 'llama.cpp' ? llamaReport() : null;
       // The first load maps the accelerator runtime; it stays mapped for later loads.
       const markers = run.backend === 'npu' ? ['libLiteRtDispatch_Qualcomm.so', 'libQnnHtp.so'] :
@@ -131,6 +156,16 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
       options.devices, androidLib: 'rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl',
     reasonNoGpu: gpu ? null : 'GPU backend is available but was not selected'};
   };
+  if (run.engine === 'executorch') {
+    Object.assign(adapter, {
+      prepareMeasurement: (measurement: {decodeMode: 'fixed'; decodeTokens: number}) => {
+        fixedDecodeTokens = measurement.decodeTokens;
+      },
+      effectiveSettings: (request: {maxDecodeTokens: number; decodeMode?: 'fixed'}) =>
+        // EXECUTORCH_CONFIG uses the gemma4 template: Gemma prompts carry a literal <bos>.
+        executorchEffectiveSettings(request, {version: '0.10.7', nativeLibsVersion: '0.10.6'}, executorchPromptPrefix('gemma4')),
+    });
+  }
   if (run.engine === 'litert-lm') {
     Object.assign(adapter, {
       prepareMeasurement: (measurement: {decodeMode: 'fixed'; decodeTokens: number}) => {
@@ -165,6 +200,16 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
 /** The staged bytes match the configured pin unless a test says otherwise. */
 const SHA = (run: AcceleratorRun) => run.modelSha256 ?? (run.modelFile.startsWith('Gemma3') ? 'b'.repeat(64) :
   run.modelFile.endsWith('.gguf') ? 'c'.repeat(64) : 'd'.repeat(64));
+const TOKENIZER_SHA = (run: AcceleratorRun) => run.tokenizerSha256 ?? 'a'.repeat(64);
+
+/** An ExecuTorch CPU configuration as the board would stage it: std-pp512-v1 and a fixed 128-token decode. */
+const EXECUTORCH_CONFIG = {schemaVersion: 2, id: 'executorch-gemma4-cpu-fixture', nColdRuns: 2, cooldownSec: 120,
+  readinessTimeoutSec: 900, maxBatteryTempRiseC: 2, maxDecodeTokens: 128, chatTemplate: 'gemma4',
+  measuredPrompt: 'std-pp512-v1', decodeMode: 'fixed', runs: [{id: 'gemma4-e2b-8da4w-pte-cpu', engine: 'executorch',
+    backend: 'cpu', purpose: 'measurement', model: 'Gemma 4 E2B', modelFile: 'gemma_4_e2b_xnnpack_8da4w.pte',
+    quant: '8da4w', nThreads: null, nCtx: null, referenceRunId: null,
+    tokenizerFile: 'gemma_4_e2b_tokenizer.json',
+    modelSha256: '3'.repeat(64), tokenizerSha256: '4'.repeat(64)}]};
 
 async function runConfiguration(config: AcceleratorConfig, options: Record<string, FakeOptions> = {},
   extra: Partial<AcceleratorIO> = {}) {
@@ -177,6 +222,7 @@ async function runConfiguration(config: AcceleratorConfig, options: Record<strin
   const outcome = await runAcceleratorConfiguration(config, runs, (_run, position) => ({method: ORDER_METHOD,
     seed, seedSource: config.orderSeed === undefined ? 'generated' : 'configured', order, position}), {
     artifact: async run => ({sha256: SHA(run), sizeBytes: 600000000}),
+    tokenizer: async run => ({sha256: TOKENIZER_SHA(run), sizeBytes: 32000000}),
     adapter: run => fake(run, options[run.id]),
     identity: () => ({runId: `1767225600000-${sequence++}-accel`, timestampIso: '2026-01-01T00:00:00.000Z',
       deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: null, build: BUILD,
@@ -395,6 +441,21 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
     for (const [id, record] of Object.entries(board.records)) out[`${prefix}-${id}`] = record;
   }
 
+  // ExecuTorch CPU (XNNPACK): measured, a tokenizer that is not the pinned file, an unreadable
+  // tokenizer, and a program that delegates to another backend.
+  const executorch = parseAcceleratorConfig(EXECUTORCH_CONFIG);
+  out['executorch-cpu'] = (await runConfiguration(executorch)).records['gemma4-e2b-8da4w-pte-cpu'];
+  out['executorch-tokenizerMismatch'] = (await runConfiguration(executorch, {}, {
+    tokenizer: async () => ({sha256: 'f'.repeat(64), sizeBytes: 32000000}),
+  })).records['gemma4-e2b-8da4w-pte-cpu'];
+  out['executorch-tokenizerUnreadable'] = (await runConfiguration(executorch, {}, {
+    tokenizer: async () => {
+      throw new Error('missing');
+    },
+  })).records['gemma4-e2b-8da4w-pte-cpu'];
+  out['executorch-vulkanProgram'] = (await runConfiguration(executorch,
+    {'gemma4-e2b-8da4w-pte-cpu': {delegates: ['VulkanBackend']}})).records['gemma4-e2b-8da4w-pte-cpu'];
+
   const run = bug.runs[1];
   out['setupFailed-npu'] = unmeasuredAcceleratorSession(fake(run), small(bug), run,
     {runId: '1767225600000-99-accel', timestampIso: '2026-01-01T00:00:00.000Z',
@@ -433,7 +494,26 @@ test('accelerator records match the committed fixture validated by the host sche
     'board-litert-npu-gemma3-1b-sm8850-litertlm-npu': 'complete/null/pass/valid/unknown/consistent',
     'board-litert-fixed-gemma3-1b-int4-litertlm-cpu': 'complete/null/pass/valid/consistent/consistent',
     'board-litert-fixed-gemma3-1b-sm8850-litertlm-npu': 'complete/null/pass/valid/unknown/consistent',
+    'executorch-cpu': 'complete/null/pass/valid/confirmed/confirmed',
+    'executorch-tokenizerMismatch': 'failed/tokenizer-hash-mismatch/unverified/unverified/null/null',
+    'executorch-tokenizerUnreadable': 'failed/setup-failed/unverified/unverified/null/null',
+    'executorch-vulkanProgram': 'complete/null/pass/invalid/mismatch/mismatch',
   });
+  // ExecuTorch: the CPU reference prompt verbatim, a fixed 128-token decode, the tokenizer hashed.
+  const executorchRecord = records['executorch-cpu'];
+  expect(executorchRecord.protocol).toMatchObject({promptLabel: STANDARD_PROMPT_LABEL, prompt: STANDARD_PROMPT,
+    promptFormat: 'raw-pretemplated', decodeMode: 'fixed'});
+  expect(executorchRecord.coldRuns.map(attempt => attempt.status === 'complete' &&
+    [attempt.decodeTokens, attempt.executorchStats!.numGeneratedTokens, attempt.executorchStats!.prefillChunks]))
+    .toEqual([[128, 127, 2], [128, 127, 2]]);
+  expect(executorchRecord.tokenizerArtifact).toEqual({file: 'gemma_4_e2b_tokenizer.json', sha256: '4'.repeat(64),
+    sizeBytes: 32000000, expectedSha256: '4'.repeat(64)});
+  expect(executorchRecord.effectiveSettings).toMatchObject({binding: 'react-native-executorch',
+    generation: {maxNewTokens: 128, ignoreEos: true, temperature: 0, promptPrefix: '<bos>'}});
+  expect(executorchRecord.runtimeVersions).toMatchObject({executorch: '1.4.1', reactNativeExecutorch: '0.10.7'});
+  expect(records['executorch-tokenizerMismatch'].tokenizerArtifact!.sha256).toBe('f'.repeat(64));
+  expect(records['executorch-tokenizerUnreadable'].tokenizerArtifact).toBeNull();
+  expect(records['f8-llama-cpu']).not.toHaveProperty('tokenizerArtifact');
   // decodeMode fixed: the protocol says so and every repetition decoded exactly maxDecodeTokens.
   for (const key of ['board-litert-fixed-gemma3-1b-int4-litertlm-cpu', 'board-litert-fixed-gemma3-1b-sm8850-litertlm-npu']) {
     expect(records[key].protocol.decodeMode).toBe('fixed');
@@ -444,7 +524,7 @@ test('accelerator records match the committed fixture validated by the host sche
   // The board configurations' records carry exactly the committed files and their load settings.
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].configuration).toEqual(qwenOpenclConfig);
   expect(records['board-hexagon-llama32-q4km-hexagon'].configuration).toEqual(q4kmHexagonConfig);
-  expect(records['qwen25-qwen25-1.5b-q80-opencl'].effectiveSettings!.init).toMatchObject({use_mmap: false,
+  expect((records['qwen25-qwen25-1.5b-q80-opencl'].effectiveSettings as LlamaRnEffectiveSettings).init).toMatchObject({use_mmap: false,
     use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto', n_gpu_layers: 99});
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].protocol.chatTemplate).toBe('qwen25');
   // They measure the CPU reference prompt (std-pp512-v1, pre-templated); the gate keeps its probes.

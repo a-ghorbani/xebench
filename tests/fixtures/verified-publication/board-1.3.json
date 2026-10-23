@@ -45,8 +45,8 @@
         "sessionIds": [
           "1767225600000-4-npu"
         ],
-        "bundleSha256": "a86aec09bbce36a0eb487e3463c57dedac08145ff3cccd48f3d10b0a1107c26f",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/a86aec09bbce36a0eb487e3463c57dedac08145ff3cccd48f3d10b0a1107c26f/manifest.json"
+        "bundleSha256": "5bcc47a81f9bbb90120eee234b3510ad3564bbfacd4f3ad232ed602ceb4a5797",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/5bcc47a81f9bbb90120eee234b3510ad3564bbfacd4f3ad232ed602ceb4a5797/manifest.json"
       },
       "build": {
         "engineVersion": "llama.cpp b11385 (bf9a0cc)",
@@ -105,8 +105,8 @@
         "sessionIds": [
           "1767225600000-2-phone"
         ],
-        "bundleSha256": "bb5dbeccbb9bb5b1305f6a6c84813ee043fcfdb530f9d1a889591ea7ba0719c6",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/bb5dbeccbb9bb5b1305f6a6c84813ee043fcfdb530f9d1a889591ea7ba0719c6/manifest.json"
+        "bundleSha256": "ced56f1651ae48f1355687a5bfcb3018038f555a37c7320432d1f3388ade8524",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/ced56f1651ae48f1355687a5bfcb3018038f555a37c7320432d1f3388ade8524/manifest.json"
       },
       "build": {
         "engineVersion": "llama.cpp b11385 (bf9a0cc)",
@@ -202,8 +202,8 @@
         "sessionIds": [
           "1767225600000-0-pixel"
         ],
-        "bundleSha256": "bb5dbeccbb9bb5b1305f6a6c84813ee043fcfdb530f9d1a889591ea7ba0719c6",
-        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/bb5dbeccbb9bb5b1305f6a6c84813ee043fcfdb530f9d1a889591ea7ba0719c6/manifest.json"
+        "bundleSha256": "ced56f1651ae48f1355687a5bfcb3018038f555a37c7320432d1f3388ade8524",
+        "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/ced56f1651ae48f1355687a5bfcb3018038f555a37c7320432d1f3388ade8524/manifest.json"
       },
       "build": {
         "engineVersion": "llama.cpp b11385 (bf9a0cc)",

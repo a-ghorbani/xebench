@@ -35,7 +35,8 @@ test('LiteRT-LM records the Qualcomm runtime and QAIRT only for NPU runs', () =>
   const constants = {litertLmVersion: '0.18.0', litertNpuRuntimeQualcommVersion: '2.3.0',
     qairtVersion: '2.50.0.260828221209'};
   expect(liteRtRuntimeVersions(constants, 'npu')).toEqual({llamaCpp: null, llamaRn: null, litertLm: '0.18.0',
-    litertNpuRuntimeQualcomm: '2.3.0', qairt: '2.50.0.260828221209', genie: null});
+    litertNpuRuntimeQualcomm: '2.3.0', qairt: '2.50.0.260828221209', genie: null, executorch: null,
+    reactNativeExecutorch: null});
   expect(liteRtRuntimeVersions(constants, 'gpu')).toMatchObject({litertLm: '0.18.0', litertNpuRuntimeQualcomm: null,
     qairt: null});
   // Unpackaged libraries (the native module reports null) stay null.

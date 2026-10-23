@@ -6,7 +6,7 @@
  * Design and result template: docs/experiments/litert-accelerators.md.
  */
 import type {RuntimeVersions} from './runtime';
-import type {EngineAdapter, LlamaRnEffectiveSettings} from './adapters/EngineAdapter';
+import type {EffectiveSettings, EngineAdapter} from './adapters/EngineAdapter';
 import type {AcceleratorConfig, AcceleratorRun, DecodeMode} from './config';
 import {ACCELERATOR_PROMPT, ACCELERATOR_PROMPT_LABEL, chatTurn, STANDARD_PROMPT, STANDARD_PROMPT_LABEL} from './prompts';
 import type {ChatTemplate} from './prompts';
@@ -33,6 +33,7 @@ export const ACCELERATOR_UNMEASURED_NOTES = {
   'engine-unavailable': 'Not run: the engine is not linked in this build',
   'gate-cleanup-failed': 'Not run: the correctness gate could not release the engine',
   'model-hash-mismatch': 'Not run: the model artifact does not match the configured SHA-256',
+  'tokenizer-hash-mismatch': 'Not run: the tokenizer does not match the configured SHA-256',
 } as const;
 export type UnmeasuredReason = keyof typeof ACCELERATOR_UNMEASURED_NOTES;
 
@@ -48,9 +49,17 @@ export interface AcceleratorSession extends Omit<SessionIdentity, 'artifact'> {
   backend: AcceleratorRun['backend'];
   /** Summary of per-repetition evidence; null until a repetition has loaded the engine. */
   observedBackend: ReturnType<typeof summarizeBackend>;
-  /** llama.cpp runs: every parameter passed to llama.rn (as cpu-reference-v3). LiteRT-LM: null. */
-  effectiveSettings: LlamaRnEffectiveSettings | null;
-  /** llama.rn's report after each successful load; LiteRT-LM reports none (empty). */
+  /**
+   * llama.cpp runs: every parameter passed to llama.rn (as cpu-reference-v3). ExecuTorch runs:
+   * every parameter passed to react-native-executorch. LiteRT-LM: null.
+   */
+  effectiveSettings: EffectiveSettings | null;
+  /**
+   * ExecuTorch runs only: the tokenizer.json hashed with the model, and the configured run's
+   * tokenizerSha256 (null if none). null when the run was recorded before it was hashed.
+   */
+  tokenizerArtifact?: {file: string; sha256: string; sizeBytes: number; expectedSha256: string | null} | null;
+  /** llama.rn's report after each successful load; LiteRT-LM and ExecuTorch report none (empty). */
   executionReports: ExecutionLoadReport[];
   /** Versions of the runtimes the engine runs on, from the shipped artifacts (runtime.ts). */
   runtimeVersions: RuntimeVersions | null;
@@ -127,11 +136,14 @@ export function gateNotRun(run: AcceleratorRun, config: AcceleratorConfig): Corr
 export function createAcceleratorSession(adapter: Pick<EngineAdapter, 'engine' | 'engineVersion' | 'effectiveSettings' | 'runtimeVersions'> | null,
   config: AcceleratorConfig, run: AcceleratorRun, identity: SessionIdentity, runOrder: RunOrder | null,
   gate: SessionGate): AcceleratorSession {
+  const {tokenizerArtifact, ...shared} = identity;
   const record: AcceleratorSession = {
-    ...identity, artifact: identity.artifact && {...identity.artifact, expectedSha256: run.modelSha256 ?? null},
+    ...shared, artifact: identity.artifact && {...identity.artifact, expectedSha256: run.modelSha256 ?? null},
+    ...run.engine === 'executorch' ? {tokenizerArtifact: tokenizerArtifact ? {file: run.tokenizerFile!,
+      ...tokenizerArtifact, expectedSha256: run.tokenizerSha256 ?? null} : null} : {},
     schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.8-accelerator',
-    effectiveSettings: adapter?.effectiveSettings ? adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens}) :
-      null,
+    effectiveSettings: adapter?.effectiveSettings ? adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens,
+      ...(config.decodeMode === undefined ? {} : {decodeMode: config.decodeMode})}) : null,
     executionReports: [], runtimeVersions: adapter?.runtimeVersions ? adapter.runtimeVersions() : null,
     engine: run.engine, engineVersion: adapter ? adapter.engineVersion() : 'unavailable', backend: run.backend,
     observedBackend: null, platform: 'android', model: run.model, quant: run.quant, modelFile: run.modelFile,
@@ -164,9 +176,11 @@ export function unmeasuredAcceleratorSession(adapter: Pick<EngineAdapter, 'engin
   const reference = gate.correctness.reference;
   const correctness = reference ? {...gate.correctness, reference: {...reference, sameArtifact: null}} : gate.correctness;
   // A hash mismatch keeps the bytes it hashed, so the record shows what was found.
+  const hashed = stopReason === 'model-hash-mismatch' || stopReason === 'tokenizer-hash-mismatch';
   const record = createAcceleratorSession(adapter, config, run,
-    {...identity, artifact: stopReason === 'model-hash-mismatch' ? identity.artifact : null}, runOrder,
-    {...gate, correctness});
+    {...identity, artifact: hashed ? identity.artifact : null,
+      tokenizerArtifact: stopReason === 'tokenizer-hash-mismatch' ? identity.tokenizerArtifact ?? null : null},
+    runOrder, {...gate, correctness});
   record.status = 'failed';
   record.stopReason = stopReason;
   updateAcceleratorVerdict(record);
@@ -221,6 +235,8 @@ function measuredPrompt(config: AcceleratorConfig) {
 export interface AcceleratorIO {
   /** Hash the run's model file; throws when it cannot be read. */
   artifact(run: AcceleratorRun): Promise<{sha256: string; sizeBytes: number}>;
+  /** ExecuTorch runs: hash the run's tokenizerFile; throws when it cannot be read. */
+  tokenizer?(run: AcceleratorRun): Promise<{sha256: string; sizeBytes: number}>;
   /** A fresh adapter for the run; throws when the engine is not linked in this build. */
   adapter(run: AcceleratorRun): EngineAdapter;
   identity(): SessionIdentity;
@@ -252,6 +268,18 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
   /** A configured modelSha256 that the staged file does not match: never gated or measured. */
   const mismatched = (run: AcceleratorRun, artifact: {sha256: string}) =>
     run.modelSha256 !== undefined && artifact.sha256 !== run.modelSha256;
+  /** ExecuTorch: the tokenizer the runner loads, hashed once per file; undefined for other engines. */
+  const tokenizers = new Map<string, {sha256: string; sizeBytes: number} | null>();
+  const tokenizerOf = async (run: AcceleratorRun) => {
+    if (run.tokenizerFile === undefined) return undefined;
+    if (!tokenizers.has(run.tokenizerFile)) {
+      tokenizers.set(run.tokenizerFile, io.tokenizer ? await io.tokenizer(run).catch(() => null) : null);
+    }
+    return tokenizers.get(run.tokenizerFile)!;
+  };
+  const tokenizerMismatched = (run: AcceleratorRun, tokenizer: {sha256: string} | null | undefined) =>
+    run.tokenizerSha256 !== undefined && tokenizer !== null && tokenizer !== undefined &&
+    tokenizer.sha256 !== run.tokenizerSha256;
   const adapterOf = (run: AcceleratorRun) => {
     try {
       return io.adapter(run);
@@ -285,6 +313,8 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
     const adapter = adapterOf(run);
     const hashed = adapter ? await artifactOf(run) : null;
     if (!adapter || !hashed || mismatched(run, hashed)) continue;
+    const tokenizer = await tokenizerOf(run);
+    if (tokenizer === null || tokenizerMismatched(run, tokenizer)) continue;
     const outcome = await gate(adapter, run, undefined, artifacts.get(run.modelFile)!);
     gates.set(run.id, outcome);
     io.log(`${run.id}: reference gate ${outcome.correctness.status}`);
@@ -300,9 +330,9 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
     const runOrder = runOrderFor(run, position);
     const adapter = adapterOf(run);
     const recordUnmeasured = async (reason: UnmeasuredReason, decided?: SessionGate,
-      hashed: SessionIdentity['artifact'] = null) => {
-      await persist(unmeasuredAcceleratorSession(adapter, config, run, {...identity, artifact: hashed}, runOrder, reason,
-        decided));
+      hashed: SessionIdentity['artifact'] = null, tokenizer: SessionIdentity['tokenizerArtifact'] = null) => {
+      await persist(unmeasuredAcceleratorSession(adapter, config, run,
+        {...identity, artifact: hashed, tokenizerArtifact: tokenizer}, runOrder, reason, decided));
       console.log(`XEBENCH_ERROR ${run.id}: ${reason}`);
     };
     const earlier = gates.get(run.id);
@@ -329,6 +359,15 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
         await recordUnmeasured('model-hash-mismatch', undefined, artifact);
         continue;
       }
+      const tokenizer = await tokenizerOf(run);
+      if (tokenizer === null) {
+        await recordUnmeasured('setup-failed');
+        continue;
+      }
+      if (tokenizerMismatched(run, tokenizer)) {
+        await recordUnmeasured('tokenizer-hash-mismatch', undefined, artifact, tokenizer);
+        continue;
+      }
       let outcome = gates.get(run.id);
       if (!outcome) {
         outcome = await gate(adapter, run, run.referenceRunId ? gates.get(run.referenceRunId) : undefined, artifact);
@@ -339,7 +378,8 @@ export async function runAcceleratorConfiguration(config: AcceleratorConfig, run
         await recordUnmeasured('gate-cleanup-failed', outcome);
         continue;
       }
-      const result = await runAcceleratorSession(adapter, config, run, {...identity, artifact}, outcome,
+      const result = await runAcceleratorSession(adapter, config, run,
+        {...identity, artifact, ...(tokenizer === undefined ? {} : {tokenizerArtifact: tokenizer})}, outcome,
         persist, io.sleep, {runOrder, baseline, ...(io.now ? {now: io.now} : {})});
       if (result.status === 'failed') {
         console.log(`XEBENCH_ERROR ${run.id}: see session evidence`);

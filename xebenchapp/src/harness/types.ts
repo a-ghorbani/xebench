@@ -65,13 +65,36 @@ export interface SingleRunMetrics {
   decodeTokens: number;
   decodeTps: number;
   decodeMethod: MeasureMethod;
-  /** Engine-internal numbers when available (llama.cpp), for cross-checking */
+  /** Engine-internal numbers when available (llama.cpp, ExecuTorch), for cross-checking */
   engineInternal?: {
     promptMs: number;
     promptPerSecond: number;
     predictedMs: number;
     predictedPerSecond: number;
   };
+  /** ExecuTorch only: the runner's own statistics for this request (ExecutorchAdapter). */
+  executorchStats?: ExecutorchStats;
+}
+
+/**
+ * ExecuTorch's llm::Stats for one generate() call, as react-native-executorch returns them.
+ * Timestamps are the runner's CLOCK_REALTIME milliseconds (integer). inferenceStartMs is taken
+ * before tokenization; firstTokenMs after the prefill (every chunk) sampled the first token;
+ * inferenceEndMs after the decode loop. numGeneratedTokens counts the decode loop's tokens, not
+ * the first token the prefill sampled.
+ */
+export interface ExecutorchStats {
+  numPromptTokens: number;
+  numGeneratedTokens: number;
+  inferenceStartMs: number;
+  firstTokenMs: number;
+  inferenceEndMs: number;
+  /** Token callbacks the request produced (numGeneratedTokens + 1). */
+  emittedTokens: number;
+  /** Most tokens one prefill forward takes (the program's bound); null if it could not be read. */
+  prefillChunkTokens: number | null;
+  /** Forwards the prompt's prefill took: ceil(numPromptTokens / prefillChunkTokens); null with it. */
+  prefillChunks: number | null;
 }
 
 export interface ColdRunRecord extends SingleRunMetrics {

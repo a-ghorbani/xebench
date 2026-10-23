@@ -77,7 +77,9 @@ reference protocol.
 ### 1. Same bytes in — identical prompt, no per-engine templating
 Both engines receive the **same pre-templated raw string** (Llama 3.2 chat
 template applied once, by us — not by either engine). llama.rn gets it via
-`completion({ prompt })`, ExecuTorch via `forward()`. Neither applies its own
+`completion({ prompt })`, ExecuTorch via its LLM runner's `generate()`
+(react-native-executorch `createLLMRunner`). The runner adds no BOS token, so for a Gemma model
+the prompt starts with the literal `<bos>` that llama.cpp adds as a token. Neither applies its own
 chat wrapper, so tokenizer input is byte-identical. Each engine's own prompt
 token count is recorded; a mismatch is flagged, not silently averaged.
 → `src/harness/prompts.ts`, both adapters pass `cfg.prompt` unchanged.
@@ -99,11 +101,18 @@ Quality parity is the top v2 item.
 ### 3. Throughput provenance is recorded per number
 How each tok/s was obtained is a first-class field (`MeasureMethod`):
 - `engine-timings` — the engine's own counters (llama.cpp exposes prefill/decode
-  ms and tok/s directly; this is the gold standard).
-- `ttft-derived` / `callback-derived` — ExecuTorch exposes no internal counters,
-  so prefill is derived from TTFT and decode from JS-side per-token callback
-  timestamps. This includes one decode step + a callback hop, which biases
-  **against** ExecuTorch (conservative), and it is labeled as such on the row.
+  ms and tok/s directly; this is the gold standard). For ExecuTorch they are its
+  LLM runner's statistics, in whole wall-clock milliseconds: prefill is prompt tokens
+  over the time from the start of inference to the first token, which includes the
+  tokenization and the first token's sampling (llama.cpp's prompt timing does not) and
+  every prefill forward (at most 512 tokens per forward for Gemma 4 E2B); decode is the
+  decode loop's tokens over the time from the first token to the end, one forward per
+  token: 127 tokens of a fixed 128-token decode.
+- `ttft-derived` / `callback-derived` — for a binding without internal counters,
+  prefill is derived from TTFT and decode from JS-side per-token callback
+  timestamps. This includes one decode step + a callback
+  hop, which biases **against** the engine (conservative), and it is labeled as such
+  on the row.
 
 We do **not** pretend a derived number and an engine-internal number are the
 same kind of measurement. TTFT itself is measured at the identical point for
@@ -221,8 +230,8 @@ percentage only as a condition, not energy use.
 ## Explicitly not claimed in v1
 1. That the two quantizations are quality-equivalent (no quality-delta column yet).
 2. Any GPU/NPU ranking (CPU only).
-3. That derived tok/s (ExecuTorch) and engine-internal tok/s (llama.cpp) are the
-   same class of measurement — they are labeled differently on purpose.
+3. That derived tok/s and engine-internal tok/s are the same class of measurement —
+   they are labeled differently on purpose.
 4. Authoritative energy numbers.
 
 These are the honest edges. Naming them is what makes the numbers we *do*

@@ -64,7 +64,7 @@ export type Attempt = AttemptBase & ({status: 'complete'} & SingleRunMetrics | {
 export type StopReason = 'repetition-failed' | 'readiness-timeout' | 'condition-probe-pending' |
   'cleanup-failed' | 'configuration-aborted' | 'setup-failed' | 'model-hash-mismatch' |
   // accelerator-v1 only (accelerator.ts):
-  'engine-unavailable' | 'gate-cleanup-failed';
+  'engine-unavailable' | 'gate-cleanup-failed' | 'tokenizer-hash-mismatch';
 
 /** Where the parsed configuration came from, and the SHA-256 of that file's bytes. */
 export interface ConfigurationSource {
@@ -80,6 +80,8 @@ export interface SessionIdentity {
   deviceInfo: {model: string; androidRelease: string};
   /** null only for runs recorded as skipped or failed before the model was hashed. */
   artifact: {sha256: string; sizeBytes: number} | null;
+  /** accelerator-v2 ExecuTorch runs: the tokenizer.json bytes hashed with the model (null if not hashed). */
+  tokenizerArtifact?: {sha256: string; sizeBytes: number} | null;
   build: BuildIdentity;
   configurationSource: ConfigurationSource;
 }
@@ -242,15 +244,16 @@ export function createSession(
   adapter: EngineAdapter, config: ReferenceConfig, run: ReferenceRun, identity: SessionIdentity,
   runOrder: RunOrder | null = null,
 ): ReferenceSession {
-  if (!adapter.effectiveSettings) {
-    throw new Error('Adapter cannot state its effective engine settings');
+  const effectiveSettings = adapter.effectiveSettings?.({maxDecodeTokens: config.maxDecodeTokens});
+  if (!effectiveSettings || effectiveSettings.binding !== 'llama.rn') {
+    throw new Error('Adapter cannot state its effective llama.rn settings');
   }
   const record: ReferenceSession = {
     ...identity,
     artifact: identity.artifact && {...identity.artifact, expectedSha256: run.modelSha256 ?? null},
     schema: 'xebench-raw', schemaVersion: 1, harnessVersion: 'xebench-0.7-reference',
     engine: adapter.engine, engineVersion: adapter.engineVersion(), backend: 'cpu', observedBackend: null,
-    effectiveSettings: adapter.effectiveSettings({maxDecodeTokens: config.maxDecodeTokens}), executionReports: [],
+    effectiveSettings, executionReports: [],
     runtimeVersions: adapter.runtimeVersions?.() ?? null,
     platform: 'android', model: run.model, quant: run.quant, modelFile: run.modelFile,
     configuration: config, configurationRunId: run.id, runOrder,

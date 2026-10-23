@@ -49,9 +49,10 @@ react {
     //   and Windows. ONLY aarch64-Linux hosts need an override: RN's OS detection has
     //   no aarch64 hermesc folder, but the shipped x86-64 hermesc runs fine via
     //   emulation. (JS engine choice does not affect native benchmark numbers.)
+    //   Since React Native 0.83 hermesc ships in the hermes-compiler package.
     if (System.getProperty("os.name").toLowerCase().contains("linux")
             && System.getProperty("os.arch") == "aarch64") {
-        hermesCommand = "$rootDir/../node_modules/react-native/sdks/hermesc/linux64-bin/hermesc"
+        hermesCommand = "$rootDir/../node_modules/hermes-compiler/hermesc/linux64-bin/hermesc"
     }
     //
     //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
@@ -104,6 +105,14 @@ def xebenchGitDirty = xebenchGitStatus == null ? "" : (xebenchGitStatus.isEmpty(
 def bundledConfig = file("$rootDir/../configs/cpu-reference-v2.json") // must match src/harness/reference.ts
 def xebenchBundledConfigSha256 = java.security.MessageDigest.getInstance("SHA-256")
         .digest(bundledConfig.bytes).encodeHex().toString()
+// The ExecuTorch runtime version, as declared by the headers of the native libraries that
+// react-native-executorch downloads (pinned by xebenchapp/executorch-libs.lock.json); ""
+// when they are absent. The experimental flavor's ExecutorchBench module reports it.
+def executorchVersionHeader = file("$rootDir/../node_modules/react-native-executorch/third-party/include/executorch/runtime/core/version.h")
+def executorchVersionMatch = executorchVersionHeader.exists() ?
+        (executorchVersionHeader.text =~ /#define ET_VERSION "([0-9A-Za-z.+-]{1,40})"/) : null
+def xebenchExecutorchVersion = executorchVersionMatch != null && executorchVersionMatch.find() ?
+        executorchVersionMatch.group(1) : ""
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -130,6 +139,7 @@ android {
         buildConfigField "String", "XEBENCH_GIT_COMMIT", "\"${xebenchGitCommit}\""
         buildConfigField "String", "XEBENCH_GIT_DIRTY", "\"${xebenchGitDirty}\""
         buildConfigField "String", "XEBENCH_BUNDLED_CONFIG_SHA256", "\"${xebenchBundledConfigSha256}\""
+        buildConfigField "String", "XEBENCH_EXECUTORCH_VERSION", "\"${xebenchExecutorchVersion}\""
     }
     buildFeatures {
         buildConfig true
@@ -145,7 +155,7 @@ android {
             dimension "runtime"
             versionNameSuffix "-reference"
         }
-        // LiteRT-LM + ExecuTorch + llama.rn Hexagon/OpenCL accelerators. LiteRT NPU
+        // LiteRT-LM + ExecuTorch (XNNPACK) + llama.rn Hexagon/OpenCL accelerators. LiteRT NPU
         // needs three matched pieces: litertlm-android (below), Google's Qualcomm
         // dispatch lib from Maven (litert-npu-runtime-qualcomm, below), and the QAIRT
         // QNN runtime libs, which are proprietary and staged by
@@ -224,16 +234,22 @@ dependencies {
 }
 
 // Per-flavor native packaging. Autolinking is not flavor-aware, so llama.rn (one AAR
-// with CPU and Hexagon/OpenCL variants) and react-native-executorch are linked into
-// every flavor; native runtimes a flavor must not carry are removed from its APK here.
+// with CPU and Hexagon/OpenCL variants), react-native-executorch and react-native-worklets
+// are linked into every flavor; native runtimes a flavor must not carry are removed from
+// its APK here.
 // scripts/check_reference_apk.py --flavor <name> verifies the result.
 def llamaRnAccelerators = ["**/librnllama*hexagon*.so", "**/librnllama*opencl*.so"]
 // aapt-style ignore patterns: llama.rn syncs its HTP libs into src/main/assets/ggml-hexagon.
 // A non-empty list replaces AGP's default asset ignores, so they are restated first.
 def llamaRnHtpAssets = ["!.svn", "!.git", "!.ds_store", "!*.scc", ".*", "<dir>_*", "!CVS",
                         "!thumbs.db", "!picasa.ini", "!*~", "<dir>ggml-hexagon"]
-def executorchNative = ["**/libexecutorch.so", "**/libreact-native-executorch.so",
-                        "**/libcpuinfo.so", "**/libpthreadpool.so"]
+// react-native-executorch: its JSI library, the ExecuTorch runtime and one library per
+// backend (only XNNPACK is downloaded: scripts/check-executorch-libs.js), and
+// react-native-worklets, whose runtimes react-native-executorch runs inference on.
+def executorchNative = ["**/libexecutorch.so", "**/libRnExecutorch.so",
+                        "**/lib*_executorch_backend.so", "**/libworklets.so"]
+// ExecuTorch backends other than XNNPACK never ship, even if an install provides one.
+def executorchOtherBackends = ["**/libvulkan_executorch_backend.so", "**/libqnn_executorch_backend.so"]
 // Defensive: proprietary/vendor runtimes that only belong in experimental or geniex,
 // in case someone stages them under src/main/jniLibs.
 def vendorNative = ["**/libQnn*.so", "**/libQairt*.so", "**/libSNPE*.so", "**/libGenie*.so",
@@ -275,9 +291,12 @@ androidComponents {
         } else if (flavor == "geniex") {
             jniExcludes.addAll(llamaRnAccelerators + executorchNative)
             variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
-        } else if (flavor == "experimental" && excludeLlamaHexagon) {
-            jniExcludes.addAll(llamaRnAccelerators)
-            variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
+        } else if (flavor == "experimental") {
+            jniExcludes.addAll(executorchOtherBackends)
+            if (excludeLlamaHexagon) {
+                jniExcludes.addAll(llamaRnAccelerators)
+                variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
+            }
         }
     }
 }
