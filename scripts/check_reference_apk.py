@@ -96,11 +96,17 @@ QNN_NPU_LIBS = {LIB + name for name in (
 
 
 # llama.cpp's Hexagon NPU backend: llama.rn's Hexagon/OpenCL variant (core and JNI) and the DSP
-# libraries it syncs into assets/ggml-hexagon, for Hexagon v73 (SM8550) to v81 (SM8850). Absent
-# when llama.rn found no Hexagon SDK at build time or the build set xebench.excludeLlamaHexagon.
+# libraries it syncs into assets/ggml-hexagon, for Hexagon v73 (SM8550) to v81 (SM8850). The build
+# set xebench.excludeLlamaHexagon drops all of them. File names alone do not prove the backend:
+# llama.rn 0.13.0-rc.8 always builds the hexagon_opencl variant and always syncs the DSP libraries,
+# but compiles the Hexagon backend into it (ggml-hexagon.cpp, -DGGML_USE_HEXAGON) only when it finds
+# a Hexagon SDK. So the variant must also contain HEXAGON_MARKER, the DSP-library URI format string
+# of ggml-hexagon.cpp, which exists in no other source llama.rn compiles.
+HEXAGON_VARIANT = LIB + 'librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so'
 HEXAGON_LIBS = {LIB + f'librnllama{kind}_v8_2_dotprod_i8mm_hexagon_opencl.so' for kind in ('', '_jni')} | {
     f'assets/ggml-hexagon/libggml-htp-{arch}.so' for arch in ('v73', 'v75', 'v79', 'v81')
 }
+HEXAGON_MARKER = b'file:///libggml-htp-v%u.so?htp_iface_skel_handle_invoke'
 
 
 def check_apk(path, flavor='reference', require_qnn=False, require_hexagon=False):
@@ -125,11 +131,15 @@ def check_apk(path, flavor='reference', require_qnn=False, require_hexagon=False
                     elf.add(entry.filename)
         dex = b''.join(apk.read(entry.filename) for entry in entries
                        if fnmatchcase(entry.filename, 'classes*.dex'))
+        hexagon_built = (require_hexagon and HEXAGON_VARIANT in present
+                         and HEXAGON_MARKER in apk.read(HEXAGON_VARIANT))
     problems = []
     required_dex = COMMON_REQUIRED_DEX + spec.get('required_dex', [])
     missing = spec['required'] - present
     if missing:
         problems.append('missing ' + ', '.join(sorted(missing)))
+    if require_hexagon and HEXAGON_VARIANT in present and not hexagon_built:
+        problems.append(f'{HEXAGON_VARIANT} has no Hexagon backend (built without a Hexagon SDK)')
     names = {entry.filename for entry in entries}
     unexpected = sorted(name for name in names
                         if any(fnmatchcase(name, pattern) for pattern in spec['forbidden']))

@@ -140,10 +140,10 @@ template renders it, with thinking off: the chat templates `gemma4` and `qwen3`
 Licenses, as each repository states them: the Gemma 4 E2B GGUF and `.litertlm` files are under the
 [Apache License 2.0](https://ai.google.dev/gemma/docs/gemma_4_license), with base model
 `google/gemma-4-E2B-it`. The ExecuTorch Gemma 4 E2B repository's card states `license: gemma` and
-`base_model: google/gemma-4-E2B`; its `tokenizer_config.json` carries the instruction-tuned
-(`google/gemma-4-E2B-it`) chat template, so the output gate treats the export as the
-instruction-tuned model, and the gate's result decides. The manifest records the card's values for
-the `.pte` file and both tokenizer files. Every Qwen3 1.7B file is under the
+`base_model: google/gemma-4-E2B`, so the manifest records the `.pte` file and both tokenizer files
+under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) with that base model. Its
+`tokenizer_config.json` carries the instruction-tuned (`google/gemma-4-E2B-it`) chat template, so
+the output gate treats the export as the instruction-tuned model, and the gate's result decides. Every Qwen3 1.7B file is under the
 [Apache License 2.0](https://huggingface.co/Qwen/Qwen3-1.7B/blob/main/LICENSE). None of these
 repositories is gated. Download a file by its repository path and revision:
 
