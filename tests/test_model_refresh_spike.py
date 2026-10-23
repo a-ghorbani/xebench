@@ -25,6 +25,8 @@ policy = load("publication_policy_spike", ROOT / "scripts/publication_policy.py"
 NPU_CHECK = "49a216f37945edcc80b5d31a981206c1984e3293f16e4e47abd78adad2fe69e8"
 SPIKE = "c12fb048be9bfbf75361b33b57c3fd158510a84c45c369d4c35b07410c7b3880"
 GENIEX = "8c41c4e258ff4dd1fc149f165b8c45c7fe2cc3bb91f1db13b2db2acf078befb5"
+S23_PROBE = "31f08310a8de323504572c42bc4b924ffe81f6b79c8a52a5707dc4acb0825f37"
+S23_GEMMA4_MMAP = "1792723702923-0-9via9q60it"
 GENIEX_NPU = "1792708796218-0-n00n5fcqhyj"  # the rerun after the staging fix
 GENIEX_NPU_REFUSED = "1792708576907-0-b3373v2h66w"  # setup-failed: bundle directory unreadable
 GEMMA3_OPENCL = "1792707379931-0-c1o069al88u"
@@ -38,7 +40,7 @@ class ModelRefreshSpikeBundleTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.reports = {}
-        for sha in (NPU_CHECK, SPIKE, GENIEX):
+        for sha in (NPU_CHECK, SPIKE, GENIEX, S23_PROBE):
             # A fresh reference read from this checkout (policy.ROOT is the repository root).
             report = policy.bundle_report(ROOT / "evidence" / sha, sha)
             assert report["valid"], report["errors"]
@@ -52,6 +54,19 @@ class ModelRefreshSpikeBundleTests(unittest.TestCase):
                 self.assertTrue(session["facts"]["configurationFile"]["id"].startswith("spike-refresh-"))
                 self.assertFalse(session["decision"]["publishable"])
                 self.assertEqual(session["decision"]["refusal"], "spike session (spike-* configuration id)")
+
+    def test_the_galaxy_s23_memory_probe_sessions_are_never_publishable(self):
+        sessions = self.reports[S23_PROBE]
+        self.assertEqual(len(sessions), 6)
+        for session_id, session in sessions.items():
+            with self.subTest(session_id):
+                self.assertEqual(session["facts"]["device"]["model"], "SM-S911B")
+                self.assertTrue(session["facts"]["configurationFile"]["id"].startswith("spike-refresh-"))
+                self.assertFalse(session["decision"]["publishable"])
+                self.assertEqual(session["decision"]["refusal"], "spike session (spike-* configuration id)")
+        # llama.cpp Gemma 4 E2B with mmap stops at the end of turn after 85 tokens and says so.
+        self.assertEqual(check(sessions[S23_GEMMA4_MMAP], "decode")["detail"],
+                         "every repetition decoded 85 of 128 tokens, stopped at the end of turn")
 
     def test_the_board_configuration_sessions_of_the_npu_check_stay_publishable(self):
         for session_id, session in self.reports[NPU_CHECK].items():
@@ -98,7 +113,7 @@ class ModelRefreshSpikeBundleTests(unittest.TestCase):
     def test_fixed_decode_sessions_decoded_the_budget_in_every_repetition(self):
         sessions = [session for report in self.reports.values() for session in report.values()
                     if session["facts"]["decode"]["decodeMode"] == "fixed"]
-        self.assertEqual(len(sessions), 6)
+        self.assertEqual(len(sessions), 10)
         for session in sessions:
             with self.subTest(session["sessionId"]):
                 self.assertEqual(check(session, "decode"),
