@@ -36,7 +36,12 @@ outside the board vocabulary: one spelling per quant scheme
 (llama.cpp's GGUF names as they are, `Q8`, `int4`, `4-bit QAT`, `4-bit QAT + LoRA`, `W4A16`, `BF16`, ...; no
 "not stated": leave an unknown quant out), upper-case SoC ids as in `configs/devices.json`,
 device names as "Brand model" (Samsung Galaxy S23, Google Pixel 9, POCO F8 Ultra, Apple iPhone
-17 Pro), and phone platforms only. Speeds are written "tok/s". A justified exception
+17 Pro), and phone platforms only. A file that does not use one scheme throughout says so in
+plain words. ExecuTorch's `8da4w` files store 4-bit weights and compute with 8-bit activations:
+`4-bit weights, 8-bit activations`. A file whose weights mix bit widths names the widths it mixes:
+`mixed 2/4/8-bit` (LiteRT-LM's Gemma 4 E2B file) and `mixed 4/16-bit` (ExecuTorch's Gemma 4 E2B
+file, 4-bit layers with 16-bit attention). A mixed label states no single bit width, and the row's
+notes say which parts use which width. Speeds are written "tok/s". A justified exception
 goes in [`configs/public-text-allowlist.json`](../configs/public-text-allowlist.json) with a
 reason; rewriting is almost always better. CI runs the check on every pull request.
 

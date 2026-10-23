@@ -676,9 +676,10 @@ class FactsFromBundlesTests(unittest.TestCase):
 
     def test_litert_artifacts_are_pinned_with_a_source_revision(self):
         manifest = json.loads((ROOT / "configs/models/experimental-models.json").read_text())
-        pinned = {entry["file"]: entry for entry in manifest["pinnedArtifacts"]}
+        pinned = {entry["file"]: entry for entry in manifest["pinnedArtifacts"] if entry["file"].endswith(".litertlm")}
         self.assertEqual(sorted(pinned), ["Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm", "Gemma3-1B-IT_sm8550.litertlm",
                                           "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+                                          "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm", "gemma-4-E2B-it.litertlm",
                                           "gemma3-1b-it-int4.litertlm"])
         models_md = (ROOT / "MODELS.md").read_text()
         configured = {run["modelFile"]: run["modelSha256"] for path in (ROOT / "xebenchapp/configs").glob("*.json")
@@ -689,16 +690,18 @@ class FactsFromBundlesTests(unittest.TestCase):
             self.assertIsInstance(entry["size"], int)
             self.assertIn(entry["revision"], models_md)
             self.assertIn(entry["sha256"], models_md)
-            self.assertEqual(configured[name], entry["sha256"], "the configs pin the same bytes")
+            if name in configured:
+                self.assertEqual(configured[name], entry["sha256"], "the configs pin the same bytes")
         # Staging reads only models[]: the downloadable pins still load.
         spec_ = importlib.util.spec_from_file_location("stage_model", ROOT / "scripts/stage_model.py")
         stage_model = importlib.util.module_from_spec(spec_)
         spec_.loader.exec_module(stage_model)
         self.assertEqual(len(stage_model.load_manifest(ROOT / "configs/models/experimental-models.json")), 2)
 
-    def test_every_pinned_artifact_is_documented_and_used(self):
+    def test_every_pinned_artifact_is_documented_and_agrees_with_the_configurations(self):
         """policy.load_reference reads pinnedArtifacts from every *-models.json, so a pin added in any
-        manifest must be in MODELS.md and be the hash a committed configuration pins for that file."""
+        manifest must be in MODELS.md, and every committed configuration that names the file pins
+        this hash. A pin may precede the configurations that use it."""
         configured = {}
         for path in (ROOT / "xebenchapp/configs").glob("*.json"):
             for run in json.loads(path.read_text())["runs"]:
@@ -710,7 +713,8 @@ class FactsFromBundlesTests(unittest.TestCase):
             for entry in json.loads(path.read_text()).get("pinnedArtifacts", []):
                 with self.subTest(f"{path.name} {entry['file']}"):
                     self.assertIn(entry["sha256"], models_md)
-                    self.assertIn(entry["sha256"], configured.get(entry["file"], set()))
+                    self.assertTrue(configured.get(entry["file"], {entry["sha256"]}) <= {entry["sha256"]},
+                                    configured.get(entry["file"]))
 
     def test_committed_device_table_names_the_lab_phones(self):
         table = {entry["model"]: entry["soc"] for entry in json.loads((ROOT / "configs/devices.json").read_text())["devices"]}

@@ -439,7 +439,7 @@ EFFECTIVE_SETTINGS = Obj({
                          "version": _text(r"[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?", "package version"),
                          "patches": Arr(LABEL, max_items=0)}, required=("source", "package", "version", "patches")),
 }, required=("binding", "init", "completion", "unlisted"))
-# Exact llama.rn RNLlamaJSI.cpp strings (unchanged from 0.12.4 to 0.13.0-rc.7); other text becomes "unrecognized".
+# Exact llama.rn RNLlamaJSI.cpp strings (unchanged from 0.12.4 to 0.13.0-rc.8); other text becomes "unrecognized".
 REASON_NO_GPU = Vocab(("", "GPU devices disabled by user", "GPU backend is available but was not selected",
                        "GPU backend is not available"))
 ENGINE_DEVICE = Vocab(("CPU", "GPUOpenCL", "HTP0", "HTP1", "HTP2", "HTP3", "HTP4", "HTP5", "HTP6", "HTP7", "Metal",

@@ -31,7 +31,7 @@ export interface LlamaRnAdapterOptions {
 
 /**
  * Harness defaults for the settings a configuration may set (config.ts LOAD_SETTINGS), as
- * cpu-reference-v1 runs them. Against llama.rn 0.13.0-rc.7 (vendored llama.cpp
+ * cpu-reference-v1 runs them. Against llama.rn 0.13.0-rc.8 (vendored llama.cpp
  * common/common.h): flash_attn_type auto and no_extra_bufts false equal its defaults. Loading
  * differs: 0.13's default load_mode is AUTO (chosen per device), while use_mmap true /
  * use_mlock false select LLAMA_LOAD_MODE_MMAP, the 0.12.4 behaviour (cpp/jsi/JSIParams.cpp).
@@ -83,7 +83,7 @@ export class LlamaRnAdapter implements EngineAdapter {
     this.modelLabel = opts.modelLabel;
     this.modelFile = opts.modelPath.split('/').pop() ?? opts.modelPath;
     // Every setting is passed explicitly, so the record states them. Against llama.rn
-    // 0.13.0-rc.7 (vendored llama.cpp common.h): n_ubatch 512 and f16 K/V caches equal its
+    // 0.13.0-rc.8 (vendored llama.cpp common.h): n_ubatch 512 and f16 K/V caches equal its
     // defaults; n_batch 512 is the harness's choice (llama.cpp's default is 2048). Load and
     // attention settings come from the configured run, else LLAMA_RN_DEFAULTS. use_mmap false
     // with use_mlock false selects LLAMA_LOAD_MODE_NONE: the weights are read into memory.

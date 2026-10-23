@@ -56,6 +56,13 @@ rows. The output-correctness gate keeps its own probes in each model's chat temp
 accelerator configuration that also has a GPU or NPU run, the CPU run is the gate's reference, not
 a board CPU measurement: only that configuration's GPU and NPU sessions are displayed.
 
+An accelerator configuration's `chatTemplate` is one of `gemma3`, `gemma4`, `llama32`, `qwen25`
+and `qwen3` ([`prompts.ts`](../xebenchapp/src/harness/prompts.ts)). Each is one user turn without
+a system message, exactly as the model's own chat template renders it with the generation prompt;
+the tokenizer adds the BOS token. `gemma4` and `qwen3` have thinking off: Gemma 4's template
+thinks only when asked to, and `qwen3` is the turn Qwen3's template renders with
+`enable_thinking: false`, which ends with an empty think block.
+
 ### LiteRT-LM board configurations
 
 The board's LiteRT-LM rows run through the accelerator protocol with cpu-reference-v3's

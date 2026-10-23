@@ -57,6 +57,34 @@
       "gated": false,
       "usedBy": "xebenchapp/configs/cpu-reference-v3-qwen25.json and llamacpp-qwen25-opencl-v1.json",
       "sha256Source": "Hugging Face LFS oid at this revision; equals the sha256sum of the lab copy of this file"
+    },
+    {
+      "id": "gemma4-e2b-it-qat-q4_0",
+      "repo": "google/gemma-4-E2B-it-qat-q4_0-gguf",
+      "revision": "675cff42a74c774d6cb76f76d8eacb49b48c9b93",
+      "file": "gemma-4-E2B_q4_0-it.gguf",
+      "size": 3349516256,
+      "sha256": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634",
+      "baseModel": "google/gemma-4-E2B-it",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://ai.google.dev/gemma/docs/gemma_4_license",
+      "gated": false,
+      "usedBy": "llama.cpp runs of Gemma 4 E2B (board model, MODELS.md)",
+      "sha256Source": "Hugging Face LFS oid of the file at this revision; equals the sha256sum of a copy streamed from it"
+    },
+    {
+      "id": "qwen3-1.7b-q4_0",
+      "repo": "unsloth/Qwen3-1.7B-GGUF",
+      "revision": "d7f544eead698dbd1f15126ef60b45a1e1933222",
+      "file": "Qwen3-1.7B-Q4_0.gguf",
+      "size": 1056782912,
+      "sha256": "c876f159707a4e4f70e045106c69db15bfc935a4981706fd4f65c6e7ea1e81c5",
+      "baseModel": "Qwen/Qwen3-1.7B",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen3-1.7B/blob/main/LICENSE",
+      "gated": false,
+      "usedBy": "llama.cpp runs of Qwen3 1.7B and the GENIE-X gate reference (board model, MODELS.md)",
+      "sha256Source": "Hugging Face LFS oid of the file at this revision; equals the sha256sum of a copy streamed from it"
     }
   ]
 }

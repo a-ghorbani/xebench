@@ -128,9 +128,15 @@ The dispatch library and QAIRT must match the LiteRT-LM release's `LITERT_REF`. 
 ```sh
 python3 scripts/stage_qairt_libs.py --qairt ~/qairt/2.50.0.260828   # git-ignored jniLibs + qairt-libs.json
 cd xebenchapp/android && ./gradlew clean assembleExperimentalRelease
-python3 ../../scripts/check_reference_apk.py --flavor experimental --require-qnn \
+python3 ../../scripts/check_reference_apk.py --flavor experimental --require-qnn --require-hexagon \
   app/build/outputs/apk/experimental/release/app-experimental-release.apk
 ```
+
+`--require-hexagon` also requires llama.cpp's Hexagon backend: llama.rn's Hexagon/OpenCL variant
+with the backend compiled in, and the `libggml-htp-v73.so` to `libggml-htp-v81.so` DSP libraries.
+llama.rn builds the variant and ships the DSP libraries even without a Hexagon SDK, so the check also
+looks inside the variant for a string only the Hexagon backend contains. Leave it out for a build
+with `-Pxebench.excludeLlamaHexagon=true`.
 
 `stage_qairt_libs.py --check` verifies an existing staging against the SDK. The SHA-256 of every
 staged QNN library is printed and written to `app/src/experimental/jniLibs/qairt-libs.json`; the

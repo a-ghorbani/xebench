@@ -41,7 +41,7 @@ const build = {status: 'reported' as const, gitCommit: '0123456789abcdef01234567
 const identity = {runId: '1767225600000-0-fixture', timestampIso: '2026-01-01T00:00:00.000Z',
   deviceInfo: {model: 'Fixture', androidRelease: '16'}, artifact: MODEL,
   build, configurationSource: {kind: 'bundled' as const, sha256: 'b'.repeat(64)}};
-// What llama.rn reports for a CPU-only context in the reference flavor (same strings in 0.12.4 and 0.13.0-rc.7).
+// What llama.rn reports for a CPU-only context in the reference flavor (same strings from 0.12.4 to 0.13.0-rc.8).
 const report = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices: [],
   androidLib: 'rnllama_jni_v8_2_dotprod_i8mm', systemInfo: 'system_info: n_threads = 4 (n_threads_batch = 4) / 8 | ' +
     'CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | OPENMP = 1 | REPACK = 1 | ',

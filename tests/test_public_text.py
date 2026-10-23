@@ -128,6 +128,29 @@ class PublicTextTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn(expected, result.stderr)
 
+    def test_mixed_precision_labels_are_board_vocabulary(self):
+        """ExecuTorch's 8da4w files and the Gemma 4 E2B files that mix weight widths have plain labels
+        (docs/STYLE.md); a mixed label states no single bit width (quantBits)."""
+        labels = {"4-bit weights, 8-bit activations": 4, "mixed 2/4/8-bit": None, "mixed 4/16-bit": None}
+        for label in labels:
+            with self.subTest(label):
+                benchmarks = copy.deepcopy(self.benchmarks)
+                self.row_of(benchmarks, "measured")["quant"] = label
+                result = self.check(benchmarks=benchmarks)
+                self.assertEqual(result.returncode, 0, result.stderr)
+        for label in ("8da4w", "mixed 2/4/8 bit", "Mixed 2/4/8-bit", "4-bit, 8-bit activations"):
+            with self.subTest(label):
+                benchmarks = copy.deepcopy(self.benchmarks)
+                self.row_of(benchmarks, "measured")["quant"] = label
+                result = self.check(benchmarks=benchmarks)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn("not a quant from the board vocabulary", result.stderr)
+        script = ("import {quantBitsFor} from './scripts/lib/publication.mjs';"
+                  f"console.log(JSON.stringify({json.dumps(list(labels))}.map(quantBitsFor)));")
+        result = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), list(labels.values()))
+
     def test_lab_row_notes_are_exempt(self):
         benchmarks = copy.deepcopy(self.benchmarks)
         self.row_of(benchmarks, "measured")["asStated"] = "legacy harness note; gate pending"

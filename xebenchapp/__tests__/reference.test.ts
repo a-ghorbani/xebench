@@ -38,7 +38,7 @@ const DEBUG_CERT = 'fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b833266759103
 const BUILD = {gitCommit: '0123456789abcdef0123456789abcdef01234567', gitDirty: false, flavor: 'reference',
   buildType: 'release', versionName: '1.0-reference', versionCode: 1, signingCertSha256: [DEBUG_CERT],
   bundledConfigSha256: 'b'.repeat(64)};
-// Fields llama.rn (0.12.4 and 0.13.0-rc.7) sets on the LlamaContext returned by initLlama().
+// Fields llama.rn (0.12.4 to 0.13.0-rc.8) sets on the LlamaContext returned by initLlama().
 const CONTEXT = {gpu: false, reasonNoGPU: 'GPU backend is not available', devices: [],
   androidLib: 'rnllama_jni_v8_2_dotprod_i8mm',
   systemInfo: 'system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : NEON = 1 | ARM_FMA = 1 | DOTPROD = 1 | '};
@@ -220,11 +220,11 @@ test('records the engine settings actually passed and what the loaded context re
       no_extra_bufts: false, flash_attn_type: 'off', cache_type_k: 'f16', cache_type_v: 'f16'},
     completion: {n_predict: 128, temperature: 0, seed: 42},
     // Vanilla npm llama.rn, exactly the pinned version, no patches.
-    distribution: {source: 'npm', package: 'llama.rn', version: '0.13.0-rc.7', patches: []}});
-  expect(record.engineVersion).toBe('llama.rn 0.13.0-rc.7');
+    distribution: {source: 'npm', package: 'llama.rn', version: '0.13.0-rc.8', patches: []}});
+  expect(record.engineVersion).toBe('llama.rn 0.13.0-rc.8');
   // llama.cpp's own build from llama.rn's exported BuildInfo; the other runtimes take no part.
   expect(record.runtimeVersions).toEqual({llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'},
-    llamaRn: '0.13.0-rc.7', litertLm: null, litertNpuRuntimeQualcomm: null, qairt: null, genie: null});
+    llamaRn: '0.13.0-rc.8', litertLm: null, litertNpuRuntimeQualcomm: null, qairt: null, genie: null});
   expect(record.executionReports).toEqual([{runIndex: 0, ...CONTEXT, nativeLibraries: LIBRARIES}]);
   // Engine reports are evidence, not verified execution: the observed backend stays unknown.
   expect(record.observedBackend).toBeNull();

@@ -87,6 +87,75 @@ python3 scripts/stage_model.py --manifest configs/models/experimental-models.jso
   models/gemma-3-1b-it-q4_0.gguf
 ```
 
+### Gemma 4 E2B and Qwen3 1.7B (board models)
+
+These files are pinned for Gemma 4 E2B and Qwen3 1.7B runs on each engine, by repository,
+revision, size and SHA-256: the GGUF files in
+[`configs/models/reference-models.json`](configs/models/reference-models.json) (`stage_model.py`
+stages them), the others under `pinnedArtifacts` in
+[`configs/models/experimental-models.json`](configs/models/experimental-models.json). The quant
+label is the one the board shows ([docs/STYLE.md](docs/STYLE.md)).
+
+| Model | Engine | File | Quant label | Source at revision | Size (bytes) | SHA-256 |
+|---|---|---|---|---|---|---|
+| Gemma 4 E2B | llama.cpp | `gemma-4-E2B_q4_0-it.gguf` | Q4_0 (QAT) | [`google/gemma-4-E2B-it-qat-q4_0-gguf`](https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf) at `675cff42a74c774d6cb76f76d8eacb49b48c9b93` | 3349516256 | `fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634` |
+| Gemma 4 E2B | LiteRT-LM | `gemma-4-E2B-it.litertlm` | mixed 2/4/8-bit | [`litert-community/gemma-4-E2B-it-litert-lm`](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) at `41c5569623a7c189d6eec3e5225260c58cedbce7` | 2588147712 | `181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c` |
+| Gemma 4 E2B | ExecuTorch (XNNPACK) | `gemma_4_e2b_xnnpack_8da4w.pte` (`e2b/xnnpack/` in the repository) | mixed 4/16-bit | [`software-mansion/react-native-executorch-gemma-4`](https://huggingface.co/software-mansion/react-native-executorch-gemma-4) at `27ecbb4d21feaaeb0e1908bd06aceaf6eddb313a` | 3215277312 | `d11e8587cd20015e01aed66c0880e3a2cefd464073a2f80b74a666246ab71cc7` |
+| Gemma 4 E2B | ExecuTorch | `gemma_4_e2b_tokenizer.json` (`e2b/tokenizer.json`) | | same repository and revision | 32169868 | `23f2c12a98a259a87ba6b24df2750aa238f8f688935a9a89e1ce1e86ef7f095a` |
+| Gemma 4 E2B | ExecuTorch | `gemma_4_e2b_tokenizer_config.json` (`e2b/tokenizer_config.json`) | | same repository and revision | 22312 | `728f10e49dc4571c7679124165390d546d8930be3b9042a7a4e2fcefc45650b2` |
+| Qwen3 1.7B | llama.cpp | `Qwen3-1.7B-Q4_0.gguf` | Q4_0 | [`unsloth/Qwen3-1.7B-GGUF`](https://huggingface.co/unsloth/Qwen3-1.7B-GGUF) at `d7f544eead698dbd1f15126ef60b45a1e1933222` | 1056782912 | `c876f159707a4e4f70e045106c69db15bfc935a4981706fd4f65c6e7ea1e81c5` |
+| Qwen3 1.7B | LiteRT-LM | `Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm` | int4 | [`litert-community/Qwen3-1.7B`](https://huggingface.co/litert-community/Qwen3-1.7B) at `79bf0667b32ae025b972e5fe555fe72ca6e8816c` | 977184032 | `2a72330b504a6596d53a2c00923c57173b10f1b83e6a541213ffec08d1fc5de8` |
+| Qwen3 1.7B | ExecuTorch (XNNPACK) | `qwen_3_1_7b_xnnpack_8da4w.pte` (`1_7b/xnnpack/` in the repository) | 4-bit weights, 8-bit activations | [`software-mansion/react-native-executorch-qwen-3`](https://huggingface.co/software-mansion/react-native-executorch-qwen-3) at `764c9b7f1c964ef43f3591d2ec513cad4d19c12f` | 1307933568 | `c2ae1a4ec67602badb0cfd4156177d7c4a619abd73b398a8e6653b041e1a314b` |
+| Qwen3 1.7B | ExecuTorch | `qwen_3_tokenizer.json` (`tokenizer.json`) | | same repository and revision | 11422654 | `aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4` |
+| Qwen3 1.7B | ExecuTorch | `qwen_3_tokenizer_config.json` (`tokenizer_config.json`) | | same repository and revision | 8426 | `40baaad5ff41e28668add0a761c0e004fc7d79ff4b3c37e83762363f1cabae03` |
+| Qwen3 1.7B | GENIE-X (NPU, SM8850) | `qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy.zip` | W4A16 | [`qualcomm/Qwen3-1.7B`](https://huggingface.co/qualcomm/Qwen3-1.7B) at `72c571233b88645979859e0f0e91004494d32559` (`release_assets.json`, Qualcomm AI Hub Models v0.65.0) | 1538593271 | `ab021d189e387ba417e9156fb8d5fcee7a98cf1befd899a8e6f2a9b65dbf9b2b` |
+
+Where each SHA-256 comes from:
+
+- Hugging Face LFS files (the GGUF, `.litertlm` and `.pte` files and both `tokenizer.json` files):
+  the LFS oid at the pinned revision, which equals `sha256sum` of a copy downloaded from that
+  revision.
+- The two `tokenizer_config.json` files are plain git files with no LFS oid: `sha256sum` of the
+  file downloaded at the pinned revision.
+- The GENIE-X zip is not on Hugging Face. `release_assets.json` at the pinned revision gives its
+  download URL and its QAIRT version (2.50.0.260828221209) but no hash; the SHA-256 is `sha256sum`
+  of the object downloaded from that URL at S3 version `Yb0NrZDlpe5O5Hc3SM4NUGSYelSDiEle`
+  (`downloadUrl` in the manifest). Qualcomm labels the bundle for the Snapdragon 8 Elite Gen 5 for
+  Galaxy (SM8850); Qualcomm publishes no Qwen3 1.7B bundle for the Galaxy S23's SM8550.
+
+The ExecuTorch tokenizer files have the same names in both repositories, so the manifest stages
+them under the model-specific names in the File column; the repository path is in parentheses
+(`sourceFile` in the manifest). The `.pte` files are exported for the ExecuTorch 1.4.1 runtime.
+The Gemma 4 E2B export prefills at most 512 tokens per forward pass; its MLP and output layers
+use 4-bit weights with 8-bit activations, its attention and per-layer-embedding projections stay
+16-bit and its token embeddings are 4-bit (the repository's README). LiteRT-LM's Gemma 4 E2B file
+mixes 2-, 4- and 8-bit weights (Google's mobile QAT). The Qwen3 1.7B `.litertlm` file stores
+4-bit weights in blocks of 32 with 32-bit activations, needs LiteRT-LM 0.18.0 or later, and
+thinks unless `enable_thinking` is false.
+
+For llama.cpp, the app writes each model's single user turn exactly as the model's own chat
+template renders it, with thinking off: the chat templates `gemma4` and `qwen3`
+([`prompts.ts`](xebenchapp/src/harness/prompts.ts); see [REFERENCE-RUNS.md](docs/REFERENCE-RUNS.md)).
+
+Licenses, as each repository states them: the Gemma 4 E2B GGUF and `.litertlm` files are under the
+[Apache License 2.0](https://ai.google.dev/gemma/docs/gemma_4_license), with base model
+`google/gemma-4-E2B-it`. The ExecuTorch Gemma 4 E2B repository's card states `license: gemma` and
+`base_model: google/gemma-4-E2B`, so the manifest records the `.pte` file and both tokenizer files
+under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) with that base model. Its
+`tokenizer_config.json` carries the instruction-tuned (`google/gemma-4-E2B-it`) chat template, so
+the output gate treats the export as the instruction-tuned model, and the gate's result decides. Every Qwen3 1.7B file is under the
+[Apache License 2.0](https://huggingface.co/Qwen/Qwen3-1.7B/blob/main/LICENSE). None of these
+repositories is gated. Download a file by its repository path and revision:
+
+```bash
+hf download google/gemma-4-E2B-it-qat-q4_0-gguf gemma-4-E2B_q4_0-it.gguf \
+  --revision 675cff42a74c774d6cb76f76d8eacb49b48c9b93 --local-dir models
+python3 scripts/stage_model.py --serial <serial> models/gemma-4-E2B_q4_0-it.gguf
+hf download software-mansion/react-native-executorch-qwen-3 tokenizer.json \
+  --revision 764c9b7f1c964ef43f3591d2ec513cad4d19c12f --local-dir models/qwen3-executorch
+mv models/qwen3-executorch/tokenizer.json models/qwen_3_tokenizer.json
+```
+
 ### License
 
 The Llama 3.2 1B weights (Q4_K_M, Q4_0 and Q8_0) are under the Llama 3.2 Community License

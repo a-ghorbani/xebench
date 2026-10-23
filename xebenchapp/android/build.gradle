@@ -4,7 +4,7 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 36
         targetSdkVersion = 36
-        // Same NDK as PocketPal (pocketpal-ai android/build.gradle). llama.rn 0.13.0-rc.7 builds
+        // Same NDK as PocketPal (pocketpal-ai android/build.gradle). llama.rn 0.13.0-rc.8 builds
         // its native core from source in every app (its gradle.properties sets
         // rnllamaBuildFromSource=true), so the NDK decides the shipped llama.cpp binary.
         ndkVersion = "27.3.13750724"

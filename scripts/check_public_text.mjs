@@ -58,9 +58,11 @@ const PROSE = /\.(headline|deck|asStated)$/;
 export const VOCABULARY = Object.freeze([
   ['quant', (value) => /^(Q[2-8](_[01]|_K(_[SML])?)?|IQ[1-4]_[A-Z]{1,3}|F16|BF16|F32)( \(QAT\))?$/.test(value) ||
     ['Q8', 'int4', 'int8', 'W4A16', 'W8A16', 'SpinQuant 4-bit', '4-bit QAT', '4-bit QAT + LoRA', '4-bit groupwise',
-      '4-bit groupwise + 4-bit embedding'].includes(value),
+      '4-bit groupwise + 4-bit embedding', '4-bit weights, 8-bit activations', 'mixed 2/4/8-bit',
+      'mixed 4/16-bit'].includes(value),
   'a quant from the board vocabulary (GGUF types as llama.cpp names them, e.g. Q4_K_M; Q8, int4, W4A16, BF16, ' +
-    'SpinQuant 4-bit, 4-bit QAT, 4-bit QAT + LoRA, 4-bit groupwise); leave an unknown quant out instead of "not stated"'],
+    'SpinQuant 4-bit, 4-bit QAT, 4-bit QAT + LoRA, 4-bit groupwise, 4-bit weights, 8-bit activations, ' +
+    'mixed 2/4/8-bit, mixed 4/16-bit); leave an unknown quant out instead of "not stated"'],
   ['soc', (value) => /^(SM\d{4}|SDM\d{3}|MT\d{4}|Tensor G\d{1,2}|Exynos \d{4}|Apple [AM]\d{1,2}( Pro| Max| Ultra)?)$/.test(value),
     'an upper-case SoC id as in configs/devices.json (e.g. SM8550, SDM845, Tensor G4)'],
   ['device', (value) => /^(Samsung Galaxy|Google Pixel|POCO|OnePlus|Apple iPhone|Xiaomi|Motorola|Nothing Phone) [A-Za-z0-9][A-Za-z0-9 ()+.-]*$/.test(value),
