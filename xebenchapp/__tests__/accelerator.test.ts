@@ -34,6 +34,7 @@ import q4kmHexagonConfig from '../configs/llamacpp-llama32-q4km-hexagon-v1.json'
 import litertQwenCpuConfig from '../configs/litertlm-qwen25-q8-cpu-v1.json';
 import litertGemmaNpuConfig from '../configs/litertlm-gemma3-sm8850-npu-v1.json';
 import litertGemmaNpuFixedConfig from '../configs/litertlm-gemma3-sm8850-npu-v2.json';
+import llamaFixedConfig from '../configs/llamacpp-gemma4-opencl-hexagon-v1.json';
 
 declare const __dirname: string;
 declare const process: {env: Record<string, string | undefined>};
@@ -141,6 +142,15 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
           generatedTokens, prefillSpeed: 532 / (promptTimeMs / 1000),
           decodingSpeed: generatedTokens / (decodeTimeMs / 1000), stopReason: 'eos'}, cfg.maxDecodeTokens);
       }
+      if (run.engine === 'llama.cpp' && fixedDecodeTokens) {
+        // LlamaRnAdapter under decodeMode fixed: all 128 tokens produced, llama.rn's rate over the 127
+        // decode steps after the first token (timings.predicted_n over predicted_ms).
+        const promptMs = 4000 + measured, predictedMs = 4700 + measured * 10;
+        const decodeTps = (fixedDecodeTokens - 1) * 1000 / predictedMs;
+        return {loadMs: 0, ttftMs: 4100 + measured, promptTokens: 519, decodeTokens: fixedDecodeTokens,
+          prefillTps: 519 * 1000 / promptMs, decodeTps, prefillMethod: 'engine-timings', decodeMethod: 'engine-timings',
+          engineInternal: {promptMs, promptPerSecond: 519 * 1000 / promptMs, predictedMs, predictedPerSecond: decodeTps}};
+      }
       return {loadMs: 0, ttftMs: 120 + measured, promptTokens: 503, decodeTokens: fixedDecodeTokens || 96,
         prefillTps: 900 + measured * 3.5, decodeTps: 40 + measured * 0.25,
         prefillMethod: 'engine-timings', decodeMethod: 'engine-timings'};
@@ -193,13 +203,20 @@ function fake(run: AcceleratorRun, options: FakeOptions = {}): EngineAdapter & {
   }
   if (run.engine === 'llama.cpp') {
     Object.assign(adapter, {
-      effectiveSettings: ({maxDecodeTokens}: {maxDecodeTokens: number}) => ({binding: 'llama.rn' as const,
+      prepareMeasurement: (measurement: {decodeMode: 'fixed'; decodeTokens: number}) => {
+        fixedDecodeTokens = measurement.decodeTokens;
+      },
+      effectiveSettings: ({maxDecodeTokens, decodeMode}: {maxDecodeTokens: number; decodeMode?: 'fixed'}) => ({
+        binding: 'llama.rn' as const,
         init: {n_ctx: run.nCtx!, n_batch: 512, n_ubatch: 512, n_threads: run.nThreads, n_gpu_layers: run.nGpuLayers ?? 0,
           // The run's load settings, else LlamaRnAdapter's defaults.
           use_mmap: run.useMmap ?? true, use_mlock: run.useMlock ?? false, no_extra_bufts: run.noExtraBufts ?? false,
           flash_attn_type: run.flashAttnType ?? 'auto' as const, cache_type_k: 'f16' as const,
-          cache_type_v: 'f16' as const, ...(run.devices ? {devices: [...run.devices]} : {})},
-        completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42}, unlisted: 'binding-defaults' as const,
+          cache_type_v: 'f16' as const, ...(run.devices ? {devices: [...run.devices]} : {}),
+          state_cache_budget_mb: 0 as const},
+        completion: {n_predict: maxDecodeTokens, temperature: 0, seed: 42,
+          ...(decodeMode === 'fixed' ? {logit_bias: run.eogTokenIds!.map(id => [id, false] as [number, false])} : {})},
+        unlisted: 'binding-defaults' as const,
         distribution: {source: 'npm' as const, package: 'llama.rn' as const, version: '0.0.0-fixture',
           patches: [] as []}}),
       executionReport: () => {
@@ -470,7 +487,7 @@ async function emitted(): Promise<Record<string, AcceleratorSession>> {
   // The committed llama.cpp board configurations, exactly as staged (v3 load settings).
   for (const [prefix, config] of [['qwen25', qwenOpenclConfig], ['board-hexagon', q4kmHexagonConfig],
     ['board-litert-qwen25', litertQwenCpuConfig], ['board-litert-npu', litertGemmaNpuConfig],
-    ['board-litert-fixed', litertGemmaNpuFixedConfig]] as const) {
+    ['board-litert-fixed', litertGemmaNpuFixedConfig], ['board-llama-fixed', llamaFixedConfig]] as const) {
     const board = await runConfiguration(parseAcceleratorConfig(config));
     for (const [id, record] of Object.entries(board.records)) out[`${prefix}-${id}`] = record;
   }
@@ -530,6 +547,9 @@ test('accelerator records match the committed fixture validated by the host sche
     'board-litert-npu-gemma3-1b-sm8850-litertlm-npu': 'complete/null/pass/valid/unknown/consistent',
     'board-litert-fixed-gemma3-1b-int4-litertlm-cpu': 'complete/null/pass/valid/consistent/consistent',
     'board-litert-fixed-gemma3-1b-sm8850-litertlm-npu': 'complete/null/pass/valid/unknown/consistent',
+    'board-llama-fixed-gemma4-e2b-q40-qat-cpu': 'complete/null/pass/valid/confirmed/confirmed',
+    'board-llama-fixed-gemma4-e2b-q40-qat-opencl': 'complete/null/pass/valid/confirmed/confirmed',
+    'board-llama-fixed-gemma4-e2b-q40-qat-hexagon': 'complete/null/pass/valid/confirmed/confirmed',
     'executorch-cpu': 'complete/null/pass/valid/confirmed/confirmed',
     'executorch-tokenizerMismatch': 'failed/tokenizer-hash-mismatch/unverified/unverified/null/null',
     'executorch-tokenizerUnreadable': 'failed/setup-failed/unverified/unverified/null/null',
@@ -570,6 +590,14 @@ test('accelerator records match the committed fixture validated by the host sche
       .toEqual(records[key].coldRuns.map(() => 128));
   }
   expect(records['board-litert-npu-gemma3-1b-sm8850-litertlm-npu'].protocol).not.toHaveProperty('decodeMode');
+  // llama.cpp fixed decoding: the measured requests bias every end-of-generation token; 128 tokens each.
+  for (const key of ['board-llama-fixed-gemma4-e2b-q40-qat-cpu', 'board-llama-fixed-gemma4-e2b-q40-qat-hexagon']) {
+    expect(records[key].protocol.decodeMode).toBe('fixed');
+    expect((records[key].effectiveSettings as LlamaRnEffectiveSettings).completion.logit_bias)
+      .toEqual([[1, false], [50, false], [106, false]]);
+    expect(records[key].coldRuns.map(item => item.status === 'complete' ? item.decodeTokens : null))
+      .toEqual(records[key].coldRuns.map(() => 128));
+  }
   // The board configurations' records carry exactly the committed files and their load settings.
   expect(records['qwen25-qwen25-1.5b-q80-opencl'].configuration).toEqual(qwenOpenclConfig);
   expect(records['board-hexagon-llama32-q4km-hexagon'].configuration).toEqual(q4kmHexagonConfig);

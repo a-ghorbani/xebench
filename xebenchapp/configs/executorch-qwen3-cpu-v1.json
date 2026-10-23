@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "id": "executorch-qwen3-cpu-v1",
+  "nColdRuns": 3,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "qwen3",
+  "measuredPrompt": "std-pp512-v1",
+  "decodeMode": "fixed",
+  "runs": [
+    {
+      "id": "qwen3-1.7b-8da4w-executorch-cpu",
+      "engine": "executorch",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Qwen3 1.7B",
+      "modelFile": "qwen_3_1_7b_xnnpack_8da4w.pte",
+      "quant": "4-bit weights 8-bit activations",
+      "nThreads": null,
+      "nCtx": null,
+      "referenceRunId": null,
+      "modelSha256": "c2ae1a4ec67602badb0cfd4156177d7c4a619abd73b398a8e6653b041e1a314b",
+      "tokenizerFile": "qwen_3_tokenizer.json",
+      "tokenizerSha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+    }
+  ]
+}

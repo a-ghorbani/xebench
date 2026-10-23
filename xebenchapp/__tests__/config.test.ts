@@ -15,6 +15,17 @@ import litertGemmaNpu from '../configs/litertlm-gemma3-sm8850-npu-v1.json';
 import litertGemmaCpuFixed from '../configs/litertlm-gemma3-int4-cpu-v2.json';
 import litertQwenCpuFixed from '../configs/litertlm-qwen25-q8-cpu-v2.json';
 import litertGemmaNpuFixed from '../configs/litertlm-gemma3-sm8850-npu-v2.json';
+import refreshGemma4Cpu from '../configs/cpu-reference-v4-gemma4.json';
+import refreshQwen3Cpu from '../configs/cpu-reference-v4-qwen3.json';
+import refreshGemma3Cpu from '../configs/cpu-reference-v4-gemma3.json';
+import refreshGemma4Accelerators from '../configs/llamacpp-gemma4-opencl-hexagon-v1.json';
+import refreshQwen3Accelerators from '../configs/llamacpp-qwen3-opencl-hexagon-v1.json';
+import refreshGemma3Accelerators from '../configs/llamacpp-gemma3-opencl-hexagon-v1.json';
+import refreshLitertGemma4 from '../configs/litertlm-gemma4-cpu-v2.json';
+import refreshLitertQwen3 from '../configs/litertlm-qwen3-int4-cpu-v2.json';
+import refreshExecutorchGemma4 from '../configs/executorch-gemma4-cpu-v1.json';
+import refreshExecutorchQwen3 from '../configs/executorch-qwen3-cpu-v1.json';
+import refreshGeniex from '../configs/geniex-qwen3-sm8850-npu-v1.json';
 
 test('bundled CPU reference configuration is valid', () => {
   expect(parseConfig(bundled)).toEqual(bundled);
@@ -238,15 +249,39 @@ test('the v2 LiteRT-LM configurations are v1 with decodeMode fixed', () => {
   }
 });
 
-test('decodeMode is optional, validated, and fixed needs LiteRT-LM (default threads) or ExecuTorch runs', () => {
+test('decodeMode is optional, validated, and fixed needs LiteRT-LM (default threads), ExecuTorch or llama.cpp runs', () => {
   expect(parseAcceleratorConfig(litertGemmaCpu)).not.toHaveProperty('decodeMode');
   expect(() => parseAcceleratorConfig({...litertGemmaCpu, decodeMode: 'until-128'})).toThrow('decodeMode');
-  expect(() => parseAcceleratorConfig({...qwenOpencl, decodeMode: 'fixed'})).toThrow('LiteRT-LM runs');
   const eight = {...litertGemmaCpu, runs: [{...litertGemmaCpu.runs[0], nThreads: 8}]};
   expect(() => parseAcceleratorConfig({...eight, decodeMode: 'fixed'})).toThrow('nThreads 4');
   expect(parseAcceleratorConfig({...executorch, decodeMode: 'fixed'}).decodeMode).toBe('fixed');
   // An allow-list of the engines with a fixed-length decode; any other engine is refused.
-  expect(FIXED_DECODE_ENGINES).toEqual(['litert-lm', 'executorch']);
+  expect(FIXED_DECODE_ENGINES).toEqual(['litert-lm', 'executorch', 'llama.cpp']);
+  const geniex = {...litertGemmaCpu, chatTemplate: 'qwen3', runs: [{id: 'qwen3-geniex-cpu', engine: 'genie-x',
+    backend: 'cpu', purpose: 'measurement', model: 'Qwen3 1.7B', modelFile: 'Qwen3-1.7B-Q4_0.gguf', quant: 'Q4_0',
+    nThreads: 4, nCtx: 4096, referenceRunId: null}]};
+  expect(parseAcceleratorConfig(geniex)).toEqual(geniex);
+  expect(() => parseAcceleratorConfig({...geniex, decodeMode: 'fixed'})).toThrow('decodeMode fixed applies');
+});
+
+test('llama.cpp fixed decoding needs the model\'s end-of-generation token ids, and only under decodeMode fixed', () => {
+  const eog = [1, 50, 106];
+  const fixed = {...qwenOpencl, decodeMode: 'fixed', runs: qwenOpencl.runs.map(run => ({...run, eogTokenIds: eog}))};
+  expect(parseAcceleratorConfig(fixed)).toEqual(fixed);
+  // Without the ids a fixed configuration is refused, and the ids need decodeMode fixed.
+  expect(() => parseAcceleratorConfig({...qwenOpencl, decodeMode: 'fixed'})).toThrow('eogTokenIds');
+  expect(() => parseAcceleratorConfig({...fixed, decodeMode: undefined})).toThrow('eogTokenIds');
+  const oneMissing = {...fixed, runs: [fixed.runs[0], {...fixed.runs[1], eogTokenIds: undefined}]};
+  expect(() => parseAcceleratorConfig(JSON.parse(JSON.stringify(oneMissing)))).toThrow('eogTokenIds');
+  for (const ids of [[], [106, 1], [1, 1], [-1], [1.5], ['106'], Array.from({length: 33}, (_, index) => index)]) {
+    const run = {...fixed.runs[0], eogTokenIds: ids};
+    expect(() => parseAcceleratorConfig({...fixed, runs: [run, fixed.runs[1]]})).toThrow('eogTokenIds');
+  }
+  // Other engines take no end-of-generation ids.
+  const litert = {...litertGemmaCpu, decodeMode: 'fixed', runs: [{...litertGemmaCpu.runs[0], eogTokenIds: eog}]};
+  expect(() => parseAcceleratorConfig(litert)).toThrow('llama.cpp only');
+  const pte = {...executorch, decodeMode: 'fixed', runs: [{...executorchRun, eogTokenIds: eog}]};
+  expect(() => parseAcceleratorConfig(pte)).toThrow('llama.cpp settings');
 });
 
 // An ExecuTorch CPU run: a .pte with the tokenizer.json staged next to it.
@@ -267,3 +302,28 @@ test('ExecuTorch runs are CPU only, name their tokenizer and take no thread or c
   const litert = {...litertGemmaCpu.runs[0], tokenizerFile: 'tokenizer.json'};
   expect(() => parseAcceleratorConfig({...litertGemmaCpu, runs: [litert]})).toThrow('ExecuTorch only');
 });
+
+// The model-refresh board configurations (scripts/model_refresh_configs.py writes them).
+const REFRESH = {'cpu-reference-v4-gemma4': refreshGemma4Cpu, 'cpu-reference-v4-qwen3': refreshQwen3Cpu,
+  'cpu-reference-v4-gemma3': refreshGemma3Cpu, 'llamacpp-gemma4-opencl-hexagon-v1': refreshGemma4Accelerators,
+  'llamacpp-qwen3-opencl-hexagon-v1': refreshQwen3Accelerators,
+  'llamacpp-gemma3-opencl-hexagon-v1': refreshGemma3Accelerators, 'litertlm-gemma4-cpu-v2': refreshLitertGemma4,
+  'litertlm-qwen3-int4-cpu-v2': refreshLitertQwen3, 'executorch-gemma4-cpu-v1': refreshExecutorchGemma4,
+  'executorch-qwen3-cpu-v1': refreshExecutorchQwen3, 'geniex-qwen3-sm8850-npu-v1': refreshGeniex};
+
+test.each(Object.entries(REFRESH))('%s parses as committed, measures std-pp512-v1 and decodes 128 tokens where the engine can',
+  (id, file) => {
+    const config = parseAcceleratorConfig(file);
+    expect(config).toEqual(file);
+    expect(config.id).toBe(id);
+    expect([config.measuredPrompt, config.maxDecodeTokens, config.nColdRuns]).toEqual(['std-pp512-v1', 128, 3]);
+    // GENIE-X cannot decode past the end of turn; every other engine decodes exactly 128 tokens.
+    const geniex = config.runs.every(run => run.engine === 'genie-x');
+    expect(config.decodeMode).toBe(geniex ? undefined : 'fixed');
+    for (const run of config.runs.filter(item => item.engine === 'llama.cpp')) {
+      expect(run.eogTokenIds!.length).toBeGreaterThan(0);
+      expect([run.useMmap, run.useMlock, run.noExtraBufts, run.flashAttnType, run.nThreads, run.nCtx])
+        .toEqual([false, false, false, 'auto', 4, 2048]);
+    }
+    expect(config.runs.every(run => /^[0-9a-f]{64}$/.test(run.modelSha256 ?? ''))).toBe(true);
+  });

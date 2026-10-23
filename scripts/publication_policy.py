@@ -101,6 +101,11 @@ def recheck(record):
             errors += raw_session._semantic_v2(record)
             if version == raw_session.ACCELERATOR_PROTOCOL:
                 errors += raw_session._semantic_v3(record)
+                run = _configured_run(record)
+                if record["engine"] == "llama.cpp" and run is not None and \
+                        (record.get("effectiveSettings") or {}).get("binding") == "llama.rn":
+                    # decodeMode fixed: the bias on every configured EOG token, 128 tokens per repetition.
+                    errors += raw_session._llama_fixed_decode(record, run)
         else:
             errors = raw_session._semantic(record)
         errors += schema_value_errors(record) + timing_errors(record)

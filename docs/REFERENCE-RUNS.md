@@ -75,7 +75,10 @@ the rendered prompt equals the text byte for byte, and refuses the repetition ot
 LiteRT-LM adds the artifact's start token on the first turn when its metadata names one, as
 llama.cpp adds BOS when the model asks for it; each engine records its own prompt token count.
 On the identical prompt text, LiteRT-LM counts 519 tokens for Gemma 3 1B and 520 for Qwen2.5 1.5B;
-llama.cpp counts 518 and 519. CPU runs use 4 threads. The files
+llama.cpp prefills 519 for both. The llama.cpp sessions of these configurations record 518 for
+Gemma 3 1B: with llama.rn's prompt state cache on, the BOS token is decoded alone and llama.cpp's
+prompt counters leave it out (see [Model-refresh board configurations](#model-refresh-board-configurations)).
+CPU runs use 4 threads. The files
 are pinned in [MODELS.md](../MODELS.md#litert-lm-files).
 
 Every repetition decodes exactly 128 tokens (`decodeMode: fixed`), past the model's end of turn,
@@ -259,6 +262,104 @@ or if the APK carries a native library outside React Native core and llama.rn CP
 (for example Hexagon/HTP, OpenCL, QNN/QAIRT, LiteRT-LM, GENIE-X or ExecuTorch) or a
 LiteRT-LM/GENIE-X/ExecuTorch engine bridge. The Java glue of react-native-executorch and
 react-native-worklets remains because autolinking is not flavor-aware. The application ID stays `com.xebenchapp`.
+
+### Model-refresh board configurations
+
+These configurations measure the board's three models, Gemma 4 E2B, Qwen3 1.7B and Gemma 3 1B
+([#43](https://github.com/a-ghorbani/xebench/issues/43); files in [MODELS.md](../MODELS.md)). Each
+is an accelerator configuration with cpu-reference-v3's timing and load settings: 3 repetitions,
+120 s cooldown, 900 s readiness timeout, 2 °C rise bound, 4 CPU threads, `n_ctx` 2048, no memory
+map, no mlock, repacking on, flash attention `auto`. Every one measures `std-pp512-v1` with a
+128-token decode, and every engine except GENIE-X decodes exactly 128 tokens past the end of turn
+(`decodeMode: fixed`). [`scripts/model_refresh_configs.py`](../scripts/model_refresh_configs.py)
+writes them from one table: the model and tokenizer pins come from the manifests in
+`configs/models/`, and `--check` (run by the tests) refuses a committed file that differs.
+
+| Configuration | Runs | Board backend | Phones |
+| --- | --- | --- | --- |
+| [`cpu-reference-v4-gemma4`](../xebenchapp/configs/cpu-reference-v4-gemma4.json), [`-qwen3`](../xebenchapp/configs/cpu-reference-v4-qwen3.json), [`-gemma3`](../xebenchapp/configs/cpu-reference-v4-gemma3.json) | llama.cpp, the model's GGUF on the CPU | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9, POCO X8 Pro |
+| [`llamacpp-gemma4-opencl-hexagon-v1`](../xebenchapp/configs/llamacpp-gemma4-opencl-hexagon-v1.json), [`llamacpp-qwen3-…`](../xebenchapp/configs/llamacpp-qwen3-opencl-hexagon-v1.json), [`llamacpp-gemma3-…`](../xebenchapp/configs/llamacpp-gemma3-opencl-hexagon-v1.json) | llama.cpp: the GGUF on the CPU (gate reference), OpenCL (`nGpuLayers` 99) and Hexagon (`HTP0`) | `gpu`, `npu` | POCO F8 Ultra |
+| [`litertlm-gemma4-cpu-v2`](../xebenchapp/configs/litertlm-gemma4-cpu-v2.json), [`litertlm-qwen3-int4-cpu-v2`](../xebenchapp/configs/litertlm-qwen3-int4-cpu-v2.json), [`litertlm-gemma3-int4-cpu-v2`](../xebenchapp/configs/litertlm-gemma3-int4-cpu-v2.json) | LiteRT-LM 0.18.1, CPU | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9, POCO X8 Pro |
+| [`litertlm-gemma3-sm8850-npu-v2`](../xebenchapp/configs/litertlm-gemma3-sm8850-npu-v2.json) | LiteRT-LM 0.18.1: Gemma 3 1B `int4` on the CPU (gate reference), the SM8850 bundle on the NPU | `npu` | POCO F8 Ultra |
+| [`executorch-gemma4-cpu-v1`](../xebenchapp/configs/executorch-gemma4-cpu-v1.json), [`executorch-qwen3-cpu-v1`](../xebenchapp/configs/executorch-qwen3-cpu-v1.json) | ExecuTorch, XNNPACK | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9, POCO X8 Pro |
+| [`geniex-qwen3-sm8850-npu-v1`](../xebenchapp/configs/geniex-qwen3-sm8850-npu-v1.json) | GENIE-X: the Qwen3 GGUF through its llama_cpp plugin (gate reference), the SM8850 QAIRT bundle on the NPU | `npu` | POCO F8 Ultra |
+
+The POCO X8 Pro rows are optional. The two Gemma 3 LiteRT-LM configurations are the files the
+LiteRT-LM board already lists; their sessions run on LiteRT-LM 0.18.1. The `cpu-reference-v4-*`
+files are accelerator configurations with a single CPU run, which is its own gate reference: the
+accelerator protocol is the one with a fixed decode.
+
+**llama.cpp fixed decode.** llama.rn's `ignore_eos` is not a fixed decode: in llama.rn
+0.13.0-rc.8 it biases the vocabulary's EOS token alone (`cpp/jsi/JSIParams.cpp`), while the
+completion loop stops at any end-of-generation token (`llama_vocab_is_eog`, `cpp/rn-completion.cpp`),
+such as Gemma's `<turn|>` and `<end_of_turn>` (EOS is `<eos>`) or Qwen3's `<|endoftext|>`. Each
+llama.cpp run of these configurations therefore lists its model's end-of-generation token ids
+(`eogTokenIds`, pinned with the GGUF in [MODELS.md](../MODELS.md); `scripts/gguf_eog_tokens.py`
+derives them), and the measured repetitions pass `logit_bias` with `[id, false]` for each.
+`JSIParams.cpp` reads `false` as a bias of −∞; `common_sampler_init` (vendored
+`common/sampling.cpp`) puts the bias sampler ahead of the greedy one, on Android as on iOS (the
+Android library compiles the same `cpp/jsi` sources). `effectiveSettings.completion.logit_bias`
+records the list, and the host validator requires it to equal the configured ids under
+`decodeMode: fixed` and to be absent otherwise. The output gate runs on llama.cpp's own stopping
+rule, without the bias.
+
+llama.rn produced exactly 128 tokens when its completion stopped on the `n_predict` limit
+(`stopped_limit`; not `stopped_eos`, a stop word, a full context or an interruption) and its decode
+counter `timings.predicted_n` is 127: llama.cpp samples the first token from the prompt's logits and
+counts only the tokens decoded after it. The app refuses a repetition that does not satisfy both.
+As for ExecuTorch, `decodeTokens` reports all 128 tokens while decode tok/s is llama.cpp's own
+rate, 127 tokens over `predicted_ms`; the host validator checks that rate against
+`engineInternal`.
+
+**Prompt token count.** Every llama.cpp run passes `state_cache_budget_mb: 0`, which turns off
+llama.rn's prompt state cache (`effectiveSettings.init`). With the cache on (llama.rn's default),
+a first prompt on a sliding-window model (Gemma 3 and Gemma 4) is decoded in two parts: the BOS
+token alone, up to the first message boundary, then the rest. llama.cpp counts a one-token batch as
+a decode step, not as prompt (`n_p_eval`, `src/llama-context.cpp`), so `timings.prompt_n` and
+`prompt_ms` leave the BOS token out: 518 tokens for std-pp512-v1, where the GGUF's tokenizer,
+LiteRT-LM and ExecuTorch count 519. With the cache off, llama.cpp prefills all 519 tokens in its
+512-token batches, and prefill tok/s is 519 tokens over the time of all of them. Each repetition
+loads a fresh context and measures one turn, so the cache has nothing to reuse. Qwen3 is not a
+sliding-window model and counts 519 either way.
+
+**LiteRT-LM Qwen3 gate.** Qwen3's `.litertlm` chat template thinks unless `enable_thinking` is
+false, and the file declares a `thought` channel for `<think>`…`</think>`, which LiteRT-LM keeps
+out of the reply text the gate reads: through that template every gate answer was empty on the
+POCO F8 Ultra. For a configuration whose `chatTemplate` is `qwen3`, the
+LiteRT-LM gate sends the harness's `qwen3` turn as an already templated prompt, through the same
+pass-through template and render check as the measured prompt. That turn is what the artifact's own
+template renders with `enable_thinking: false`: the user turn, the assistant header and an empty
+think block. The measured prompt is `std-pp512-v1` verbatim, as for every LiteRT-LM run.
+
+**GENIE-X** has no fixed decode: a GENIE-X row whose median repetition stopped at the end of turn
+before 128 tokens says "decode N of 128 tok, stopped at the end of turn".
+
+**Quant labels.** The evidence export's label alphabet has no `/` or `,`, so three files carry
+another spelling of their board label in these configurations. `QUANT_LABELS` in
+`scripts/model_refresh_configs.py` holds them in one place, to switch to the board spellings with
+`--write` once the export accepts them, before any session runs:
+
+| File | Configuration `quant` | Board label ([STYLE.md](STYLE.md)) |
+| --- | --- | --- |
+| `gemma-4-E2B-it.litertlm` | `mixed 2-4-8-bit` | mixed 2/4/8-bit |
+| `gemma_4_e2b_xnnpack_8da4w.pte` | `mixed 4-16-bit` | mixed 4/16-bit |
+| `qwen_3_1_7b_xnnpack_8da4w.pte` | `4-bit weights 8-bit activations` | 4-bit weights, 8-bit activations |
+
+Sessions per setup (one configuration on one phone), fixed before any measurement:
+
+1. Run the configuration once.
+2. If that session does not pass (fewer than 3 of 3 repetitions, a condition verdict other than
+   `pass`, or an output gate other than `pass`), run it once more, unchanged, on the same phone
+   and APK.
+3. Publish every session run under these configurations to the history. The board shows each
+   key's newest verified session, else its newest unverified one (the selection rule); no
+   session is left out by hand.
+4. A setup with no passing session after the second run is not run again; its key is retired
+   in [`configs/board.json`](../configs/board.json) with the reason.
+
+The CPU runs of the accelerator configurations (`llamacpp-*-opencl-hexagon-v1`,
+`litertlm-gemma3-sm8850-npu-v2`, `geniex-qwen3-sm8850-npu-v1`) are gate references and go into the
+history only, with `--allow-unlisted-configuration`.
 
 ## Build identity and reproducibility
 

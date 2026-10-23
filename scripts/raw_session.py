@@ -1300,7 +1300,7 @@ def comparison_status(purpose, correctness, backend_mismatch=False):
 # config.ts MODEL_EXTENSIONS.
 MODEL_EXTENSIONS = {"llama.cpp": ".gguf", "litert-lm": ".litertlm", "executorch": ".pte"}
 # config.ts FIXED_DECODE_ENGINES: the engines that can decode a fixed length past the end of turn.
-FIXED_DECODE_ENGINES = ("litert-lm", "executorch")
+FIXED_DECODE_ENGINES = ("litert-lm", "executorch", "llama.cpp")
 
 
 def _configuration_accelerator(config):
@@ -1318,6 +1318,14 @@ def _configuration_accelerator(config):
         elif not run["modelFile"].endswith(MODEL_EXTENSIONS.get(run["engine"], "\0")):
             errors.append(reason("configuration.run-invalid", f"{where}/modelFile",
                                  "modelFile extension does not match the engine"))
+        fixed = config.get("decodeMode") == "fixed"
+        if ("eogTokenIds" in run) != (llama and fixed):
+            # config.ts: llama.cpp runs list their end-of-generation ids exactly under decodeMode fixed.
+            errors.append(reason("configuration.run-invalid", f"{where}/eogTokenIds",
+                                 "llama.cpp runs list eogTokenIds exactly under decodeMode fixed; other runs never"))
+        elif "eogTokenIds" in run and any(b <= a for a, b in zip(run["eogTokenIds"], run["eogTokenIds"][1:])):
+            errors.append(reason("configuration.run-invalid", f"{where}/eogTokenIds",
+                                 "eogTokenIds are distinct and ascending"))
         if run["engine"] != "executorch" and ("tokenizerFile" in run or "tokenizerSha256" in run):
             errors.append(reason("configuration.run-invalid", where,
                                  "tokenizerFile/tokenizerSha256 apply to ExecuTorch runs only"))
@@ -1363,10 +1371,11 @@ def _configuration_accelerator(config):
         if config.get("decodeMode") == "fixed" and (run["engine"] not in FIXED_DECODE_ENGINES or (
                 run["engine"] == "litert-lm" and run["backend"] == "cpu" and run["nThreads"] not in (None, 4))):
             # LiteRT-LM's fixed-length engine (LiteRtFixedDecode.kt, nativeCreateBenchmark) takes no thread
-            # count; ExecuTorch decodes a fixed length natively (ignoreEos with maxNewTokens).
+            # count; ExecuTorch decodes a fixed length natively (ignoreEos with maxNewTokens); llama.cpp with a
+            # logit bias on every end-of-generation token (eogTokenIds).
             errors.append(reason("configuration.run-invalid", where,
-                                 "decodeMode fixed applies to LiteRT-LM runs (nThreads 4 or null on CPU) and "
-                                 "ExecuTorch runs"))
+                                 "decodeMode fixed applies to LiteRT-LM runs (nThreads 4 or null on CPU), "
+                                 "ExecuTorch runs and llama.cpp runs"))
     return errors
 
 
@@ -1534,6 +1543,34 @@ def _executorch_attempts(record):
     return errors
 
 
+def _llama_fixed_decode(record, run):
+    """llama.cpp under decodeMode fixed (LlamaRnAdapter): the measured requests bias every configured
+    end-of-generation token to -infinity ([id, false]) with llama.rn's prompt state cache off, and each
+    complete repetition produced maxDecodeTokens tokens, whose decode rate llama.rn computes over the
+    maxDecodeTokens - 1 decode steps after the first token (timings.predicted_n, predicted_ms)."""
+    errors, settings, protocol = [], record["effectiveSettings"], record["protocol"]
+    fixed = protocol.get("decodeMode") == "fixed"
+    bias = settings["completion"].get("logit_bias")
+    expected = [[token, False] for token in run.get("eogTokenIds", [])] if fixed else None
+    if bias != expected:
+        errors.append(reason("settings.protocol-mismatch", "/effectiveSettings/completion/logit_bias",
+                             "logit_bias is [id, false] for every configured eogTokenIds entry exactly under "
+                             "decodeMode fixed"))
+    if fixed and settings["init"].get("state_cache_budget_mb") != 0:
+        errors.append(reason("settings.protocol-mismatch", "/effectiveSettings/init/state_cache_budget_mb",
+                             "Fixed-decode llama.cpp records run with llama.rn's prompt state cache off"))
+    for index, attempt in enumerate(record["coldRuns"] if fixed else []):
+        if attempt["status"] != "complete":
+            continue
+        internal, steps = attempt.get("engineInternal"), protocol["maxDecodeTokens"] - 1
+        if internal is None or internal["predictedMs"] <= 0 or \
+                not math.isclose(attempt["decodeTps"], steps * 1000 / internal["predictedMs"], rel_tol=1e-6) or \
+                not math.isclose(internal["predictedPerSecond"], attempt["decodeTps"], rel_tol=1e-9):
+            errors.append(reason("execution.inconsistent", f"/coldRuns/{index}/decodeTps",
+                                 "decode tok/s is the maxDecodeTokens - 1 decode steps over predicted_ms"))
+    return errors
+
+
 def _no_executorch_fields(record):
     """Only ExecuTorch records carry a tokenizer artifact or runner statistics."""
     errors = []
@@ -1573,6 +1610,8 @@ def _semantic_accelerator(record, identity=True):
                               or settings["init"].get("devices") != run.get("devices")):
         errors.append(reason("settings.protocol-mismatch", "/effectiveSettings/init",
                              "n_gpu_layers/devices disagree with the configured run"))
+    elif run is not None:
+        errors += _llama_fixed_decode(record, run)
     label = measured_prompt(config)
     digest, prompt_format = MEASURED_PROMPTS.get(label, (None, None))
     if protocol["promptLabel"] != label or text_sha256(protocol["prompt"]) != digest or (
