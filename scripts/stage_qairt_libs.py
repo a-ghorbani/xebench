@@ -31,8 +31,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "xebenchapp/android/app/src"
-# The QAIRT release that litertlm-android 0.18.0 + litert-npu-runtime-qualcomm 2.3.0 were validated
-# against (docs/experiments/litert-accelerators.md), and the release the GENIE-X bundles are built with.
+# The QAIRT release that litertlm-android 0.18.0 and 0.18.1 + litert-npu-runtime-qualcomm 2.3.0 were
+# validated against (docs/experiments/litert-accelerators.md), and the release the GENIE-X bundles are built with.
 EXPECTED_VERSION = "2.50.0"
 HOST, V79, V81 = "lib/aarch64-android", "lib/hexagon-v79/unsigned", "lib/hexagon-v81/unsigned"
 # (source path relative to the SDK root, staged file name). Host-side stubs are arm64
