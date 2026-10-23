@@ -49,9 +49,10 @@ react {
     //   and Windows. ONLY aarch64-Linux hosts need an override: RN's OS detection has
     //   no aarch64 hermesc folder, but the shipped x86-64 hermesc runs fine via
     //   emulation. (JS engine choice does not affect native benchmark numbers.)
+    //   Since React Native 0.83 hermesc ships in the hermes-compiler package.
     if (System.getProperty("os.name").toLowerCase().contains("linux")
             && System.getProperty("os.arch") == "aarch64") {
-        hermesCommand = "$rootDir/../node_modules/react-native/sdks/hermesc/linux64-bin/hermesc"
+        hermesCommand = "$rootDir/../node_modules/hermes-compiler/hermesc/linux64-bin/hermesc"
     }
     //
     //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
@@ -104,6 +105,14 @@ def xebenchGitDirty = xebenchGitStatus == null ? "" : (xebenchGitStatus.isEmpty(
 def bundledConfig = file("$rootDir/../configs/cpu-reference-v2.json") // must match src/harness/reference.ts
 def xebenchBundledConfigSha256 = java.security.MessageDigest.getInstance("SHA-256")
         .digest(bundledConfig.bytes).encodeHex().toString()
+// The ExecuTorch runtime version, as declared by the headers of the native libraries that
+// react-native-executorch downloads (pinned by xebenchapp/executorch-libs.lock.json); ""
+// when they are absent. The experimental flavor's ExecutorchBench module reports it.
+def executorchVersionHeader = file("$rootDir/../node_modules/react-native-executorch/third-party/include/executorch/runtime/core/version.h")
+def executorchVersionMatch = executorchVersionHeader.exists() ?
+        (executorchVersionHeader.text =~ /#define ET_VERSION "([0-9A-Za-z.+-]{1,40})"/) : null
+def xebenchExecutorchVersion = executorchVersionMatch != null && executorchVersionMatch.find() ?
+        executorchVersionMatch.group(1) : ""
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -114,7 +123,10 @@ android {
         jniLibs {
             // QNN libs (user-supplied in experimental, bundled by geniex-android) include
             // Hexagon-DSP ELFs such as libQnnHtpV73Skel.so; arm64 strip would corrupt them.
-            keepDebugSymbols += ["**/libQnn*.so"]
+            // The other QAIRT runtime files geniex-android carries are packaged as shipped too,
+            // so check_reference_apk.py --qairt-libs can match every staged file by hash.
+            keepDebugSymbols += ["**/libQnn*.so", "**/libCalculator_skel.so", "**/libcalculator.so",
+                                 "**/libhta_hexagon_runtime_*.so", "**/libPlatformValidatorShared.so"]
         }
     }
 
@@ -130,6 +142,7 @@ android {
         buildConfigField "String", "XEBENCH_GIT_COMMIT", "\"${xebenchGitCommit}\""
         buildConfigField "String", "XEBENCH_GIT_DIRTY", "\"${xebenchGitDirty}\""
         buildConfigField "String", "XEBENCH_BUNDLED_CONFIG_SHA256", "\"${xebenchBundledConfigSha256}\""
+        buildConfigField "String", "XEBENCH_EXECUTORCH_VERSION", "\"${xebenchExecutorchVersion}\""
     }
     buildFeatures {
         buildConfig true
@@ -145,7 +158,7 @@ android {
             dimension "runtime"
             versionNameSuffix "-reference"
         }
-        // LiteRT-LM + ExecuTorch + llama.rn Hexagon/OpenCL accelerators. LiteRT NPU
+        // LiteRT-LM + ExecuTorch (XNNPACK) + llama.rn Hexagon/OpenCL accelerators. LiteRT NPU
         // needs three matched pieces: litertlm-android (below), Google's Qualcomm
         // dispatch lib from Maven (litert-npu-runtime-qualcomm, below), and the QAIRT
         // QNN runtime libs, which are proprietary and staged by
@@ -156,7 +169,10 @@ android {
             versionNameSuffix "-experimental"
         }
         // GENIE-X (Maven Central) + llama.rn CPU. Its Hexagon runtime conflicts with
-        // llama.rn's, so llama.rn accelerators are excluded here.
+        // llama.rn's, so llama.rn accelerators are excluded here. geniex-android 0.8.0 packages
+        // the QAIRT 2.45 QNN runtime; scripts/stage_qairt_libs.py --flavor geniex stages the
+        // QAIRT 2.50 build of the same files into src/geniex/jniLibs/arm64-v8a (git-ignored),
+        // which this flavor packages in their place (pickFirsts below).
         geniex {
             dimension "runtime"
             versionNameSuffix "-geniex"
@@ -217,28 +233,73 @@ dependencies {
     experimentalImplementation("com.google.ai.edge.litert:litert-npu-runtime-qualcomm:2.3.0")
     // GENIE-X (Qualcomm, Maven Central): no RN binding; driven via src/geniex
     // GenieXBenchModule.kt. Bundles its own llama.cpp+Hexagon runtime, which conflicts
-    // with llama.rn's HTP path, hence its own flavor.
-    geniexImplementation("com.qualcomm.qti:geniex-android:0.3.1")
+    // with llama.rn's HTP path, hence its own flavor. GenieXNative.java is pinned to this
+    // version's JNI calls. Its POM declares no dependencies; the bridge uses none of the
+    // SDK's coroutine wrappers.
+    geniexImplementation("com.qualcomm.qti:geniex-android:0.8.0")
 
     // JVM unit tests for pure-Kotlin helpers (e.g. MonitorSchedule); no device needed.
     testImplementation("junit:junit:4.13.2")
 }
 
 // Per-flavor native packaging. Autolinking is not flavor-aware, so llama.rn (one AAR
-// with CPU and Hexagon/OpenCL variants) and react-native-executorch are linked into
-// every flavor; native runtimes a flavor must not carry are removed from its APK here.
+// with CPU and Hexagon/OpenCL variants), react-native-executorch and react-native-worklets
+// are linked into every flavor; native runtimes a flavor must not carry are removed from
+// its APK here.
 // scripts/check_reference_apk.py --flavor <name> verifies the result.
 def llamaRnAccelerators = ["**/librnllama*hexagon*.so", "**/librnllama*opencl*.so"]
 // aapt-style ignore patterns: llama.rn syncs its HTP libs into src/main/assets/ggml-hexagon.
 // A non-empty list replaces AGP's default asset ignores, so they are restated first.
 def llamaRnHtpAssets = ["!.svn", "!.git", "!.ds_store", "!*.scc", ".*", "<dir>_*", "!CVS",
                         "!thumbs.db", "!picasa.ini", "!*~", "<dir>ggml-hexagon"]
-def executorchNative = ["**/libexecutorch.so", "**/libreact-native-executorch.so",
-                        "**/libcpuinfo.so", "**/libpthreadpool.so"]
+// react-native-executorch: its JSI library, the ExecuTorch runtime and one library per
+// backend (only XNNPACK is downloaded: scripts/check-executorch-libs.js), and
+// react-native-worklets, whose runtimes react-native-executorch runs inference on.
+def executorchNative = ["**/libexecutorch.so", "**/libRnExecutorch.so",
+                        "**/lib*_executorch_backend.so", "**/libworklets.so"]
+// ExecuTorch backends other than XNNPACK never ship, even if an install provides one.
+def executorchOtherBackends = ["**/libvulkan_executorch_backend.so", "**/libqnn_executorch_backend.so"]
 // Defensive: proprietary/vendor runtimes that only belong in experimental or geniex,
 // in case someone stages them under src/main/jniLibs.
 def vendorNative = ["**/libQnn*.so", "**/libQairt*.so", "**/libSNPE*.so", "**/libGenie*.so",
                     "**/libcdsprpc.so", "**/libLiteRt*.so", "**/liblitertlm*.so"]
+// The QNN runtime files geniex-android packages (scripts/stage_qairt_libs.py GENIEX_LIBS).
+def geniexQairtRuntime = ["**/libQnn*.so", "**/libCalculator_skel.so", "**/libcalculator.so",
+                          "**/libhta_hexagon_runtime_*.so", "**/libPlatformValidatorShared.so"]
+// A geniex release build packages the staged QAIRT 2.50 runtime, never silently the AAR's 2.45:
+// it fails unless scripts/stage_qairt_libs.py --flavor geniex staged every file (qairt-libs.json,
+// each SHA-256 rechecked here). -Pxebench.geniexAarQairt=true builds with the AAR's own runtime on
+// purpose (a QAIRT 2.45 comparison build); runtimeVersions.qairt then records 2.45.
+def geniexQairtExpected = "2.50.0"
+def geniexAarQairt = (findProperty("xebench.geniexAarQairt") ?: "false").toString() == "true"
+def checkGeniexQairtStaging = tasks.register("checkGeniexQairtStaging") {
+    def staged = file("src/geniex/jniLibs")
+    inputs.dir(staged).optional()
+    doLast {
+        def manifest = new File(staged, "qairt-libs.json")
+        if (!manifest.isFile()) {
+            throw new GradleException("geniex release: no QAIRT staging (${manifest}). Run scripts/stage_qairt_libs.py " +
+                "--qairt <QAIRT ${geniexQairtExpected} root> --flavor geniex, or pass -Pxebench.geniexAarQairt=true " +
+                "to package geniex-android's own QAIRT 2.45 runtime.")
+        }
+        def listing = new groovy.json.JsonSlurper().parse(manifest)
+        if (listing.flavor != "geniex" || listing.qairtVersion != geniexQairtExpected) {
+            throw new GradleException("geniex release: ${manifest} stages QAIRT ${listing.qairtVersion} for " +
+                "${listing.flavor}, not QAIRT ${geniexQairtExpected} for geniex")
+        }
+        listing.libraries.each { library ->
+            def lib = new File(staged, "arm64-v8a/${library.name}")
+            def digest = lib.isFile() ? java.security.MessageDigest.getInstance("SHA-256").digest(lib.bytes)
+                .encodeHex().toString() : null
+            if (digest != library.sha256) {
+                throw new GradleException("geniex release: staged ${library.name} is missing or differs from ${manifest}")
+            }
+        }
+    }
+}
+tasks.matching { it.name == "mergeGeniexReleaseNativeLibs" }.configureEach {
+    if (!geniexAarQairt) dependsOn(checkGeniexQairtStaging)
+}
 // S23 (SM8550): llama.rn's combined hexagon_opencl library hangs at first model load.
 // `-Pxebench.excludeLlamaHexagon=true` drops it from experimental so llama.cpp uses CPU.
 def excludeLlamaHexagon = (findProperty("xebench.excludeLlamaHexagon") ?: "false").toString() == "true"
@@ -276,9 +337,15 @@ androidComponents {
         } else if (flavor == "geniex") {
             jniExcludes.addAll(llamaRnAccelerators + executorchNative)
             variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
-        } else if (flavor == "experimental" && excludeLlamaHexagon) {
-            jniExcludes.addAll(llamaRnAccelerators)
-            variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
+            // QAIRT files staged in src/geniex/jniLibs replace geniex-android's copies (the
+            // project's own native libraries come first). Without a staging there is one copy.
+            variant.packaging.jniLibs.pickFirsts.addAll(geniexQairtRuntime)
+        } else if (flavor == "experimental") {
+            jniExcludes.addAll(executorchOtherBackends)
+            if (excludeLlamaHexagon) {
+                jniExcludes.addAll(llamaRnAccelerators)
+                variant.androidResources.ignoreAssetsPatterns.addAll(llamaRnHtpAssets)
+            }
         }
     }
 }

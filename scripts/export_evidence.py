@@ -220,8 +220,12 @@ HEX64 = _text(r"[0-9a-f]{64}", "lowercase SHA-256")
 RUN_ID = _text(r"[A-Za-z0-9][A-Za-z0-9-]{0,99}", "run id")
 UUID = _text(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "UUID")
 UTC = _text(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|\+00:00)", "UTC timestamp")
-# GGUF (llama.cpp) or .litertlm (LiteRT-LM, accelerator-v1) basenames.
-MODEL_FILE = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,118}\.(gguf|litertlm)", "model file basename")
+# GGUF (llama.cpp, GENIE-X CPU), .litertlm (LiteRT-LM, accelerator-v1) or .pte (ExecuTorch,
+# accelerator-v2) basenames, or the directory name of a GENIE-X QAIRT bundle (no extension).
+MODEL_FILE = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,118}\.(gguf|litertlm|pte)|[A-Za-z0-9][A-Za-z0-9_-]{0,118}",
+                   "model file basename")
+# ExecuTorch runs: the tokenizer.json staged next to the .pte.
+TOKENIZER_FILE = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,122}\.json", "tokenizer file basename")
 APK_NAME = _text(r"[A-Za-z0-9][A-Za-z0-9._-]{0,123}\.apk", "APK file name")
 PACKAGE = _text(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+", "package name")
 DEVICE_TEXT = _text(r"[A-Za-z0-9][A-Za-z0-9 ._+()-]{0,63}", "device property")
@@ -295,6 +299,8 @@ ENUM_WORDS = (
     "gate-error", "gate-not-run", "greedy", "invalid", "measurement", "mismatch", "none", "process-libraries",
     "reference", "reference-failed", "reference-unavailable", "user-turn-chat-template", "raw-pretemplated", "valid",
     "fixed",  # configuration and protocol decodeMode (config.ts DECODE_MODES)
+    # ExecuTorch runs (accelerator-v2): backend evidence source, stop reason and settings.
+    "program-delegates", "tokenizer-hash-mismatch", "runtime-default", "mmap",
 )
 
 
@@ -356,9 +362,16 @@ INSTANCE = Obj({"kind": ENUM, "request": ENUM, "processInstanceId": INSTANCE_ID,
                 "modelLoadsBeforeInProcess": COUNT})
 ENGINE_INTERNAL = Obj({"promptMs": NONNEG, "promptPerSecond": NONNEG, "predictedMs": NONNEG,
                        "predictedPerSecond": NONNEG})
+# ExecuTorch runner statistics of one request (types.ts ExecutorchStats).
+EXECUTORCH_STATS = Obj({"numPromptTokens": COUNT, "numGeneratedTokens": COUNT, "inferenceStartMs": COUNT,
+                        "firstTokenMs": COUNT, "inferenceEndMs": COUNT, "emittedTokens": COUNT,
+                        "prefillChunkTokens": N_COUNT, "prefillChunks": N_COUNT},
+                       required=("numPromptTokens", "numGeneratedTokens", "inferenceStartMs", "firstTokenMs",
+                                 "inferenceEndMs", "emittedTokens", "prefillChunkTokens", "prefillChunks"))
 METRIC_FIELDS = {
     "loadMs": NONNEG, "ttftMs": NONNEG, "promptTokens": COUNT, "prefillTps": NONNEG, "prefillMethod": ENUM,
     "decodeTokens": COUNT, "decodeTps": NONNEG, "decodeMethod": ENUM, "engineInternal": ENGINE_INTERNAL,
+    "executorchStats": EXECUTORCH_STATS,
 }
 # accelerator-v1 backend evidence. llama.rn's reasonNoGPU is free engine text and stays local.
 BACKEND_EVIDENCE = Obj({
@@ -367,6 +380,11 @@ BACKEND_EVIDENCE = Obj({
                             "androidLib": Nullable(LABEL)}, excluded=("reasonNoGpu",))),
     "libraries": Nullable(Obj({"before": Nullable(Arr(LABEL, max_items=256)),
                                "after": Nullable(Arr(LABEL, max_items=256))})),
+    # ExecuTorch: the loaded program's delegates per method and the registered backends.
+    "program": Nullable(Obj({"methods": Nullable(Arr(Obj({"name": LABEL, "delegates": Arr(LABEL, max_items=16)},
+                                                         required=("name", "delegates")), max_items=64)),
+                             "registeredBackends": Nullable(Arr(LABEL, max_items=64))},
+                            required=("methods", "registeredBackends"))),
 }, required=("status", "source"))
 ATTEMPT_BASE = {"runIndex": COUNT, "status": ENUM, "conditions": CONDITIONS, "cooldownMs": NONNEG,
                 "readiness": READINESS, "instance": Nullable(INSTANCE), "observedBackend": Nullable(BACKEND_EVIDENCE)}
@@ -426,7 +444,7 @@ BUILD = Obj({
     excluded=("signingCertSha256",), derive=_signing_key)
 CONFIGURATION_SOURCE = Obj({"kind": ENUM, "sha256": Nullable(HEX64)}, required=("kind", "sha256"))
 CACHE_TYPE = Vocab(("f16", "f32", "bf16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_0", "q5_1"))
-EFFECTIVE_SETTINGS = Obj({
+LLAMA_RN_SETTINGS = Obj({
     "binding": Vocab(("llama.rn",)), "unlisted": ENUM,
     "init": Obj({"n_ctx": COUNT, "n_batch": COUNT, "n_ubatch": COUNT, "n_threads": N_COUNT, "n_gpu_layers": INT,
                  "use_mmap": BOOL, "use_mlock": BOOL, "no_extra_bufts": BOOL, "flash_attn_type": ENUM,
@@ -439,6 +457,23 @@ EFFECTIVE_SETTINGS = Obj({
                          "version": _text(r"[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?", "package version"),
                          "patches": Arr(LABEL, max_items=0)}, required=("source", "package", "version", "patches")),
 }, required=("binding", "init", "completion", "unlisted"))
+PACKAGE_VERSION = _text(r"[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?", "package version")
+# ExecuTorch runs (ExecutorchAdapter): every parameter passed to react-native-executorch.
+EXECUTORCH_SETTINGS = Obj({
+    "binding": Vocab(("react-native-executorch",)), "runner": Vocab(("createLLMRunner",)),
+    "load": Obj({"loadMode": ENUM, "modalities": Arr(LABEL, max_items=0)}, required=("loadMode", "modalities")),
+    "generation": Obj({"temperature": NONNEG, "maxNewTokens": COUNT, "ignoreEos": BOOL, "numBos": COUNT,
+                       "numEos": COUNT, "echo": BOOL, "promptPrefix": Vocab(("", "<bos>"))},
+                      required=("temperature", "maxNewTokens", "ignoreEos", "numBos", "numEos", "echo",
+                                "promptPrefix")),
+    "threads": ENUM, "unlisted": ENUM,
+    "distribution": Obj({"source": Vocab(("npm",)), "package": Vocab(("react-native-executorch",)),
+                         "version": PACKAGE_VERSION,
+                         "nativeLibsVersion": Nullable(_text(r"[0-9A-Za-z][0-9A-Za-z.+-]{0,39}", "libs version")),
+                         "backends": Arr(Vocab(("xnnpack",)), max_items=1), "patches": Arr(LABEL, max_items=0)},
+                        required=("source", "package", "version", "nativeLibsVersion", "backends", "patches")),
+}, required=("binding", "runner", "load", "generation", "threads", "unlisted", "distribution"))
+EFFECTIVE_SETTINGS = Variant("binding", {"llama.rn": LLAMA_RN_SETTINGS, "react-native-executorch": EXECUTORCH_SETTINGS})
 # Exact llama.rn RNLlamaJSI.cpp strings (unchanged from 0.12.4 to 0.13.0-rc.8); other text becomes "unrecognized".
 REASON_NO_GPU = Vocab(("", "GPU devices disabled by user", "GPU backend is available but was not selected",
                        "GPU backend is not available"))
@@ -534,6 +569,8 @@ RUNTIME_VERSIONS = Obj({
                              required=("buildNumber", "commit"))),
     "llamaRn": RUNTIME_VERSION, "litertLm": RUNTIME_VERSION, "litertNpuRuntimeQualcomm": RUNTIME_VERSION,
     "qairt": RUNTIME_VERSION, "genie": RUNTIME_VERSION,
+    # ExecuTorch runs; absent in records from apps built before they were recorded.
+    "executorch": RUNTIME_VERSION, "reactNativeExecutorch": RUNTIME_VERSION,
 }, required=("llamaCpp", "llamaRn", "litertLm", "litertNpuRuntimeQualcomm", "qairt", "genie"))
 EXECUTION_REPORT = Obj({
     "runIndex": COUNT, "gpu": N_BOOL, "reasonNoGPU": Nullable(REASON_NO_GPU),
@@ -599,7 +636,9 @@ CONFIGURATION = Obj({
                      "useMmap": BOOL, "useMlock": BOOL, "noExtraBufts": BOOL, "flashAttnType": ENUM,
                      # accelerator-v1 runs.
                      "backend": ENUM, "purpose": ENUM, "nGpuLayers": COUNT, "devices": Arr(LABEL, max_items=4),
-                     "referenceRunId": Nullable(LABEL)}, required=("id",)), max_items=64),
+                     "referenceRunId": Nullable(LABEL),
+                     # ExecuTorch runs (accelerator-v2).
+                     "tokenizerFile": TOKENIZER_FILE, "tokenizerSha256": HEX64}, required=("id",)), max_items=64),
 }, required=("id", "runs"))
 RECORD = Obj({
     "runId": RUN_ID, "timestampIso": UTC, "schema": VERSION, "schemaVersion": INT,
@@ -621,6 +660,10 @@ RECORD = Obj({
     "executionReports": Arr(EXECUTION_REPORT, max_items=64), "runtimeVersions": Nullable(RUNTIME_VERSIONS),
     # accelerator-v1: run purpose, output-correctness gate and comparison validity.
     "purpose": ENUM, "gateBackend": Nullable(BACKEND_EVIDENCE), "correctness": CORRECTNESS, "comparison": COMPARISON,
+    # ExecuTorch runs: the tokenizer hashed with the model.
+    "tokenizerArtifact": Nullable(Obj({"file": TOKENIZER_FILE, "sha256": HEX64, "sizeBytes": COUNT,
+                                       "expectedSha256": Nullable(HEX64)},
+                                      required=("file", "sha256", "sizeBytes", "expectedSha256"))),
 }, required=("runId", "timestampIso", "schema", "schemaVersion", "artifact", "engine", "model", "quant",
              "modelFile", "configuration", "configurationRunId", "protocol", "status", "coldRuns", "summary"))
 DEVICE = Obj({"manufacturer": Nullable(DEVICE_TEXT), "model": Nullable(DEVICE_TEXT), "soc": Nullable(DEVICE_TEXT),
@@ -646,12 +689,22 @@ class RejectionCodes:
         return value
 
 
-# The app's backend events (backend_log.py, rule litert-npu-log-v1), sanitized: each line must still
-# be an event of the kind it claims, so a kind cannot be relabelled.
-BACKEND_LOG = Obj({
-    "rule": Scalar(lambda v: v == backend_log.RULE, backend_log.RULE),
-    "events": Arr(Scalar(backend_log.valid_event, "backend log event"), max_items=backend_log.MAX_EVENTS),
-}, required=("rule", "events"))
+class BackendLog:
+    """The app's backend events (backend_log.py, rule litert-npu-log-v1 or geniex-npu-log-v1), sanitized:
+    each line must still be an event of the kind it claims under the log's rule, so a kind cannot be
+    relabelled and an event cannot move to another rule."""
+
+    def apply(self, value, path, ctx):
+        rule = value.get("rule") if isinstance(value, dict) else None
+        if not isinstance(rule, str) or rule not in backend_log.RULES:
+            raise Refused(_pointer(path, "rule"), "Approved field is not a backend log rule")
+        event = Scalar(lambda v: backend_log.valid_event(v, rule), "backend log event")
+        return Obj({"rule": Scalar(lambda v: v == rule, rule),
+                    "events": Arr(event, max_items=backend_log.MAX_EVENTS)},
+                   required=("rule", "events")).apply(value, path, ctx)
+
+
+BACKEND_LOG = BackendLog()
 CAPTURE_FILE = Obj({
     "schema": Scalar(lambda v: v == CAPTURE_SCHEMA, CAPTURE_SCHEMA), "schemaVersion": _number(1, 1, True),
     "captureId": UUID, "startedAt": UTC, "finishedAt": UTC,
@@ -868,9 +921,10 @@ def _load_backend_log(directory, entry):
     """The capture's backend events, sanitized (backend_log.events_from_lines); None without a backend log."""
     if entry is None:
         return None
-    if not isinstance(entry, dict) or entry.get("rule") != backend_log.RULE or entry.get("file") != "backend-log.txt" \
+    rule = entry.get("rule") if isinstance(entry, dict) else None
+    if not isinstance(rule, str) or rule not in backend_log.RULES or entry.get("file") != "backend-log.txt" \
             or not HEX64.check(entry.get("sha256")) or not COUNT.check(entry.get("lines")):
-        raise Refused("/backendLog", f"Expected a {backend_log.RULE} backend log entry")
+        raise Refused("/backendLog", f"Expected a backend log entry ({', '.join(backend_log.RULES)})")
     path = directory / "backend-log.txt"
     if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_RAW_BYTES:
         raise Refused("/backendLog", "Missing, irregular or oversized backend log")
@@ -881,7 +935,7 @@ def _load_backend_log(directory, entry):
         lines = data.decode("utf-8").splitlines()
         if len(lines) != entry["lines"]:
             raise ValueError("line count disagrees with the manifest")
-        return {"rule": backend_log.RULE, "events": backend_log.events_from_lines(lines)}
+        return {"rule": rule, "events": backend_log.events_from_lines(lines, rule)}
     except (UnicodeDecodeError, ValueError) as error:
         raise Refused("/backendLog", f"Invalid backend log ({type(error).__name__})")
 

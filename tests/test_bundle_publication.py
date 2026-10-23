@@ -945,5 +945,27 @@ class PublishedBoardTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
+class DecodeStatementTests(unittest.TestCase):
+    """bundles.mjs decodeStated: only llama.cpp has the one-token slack at the budget."""
+
+    def stated(self, engine, counts, max_tokens=128):
+        record = {"engine": engine, "protocol": {"maxDecodeTokens": max_tokens},
+                  "coldRuns": [{"status": "complete", "decodeTokens": count} for count in counts]}
+        script = ("import {decodeStated} from './scripts/lib/bundles.mjs';"
+                  f"console.log(decodeStated({json.dumps(record)}));")
+        result = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.strip()
+
+    def test_genie_x_one_token_short_stopped_at_the_end_of_turn(self):
+        self.assertEqual(self.stated("genie-x", [127, 127, 127]), "decode 127 of 128 tok, stopped at the end of turn")
+        self.assertEqual(self.stated("genie-x", [128, 128, 128]), "decode 128 tok")
+        self.assertEqual(self.stated("genie-x", [96, 97, 98]), "decode 97 of 128 tok, stopped at the end of turn")
+
+    def test_llama_cpp_keeps_its_slack(self):
+        self.assertEqual(self.stated("llama.cpp", [127, 127, 127]), "decode 128 tok")
+        self.assertEqual(self.stated("llama.cpp", [126, 126, 126]), "decode 126 of 128 tok, stopped at the end of turn")
+
+
 if __name__ == "__main__":
     unittest.main()

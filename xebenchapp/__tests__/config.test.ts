@@ -1,4 +1,4 @@
-import {parseAcceleratorConfig, parseConfig} from '../src/harness/config';
+import {FIXED_DECODE_ENGINES, parseAcceleratorConfig, parseConfig} from '../src/harness/config';
 import {ACCELERATOR_PROMPT, CHAT_TEMPLATES, chatTurn, STANDARD_PROMPT} from '../src/harness/prompts';
 import f8Gemma from '../configs/f8-gemma3-accelerators-v1.json';
 import bundled from '../configs/cpu-reference-v2.json';
@@ -238,10 +238,32 @@ test('the v2 LiteRT-LM configurations are v1 with decodeMode fixed', () => {
   }
 });
 
-test('decodeMode is optional, validated, and fixed needs LiteRT-LM runs on the default thread count', () => {
+test('decodeMode is optional, validated, and fixed needs LiteRT-LM (default threads) or ExecuTorch runs', () => {
   expect(parseAcceleratorConfig(litertGemmaCpu)).not.toHaveProperty('decodeMode');
   expect(() => parseAcceleratorConfig({...litertGemmaCpu, decodeMode: 'until-128'})).toThrow('decodeMode');
-  expect(() => parseAcceleratorConfig({...qwenOpencl, decodeMode: 'fixed'})).toThrow('LiteRT-LM runs only');
+  expect(() => parseAcceleratorConfig({...qwenOpencl, decodeMode: 'fixed'})).toThrow('LiteRT-LM runs');
   const eight = {...litertGemmaCpu, runs: [{...litertGemmaCpu.runs[0], nThreads: 8}]};
   expect(() => parseAcceleratorConfig({...eight, decodeMode: 'fixed'})).toThrow('nThreads 4');
+  expect(parseAcceleratorConfig({...executorch, decodeMode: 'fixed'}).decodeMode).toBe('fixed');
+  // An allow-list of the engines with a fixed-length decode; any other engine is refused.
+  expect(FIXED_DECODE_ENGINES).toEqual(['litert-lm', 'executorch']);
+});
+
+// An ExecuTorch CPU run: a .pte with the tokenizer.json staged next to it.
+const executorchRun = {id: 'gemma4-e2b-pte-cpu', engine: 'executorch', backend: 'cpu', purpose: 'measurement',
+  model: 'Gemma 4 E2B', modelFile: 'gemma_4_e2b_xnnpack_8da4w.pte', quant: '8da4w', nThreads: null, nCtx: null,
+  referenceRunId: null, tokenizerFile: 'tokenizer.json', modelSha256: '3'.repeat(64), tokenizerSha256: '4'.repeat(64)};
+const executorch = {...litertGemmaCpu, id: 'executorch-fixture', runs: [executorchRun]};
+
+test('ExecuTorch runs are CPU only, name their tokenizer and take no thread or context settings', () => {
+  expect(parseAcceleratorConfig(executorch)).toEqual(executorch);
+  for (const change of [{backend: 'gpu'}, {nThreads: 4}, {nCtx: 2048}, {modelFile: 'gemma.litertlm'},
+    {tokenizerFile: '../tokenizer.json'}, {tokenizerFile: 'tokenizer.model'}, {tokenizerFile: undefined},
+    {tokenizerSha256: 'ABC'}, {tokenizerSha256: undefined}, {nGpuLayers: 0}, {useMmap: true}]) {
+    const run = JSON.parse(JSON.stringify({...executorchRun, ...change}));
+    expect(() => parseAcceleratorConfig({...executorch, runs: [run]})).toThrow();
+  }
+  // The tokenizer fields belong to ExecuTorch runs only.
+  const litert = {...litertGemmaCpu.runs[0], tokenizerFile: 'tokenizer.json'};
+  expect(() => parseAcceleratorConfig({...litertGemmaCpu, runs: [litert]})).toThrow('ExecuTorch only');
 });

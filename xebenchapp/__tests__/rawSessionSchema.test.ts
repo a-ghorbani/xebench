@@ -81,7 +81,8 @@ function adapter() {
     effectiveSettings: effective, executionReport: jest.fn(() => report),
     // llama.rn's exported BuildInfo for the vendored llama.cpp, and llama.rn's own version.
     runtimeVersions: () => ({llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'}, llamaRn: '0.0.0-fixture',
-      litertLm: null, litertNpuRuntimeQualcomm: null, qairt: null, genie: null}),
+      litertLm: null, litertNpuRuntimeQualcomm: null, qairt: null, genie: null, executorch: null,
+      reactNativeExecutorch: null}),
     load: jest.fn(async () => samples[call % samples.length].loadMs),
     release: jest.fn(async () => {}),
     benchOnce: jest.fn(async (): Promise<SingleRunMetrics> => {

@@ -318,12 +318,22 @@ def session_facts(doc, capture, reference=None):
                              "configuredSha256": None if run is None else run.get("modelSha256"),
                              "reviewedConfigs": _reviewed(record, run, reference),
                              "manifestSha256": reference["manifests"].get(model_file, [])}
+    if record["engine"] == "executorch":
+        # The tokenizer decides the prompt's tokens: ExecuTorch runs pin it like the model.
+        tokenizer = record.get("tokenizerArtifact")
+        tokenizer_file = None if run is None else run.get("tokenizerFile")
+        facts["tokenizer"] = None if not isinstance(tokenizer, dict) else {
+            "sha256": tokenizer.get("sha256"), "recordedExpected": tokenizer.get("expectedSha256"),
+            "configuredSha256": None if run is None else run.get("tokenizerSha256"),
+            "manifestSha256": reference["manifests"].get(tokenizer_file, [])}
     facts["backendEvidence"] = _backend(record, measured)
-    # LiteRT-LM NPU: the app's own log of the capture can confirm the backend (backend_log.py).
+    # LiteRT-LM and GENIE-X NPU: the app's own log of the capture can confirm the backend (backend_log.py).
+    # A rule still pending device confirmation is evaluated and reported, but confirms nothing.
     confirmation = backend_log.confirmation(record, capture.get("backendLog"))
     facts["backendLog"] = confirmation
     if version in raw_session.ACCELERATOR_PROTOCOLS and confirmation is not None and \
-            confirmation["status"] == "confirmed" and facts["backendEvidence"] != "mismatch":
+            confirmation["status"] == "confirmed" and facts["backendEvidence"] != "mismatch" and \
+            confirmation["rule"] not in backend_log.PENDING_DEVICE_CONFIRMATION:
         facts["backendEvidence"] = "confirmed"
     if version in raw_session.ACCELERATOR_PROTOCOLS:
         facts["correctness"], facts["comparison"] = _gate(record, facts["backendEvidence"])
@@ -393,7 +403,29 @@ def _artifact(facts):
                                            "a run of the reviewed configuration the session names")
     if not manifest:
         return _check("artifact", UNKNOWN, "no model manifest entry for its file")
+    if facts.get("engine") == "executorch":
+        tokenizer = _tokenizer(facts.get("tokenizer"))
+        if tokenizer is not None:
+            return tokenizer
     return _check("artifact", PASS, f"reviewed run ({', '.join(reviewed)}); hash matches the model manifest")
+
+
+def _tokenizer(tokenizer):
+    """ExecuTorch: the hashed tokenizer equals the configured tokenizerSha256 and a manifest entry for its
+    file. None when it does; otherwise the artifact check's outcome (FAIL, or UNKNOWN without a manifest entry)."""
+    if tokenizer is None or tokenizer["sha256"] is None:
+        return _check("artifact", UNKNOWN, "no tokenizer hash")
+    expected, recorded = tokenizer["configuredSha256"], tokenizer["recordedExpected"]
+    if expected is None:
+        return _check("artifact", FAIL, "the configured ExecuTorch run pins no tokenizerSha256")
+    if tokenizer["sha256"] != expected or recorded not in (None, expected):
+        return _check("artifact", FAIL, "tokenizer SHA-256 differs from the configured tokenizerSha256")
+    manifest = tokenizer["manifestSha256"]
+    if manifest and tokenizer["sha256"] not in manifest:
+        return _check("artifact", FAIL, "tokenizer SHA-256 differs from the manifest entry for its file")
+    if not manifest:
+        return _check("artifact", UNKNOWN, "no manifest entry for the tokenizer file")
+    return None
 
 
 def _backend_check(facts):
@@ -408,6 +440,8 @@ def _backend_check(facts):
     needed = " or ".join(accepted)
     missing = sorted({kind for item in (log or {}).get("repetitions", []) for kind in item["missing"]})
     detail = f"; the app log lacks {', '.join(missing)}" if missing else ""
+    if log and log["rule"] in backend_log.PENDING_DEVICE_CONFIRMATION:
+        detail += f"; rule {log['rule']} is pending device confirmation"
     return _check("backend", UNKNOWN, f"{status or 'no evidence'} for {backend}; needs {needed}{detail}")
 
 

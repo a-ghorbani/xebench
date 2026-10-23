@@ -224,7 +224,8 @@ test('records the engine settings actually passed and what the loaded context re
   expect(record.engineVersion).toBe('llama.rn 0.13.0-rc.8');
   // llama.cpp's own build from llama.rn's exported BuildInfo; the other runtimes take no part.
   expect(record.runtimeVersions).toEqual({llamaCpp: {buildNumber: 11385, commit: 'bf9a0cc'},
-    llamaRn: '0.13.0-rc.8', litertLm: null, litertNpuRuntimeQualcomm: null, qairt: null, genie: null});
+    llamaRn: '0.13.0-rc.8', litertLm: null, litertNpuRuntimeQualcomm: null, qairt: null, genie: null,
+    executorch: null, reactNativeExecutorch: null});
   expect(record.executionReports).toEqual([{runIndex: 0, ...CONTEXT, nativeLibraries: LIBRARIES}]);
   // Engine reports are evidence, not verified execution: the observed backend stays unknown.
   expect(record.observedBackend).toBeNull();

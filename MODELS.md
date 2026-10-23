@@ -140,10 +140,10 @@ template renders it, with thinking off: the chat templates `gemma4` and `qwen3`
 Licenses, as each repository states them: the Gemma 4 E2B GGUF and `.litertlm` files are under the
 [Apache License 2.0](https://ai.google.dev/gemma/docs/gemma_4_license), with base model
 `google/gemma-4-E2B-it`. The ExecuTorch Gemma 4 E2B repository's card states `license: gemma` and
-`base_model: google/gemma-4-E2B`; its `tokenizer_config.json` carries the instruction-tuned
-(`google/gemma-4-E2B-it`) chat template, so the output gate treats the export as the
-instruction-tuned model, and the gate's result decides. The manifest records the card's values for
-the `.pte` file and both tokenizer files. Every Qwen3 1.7B file is under the
+`base_model: google/gemma-4-E2B`, so the manifest records the `.pte` file and both tokenizer files
+under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) with that base model. Its
+`tokenizer_config.json` carries the instruction-tuned (`google/gemma-4-E2B-it`) chat template, so
+the output gate treats the export as the instruction-tuned model, and the gate's result decides. Every Qwen3 1.7B file is under the
 [Apache License 2.0](https://huggingface.co/Qwen/Qwen3-1.7B/blob/main/LICENSE). None of these
 repositories is gated. Download a file by its repository path and revision:
 
@@ -302,6 +302,23 @@ adb -s <serial> push llama-3.2-1B-spinquant.pte tokenizer.json tokenizer_config.
 
 Both engines use the Llama 3.2 1B tokenizer, so prompt token counts match. The
 harness records each engine's own prompt-token count and flags any mismatch.
+
+### GENIE-X QAIRT bundle (Qwen3 1.7B, SM8850)
+
+The GENIE-X zip in the table above unpacks to one directory of 11 files, and the app loads that
+directory: a GENIE-X NPU run's `modelFile` is the directory name and its `modelSha256` is the
+bundle digest, the SHA-256 of the `sha256sum` listing of the unpacked files, names in byte order
+(`ls | LC_ALL=C sort | xargs sha256sum -- | sha256sum` in the directory). It is pinned next to the
+zip in `configs/models/experimental-models.json` (`pinnedArtifacts`):
+
+| Directory | Size | SHA-256 |
+|---|---|---|
+| `qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy` | 1764416101 bytes (the 11 files) | `c41b7071b62e791b924254f1e8ed3245ee74825013c1723e3a62e8877b2ab5c2` (bundle digest) |
+
+`python3 scripts/stage_geniex_bundle.py` downloads and checks the zip, unpacks it into
+`models/geniex/` and checks every file; `--push --serial <serial>` copies the directory to the
+phone and checks every file there. The bundle is never packaged into an APK or committed. Notes:
+[docs/experiments/geniex-inapp.md](docs/experiments/geniex-inapp.md).
 
 ## Notes on fairness
 

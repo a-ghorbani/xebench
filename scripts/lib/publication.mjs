@@ -320,6 +320,12 @@ export const RUNTIMES_CONTRACT_VERSION = '1.2';
 /** The minor that adds dateBasis on rows without versions; a file declares it only when a row carries one. */
 export const DATE_BASIS_CONTRACT_VERSION = '1.3';
 /**
+ * The minor that adds ExecuTorch to build: the runtime names in EXECUTORCH_RUNTIME_NAMES and the
+ * engineVersion/bindingVersion forms "ExecuTorch <version>" and "react-native-executorch <version>".
+ * A file declares it only when a row carries one of them.
+ */
+export const EXECUTORCH_CONTRACT_VERSION = '1.4';
+/**
  * quantBits (contract 1.3): the weight bit width a quant scheme names, where it is certain; null
  * otherwise. The board shows "4-bit" with the scheme as secondary text. A row's quantBits must
  * equal quantBitsFor(quant).
@@ -335,7 +341,8 @@ export function quantBitsFor(quant) {
 }
 
 /** Minors at or above the producer's floor: a file at one of them needs no 1.1 migration. */
-const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION, DATE_BASIS_CONTRACT_VERSION]);
+const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION, DATE_BASIS_CONTRACT_VERSION,
+  EXECUTORCH_CONTRACT_VERSION]);
 /**
  * dateBasis (contract 1.3): what a legacy row's sourceDate is. "measured": the month the row
  * was measured; "first-published": the month the row was first published, used only when the
@@ -343,9 +350,12 @@ const MIGRATED_VERSIONS = new Set([CONTRACT_VERSION, RUNTIMES_CONTRACT_VERSION, 
  */
 export const DATE_BASES = Object.freeze(['measured', 'first-published']);
 
-/** Closed list of build.runtimes names (contract 1.2). */
+/** build.runtimes names contract 1.4 adds: the ExecuTorch runtime and its React Native binding. */
+export const EXECUTORCH_RUNTIME_NAMES = Object.freeze(['ExecuTorch', 'react-native-executorch']);
+/** Closed list of build.runtimes names (contract 1.2; EXECUTORCH_RUNTIME_NAMES from 1.4). */
 export const RUNTIME_NAMES = Object.freeze([
   'llama.cpp', 'llama.rn', 'LiteRT-LM', 'litert-npu-runtime-qualcomm', 'QAIRT', 'geniex-android',
+  ...EXECUTORCH_RUNTIME_NAMES,
 ]);
 /** build.runtimes[].version: a llama.cpp build (b11385) or a dotted version with an optional pre-release. */
 const DOTTED = '[0-9]{1,5}(\\.[0-9]{1,12}){1,3}(-[0-9A-Za-z]{1,16}(\\.[0-9A-Za-z]{1,16}){0,3})?';
@@ -465,6 +475,13 @@ export function assertBenchmarks(envelope, schema, label) {
         if (isObject(row) && Object.hasOwn(row, field)) {
           invariants.push(`$.rows[${index}]: ${field} needs schemaVersion ${DATE_BASIS_CONTRACT_VERSION}`);
         }
+      }
+    });
+  }
+  if (['1.0', '1.1', '1.2', '1.3'].includes(envelope?.schemaVersion) && Array.isArray(envelope.rows)) {
+    envelope.rows.forEach((row, index) => {
+      for (const what of executorchBuildFields(row)) {
+        invariants.push(`$.rows[${index}]: ${what} needs schemaVersion ${EXECUTORCH_CONTRACT_VERSION}`);
       }
     });
   }
@@ -614,26 +631,54 @@ export function writeAtomic(target, text, expectedBefore) {
 }
 
 /**
- * The schemaVersion an envelope holding `rows` declares: 1.3 as soon as one row carries
- * dateBasis, else 1.2 as soon as one row carries build.runtimes or a configuration field, otherwise the producer's
+ * The 1.4 build content a row carries, as "build.<field> <value>" descriptions: an ExecuTorch
+ * build.runtimes name, or, next to build.runtimes (where the fixed forms apply), an
+ * engineVersion/bindingVersion in its ExecuTorch form. Empty for other rows; without runtimes
+ * engineVersion and bindingVersion stay free text in every minor.
+ */
+export function executorchBuildFields(row) {
+  if (!isObject(row) || !isObject(row.build) || !Object.hasOwn(row.build, 'runtimes')) return [];
+  const found = [];
+  const runtimes = Array.isArray(row.build.runtimes) ? row.build.runtimes : [];
+  for (const item of runtimes) {
+    if (isObject(item) && EXECUTORCH_RUNTIME_NAMES.includes(item.name)) found.push(`build.runtimes ${item.name}`);
+  }
+  if (typeof row.build.engineVersion === 'string' && row.build.engineVersion.startsWith('ExecuTorch ')) {
+    found.push(`build.engineVersion ${row.build.engineVersion}`);
+  }
+  if (typeof row.build.bindingVersion === 'string' && row.build.bindingVersion.startsWith('react-native-executorch ')) {
+    found.push(`build.bindingVersion ${row.build.bindingVersion}`);
+  }
+  return found;
+}
+
+/**
+ * The schemaVersion an envelope holding `rows` declares: 1.4 as soon as one row carries ExecuTorch build
+ * content (executorchBuildFields), else 1.3 as soon as one row carries dateBasis or quantBits, else 1.2 as
+ * soon as one row carries build.runtimes or a configuration field, otherwise the producer's
  * CONTRACT_VERSION; never below `floor` (the version the canonical file already declares).
  */
 export function contractVersionFor(rows, floor = CONTRACT_VERSION) {
   const needsRuntimes = rows.some((row) => (isObject(row.build) && Object.hasOwn(row.build, 'runtimes')) ||
     CONFIGURATION_FIELDS.some((field) => Object.hasOwn(row, field)) || Object.hasOwn(row, 'chipName'));
   const needsDateBasis = rows.some((row) => Object.hasOwn(row, 'dateBasis') || Object.hasOwn(row, 'quantBits'));
+  const needsExecutorch = rows.some((row) => executorchBuildFields(row).length > 0);
   const minor = (version) => Number(String(version).split('.')[1]);
-  const wanted = needsDateBasis ? DATE_BASIS_CONTRACT_VERSION : needsRuntimes ? RUNTIMES_CONTRACT_VERSION : CONTRACT_VERSION;
+  const wanted = needsExecutorch ? EXECUTORCH_CONTRACT_VERSION : needsDateBasis ? DATE_BASIS_CONTRACT_VERSION
+    : needsRuntimes ? RUNTIMES_CONTRACT_VERSION : CONTRACT_VERSION;
   return minor(floor) > minor(wanted) ? floor : wanted;
 }
 
-const RUNTIME_KEYS = Object.freeze(['llamaCpp', 'llamaRn', 'litertLm', 'litertNpuRuntimeQualcomm', 'qairt', 'genie']);
+const RUNTIME_KEYS = Object.freeze(['llamaCpp', 'llamaRn', 'litertLm', 'litertNpuRuntimeQualcomm', 'qairt', 'genie',
+  'executorch', 'reactNativeExecutorch']);
 /** runtimeVersions keys each engine may report (mirrors ENGINE_RUNTIMES in scripts/raw_session.py). */
 const ENGINE_RUNTIMES = Object.freeze({
-  'llama.cpp': ['llamaCpp', 'llamaRn'], 'litert-lm': ['litertLm', 'litertNpuRuntimeQualcomm', 'qairt'], 'genie-x': ['genie'],
+  'llama.cpp': ['llamaCpp', 'llamaRn'], 'litert-lm': ['litertLm', 'litertNpuRuntimeQualcomm', 'qairt'],
+  'genie-x': ['genie', 'qairt'], executorch: ['executorch', 'reactNativeExecutorch'],
 });
-/** LiteRT-LM runtimes that take part only in NPU runs. */
+/** Qualcomm NPU runtimes that take part only in NPU runs (LiteRT-LM and GENIE-X). */
 const NPU_ONLY_RUNTIMES = Object.freeze(['litertNpuRuntimeQualcomm', 'qairt']);
+const NPU_ONLY_ENGINES = Object.freeze(['litert-lm', 'genie-x']);
 
 /**
  * Contract `build` (engineVersion, bindingVersion, runtimes) from a session's
@@ -652,7 +697,7 @@ export function buildFromSession(rec, where = '$') {
   // Never publish a runtime the row's engine (and backend) does not run on.
   const reported = RUNTIME_KEYS.filter((key) => versions[key] !== undefined && versions[key] !== null);
   const stray = reported.filter((key) => !(ENGINE_RUNTIMES[rec.engine] ?? []).includes(key) ||
-    (rec.engine === 'litert-lm' && rec.backend !== 'npu' && NPU_ONLY_RUNTIMES.includes(key)));
+    (NPU_ONLY_ENGINES.includes(rec.engine) && rec.backend !== 'npu' && NPU_ONLY_RUNTIMES.includes(key)));
   if (stray.length) fail(`names runtimes ${rec.engine} ${rec.backend ?? ''} does not run on: ${stray.join(', ')}`);
   const version = (key) => {
     const value = versions[key];
@@ -673,14 +718,18 @@ export function buildFromSession(rec, where = '$') {
     'llama.cpp': llamaCpp && `b${llamaCpp.buildNumber}`, 'llama.rn': version('llamaRn'),
     'LiteRT-LM': version('litertLm'), 'litert-npu-runtime-qualcomm': version('litertNpuRuntimeQualcomm'),
     QAIRT: version('qairt'), 'geniex-android': version('genie'),
+    ExecuTorch: version('executorch'), 'react-native-executorch': version('reactNativeExecutorch'),
   };
   const runtimes = RUNTIME_NAMES.filter((name) => component[name] !== null)
     .map((name) => ({ name, version: component[name] }));
   const engineVersion = rec.engine === 'llama.cpp'
     ? llamaCpp && `llama.cpp b${llamaCpp.buildNumber} (${llamaCpp.commit.slice(0, 7)})`
     : rec.engine === 'litert-lm' ? component['LiteRT-LM'] && `LiteRT-LM ${component['LiteRT-LM']}`
-      : rec.engine === 'genie-x' ? component['geniex-android'] && `geniex-android ${component['geniex-android']}` : null;
-  const bindingVersion = rec.engine === 'llama.cpp' && component['llama.rn'] ? `llama.rn ${component['llama.rn']}` : null;
+      : rec.engine === 'genie-x' ? component['geniex-android'] && `geniex-android ${component['geniex-android']}`
+        : rec.engine === 'executorch' ? component.ExecuTorch && `ExecuTorch ${component.ExecuTorch}` : null;
+  const bindingVersion = rec.engine === 'llama.cpp' && component['llama.rn'] ? `llama.rn ${component['llama.rn']}`
+    : rec.engine === 'executorch' && component['react-native-executorch']
+      ? `react-native-executorch ${component['react-native-executorch']}` : null;
   const build = {
     ...(engineVersion ? { engineVersion } : {}),
     ...(bindingVersion ? { bindingVersion } : {}),

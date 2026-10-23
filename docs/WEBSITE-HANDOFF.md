@@ -297,9 +297,53 @@ Gemma 3 1B, LiteRT-LM int4 and llama.cpp Q4_0 QAT).
 
 Their evidence URLs name the fixture bundles' real hashes but do not resolve.
 
+### Contract 1.4 (proposed): ExecuTorch in `build`
+
+Contract 1.4 is additive over 1.3. It adds no field. It widens three existing `build` values on
+measured rows so that an ExecuTorch row can state its versions, and a file declares "1.4" only
+when a row carries one of them. The rollout rule (the website accepts 1.4 in production before
+the first ExecuTorch row with versions is published) is met: the website accepts 1.4 as it is.
+
+| Field | What 1.4 adds | Invariants |
+| --- | --- | --- |
+| `build.runtimes[].name` | `ExecuTorch` (the ExecuTorch runtime, e.g. `1.4.1`) and `react-native-executorch` (the React Native binding, e.g. `0.10.7`) | Same as 1.2: one entry per `name`, the same `version` grammar and 64-character limit. In "1.4" files only. |
+| `build.engineVersion` | With `runtimes`: `ExecuTorch <version>`, e.g. `ExecuTorch 1.4.1` | Without `runtimes`, any string, as before. |
+| `build.bindingVersion` | With `runtimes`: `react-native-executorch <version>`, e.g. `react-native-executorch 0.10.7` | Without `runtimes`, any string, as before. |
+
+Example (an ExecuTorch CPU row):
+
+```json
+"build": {
+  "engineVersion": "ExecuTorch 1.4.1",
+  "bindingVersion": "react-native-executorch 0.10.7",
+  "runtimes": [{"name": "ExecuTorch", "version": "1.4.1"}, {"name": "react-native-executorch", "version": "0.10.7"}]
+}
+```
+
+What this means for the website: no change. It keeps no closed runtime list, does not gate
+fields on the minor version and does not send `build.runtimes` to the client, so it accepts
+`schemaVersion` "1.4" and the two runtime names as they are. It displays the engine and binding
+versions like the llama.cpp ones: engine version "ExecuTorch 1.4.1", binding
+"react-native-executorch 0.10.7"; an engine version outside the fixed forms is shown sanitised.
+
+Nothing else changes: no new row field, no change in meaning for any 1.3 field, and rows
+without ExecuTorch versions are unchanged. Every 1.0 to 1.3 file still validates.
+
+Consumer fixtures are in [`tests/fixtures/contract-1.4/`](../tests/fixtures/contract-1.4/),
+listed in `index.json` with `producerMustNotEmit` and `consumerExpectation` as for 1.2:
+
+| Fixture | Producer must not emit | Consumer expectation | Covers |
+| --- | --- | --- | --- |
+| `executorch-runtimes.json` | false | Rendered: engine version "ExecuTorch 1.4.1", binding "react-native-executorch 0.10.7" | Synthetic ExecuTorch CPU row with both runtimes |
+| `v1.3-rows-in-1.4.json` | false | Rendered unchanged | A 1.4 file whose rows carry no 1.4 value |
+| `executorch-runtimes-in-1.3.json` | true | Rendered; the runtimes are harmless (not sent to the client); engine and binding versions shown | The ExecuTorch row in a file that declares 1.3 |
+| `binding-only-in-1.3.json` | true | Rendered; the runtime is harmless (not sent to the client); binding version shown | `react-native-executorch` alone in a file that declares 1.3 |
+| `unknown-runtime-name.json` | true | Shown | A `name` outside the closed list (`XNNPACK`) |
+| `engine-version-form.json` | true | Shown sanitised (e.g. "ExecuTorch v1.4.1") | With `runtimes`, an `engineVersion` outside the fixed forms |
+
 ## Contract and display
 
-Contracts 1.1 to 1.3 above cover the first rows of this table, and [Measurement sets](#measurement-sets-what-the-board-renders)
+Contracts 1.1 to 1.4 above cover the first rows of this table, and [Measurement sets](#measurement-sets-what-the-board-renders)
 overrides it where they differ. Agree further field names and types in the versioned schema
 before implementation.
 

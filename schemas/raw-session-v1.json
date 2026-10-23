@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/a-ghorbani/xebench/schemas/raw-session-v1.json",
   "title": "xebench raw reference session, schemaVersion 1",
-  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal), schemaVersion 1. The protocol version selects a branch: cpu-reference-v1 records (including those from apps built before condition snapshots) keep their original shape; cpu-reference-v2 records carry readiness, sampling, order and verdict evidence; cpu-reference-v3 records add build identity, configuration source and hash, effective engine settings, per-load engine reports and the configured model hash. Cross-field rules, including recomputed condition assessments, are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration stay open to additive fields. accelerator-v1 records (sessionAcceleratorV1, frozen) add LiteRT-LM, GPU/NPU backends, observed-backend evidence and the output-correctness gate; accelerator-v2 (sessionAcceleratorV2) adds the cpu-reference-v3 build and execution identity.",
+  "description": "One ReferenceSession record as written by xebenchapp/src/harness/session.ts (checkpoint or terminal), schemaVersion 1. The protocol version selects a branch: cpu-reference-v1 records (including those from apps built before condition snapshots) keep their original shape; cpu-reference-v2 records carry readiness, sampling, order and verdict evidence; cpu-reference-v3 records add build identity, configuration source and hash, effective engine settings, per-load engine reports and the configured model hash. Cross-field rules, including recomputed condition assessments, are enforced by scripts/raw_session.py. Per-attempt conditions, conditionPolicy, protocol and configuration stay open to additive fields. accelerator-v1 records (sessionAcceleratorV1, frozen) add LiteRT-LM, GPU/NPU backends, observed-backend evidence and the output-correctness gate; accelerator-v2 (sessionAcceleratorV2) adds the cpu-reference-v3 build and execution identity, and ExecuTorch CPU (XNNPACK) runs with their tokenizer, settings and runner statistics.",
   "oneOf": [{"$ref": "#/$defs/sessionV1"}, {"$ref": "#/$defs/sessionV2"}, {"$ref": "#/$defs/sessionV3"}, {"$ref": "#/$defs/sessionAcceleratorV1"}, {"$ref": "#/$defs/sessionAcceleratorV2"}],
   "$defs": {
     "label": {
@@ -88,7 +88,8 @@
         "decodeTokens": {"$ref": "#/$defs/tokenCount"},
         "decodeTps": {"$ref": "#/$defs/positive"},
         "decodeMethod": {"$ref": "#/$defs/measureMethod"},
-        "engineInternal": {"$ref": "#/$defs/engineInternal"}
+        "engineInternal": {"$ref": "#/$defs/engineInternal"},
+        "executorchStats": {"$ref": "#/$defs/executorchStats"}
       }
     },
     "completeAttempt": {
@@ -1138,8 +1139,8 @@
     "acceleratorModelFile": {
       "type": "string",
       "maxLength": 128,
-      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*\\.(gguf|litertlm)$",
-      "description": "accelerator-v1: a GGUF (llama.cpp) or .litertlm (LiteRT-LM) basename; the engine/extension pairing is checked by raw_session.py."
+      "pattern": "^([a-zA-Z0-9][a-zA-Z0-9._-]*\\.(gguf|litertlm|pte)|[a-zA-Z0-9][a-zA-Z0-9_-]*)$",
+      "description": "accelerator-v1: a GGUF (llama.cpp, GENIE-X CPU) or .litertlm (LiteRT-LM) basename; accelerator-v2 adds .pte (ExecuTorch) and a GENIE-X QAIRT bundle directory name (no extension). The engine/backend pairing is checked by raw_session.py."
     },
     "nullableThreads": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1, "maximum": 32}]},
     "nullableCtx": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1024, "maximum": 32768}]},
@@ -1160,7 +1161,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {"$ref": "#/$defs/label"},
-        "engine": {"enum": ["llama.cpp", "litert-lm"]},
+        "engine": {"enum": ["llama.cpp", "litert-lm", "executorch", "genie-x"]},
         "backend": {"enum": ["cpu", "gpu", "npu"]},
         "purpose": {"enum": ["measurement", "bug-repro"]},
         "model": {"$ref": "#/$defs/label"},
@@ -1183,6 +1184,16 @@
         "modelSha256": {
           "$ref": "#/$defs/sha256",
           "description": "Expected SHA-256 of modelFile; a different file is recorded unmeasured with stopReason model-hash-mismatch."
+        },
+        "tokenizerFile": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*\\.json$",
+          "description": "ExecuTorch runs only (required there): the tokenizer.json basename staged next to the .pte."
+        },
+        "tokenizerSha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "ExecuTorch runs only: expected SHA-256 of tokenizerFile; a different file is recorded unmeasured with stopReason tokenizer-hash-mismatch."
         }
       }
     },
@@ -1211,7 +1222,7 @@
         "maxDecodeTokens": {"type": "integer", "minimum": 1, "maximum": 512},
         "chatTemplate": {"enum": ["gemma3", "gemma4", "llama32", "qwen25", "qwen3"]},
         "measuredPrompt": {"enum": ["std-chat-v1", "std-pp512-v1"]},
-        "decodeMode": {"enum": ["fixed"], "description": "fixed: every repetition decodes exactly maxDecodeTokens, past the end of turn (LiteRT-LM runs only)."},
+        "decodeMode": {"enum": ["fixed"], "description": "fixed: every repetition decodes exactly maxDecodeTokens, past the end of turn (LiteRT-LM and ExecuTorch runs only)."},
         "orderSeed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
         "runs": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/acceleratorRun"}}
       }
@@ -1223,7 +1234,7 @@
       "additionalProperties": false,
       "properties": {
         "status": {"enum": ["confirmed", "consistent", "mismatch", "unknown"]},
-        "source": {"enum": ["engine-report", "process-libraries", "none"]},
+        "source": {"enum": ["engine-report", "process-libraries", "program-delegates", "none"]},
         "report": {
           "oneOf": [
             {"type": "null"},
@@ -1268,6 +1279,43 @@
               }
             }
           ]
+        },
+        "program": {
+          "description": "ExecuTorch only (source program-delegates): the delegates each method of the loaded .pte uses, from its method metadata, and the backends registered in the process's ExecuTorch runtime; null when unreadable.",
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["methods", "registeredBackends"],
+              "additionalProperties": false,
+              "properties": {
+                "methods": {
+                  "oneOf": [
+                    {"type": "null"},
+                    {
+                      "type": "array",
+                      "maxItems": 64,
+                      "items": {
+                        "type": "object",
+                        "required": ["name", "delegates"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "name": {"type": "string", "minLength": 1, "maxLength": 128},
+                          "delegates": {"type": "array", "maxItems": 16, "items": {"type": "string", "maxLength": 128}}
+                        }
+                      }
+                    }
+                  ]
+                },
+                "registeredBackends": {
+                  "oneOf": [
+                    {"type": "null"},
+                    {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 128}}
+                  ]
+                }
+              }
+            }
+          ]
         }
       }
     },
@@ -1280,7 +1328,7 @@
           "additionalProperties": false,
           "properties": {
             "status": {"enum": ["confirmed", "consistent", "mismatch", "unknown"]},
-            "source": {"enum": ["engine-report", "process-libraries", "none"]},
+            "source": {"enum": ["engine-report", "process-libraries", "program-delegates", "none"]},
             "repetitions": {"type": "integer", "minimum": 1}
           }
         }
@@ -1421,6 +1469,7 @@
         "decodeTps": {"$ref": "#/$defs/positive"},
         "decodeMethod": {"$ref": "#/$defs/measureMethod"},
         "engineInternal": {"$ref": "#/$defs/engineInternal"},
+        "executorchStats": {"$ref": "#/$defs/executorchStats"},
         "cooldownMs": {"type": "integer", "minimum": 0},
         "readiness": {"$ref": "#/$defs/readiness"},
         "instance": {"$ref": "#/$defs/instance"},
@@ -1522,6 +1571,76 @@
             "source": {"const": "npm"},
             "package": {"const": "llama.rn"},
             "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?$"},
+            "patches": {"type": "array", "maxItems": 0}
+          }
+        }
+      }
+    },
+    "executorchStats": {
+      "type": "object",
+      "description": "ExecuTorch only: llm::Stats of the request as react-native-executorch returns them (CLOCK_REALTIME integer milliseconds), the token callbacks it produced, and the prefill chunking. raw_session.py recomputes the metrics from them.",
+      "required": [
+        "numPromptTokens",
+        "numGeneratedTokens",
+        "inferenceStartMs",
+        "firstTokenMs",
+        "inferenceEndMs",
+        "emittedTokens",
+        "prefillChunkTokens",
+        "prefillChunks"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "numPromptTokens": {"$ref": "#/$defs/tokenCount"},
+        "numGeneratedTokens": {"$ref": "#/$defs/tokenCount"},
+        "inferenceStartMs": {"type": "integer", "minimum": 0},
+        "firstTokenMs": {"type": "integer", "minimum": 0},
+        "inferenceEndMs": {"type": "integer", "minimum": 0},
+        "emittedTokens": {"$ref": "#/$defs/tokenCount"},
+        "prefillChunkTokens": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/tokenCount"}]},
+        "prefillChunks": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/tokenCount"}]}
+      }
+    },
+    "effectiveSettingsExecutorch": {
+      "type": "object",
+      "description": "ExecuTorch runs: every parameter passed to react-native-executorch (ExecutorchAdapter); anything unlisted is the binding's default.",
+      "required": ["binding", "runner", "load", "generation", "threads", "unlisted", "distribution"],
+      "additionalProperties": false,
+      "properties": {
+        "binding": {"const": "react-native-executorch"},
+        "runner": {"const": "createLLMRunner"},
+        "load": {
+          "type": "object",
+          "required": ["loadMode", "modalities"],
+          "additionalProperties": false,
+          "properties": {"loadMode": {"const": "mmap"}, "modalities": {"type": "array", "maxItems": 0}}
+        },
+        "generation": {
+          "type": "object",
+          "required": ["temperature", "maxNewTokens", "ignoreEos", "numBos", "numEos", "echo", "promptPrefix"],
+          "additionalProperties": false,
+          "properties": {
+            "temperature": {"const": 0},
+            "maxNewTokens": {"type": "integer", "minimum": 1, "maximum": 512},
+            "ignoreEos": {"type": "boolean"},
+            "numBos": {"const": 0},
+            "numEos": {"const": 0},
+            "echo": {"const": false},
+            "promptPrefix": {"enum": ["", "<bos>"]}
+          }
+        },
+        "threads": {"const": "runtime-default"},
+        "unlisted": {"const": "binding-defaults"},
+        "distribution": {
+          "type": "object",
+          "required": ["source", "package", "version", "nativeLibsVersion", "backends", "patches"],
+          "additionalProperties": false,
+          "properties": {
+            "source": {"const": "npm"},
+            "package": {"const": "react-native-executorch"},
+            "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?$"},
+            "nativeLibsVersion": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]},
+            "backends": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"const": "xnnpack"}},
             "patches": {"type": "array", "maxItems": 0}
           }
         }
@@ -1861,7 +1980,7 @@
         "schema": {"const": "xebench-raw"},
         "schemaVersion": {"const": 1},
         "harnessVersion": {"const": "xebench-0.8-accelerator"},
-        "engine": {"enum": ["llama.cpp", "litert-lm"]},
+        "engine": {"enum": ["llama.cpp", "litert-lm", "executorch", "genie-x"]},
         "engineVersion": {"type": "string", "minLength": 1},
         "backend": {"enum": ["cpu", "gpu", "npu"], "description": "Requested backend."},
         "observedBackend": {"$ref": "#/$defs/observedBackend"},
@@ -1959,7 +2078,8 @@
             "setup-failed",
             "model-hash-mismatch",
             "engine-unavailable",
-            "gate-cleanup-failed"
+            "gate-cleanup-failed",
+            "tokenizer-hash-mismatch"
           ]
         },
         "runOrder": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/runOrder"}]},
@@ -1977,8 +2097,29 @@
         "build": {"$ref": "#/$defs/buildIdentity"},
         "configurationSource": {"$ref": "#/$defs/configurationSource"},
         "effectiveSettings": {
-          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/effectiveSettingsLlamaRnAccelerator"}],
-          "description": "llama.cpp runs: every parameter passed to llama.rn. LiteRT-LM runs: null (LiteRtBenchModule.kt states its parameters in code)."
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/effectiveSettingsLlamaRnAccelerator"},
+            {"$ref": "#/$defs/effectiveSettingsExecutorch"}
+          ],
+          "description": "llama.cpp runs: every parameter passed to llama.rn. ExecuTorch runs: every parameter passed to react-native-executorch. LiteRT-LM runs: null (LiteRtBenchModule.kt states its parameters in code)."
+        },
+        "tokenizerArtifact": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["file", "sha256", "sizeBytes", "expectedSha256"],
+              "additionalProperties": false,
+              "properties": {
+                "file": {"type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*\\.json$"},
+                "sha256": {"$ref": "#/$defs/sha256"},
+                "sizeBytes": {"type": "integer", "minimum": 0},
+                "expectedSha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}
+              }
+            }
+          ],
+          "description": "ExecuTorch runs only (present exactly there): the tokenizer.json hashed with the model and the configured tokenizerSha256; null when the run was recorded before it was hashed."
         },
         "executionReports": {
           "type": "array",
@@ -1998,7 +2139,7 @@
       "description": "Protocol accelerator-v2 (harness xebench-0.8-accelerator): cpu-reference-v3 repetitions, conditions and identity evidence for llama.cpp and LiteRT-LM on cpu/gpu/npu, with observed-backend evidence and the output-gate-v1 correctness gate (docs/experiments/litert-accelerators.md)."
     },
     "runtimeVersions": {
-      "description": "Versions of the runtimes the engine ran on, from the shipped artifacts: llama.rn's exported BuildInfo (vendored llama.cpp build number and commit) and package version; the LiteRT-LM and Qualcomm NPU runtime AARs as Gradle resolved them; the QAIRT build string in the packaged libQnnHtp.so; geniex-android. null for a runtime the session does not use or that reports nothing usable. Absent in records from apps built before it was recorded.",
+      "description": "Versions of the runtimes the engine ran on, from the shipped artifacts: llama.rn's exported BuildInfo (vendored llama.cpp build number and commit) and package version; the LiteRT-LM and Qualcomm NPU runtime AARs as Gradle resolved them; the QAIRT build string in the packaged libQnnHtp.so; geniex-android; ExecuTorch and react-native-executorch. null for a runtime the session does not use or that reports nothing usable. Absent in records from apps built before it was recorded.",
       "oneOf": [
         {"type": "null"},
         {
@@ -2030,7 +2171,15 @@
               "oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]
             },
             "qairt": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]},
-            "genie": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]}
+            "genie": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}]},
+            "executorch": {
+              "oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}],
+              "description": "ExecuTorch runtime (ET_VERSION of the headers shipped with the linked libraries). Absent in records from apps built before it was recorded."
+            },
+            "reactNativeExecutorch": {
+              "oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$"}],
+              "description": "react-native-executorch package version. Absent in records from apps built before it was recorded."
+            }
           }
         }
       ]

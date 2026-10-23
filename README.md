@@ -53,7 +53,7 @@ and current limitations. Other engine adapters are retained for subsequent work.
 
 ```bash
 cd xebenchapp
-npm ci                            # Node 20+; keep install scripts (see Build flavors)
+npm ci                            # Node 20.19.4+; keep install scripts (see Build flavors)
 
 # build, check + install the CPU reference RELEASE build (debug is unfair — see METHODOLOGY)
 cd android && ./gradlew assembleReferenceRelease
@@ -107,8 +107,8 @@ keep the application ID `com.xebenchapp`, so installing one replaces another.
 | Flavor | Gradle task | Native engines packaged | Needs files outside the repo |
 |---|---|---|---|
 | `reference` | `assembleReferenceRelease` | llama.rn CPU only | No — builds from a clean checkout |
-| `experimental` | `assembleExperimentalRelease` | llama.rn CPU + Hexagon/OpenCL, LiteRT-LM, ExecuTorch | Only for LiteRT NPU: QAIRT libs in `app/src/experimental/jniLibs/arm64-v8a/` |
-| `geniex` | `assembleGeniexRelease` | llama.rn CPU + GENIE-X (`geniex-android`, which bundles its own QNN and llama.cpp Hexagon runtime) | For the NPU path: Genie context binaries (model files) |
+| `experimental` | `assembleExperimentalRelease` | llama.rn CPU + Hexagon/OpenCL, LiteRT-LM, ExecuTorch (XNNPACK) | Only for LiteRT NPU: QAIRT libs in `app/src/experimental/jniLibs/arm64-v8a/` |
+| `geniex` | `assembleGeniexRelease` | llama.rn CPU + GENIE-X (`geniex-android` 0.8.0, which bundles its own QNN runtime and llama.cpp) | For the NPU path: the QAIRT 2.50 libs in `app/src/geniex/jniLibs/arm64-v8a/` (they replace the AAR's QAIRT 2.45), and a QAIRT bundle staged on the phone |
 
 Prerequisites for a clean-checkout reference build (other flavors add only the
 files in the table). This list is the single source; CI
@@ -116,17 +116,21 @@ files in the table). This list is the single source; CI
 
 | Input | Version | Notes |
 |---|---|---|
-| Node | 20+ (CI: 22) | `npm ci` in `xebenchapp` **with install scripts enabled**: llama.rn downloads checksum-verified native libraries then. After `npm ci --ignore-scripts`, run `npm rebuild llama.rn --foreground-scripts` before building an APK. |
+| Node | 20.19.4+ (CI: 22) | `npm ci` in `xebenchapp` **with install scripts enabled**: llama.rn downloads checksum-verified native libraries then, and react-native-executorch downloads the ExecuTorch libraries (XNNPACK backend only), which the app's own postinstall checks against `xebenchapp/executorch-libs.lock.json`. After `npm ci --ignore-scripts`, run `npm rebuild llama.rn react-native-executorch --foreground-scripts` and `node scripts/check-executorch-libs.js` before building an APK. |
 | JDK | 17+ (CI: Temurin 21) | Byte-identical APKs need the same JDK major version. |
 | Gradle | 9.0.0 | Pinned by the wrapper, with `distributionSha256Sum`; use `./gradlew`. |
 | Android SDK | platform `android-36`, build-tools `36.0.0`, CMake `3.22.1` | Set `sdk.dir` in `android/local.properties` or `ANDROID_HOME`. |
-| Android NDK | `27.3.13750724` and `27.0.12077973` | The app's pin (the same as PocketPal; llama.rn 0.13 compiles its native core with it), and AGP's default (used by react-native-executorch). |
-| Network | Maven Central, Google Maven, npm | Gradle and npm dependencies. |
+| Android NDK | `27.3.13750724` and `27.0.12077973` | The app's pin (the same as PocketPal; llama.rn 0.13 compiles its native core with it), and AGP's default (used by react-native-executorch and react-native-worklets). |
+| Network | Maven Central, Google Maven, npm, GitHub releases | Gradle and npm dependencies; the native libraries llama.rn and react-native-executorch download at install. |
 
 `sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;27.3.13750724" "ndk;27.0.12077973"`
 installs the SDK parts.
 
 **Pinned build inputs.** npm packages are pinned by `xebenchapp/package-lock.json`.
+react-native-executorch downloads its native ExecuTorch libraries from its GitHub release
+at install; `xebenchapp/executorch-libs.lock.json` pins their SHA-256, the header tree
+digest, the ExecuTorch version and the XNNPACK-only build configuration, and the app's
+postinstall (`scripts/check-executorch-libs.js`) fails the install on any difference.
 Gradle uses no dynamic versions: `jscFlavor` is pinned to `2026004.0.1`. Every
 resolved Maven dependency is locked in `android/app/gradle.lockfile` (strict mode:
 an unlocked configuration fails), `android/buildscript-gradle.lockfile` and
@@ -168,10 +172,11 @@ and rejects runtimes that belong to another flavor. `reference` allows no native
 library outside React Native core and llama.rn CPU, so Hexagon/HTP, OpenCL,
 QNN/QAIRT, LiteRT-LM, GENIE-X and ExecuTorch libraries all fail the check.
 
-Known limitations: React Native autolinking is not flavor-aware, so
-react-native-executorch's Java glue is linked into every flavor; `reference` and
-`geniex` exclude its native libraries, and its module reports itself unavailable if
-called. On the S23, llama.rn's Hexagon/OpenCL library hangs at first model load;
+Known limitations: React Native autolinking is not flavor-aware, so the Java glue of
+react-native-executorch and react-native-worklets is linked into every flavor;
+`reference` and `geniex` exclude their native libraries, and the harness loads
+react-native-executorch only in a build that registers the `ExecutorchBench` module
+(`experimental`). On the S23, llama.rn's Hexagon/OpenCL library hangs at first model load;
 build `experimental` with `-Pxebench.excludeLlamaHexagon=true` to use its CPU
 libraries there.
 
@@ -181,12 +186,12 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 
 - **Models** — GGUF / `.pte` / `.litertlm` / QNN context binaries. See **[MODELS.md](./MODELS.md)** for exact files and sources.
 - **QAIRT SDK** (Qualcomm AI Runtime) — needed for the LiteRT-NPU path and the CLI `genie-t2t-run` Genie measurements. Download the *Community* track (direct download) from Qualcomm, then stage the libraries LiteRT NPU needs with `python3 scripts/stage_qairt_libs.py --qairt <QAIRT root>`. It copies the `lib/aarch64-android/` host libs and the v73/v81 `libQnnHtpVNNSkel.so` into `app/src/experimental/jniLibs/arm64-v8a/` (git-ignored — Qualcomm-licensed, do not redistribute), refuses a destination git would track, and records each file's SHA-256 in `app/src/experimental/jniLibs/qairt-libs.json`. Check an NPU-capable APK with `scripts/check_reference_apk.py --flavor experimental --require-qnn <apk>`. Never put them in `app/src/main/jniLibs`. For **LiteRT-LM**, the QAIRT version must match the `LITERT_REF` of the LiteRT-LM release you use. The dispatch lib (`libLiteRtDispatch_Qualcomm.so`) is not part of QAIRT: it comes from Google's `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` Maven artifact, or from the per-arch `litert_npu_runtime_libraries.zip` on LiteRT GitHub releases. The `experimental` flavor pins `litertlm-android` 0.18.1 + `litert-npu-runtime-qualcomm` 2.3.0 with QAIRT 2.50.0.260828 (see [docs/experiments/litert-accelerators.md](./docs/experiments/litert-accelerators.md)).
-- **Hexagon SDK** — needed for llama.cpp's Hexagon NPU backend in the `experimental` flavor. llama.rn compiles the backend's Android side only when it finds the SDK at `HEXAGON_SDK_ROOT` and `HEXAGON_TOOLS_ROOT`; llama.rn 0.13.0-rc.8 looks in `~/.hexagon-sdk/6.7.0.0` and its `tools/HEXAGON_Tools/21.0.04` when they are unset. Without the SDK the build still succeeds, but the APK has no Hexagon backend. The DSP libraries (`libggml-htp-v73.so` to `libggml-htp-v85.so`) are llama.rn's npm prebuilts. Check a Hexagon-capable APK with `scripts/check_reference_apk.py --flavor experimental --require-hexagon <apk>`: it requires llama.rn's Hexagon variant and the v73 to v81 DSP libraries, and combines with `--require-qnn`.
-- **GENIE-X** (`com.qualcomm.qti:geniex-android`) — Maven Central dependency of the `geniex` flavor only.
+- **Hexagon SDK** — needed for llama.cpp's Hexagon NPU backend in the `experimental` flavor. llama.rn compiles the backend's Android side only when it finds the SDK at `HEXAGON_SDK_ROOT` and `HEXAGON_TOOLS_ROOT`; llama.rn 0.13.0-rc.8 looks in `~/.hexagon-sdk/6.7.0.0` and its `tools/HEXAGON_Tools/21.0.04` when they are unset. Without the SDK the build still succeeds, but the APK has no Hexagon backend. The DSP libraries (`libggml-htp-v73.so` to `libggml-htp-v85.so`) are llama.rn's npm prebuilts. Check a Hexagon-capable APK with `scripts/check_reference_apk.py --flavor experimental --require-hexagon <apk>`: it requires llama.rn's Hexagon variant with the Hexagon backend compiled in (a build without the SDK has the variant but not the backend) and the v73 to v81 DSP libraries, and combines with `--require-qnn`.
+- **GENIE-X** (`com.qualcomm.qti:geniex-android` 0.8.0) — Maven Central dependency of the `geniex` flavor only. Its AAR packages the QAIRT 2.45 QNN runtime and cannot load another one at run time, so for QAIRT 2.50 bundles stage the 2.50 build of the same files with `python3 scripts/stage_qairt_libs.py --qairt <QAIRT root> --flavor geniex` (into `app/src/geniex/jniLibs/arm64-v8a/`, git-ignored; the flavor packages them in place of the AAR's; a geniex release build fails without them unless `-Pxebench.geniexAarQairt=true` asks for the AAR's 2.45 runtime) and check the APK with `scripts/check_reference_apk.py --flavor geniex --qairt-version <build> --qairt-libs app/src/geniex/jniLibs/qairt-libs.json <apk>`. The Qualcomm AI Hub QAIRT bundle is staged on the phone, never packaged: `python3 scripts/stage_geniex_bundle.py` downloads, verifies and unpacks it into `models/geniex/`, and `--push --serial <serial>` copies it to the app's files. See [docs/experiments/geniex-inapp.md](./docs/experiments/geniex-inapp.md).
 - **Genie context binaries** — per-SoC, per-QAIRT-version compiled `.bin` bundles (e.g. from `runanywhere/genie-npu-models` or Qualcomm AI Hub). They must match *both* your device's Hexagon arch (v73/v75/v79/v81) *and* a QAIRT version you can obtain.
 
 ### Toolchain gotchas (hard-won)
-- **Node 20+** (RN 0.82 Metro).
+- **Node 20.19.4+** (RN 0.83 Metro).
 - Host is often aarch64 Linux — point `hermesCommand` at the x86-64 hermesc (runs via emulation).
 - **Kotlin 2.3.0** required by `litertlm-android` (pin `kotlinVersion` *and* the plugin classpath).
 - `litertlm-android` needs `useLegacyPackaging` / `extractNativeLibs=true` so QNN libs land in `nativeLibraryDir`.
@@ -197,7 +202,7 @@ This repo does **not** vendor model weights or proprietary vendor SDKs.
 
 **[`data/benchmarks.json`](./data/benchmarks.json) is the canonical, published results file** and the single source of truth. It's a versioned envelope (`schemaVersion`, `generatedAt`, `source`, `rows[]`) validated by **[`data/benchmarks.schema.json`](./data/benchmarks.schema.json)**. Each row carries its `provenance` (`measured` = our lab runs · `vendor` = engine-maker official numbers), `quant`, source link, and methodology caveats (`asStated`).
 
-The current contract is **1.1**, **1.2** for a file whose rows carry `build.runtimes`, `configurationId` or `configurationSha256`, and **1.3** for a file whose rows carry `dateBasis` or `quantBits` (`chipName`, the marketing chip name, is valid from 1.2; all additive; see the [website handoff](docs/WEBSITE-HANDOFF.md#agreed-contract-11) for the field tables). `generatedAt` is ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`; the 1.0 date-only form stays valid). Measured rows may carry `validation` (`legacy` · `unverified` · `failed` · `verified`), `guardsPassed`, `conditionPolicy`, `protocolVersion`, `configurationId`, `configurationSha256`, `timingMethod`, `dispersion`, `evidence` and `build`; vendor rows never do. Provenance says who supplied a number; `validation` says what was checked. Rows published from raw records are `legacy`. A row is `verified` only when it is published from an evidence bundle that passes [publication policy v1](docs/RUN-CONDITIONS.md#publication-policy-v1).
+The current contract is **1.1**, **1.2** for a file whose rows carry `build.runtimes`, `configurationId` or `configurationSha256`, **1.3** for a file whose rows carry `dateBasis` or `quantBits`, and **1.4** for a file whose rows name ExecuTorch or react-native-executorch in `build.runtimes` (`chipName`, the marketing chip name, is valid from 1.2; all additive; see the [website handoff](docs/WEBSITE-HANDOFF.md#agreed-contract-11) for the field tables). `generatedAt` is ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`; the 1.0 date-only form stays valid). Measured rows may carry `validation` (`legacy` · `unverified` · `failed` · `verified`), `guardsPassed`, `conditionPolicy`, `protocolVersion`, `configurationId`, `configurationSha256`, `timingMethod`, `dispersion`, `evidence` and `build`; vendor rows never do. Provenance says who supplied a number; `validation` says what was checked. Rows published from raw records are `legacy`. A row is `verified` only when it is published from an evidence bundle that passes [publication policy v1](docs/RUN-CONDITIONS.md#publication-policy-v1).
 
 **Publish measurements from evidence bundles, through a PR — no website change.** The input is a sanitized bundle hosted under [`evidence/<bundleSha256>/`](evidence/) (written by [`export_evidence.py`](docs/REFERENCE-RUNS.md#evidence-export)), never a raw capture. A dry run shows what each hosted session would publish; `--update` publishes the sessions you name.
 
@@ -246,7 +251,7 @@ Publication fails closed: on any error it exits 1 and leaves `data/benchmarks.js
 Good first issues:
 - Add a **quality metric** (perplexity or a small task-accuracy set) so the board isn't speed-only — the top methodology gap (see METHODOLOGY §quant).
 - New device rows (MediaTek / more Snapdragons), new engines (MLX/CoreML need an iOS harness).
-- A Rule-0-clean, in-app Genie NPU path (currently CLI-measured).
+- A device check of the in-app GENIE-X NPU log rule ([docs/experiments/geniex-inapp.md](./docs/experiments/geniex-inapp.md)); the board's GENIE-X rows are CLI-measured.
 
 Please keep every number traceable to a raw JSONL record and label its provenance and quant honestly — that transparency is the whole point.
 

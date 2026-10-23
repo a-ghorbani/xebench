@@ -32,6 +32,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_contract_1_2.py' -v
       - name: Contract 1.3 tests
         run: python3 -m unittest discover -s tests -p 'test_contract_1_3.py' -v
+      - name: Contract 1.4 tests
+        run: python3 -m unittest discover -s tests -p 'test_contract_1_4.py' -v
       - name: Publication policy v1 tests
         run: python3 -m unittest discover -s tests -p 'test_publication_policy.py' -v
       - name: Measurement set tests

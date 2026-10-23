@@ -77,7 +77,9 @@ reference protocol.
 ### 1. Same bytes in — identical prompt, no per-engine templating
 Both engines receive the **same pre-templated raw string** (Llama 3.2 chat
 template applied once, by us — not by either engine). llama.rn gets it via
-`completion({ prompt })`, ExecuTorch via `forward()`. Neither applies its own
+`completion({ prompt })`, ExecuTorch via its LLM runner's `generate()`
+(react-native-executorch `createLLMRunner`). The runner adds no BOS token, so for a Gemma model
+the prompt starts with the literal `<bos>` that llama.cpp adds as a token. Neither applies its own
 chat wrapper, so tokenizer input is byte-identical. Each engine's own prompt
 token count is recorded; a mismatch is flagged, not silently averaged.
 → `src/harness/prompts.ts`, both adapters pass `cfg.prompt` unchanged.
@@ -99,11 +101,18 @@ Quality parity is the top v2 item.
 ### 3. Throughput provenance is recorded per number
 How each tok/s was obtained is a first-class field (`MeasureMethod`):
 - `engine-timings` — the engine's own counters (llama.cpp exposes prefill/decode
-  ms and tok/s directly; this is the gold standard).
-- `ttft-derived` / `callback-derived` — ExecuTorch exposes no internal counters,
-  so prefill is derived from TTFT and decode from JS-side per-token callback
-  timestamps. This includes one decode step + a callback hop, which biases
-  **against** ExecuTorch (conservative), and it is labeled as such on the row.
+  ms and tok/s directly; this is the gold standard). For ExecuTorch they are its
+  LLM runner's statistics, in whole wall-clock milliseconds: prefill is prompt tokens
+  over the time from the start of inference to the first token, which includes the
+  tokenization and the first token's sampling (llama.cpp's prompt timing does not) and
+  every prefill forward (at most 512 tokens per forward for Gemma 4 E2B); decode is the
+  decode loop's tokens over the time from the first token to the end, one forward per
+  token: 127 tokens of a fixed 128-token decode.
+- `ttft-derived` / `callback-derived` — for a binding without internal counters,
+  prefill is derived from TTFT and decode from JS-side per-token callback
+  timestamps. This includes one decode step + a callback
+  hop, which biases **against** the engine (conservative), and it is labeled as such
+  on the row.
 
 We do **not** pretend a derived number and an engine-internal number are the
 same kind of measurement. TTFT itself is measured at the identical point for
@@ -160,7 +169,11 @@ each load; the dispatch library and HTP backend loaded earlier in the same proce
 library opened on the compute DSP. The capture keeps only those
 log lines of the app's process, the evidence bundle carries them, and the publication policy
 recomputes the verdict from the bundle ([rule](docs/RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
-LiteRT-LM GPU rows have no such evidence and stay unverified.
+LiteRT-LM GPU rows have no such evidence and stay unverified. GENIE-X measured in the app reports no
+backend either; its log rule (the QNN runtime the app packages, the bundle's HTP graphs and the
+request's prefill, for each load) is written from geniex-android 0.8.0's sources and has not been
+checked against a device log, so it does not verify a row
+([rule](docs/RUN-CONDITIONS.md#genie-x-npu-backend-from-the-apps-log-geniex-npu-log-v1-pending-device-confirmation)).
 
 ### 7. A fixed decode length where the engine allows it
 LiteRT-LM board rows decode exactly 128 tokens per repetition, past the model's end of turn, so
@@ -169,6 +182,13 @@ ignored". The output check runs the same file on the same backend through LiteRT
 engine API; the measured repetitions use engines created with LiteRT-LM's benchmark parameters.
 llama.cpp rows decode up to 128 tokens and stop at the end of turn; in every published llama.cpp
 session the model ran to the limit. → `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
+GENIE-X measured in the app (geniex-android 0.8.0) has no option to decode past the end of turn: it
+decodes up to 128 tokens and stops there, so its decode length varies from run to run with where the
+model ends its turn, and the record keeps the number of tokens it produced
+([notes](docs/experiments/geniex-inapp.md#decode-length-genie-x-080-cannot-decode-past-the-end-of-turn)).
+Its NPU prefill speed is TTFT-derived (`ttft-derived`): prompt tokens over GENIE-X's own time to the
+first token, which includes sampling that token, because its QAIRT plugin reports no separate prefill
+time ([notes](docs/experiments/geniex-inapp.md#timings-what-each-number-is-and-where-it-comes-from)).
 
 ## Cold-start is not the whole story (why the sustained phase exists)
 A single cold `pp512/tg128` number materially misrepresents sustained use:
@@ -221,8 +241,8 @@ percentage only as a condition, not energy use.
 ## Explicitly not claimed in v1
 1. That the two quantizations are quality-equivalent (no quality-delta column yet).
 2. Any GPU/NPU ranking (CPU only).
-3. That derived tok/s (ExecuTorch) and engine-internal tok/s (llama.cpp) are the
-   same class of measurement — they are labeled differently on purpose.
+3. That derived tok/s and engine-internal tok/s are the same class of measurement —
+   they are labeled differently on purpose.
 4. Authoritative energy numbers.
 
 These are the honest edges. Naming them is what makes the numbers we *do*

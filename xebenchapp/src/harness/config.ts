@@ -160,8 +160,11 @@ export function parseConfig(input: unknown): ReferenceConfig {
 // docs/experiments/litert-accelerators.md. Every field is explicit (no defaults), so
 // the configuration echoed into each record is exactly what was parsed.
 
-export type AcceleratorEngine = 'llama.cpp' | 'litert-lm';
+export type AcceleratorEngine = 'llama.cpp' | 'litert-lm' | 'executorch' | 'genie-x';
 export type AcceleratorBackend = 'cpu' | 'gpu' | 'npu';
+export const ACCELERATOR_ENGINES = ['llama.cpp', 'litert-lm', 'executorch', 'genie-x'] as const;
+/** A GENIE-X QAIRT bundle: a directory name, without an extension (scripts/stage_geniex_bundle.py). */
+export const BUNDLE_DIRECTORY = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 
 export interface AcceleratorRun {
   id: string;
@@ -172,9 +175,9 @@ export interface AcceleratorRun {
   model: string;
   modelFile: string;
   quant: string;
-  /** CPU threads; null = engine default (LiteRT-LM GPU/NPU runs). */
+  /** CPU threads; null = engine default (LiteRT-LM GPU/NPU runs, ExecuTorch's XNNPACK threadpool, GENIE-X NPU runs). */
   nThreads: number | null;
-  /** llama.cpp context size; null for LiteRT-LM (fixed by the artifact). */
+  /** llama.cpp (and GENIE-X CPU) context size; null for LiteRT-LM, ExecuTorch and GENIE-X NPU (fixed by the artifact). */
   nCtx: number | null;
   /** llama.cpp only: layers offloaded (0 = CPU). */
   nGpuLayers?: number;
@@ -184,6 +187,10 @@ export interface AcceleratorRun {
   referenceRunId: string | null;
   /** Expected SHA-256 of modelFile; a mismatch is recorded unmeasured (model-hash-mismatch). */
   modelSha256?: string;
+  /** ExecuTorch only: the tokenizer.json staged next to the .pte (required for ExecuTorch runs). */
+  tokenizerFile?: string;
+  /** ExecuTorch only (required): SHA-256 of tokenizerFile; a mismatch is recorded unmeasured (tokenizer-hash-mismatch). */
+  tokenizerSha256?: string;
   /** llama.cpp only: the load and attention settings of ReferenceRun (LOAD_SETTINGS), when set. */
   useMmap?: boolean;
   useMlock?: boolean;
@@ -210,7 +217,7 @@ export interface AcceleratorConfig {
   measuredPrompt?: MeasuredPrompt;
   /**
    * fixed: every repetition decodes exactly maxDecodeTokens tokens, past the end of turn
-   * (LiteRT-LM runs only; LiteRtFixedDecode.java). Absent: decoding stops at the end of turn or at
+   * (LiteRT-LM runs, LiteRtFixedDecode.kt; ExecuTorch runs, ignoreEos with maxNewTokens). Absent: decoding stops at the end of turn or at
    * maxDecodeTokens. Kept only when set, so the record echoes the file exactly.
    */
   decodeMode?: DecodeMode;
@@ -219,9 +226,14 @@ export interface AcceleratorConfig {
 }
 
 export const DECODE_MODES = ['fixed'] as const;
+/** The engines that can decode a fixed length past the end of turn (decodeMode fixed). */
+export const FIXED_DECODE_ENGINES: readonly AcceleratorEngine[] = ['litert-lm', 'executorch'];
 export type DecodeMode = typeof DECODE_MODES[number];
 
 const BASENAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+/** Model file extension per engine: GGUF, LiteRT-LM bundle, ExecuTorch program (GENIE-X: by backend, below). */
+const MODEL_EXTENSIONS: Record<Exclude<AcceleratorEngine, 'genie-x'>, string> = {'llama.cpp': '.gguf', 'litert-lm': '.litertlm',
+  executorch: '.pte'};
 const RUN_FIELDS = ['id', 'engine', 'backend', 'purpose', 'model', 'modelFile', 'quant', 'nThreads', 'nCtx',
   'referenceRunId'];
 
@@ -238,16 +250,28 @@ function nullableInteger(value: unknown, low: number, high: number): number | nu
 
 function acceleratorRun(item: unknown): AcceleratorRun {
   const run = object(item);
-  fields(run, [...RUN_FIELDS, 'nGpuLayers', 'devices', 'modelSha256', ...Object.keys(LOAD_SETTINGS)]);
+  fields(run, [...RUN_FIELDS, 'nGpuLayers', 'devices', 'modelSha256', 'tokenizerFile', 'tokenizerSha256',
+    ...Object.keys(LOAD_SETTINGS)]);
   if (RUN_FIELDS.some(key => !(key in run))) {
     throw new Error('Every accelerator run field is required');
   }
-  const engine = oneOf(run.engine, ['llama.cpp', 'litert-lm'] as const, 'engine');
+  const engine = oneOf(run.engine, ACCELERATOR_ENGINES, 'engine');
   const backend = oneOf(run.backend, ['cpu', 'gpu', 'npu'] as const, 'backend');
   const modelFile = label(run.modelFile);
-  const extension = engine === 'llama.cpp' ? '.gguf' : '.litertlm';
-  if (!BASENAME.test(modelFile) || !modelFile.endsWith(extension)) {
-    throw new Error(`modelFile must be a ${extension} basename, not a path or URL`);
+  if (engine === 'genie-x') {
+    // GENIE-X runs a GGUF through its llama_cpp plugin on CPU and a QAIRT bundle on the NPU.
+    if (backend === 'gpu') {
+      throw new Error('GENIE-X runs take backend cpu (llama_cpp plugin) or npu (QAIRT plugin)');
+    }
+    if (backend === 'cpu' ? !BASENAME.test(modelFile) || !modelFile.endsWith('.gguf') :
+      !BUNDLE_DIRECTORY.test(modelFile)) {
+      throw new Error('GENIE-X modelFile must be a .gguf basename on CPU and a QAIRT bundle directory name on the NPU');
+    }
+  } else {
+    const extension = MODEL_EXTENSIONS[engine];
+    if (!BASENAME.test(modelFile) || !modelFile.endsWith(extension)) {
+      throw new Error(`modelFile must be a ${extension} basename, not a path or URL`);
+    }
   }
   const result: AcceleratorRun = {
     id: label(run.id), engine, backend, purpose: oneOf(run.purpose, ['measurement', 'bug-repro'] as const, 'purpose'),
@@ -261,7 +285,28 @@ function acceleratorRun(item: unknown): AcceleratorRun {
     }
     result.modelSha256 = run.modelSha256;
   }
-  if (engine === 'llama.cpp') {
+  if (engine !== 'executorch' && ('tokenizerFile' in run || 'tokenizerSha256' in run)) {
+    throw new Error('tokenizerFile/tokenizerSha256 apply to ExecuTorch only');
+  }
+  if (engine === 'executorch') {
+    const tokenizerFile = label(run.tokenizerFile);
+    if (!BASENAME.test(tokenizerFile) || !tokenizerFile.endsWith('.json')) {
+      throw new Error('tokenizerFile must be a .json basename, not a path or URL');
+    }
+    if ('nGpuLayers' in run || 'devices' in run || Object.keys(LOAD_SETTINGS).some(key => key in run)) {
+      throw new Error('ExecuTorch runs take no llama.cpp settings');
+    }
+    if (backend !== 'cpu' || result.nThreads !== null || result.nCtx !== null) {
+      // XNNPACK is the only backend packaged; its threadpool size and the context are not settable.
+      throw new Error('ExecuTorch runs are CPU (XNNPACK) only, with nThreads null and nCtx null');
+    }
+    result.tokenizerFile = tokenizerFile;
+    // The tokenizer decides the prompt's tokens, so it is pinned like a model file.
+    if (typeof run.tokenizerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(run.tokenizerSha256)) {
+      throw new Error('ExecuTorch runs need tokenizerSha256: 64 lowercase hex characters');
+    }
+    result.tokenizerSha256 = run.tokenizerSha256;
+  } else if (engine === 'llama.cpp') {
     if (result.nThreads === null || result.nCtx === null) {
       throw new Error('llama.cpp runs need nThreads and nCtx');
     }
@@ -290,6 +335,13 @@ function acceleratorRun(item: unknown): AcceleratorRun {
     if (Object.keys(LOAD_SETTINGS).some(key => key in run)) {
       throw new Error('useMmap/useMlock/noExtraBufts/flashAttnType apply to llama.cpp only');
     }
+    if (engine === 'genie-x') {
+      if (backend === 'cpu' ? result.nThreads === null || result.nCtx === null :
+        result.nThreads !== null || result.nCtx !== null) {
+        throw new Error('GENIE-X CPU runs need nThreads and nCtx; NPU runs take null (fixed by the bundle)');
+      }
+      return result;
+    }
     if (result.nCtx !== null) {
       throw new Error('LiteRT-LM runs take nCtx null (fixed by the artifact)');
     }
@@ -317,10 +369,11 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
   const measuredPrompt = value.measuredPrompt === undefined ? undefined :
     oneOf(value.measuredPrompt, MEASURED_PROMPTS, 'measuredPrompt');
   const decodeMode = value.decodeMode === undefined ? undefined : oneOf(value.decodeMode, DECODE_MODES, 'decodeMode');
-  if (decodeMode === 'fixed' && runs.some(run => run.engine !== 'litert-lm' ||
-      (run.backend === 'cpu' && run.nThreads !== null && run.nThreads !== 4))) {
-    // The fixed-length engine (nativeCreateBenchmark) takes no thread count: LiteRT-LM's CPU default is 4.
-    throw new Error('decodeMode fixed applies to LiteRT-LM runs only, with nThreads 4 (or null) on CPU');
+  if (decodeMode === 'fixed' && runs.some(run => !FIXED_DECODE_ENGINES.includes(run.engine) ||
+      (run.engine === 'litert-lm' && run.backend === 'cpu' && run.nThreads !== null && run.nThreads !== 4))) {
+    // LiteRT-LM's fixed-length engine (nativeCreateBenchmark) takes no thread count: its CPU default is 4.
+    // ExecuTorch decodes a fixed length natively (ignoreEos with maxNewTokens).
+    throw new Error('decodeMode fixed applies to LiteRT-LM runs (nThreads 4 or null on CPU) and ExecuTorch runs');
   }
   for (const run of runs) {
     const reference = runs.find(item => item.id === run.referenceRunId);

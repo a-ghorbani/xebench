@@ -354,7 +354,14 @@ class FailClosedTests(unittest.TestCase):
                      "source", "summary", "paris", "pelican", "short-capital", "long-fact-first", "long-fact-last",
                      "long-fact-middle", "measured-prompt",
                      # runRepetitions' internal executionReports option, never recorded.
-                     "always", "when-reported"}
+                     "always", "when-reported",
+                     # ExecutorchAdapter: module names, the worklet directive, field names, the program
+                     # schema's dimension kinds and method name it reads (never recorded), and
+                     # distribution.backends' value (a closed vocabulary of its own).
+                     "react-native-worklets", "worklet", "program", "methods", "forward", "constant", "range",
+                     "enum", "xnnpack",
+                     # GENIE-X's stop reasons and plugin names, checked by GenieXAdapter, never recorded.
+                     "eos", "length", "qairt"}
         self.assertGreater(len(literals), 30)
         self.assertEqual(literals - evidence.ENUM.values - evidence.REASON.values, set())
         self.assertIn("fresh engine instance in warm app process; artifact hashing warms OS file cache",
@@ -908,6 +915,18 @@ class AcceleratorExportTests(unittest.TestCase):
                     for raw, out in zip(record["coldRuns"], exported["coldRuns"]):
                         self.assertEqual(out.get("observedBackend") is None, raw.get("observedBackend") is None)
                     self.assertEqual(evidence.privacy_findings(exported), [])
+
+    def test_executorch_records_keep_their_settings_tokenizer_and_runner_statistics(self):
+        with tempfile.TemporaryDirectory() as root:
+            named, report = self.export(root)
+            record = dict(named)["executorch-cpu"]
+            exported = json.loads((Path(report["bundle"]) / f"sessions/{record['runId']}.json").read_text())["record"]
+            for key in ("effectiveSettings", "tokenizerArtifact", "engineVersion", "runtimeVersions"):
+                self.assertEqual(exported[key], record[key])
+            for raw, out in zip(record["coldRuns"], exported["coldRuns"]):
+                self.assertEqual(out["executorchStats"], raw["executorchStats"])
+                self.assertEqual(out["observedBackend"], raw["observedBackend"])
+            self.assertEqual(exported["configuration"], record["configuration"])
 
     def test_candidate_reference_must_match_the_reference_session(self):
         with tempfile.TemporaryDirectory() as root:
