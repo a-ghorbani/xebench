@@ -235,6 +235,64 @@ Galaxy S23 (8 GB) the llama.cpp CPU figure is the one to watch: about 3.9 GB of 
 9. Lab procedure: dismiss the swipe keyguard before each capture (`KEYCODE_WAKEUP`, `wm dismiss-keyguard`); with it
    showing, the app starts behind it and stalls.
 
+## Galaxy S23: Gemma 4 E2B memory probe (2026-10-23)
+
+Question: can Gemma 4 E2B run on the Galaxy S23 (8 GB), per engine, and with how much headroom? Same experimental APK
+(`914bb5fd…1451`, installed 02:22 UTC, hash checked on the phone), same files (staged and hashed on the phone as on the
+F8), one gated run plus one measured repetition, board run conditions. Configurations: the device-independent
+`spike-refresh-litertlm-gemma4-cpu-v2`, `-executorch-gemma4-v2`, `-litertlm-qwen3-cpu-v1` and `-executorch-qwen3-v2`,
+plus three CPU-only llama.cpp files committed before the runs (`b5124ea` on the spike branch; on main as `f7ee8a6`):
+`spike-refresh-llamacpp-gemma4-cpu-v1` (cpu-reference-v3's load settings, no mmap),
+`spike-refresh-llamacpp-gemma4-cpu-mmap-v1` (the same with `useMmap: true`, an extra data point, not a board setting) and
+`spike-refresh-llamacpp-qwen3-cpu-v1`.
+
+The phone: `MemTotal` 7,242,456 kB, 8 GB of zram swap. With the app idle, `MemAvailable` was 3.5 GB at the start and
+3.96–4.98 GB before the later runs, and 1.0–1.9 GB of swap was in use: about 3.3–3.7 GB was held by the system and
+other resident processes (taken as a total only). A host sampler read the app's `/proc/<pid>/status` and
+`/proc/meminfo` every 5 s; kill evidence comes from `logcat -b events` and lmkd lines naming `com.xebenchapp`, and from
+`dumpsys activity exit-info com.xebenchapp`. Thermal status was 0 throughout every run (headroom at most 0.67, battery
+at most 32.3 °C).
+
+| Model / engine | Result | Gate | Prompt / decode tokens | Prefill / decode tok/s | PSS after / max RSS (MiB) | Lowest `MemAvailable` (idle before the run) | Kill evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Gemma 4 E2B, LiteRT-LM 0.18.1 CPU | completes | pass | 519 / 128 fixed | 185.8 / 22.6 | 1464 / 1536 (1162 MiB file-backed) | 3576 MiB (idle 3869) | none |
+| Gemma 4 E2B, ExecuTorch XNNPACK | completes | pass | 519 / 128 fixed | 55.0 / 6.7 | 2183 / 2227 | 2715 MiB (idle 4137) | none |
+| Gemma 4 E2B, llama.cpp CPU, no mmap (board settings) | **killed by lmkd during the gate's model load** | — | — | — | — (high-water mark 3927 MiB; 2.7 GB of the app swapped out) | 816 MiB (idle 4602) | lmkd `Reclaim 'com.xebenchapp' … oom_score_adj 0 … to free 1094132kB rss, 2705232kB swap; reason: min2x watermark is breached even after kill; level: 2`; exit-info `reason=3 (LOW_MEMORY)` |
+| Gemma 4 E2B, llama.cpp CPU, **mmap on** (extra) | completes | pass | 518 / **85** (end of turn) | 85.0 / 14.3 | 4476 / 4096 (2569 MiB file-backed) | 2661 MiB (idle 4243) | none |
+| Qwen3 1.7B, llama.cpp CPU | completes | pass | 519 / 127 | 135.2 / 19.8 | 2085 / 1719 | 2727 MiB | none |
+| Qwen3 1.7B, LiteRT-LM CPU | completes | **fail** (empty replies, as on the F8) | 519 / 128 fixed | 49.9 / 8.6 | 2259 / 2347 | 3374 MiB | none |
+| Qwen3 1.7B, ExecuTorch XNNPACK | completes | pass | 519 / 128 fixed | 160.8 / 23.3 | 2252 / 2352 | 2481 MiB | none |
+
+- **The killed capture has no record.** The app died about 26 s after its launch, while llama.rn read the 3.35 GB GGUF into
+  anonymous memory for the CPU reference gate (sampled RSS 2.49 GB at 02:37:12, then the app was swapped down while
+  `MemAvailable` fell to 816–892 MiB; killed at 02:37:28 UTC with `oom_score_adj` 0, the foreground app). The capture
+  waited for the app until it was interrupted; it holds no session and is not in the bundle.
+- **With `useMmap: true` the same file completes.** The weights stay file-backed and reclaimable (2569 MiB of the 4096 MiB max
+  RSS), so lmkd had pages to drop. Its PSS (4476 MiB) counts those shared file pages. Decode stops at the end of turn
+  after 85 tokens, as on the F8 CPU.
+- ExecuTorch Gemma 4 E2B decodes at 6.7 tok/s on the S23 and 6.8 on the F8, although every other path is much faster on
+  the F8.
+
+Per-engine verdict for Gemma 4 E2B on the Galaxy S23:
+
+| Engine | Verdict | Headroom |
+| --- | --- | --- |
+| LiteRT-LM CPU | viable | lowest `MemAvailable` 3576 MiB; app PSS 1464 MiB |
+| ExecuTorch XNNPACK | viable (slow: 55.0 / 6.7 tok/s) | lowest `MemAvailable` 2715 MiB; app PSS 2183 MiB |
+| llama.cpp CPU with the board's load settings (no mmap) | not viable: killed by lmkd during load | none |
+| llama.cpp CPU with mmap | viable only with `useMmap: true` | lowest `MemAvailable` 2661 MiB; app max RSS 4096 MiB, 2569 MiB of it reclaimable file pages |
+
+One run each; the kill depends on what else is resident (idle `MemAvailable` varied from 3.5 to 5.0 GB during the
+session), so a no-mmap run could also survive on a better day, and an mmap run could still be killed with less free
+memory.
+
+For the configurations pull request (S23):
+
+1. An S23 llama.cpp Gemma 4 E2B row cannot use cpu-reference-v3's `useMmap: false`. Either a separate configuration with
+   `useMmap: true` (and its own row note: weights memory-mapped), or the cell becomes X on the S23.
+2. LiteRT-LM and ExecuTorch Gemma 4 E2B fit with at least 2.7 GiB of `MemAvailable` left; no change needed.
+3. Qwen3 1.7B loads on all three engines; the LiteRT-LM file fails the gate here too (item 4 above).
+
 ## Harness follow-ups
 
 Changes made after the spike, in the harness (`harness/validation-followups`):
@@ -247,8 +305,8 @@ Changes made after the spike, in the harness (`harness/validation-followups`):
 - **Spike sessions are never publishable** (item 8). Publication policy v1 refuses `spike-*`
   configuration ids as it refuses `experiment-*` ones (one prefix list,
   `scripts/lib/never-published-configurations.json`), `aggregate.mjs` refuses their records, and
-  `configs/board.json` cannot name one. All 17 spike sessions above read `publishable: false`,
-  refusal "spike session".
+  `configs/board.json` cannot name one. All 17 POCO F8 Ultra spike sessions and the six Galaxy S23
+  memory-probe sessions read `publishable: false`, refusal "spike session".
 - **The policy checks decode length** (items 2 and 8). New check `decode`: under `decodeMode: fixed`
   every repetition must decode `maxDecodeTokens`; otherwise the check states the count, and
   repetitions that stop at different lengths before the budget leave it unknown. The Gemma 3 OpenCL
@@ -274,6 +332,7 @@ Changes made after the spike, in the harness (`harness/validation-followups`):
 
 | Bundle | Sessions | What |
 | --- | --- | --- |
+| [`31f08310a8de…`](../../evidence/31f08310a8de323504572c42bc4b924ffe81f6b79c8a52a5707dc4acb0825f37/) | 6 | Galaxy S23 memory probe: LiteRT-LM and ExecuTorch Gemma 4 E2B, llama.cpp Gemma 4 E2B with mmap, Qwen3 1.7B on three engines |
 | [`49a216f37945…`](../../evidence/49a216f37945edcc80b5d31a981206c1984e3293f16e4e47abd78adad2fe69e8/) | 2 | Section 1: `litertlm-gemma3-sm8850-npu-v2` on LiteRT-LM 0.18.1 (NPU and its CPU reference) |
 | [`c12fb048be9b…`](../../evidence/c12fb048be9bfbf75361b33b57c3fd158510a84c45c369d4c35b07410c7b3880/) | 13 | Sections 2–4: the three llama.cpp configurations, LiteRT-LM Qwen3 (`-v1`), LiteRT-LM Gemma 4 and both ExecuTorch (`-v2`) |
 | [`8c41c4e258ff…`](../../evidence/8c41c4e258ff4dd1fc149f165b8c45c7fe2cc3bb91f1db13b2db2acf078befb5/) | 4 | Section 5: both GENIE-X captures (the refused first attempt and the rerun) |
