@@ -8,7 +8,7 @@
  *               ran there (unsupported weight types fall back to the CPU)
  *   consistent  indirect evidence only: creating this engine newly loaded the
  *               accelerator runtime into the process and the engine accepted the
- *               backend (LiteRT-LM, which does not report its executing backend)
+ *               backend (LiteRT-LM and GENIE-X, which do not report their executing backend)
  *               (ExecuTorch: `forward` delegates to XnnpackBackend, a CPU-only delegate, every
  *               delegate in the loaded program is XnnpackBackend, it is registered, and no other
  *               ExecuTorch backend library is mapped)
@@ -54,6 +54,8 @@ export const XNNPACK_BACKEND = 'XnnpackBackend';
 /** ExecuTorch backend libraries other than XNNPACK (Vulkan GPU, QNN NPU). */
 export const isForeignExecutorchLibrary = (name: string) =>
   (/^lib.*_executorch_backend\.so$/.test(name) && name !== 'libxnnpack_executorch_backend.so') || /^libQnn/.test(name);
+/** The QNN HTP backend GENIE-X's QAIRT plugin loads at its first model load in the process. */
+export const QNN_HTP_LIB = 'libQnnHtp.so';
 
 export function assessBackend(engine: EngineId, requested: BackendId,
   evidence: Pick<BackendEvidence, 'report' | 'libraries' | 'program'>): BackendStatus {
@@ -93,6 +95,17 @@ export function assessBackend(engine: EngineId, requested: BackendId,
     return forward !== undefined && forward.delegates.includes(XNNPACK_BACKEND) && registered !== null &&
       registered.includes(XNNPACK_BACKEND) && after !== null && !after.some(isForeignExecutorchLibrary) ?
       'confirmed' : 'unknown';
+  }
+  if (engine === 'genie-x') {
+    // As for LiteRT-LM: only a QNN runtime newly loaded by this load counts; GENIE-X keeps QnnHtp
+    // resident for the life of the process, so later NPU loads find it mapped (the app log decides).
+    const after = evidence.libraries?.after ?? null;
+    const before = evidence.libraries?.before ?? null;
+    if (after === null || before === null) return 'unknown';
+    const loaded = after.filter(name => !before.includes(name));
+    if (requested === 'npu') return loaded.includes(QNN_HTP_LIB) ? 'consistent' : 'unknown';
+    if (requested === 'cpu') return loaded.includes(QNN_HTP_LIB) ? 'unknown' : 'consistent';
+    return 'unknown';
   }
   return 'unknown';
 }

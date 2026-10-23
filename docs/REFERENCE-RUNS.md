@@ -402,7 +402,9 @@ Model hashes identify the bytes; model/quant labels remain operator-supplied.
     `BuildInfo`) and `llamaRn` (the installed package version). For LiteRT-LM:
     `litertLm` and, on NPU runs, `litertNpuRuntimeQualcomm` (the AARs as Gradle
     resolved them for the APK) and `qairt` (the build string embedded in the packaged
-    `libQnnHtp.so`). For GENIE-X: `genie` (the geniex-android AAR version). Runtimes the engine does not use, and
+    `libQnnHtp.so`). For GENIE-X: `genie` (the geniex-android AAR version) and, on NPU runs,
+    `qairt` (the build string of the packaged `libQnnHtp.so`, the runtime GENIE-X's QAIRT plugin
+    loads). Runtimes the engine does not use, and
     values that are missing or malformed, are null.
   - `executionReports`: one per successful model load, with what llama.rn reported
     about that context: `gpu`, `reasonNoGPU`, `devices`, the loaded native library

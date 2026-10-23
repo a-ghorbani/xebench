@@ -359,7 +359,9 @@ class FailClosedTests(unittest.TestCase):
                      # schema's dimension kinds and method name it reads (never recorded), and
                      # distribution.backends' value (a closed vocabulary of its own).
                      "react-native-worklets", "worklet", "program", "methods", "forward", "constant", "range",
-                     "enum", "xnnpack"}
+                     "enum", "xnnpack",
+                     # GENIE-X's stop reasons and plugin names, checked by GenieXAdapter, never recorded.
+                     "eos", "length", "qairt"}
         self.assertGreater(len(literals), 30)
         self.assertEqual(literals - evidence.ENUM.values - evidence.REASON.values, set())
         self.assertIn("fresh engine instance in warm app process; artifact hashing warms OS file cache",

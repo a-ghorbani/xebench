@@ -233,9 +233,11 @@ function rowConfiguration(record, facts) {
  * maxDecodeTokens, past the end of turn. Otherwise decoding stops at the end of turn or at the
  * budget; a run that reached the budget states the budget (llama.cpp counts maxDecodeTokens - 1
  * decoded tokens there, the first one coming from prefill), and one whose median decoded count
- * stopped short states that count.
+ * stopped short states that count. Other engines count every produced token, so only llama.cpp
+ * gets that one-token slack: a GENIE-X run that produced 127 of 128 tokens stopped at the end of turn
+ * (GenieXAdapter accepts only those two stop reasons, so a count below the budget is the end of turn).
  */
-function decodeStated(record) {
+export function decodeStated(record) {
   const max = record.protocol.maxDecodeTokens;
   if (record.protocol.decodeMode === 'fixed') return `decode ${max} tok, end of turn ignored`;
   const counts = record.coldRuns.filter((attempt) => attempt.status === 'complete')
@@ -243,7 +245,8 @@ function decodeStated(record) {
   if (!counts.length) return `decode ${max} tok`;
   const middle = counts.length >> 1;
   const median = counts.length % 2 ? counts[middle] : (counts[middle - 1] + counts[middle]) / 2;
-  return median < max - 1 ? `decode ${median} of ${max} tok, stopped at the end of turn` : `decode ${max} tok`;
+  const slack = record.engine === 'llama.cpp' ? 1 : 0;
+  return median < max - slack ? `decode ${median} of ${max} tok, stopped at the end of turn` : `decode ${max} tok`;
 }
 
 function asStated(record, n, decision) {

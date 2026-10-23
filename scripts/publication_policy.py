@@ -327,11 +327,13 @@ def session_facts(doc, capture, reference=None):
             "configuredSha256": None if run is None else run.get("tokenizerSha256"),
             "manifestSha256": reference["manifests"].get(tokenizer_file, [])}
     facts["backendEvidence"] = _backend(record, measured)
-    # LiteRT-LM NPU: the app's own log of the capture can confirm the backend (backend_log.py).
+    # LiteRT-LM and GENIE-X NPU: the app's own log of the capture can confirm the backend (backend_log.py).
+    # A rule still pending device confirmation is evaluated and reported, but confirms nothing.
     confirmation = backend_log.confirmation(record, capture.get("backendLog"))
     facts["backendLog"] = confirmation
     if version in raw_session.ACCELERATOR_PROTOCOLS and confirmation is not None and \
-            confirmation["status"] == "confirmed" and facts["backendEvidence"] != "mismatch":
+            confirmation["status"] == "confirmed" and facts["backendEvidence"] != "mismatch" and \
+            confirmation["rule"] not in backend_log.PENDING_DEVICE_CONFIRMATION:
         facts["backendEvidence"] = "confirmed"
     if version in raw_session.ACCELERATOR_PROTOCOLS:
         facts["correctness"], facts["comparison"] = _gate(record, facts["backendEvidence"])
@@ -438,6 +440,8 @@ def _backend_check(facts):
     needed = " or ".join(accepted)
     missing = sorted({kind for item in (log or {}).get("repetitions", []) for kind in item["missing"]})
     detail = f"; the app log lacks {', '.join(missing)}" if missing else ""
+    if log and log["rule"] in backend_log.PENDING_DEVICE_CONFIRMATION:
+        detail += f"; rule {log['rule']} is pending device confirmation"
     return _check("backend", UNKNOWN, f"{status or 'no evidence'} for {backend}; needs {needed}{detail}")
 
 
