@@ -1033,6 +1033,79 @@ class AcceleratorExportTests(unittest.TestCase):
             self.assertTrue(any("/comparison" in error for error in result["errors"]), result["errors"])
 
 
+class LabelAlphabetTests(unittest.TestCase):
+    """The board's quant labels (docs/STYLE.md) export; '/' and ',' stay confined to their positions."""
+
+    BOARD_LABELS = ("mixed 2/4/8-bit", "mixed 4/16-bit", "4-bit weights, 8-bit activations")
+
+    def relabelled(self, quant):
+        record = copy.deepcopy(ACCEL["executorch-cpu"])
+        record["runId"] = "1767225600000-0-label"
+        record["quant"] = quant
+        for run in record["configuration"]["runs"]:
+            if run["id"] == record["configurationRunId"]:
+                run["quant"] = quant
+        self.assertEqual(raw_session.validate(record), [])
+        return record
+
+    def test_board_quant_labels_export_and_verify(self):
+        for quant in self.BOARD_LABELS:
+            with self.subTest(quant), tempfile.TemporaryDirectory() as root:
+                directory = make_capture(Path(root) / "results", [self.relabelled(quant)])
+                report = evidence.export([directory], Path(root) / "out")
+                result = evidence.verify(report["bundle"], report["evidence"]["bundleSha256"])
+                self.assertTrue(result["valid"], result["errors"])
+                exported = json.loads((Path(report["bundle"]) / "sessions/1767225600000-0-label.json")
+                                      .read_text())["record"]
+                self.assertEqual(exported["quant"], quant)
+                self.assertEqual({run["quant"] for run in exported["configuration"]["runs"]
+                                  if run["id"] == exported["configurationRunId"]}, {quant})
+
+    def test_label_form_accepts_only_the_separator_positions_the_labels_use(self):
+        accepted = (*self.BOARD_LABELS, "Q4_0", "Q4_0 (QAT)", "4-bit QAT + LoRA", "W4A16", "1/2", "x" * 128)
+        refused = (
+            "/data/app", "data/app", "a/b", "2/b", "b/2", "2/", "/2", "1//2", "2/ 4", "lib/arm64/libx.so",
+            "x,y", "x ,y", ",x", "x,,y", "x, ", "x,  y", "x" * 129, "x" * 127 + "/", "mixed 2/4/8-bit\n", "x\\y", "x@y",
+            "mixed 2⁄4-bit", "4-bit weights， 8-bit",
+        )
+        for value in accepted:
+            with self.subTest(accepted=value):
+                self.assertEqual(evidence.LABEL.apply(value, "/quant", evidence.Context()), value)
+        for value in refused:
+            with self.subTest(refused=value), self.assertRaises(evidence.Refused) as caught:
+                evidence.LABEL.apply(value, "/quant", evidence.Context())
+            self.assertIn("not a label", str(caught.exception))
+            self.assertNotIn(value, str(caught.exception))
+
+    def test_private_values_in_a_label_with_separators_still_refuse_the_export(self):
+        cases = {"token": f"mixed 2/4/8-bit {TOKEN}", "android-id": f"4-bit weights, {ANDROID_ID}",
+                 "network-serial": "mixed 10.0.2.2/16-bit"}
+        for name, quant in cases.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as root:
+                directory = make_capture(Path(root) / "results", [self.relabelled(quant)])
+                out = Path(root) / "exports"
+                with self.assertRaises(evidence.Refused) as caught:
+                    evidence.export([directory], out)
+                self.assertIn(f"looks like {name}", str(caught.exception))
+                self.assertNotIn(quant, str(caught.exception))
+                self.assertFalse(out.exists() and any(out.iterdir()))
+
+
+class ScreenPreparationExportTests(unittest.TestCase):
+    def test_the_screen_preparation_stays_in_the_local_manifest(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory = make_capture(Path(root) / "results", [fixture("complete", "1767225600000-0-screen")])
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["screenPreparation"] = {"wake": "KEYCODE_WAKEUP", "keyguard": "dismissed"}
+            manifest_path.write_text(json.dumps(manifest))
+            report = evidence.export([directory], Path(root) / "out")
+            self.assertIn({"source": manifest["captureId"], "path": "/screenPreparation", "kind": "excluded"},
+                          report["dropped"])
+            self.assertNotIn(b"screenPreparation", b"".join(bundle_bytes(report["bundle"]).values()))
+            self.assertTrue(evidence.verify(report["bundle"])["valid"])
+
+
 class CommandLineTests(unittest.TestCase):
     def run_cli(self, *args):
         return subprocess.run([sys.executable, str(SCRIPT), *map(str, args)], capture_output=True, text=True)

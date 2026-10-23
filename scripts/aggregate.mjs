@@ -66,7 +66,7 @@ import {
 import { bundleRow, isHosted, listBundles, loadChipNames, readBoundBundle, reproductionErrors, runPolicy } from './lib/bundles.mjs';
 import { assertIndex } from './lib/history.mjs';
 import { applyBoard, boardDisplayErrors, planPublication } from './lib/sets.mjs';
-import { boardExists, loadBoard, SESSIONS, setMismatch } from './lib/board.mjs';
+import { boardExists, loadBoard, neverPublished, SESSIONS, setMismatch } from './lib/board.mjs';
 
 const USAGE =
   'usage:\n' +
@@ -286,11 +286,13 @@ function toRow({ rec, where }, warnings) {
       `${where}: experiment-only record (record-only-experiment charging readiness) is never publishable`,
     );
   }
-  // Experiment configurations are named experiment-*; a record from one is never a row,
-  // even if its experiment markers were removed.
-  if (isObject(rec.configuration) && typeof rec.configuration.id === 'string' &&
-      rec.configuration.id.startsWith('experiment-')) {
-    throw new PublicationError(`${where}: record from an experiment configuration (experiment-*) is never publishable`);
+  // Experiment configurations are named experiment-* and device spikes spike-*
+  // (scripts/lib/never-published-configurations.json); a record from one is never a row, even if its
+  // experiment markers were removed.
+  const excluded = isObject(rec.configuration) ? neverPublished(rec.configuration.id) : null;
+  if (excluded) {
+    throw new PublicationError(`${where}: record from ${excluded.kind === 'experiment' ? 'an' : 'a'} ` +
+      `${excluded.kind} configuration (${excluded.prefix}*) is never publishable`);
   }
   const legacy = !Object.hasOwn(rec, 'schemaVersion');
   if (!legacy) {

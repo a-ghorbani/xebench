@@ -1,4 +1,6 @@
+from contextlib import redirect_stderr
 import hashlib
+import io
 import importlib.util
 import json
 import multiprocessing
@@ -458,6 +460,189 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(len(manifest["records"]), 1)
             record = next(Path(root).glob("*/raw-*.jsonl"))
             self.assertEqual(manifest["records"][0]["sha256"], original_sha256(record.read_bytes()).hexdigest())
+
+
+def policy_dump(showing, secure):
+    """`dumpsys window policy` as Android 16 prints the keyguard part of it."""
+    flag = lambda value: str(value).lower()  # noqa: E731
+    return "\n".join([
+        "WINDOW MANAGER POLICY STATE (dumpsys window policy)",
+        "    mSafeMode=false mSystemReady=true mSystemBooted=true",
+        "    mKeyguardDelegate:",
+        "    KeyguardServiceDelegate",
+        f"      showing={flag(showing)}",
+        f"      showingAndNotOccluded={flag(showing)}",
+        f"      inputRestricted={flag(showing)}",
+        "      occluded=false",
+        f"      secure={flag(secure)}",
+        "      dreaming=false",
+        "      systemIsReady=true",
+        "      KeyguardStateMonitor",
+        f"        mIsShowing={flag(showing)}",
+        "        mSimSecure=false",
+        "        mTrusted=false",
+    ])
+
+
+class FakePhone:
+    """A fake adb with a keyguard: `wm dismiss-keyguard` removes a swipe lock (when `dismissable`) and
+    records every call, so a test can show what was sent and in which order."""
+
+    def __init__(self, showing, secure, dismissable=True, dump=None):
+        self.showing, self.secure, self.dismissable, self.dump = showing, secure, dismissable, dump
+        self.calls, self.now = [], 0
+
+    def adb(self, *args):
+        self.calls.append(args)
+        if args == ("shell", "dumpsys", "window", "policy"):
+            return self.dump if self.dump is not None else policy_dump(self.showing, self.secure)
+        if args == ("shell", "wm", "dismiss-keyguard"):
+            if not self.secure and self.dismissable:
+                self.showing = False
+            return ""
+        if args[:2] == ("shell", "pidof"):
+            return "123"
+        if args[:3] == ("logcat", "-b", "events"):
+            return ""
+        if args[0] == "logcat":
+            return result_line() + "\n101 I ReactNativeJS: XEBENCH_DONE"
+        return "100.000" if args[:2] == ("shell", "date") else "fixture"
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+    def run(self, root):
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            code = capture.capture_device("private-serial", 30, root, adb=self.adb, monotonic=lambda: self.now,
+                                          sleep=self.sleep)
+        manifest = json.loads(next(Path(root).glob("*/manifest.json")).read_text())
+        return code, manifest, stderr.getvalue()
+
+    def index(self, *args):
+        return self.calls.index(args)
+
+
+WAKE = ("shell", "input", "keyevent", "KEYCODE_WAKEUP")
+DISMISS = ("shell", "wm", "dismiss-keyguard")
+LAUNCH = ("shell", "am", "start", "-W", "-n", f"{capture.APP}/.MainActivity")
+
+
+class ScreenPreparationTests(unittest.TestCase):
+    """Before each capture: wake the screen, dismiss a swipe keyguard, and stop at a secure one (#27)."""
+
+    def test_a_swipe_keyguard_is_dismissed_before_the_launch_and_recorded(self):
+        phone = FakePhone(showing=True, secure=False)
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest, stderr = phone.run(root)
+        self.assertEqual(code, 0)
+        self.assertEqual(manifest["status"], "complete")
+        self.assertEqual(manifest["screenPreparation"], {"wake": "KEYCODE_WAKEUP", "keyguard": "dismissed"})
+        self.assertLess(phone.index(*WAKE), phone.index(*DISMISS))
+        self.assertLess(phone.index(*DISMISS), phone.index(*LAUNCH))
+        self.assertEqual(phone.calls.count(DISMISS), 1)
+        self.assertEqual(stderr, "")
+
+    def test_no_keyguard_showing_sends_no_dismissal(self):
+        phone = FakePhone(showing=False, secure=True)  # a secure lock that is not showing (phone unlocked)
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest, _ = phone.run(root)
+        self.assertEqual(code, 0)
+        self.assertEqual(manifest["screenPreparation"], {"wake": "KEYCODE_WAKEUP", "keyguard": "not-showing"})
+        self.assertNotIn(DISMISS, phone.calls)
+        self.assertLess(phone.index(*WAKE), phone.index(*LAUNCH))
+
+    def test_a_secure_keyguard_stops_the_capture_without_touching_it(self):
+        phone = FakePhone(showing=True, secure=True)
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest, stderr = phone.run(root)
+        self.assertEqual(code, 2)
+        self.assertEqual(manifest["status"], "setup-failed")
+        self.assertEqual(manifest["screenPreparation"], {"wake": "KEYCODE_WAKEUP", "keyguard": "secure"})
+        self.assertFalse(manifest["records"])
+        # Nothing is sent to the lock screen and the app is never started (or stopped again).
+        self.assertNotIn(DISMISS, phone.calls)
+        self.assertNotIn(LAUNCH, phone.calls)
+        self.assertFalse(any(call[:1] == ("shell",) and call[1:2] == ("input",) and call != WAKE
+                             for call in phone.calls))
+        self.assertEqual(phone.calls.count(("shell", "am", "force-stop", capture.APP)), 1)
+        self.assertIn("secure lock screen (PIN, pattern or password)", stderr)
+        self.assertIn("never dismisses or enters anything on a secure lock", stderr)
+
+    def test_an_unreadable_keyguard_state_dismisses_nothing(self):
+        phone = FakePhone(showing=True, secure=False, dump="fixture")
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest, _ = phone.run(root)
+        self.assertEqual(code, 0)
+        self.assertEqual(manifest["screenPreparation"], {"wake": "KEYCODE_WAKEUP", "keyguard": "unknown"})
+        self.assertNotIn(DISMISS, phone.calls)
+
+    def test_a_refused_keyguard_dump_is_unknown_not_a_failed_capture(self):
+        phone = FakePhone(showing=True, secure=False)
+        original = phone.adb
+
+        def adb(*args):
+            if args == ("shell", "dumpsys", "window", "policy"):
+                phone.calls.append(args)
+                raise subprocess.CalledProcessError(1, ["adb"])
+            return original(*args)
+        phone.adb = adb
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest, _ = phone.run(root)
+        self.assertEqual(code, 0)
+        self.assertEqual(manifest["screenPreparation"], {"wake": "KEYCODE_WAKEUP", "keyguard": "unknown"})
+        self.assertNotIn(DISMISS, phone.calls)
+
+    def test_a_keyguard_that_stays_up_stops_the_capture_before_the_launch(self):
+        phone = FakePhone(showing=True, secure=False, dismissable=False)
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest, stderr = phone.run(root)
+        self.assertEqual(code, 2)
+        self.assertEqual(manifest["status"], "setup-failed")
+        self.assertEqual(manifest["screenPreparation"], {"wake": "KEYCODE_WAKEUP", "keyguard": "still-showing"})
+        self.assertEqual(phone.calls.count(DISMISS), 1)
+        self.assertEqual(phone.calls.count(("shell", "dumpsys", "window", "policy")),
+                         1 + capture.KEYGUARD_DISMISS_CHECKS)
+        self.assertNotIn(LAUNCH, phone.calls)
+        self.assertIn("still showing after `wm dismiss-keyguard`", stderr)
+
+    def test_a_stale_insecure_flag_on_a_secure_lock_unlocks_nothing_and_stops(self):
+        """`secure` is cached: a secure lock reported as insecure gets one dismissal (the bouncer),
+        stays up, and the capture stops."""
+        phone = FakePhone(showing=True, secure=False, dismissable=False)
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest, _ = phone.run(root)
+        self.assertEqual((code, manifest["status"]), (2, "setup-failed"))
+        self.assertFalse(any(call[:2] == ("shell", "input") and call != WAKE for call in phone.calls))
+
+    def test_a_timed_out_keyguard_dump_is_unknown(self):
+        phone = FakePhone(showing=True, secure=False)
+        original = phone.adb
+
+        def adb(*args):
+            if args == ("shell", "dumpsys", "window", "policy"):
+                phone.calls.append(args)
+                raise subprocess.TimeoutExpired(["adb"], 15)
+            return original(*args)
+        phone.adb = adb
+        with tempfile.TemporaryDirectory() as root:
+            code, manifest, _ = phone.run(root)
+        self.assertEqual(code, 0)
+        self.assertEqual(manifest["screenPreparation"], {"wake": "KEYCODE_WAKEUP", "keyguard": "unknown"})
+        self.assertNotIn(DISMISS, phone.calls)
+
+    def test_keyguard_state_reads_only_the_delegate_flags(self):
+        self.assertEqual(capture.keyguard_state(policy_dump(True, False)), {"showing": True, "secure": False})
+        self.assertEqual(capture.keyguard_state(policy_dump(False, True)), {"showing": False, "secure": True})
+        self.assertEqual(capture.keyguard_state("fixture"), {"showing": None, "secure": None})
+        # Flags outside the KeyguardServiceDelegate block, or before it, are not the keyguard's.
+        self.assertEqual(capture.keyguard_state("  showing=true\n  secure=false\nKeyguardServiceDelegate\n"),
+                         {"showing": None, "secure": None})
+        far = "KeyguardServiceDelegate\n" + "  x=1\n" * capture.KEYGUARD_BLOCK_LINES + "  showing=true\n"
+        self.assertEqual(capture.keyguard_state(far), {"showing": None, "secure": None})
+        # Only the exact marker line anchors the block, not the name inside another line.
+        mention = "  mKeyguardDelegate=KeyguardServiceDelegate@1a2b\n  showing=true\n  secure=false\n"
+        self.assertEqual(capture.keyguard_state(mention), {"showing": None, "secure": None})
 
 
 if __name__ == "__main__":

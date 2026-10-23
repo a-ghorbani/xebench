@@ -230,23 +230,29 @@ function rowConfiguration(record, facts) {
 
 /**
  * The decode length a row measured. decodeMode fixed: every repetition decoded exactly
- * maxDecodeTokens, past the end of turn. Otherwise decoding stops at the end of turn or at the
- * budget; a run that reached the budget states the budget (llama.cpp counts maxDecodeTokens - 1
- * decoded tokens there, the first one coming from prefill), and one whose median decoded count
- * stopped short states that count. Other engines count every produced token, so only llama.cpp
- * gets that one-token slack: a GENIE-X run that produced 127 of 128 tokens stopped at the end of turn
- * (GenieXAdapter accepts only those two stop reasons, so a count below the budget is the end of turn).
+ * maxDecodeTokens, past the end of turn (publication_policy.py fails a fixed session with a short
+ * repetition). Otherwise decoding stops at the end of turn or at the budget. A repetition that
+ * reached the budget counts as the budget (llama.cpp counts maxDecodeTokens - 1 decoded tokens
+ * there, the first one coming from prefill; other engines count every produced token, so only
+ * llama.cpp gets that one-token slack: a GENIE-X run that produced 127 of 128 tokens stopped at the
+ * end of turn, since GenieXAdapter accepts only those two stop reasons). Every repetition at the
+ * budget states the budget; every repetition at one shorter length states that length; lengths
+ * that differ state their range, minimum to maximum, so a short repetition is never hidden.
  */
 export function decodeStated(record) {
   const max = record.protocol.maxDecodeTokens;
   if (record.protocol.decodeMode === 'fixed') return `decode ${max} tok, end of turn ignored`;
-  const counts = record.coldRuns.filter((attempt) => attempt.status === 'complete')
-    .map((attempt) => attempt.decodeTokens).filter((count) => Number.isInteger(count)).sort((a, b) => a - b);
-  if (!counts.length) return `decode ${max} tok`;
-  const middle = counts.length >> 1;
-  const median = counts.length % 2 ? counts[middle] : (counts[middle - 1] + counts[middle]) / 2;
   const slack = record.engine === 'llama.cpp' ? 1 : 0;
-  return median < max - slack ? `decode ${median} of ${max} tok, stopped at the end of turn` : `decode ${max} tok`;
+  const lengths = record.coldRuns.filter((attempt) => attempt.status === 'complete')
+    .map((attempt) => attempt.decodeTokens).filter((count) => Number.isInteger(count))
+    .map((count) => (count >= max - slack ? max : count)).sort((a, b) => a - b);
+  if (!lengths.length) return `decode ${max} tok`;
+  const low = lengths[0];
+  const high = lengths[lengths.length - 1];
+  if (low === max) return `decode ${max} tok`;
+  if (low === high) return `decode ${low} of ${max} tok, stopped at the end of turn`;
+  if (high === max) return `decode ${low}–${max} of ${max} tok, some repetitions stopped at the end of turn`;
+  return `decode ${low}–${high} of ${max} tok, stopped at the end of turn`;
 }
 
 function asStated(record, n, decision) {

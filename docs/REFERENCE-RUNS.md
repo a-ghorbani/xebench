@@ -80,9 +80,10 @@ are pinned in [MODELS.md](../MODELS.md#litert-lm-files).
 
 Every repetition decodes exactly 128 tokens (`decodeMode: fixed`), past the model's end of turn,
 so decode speed is always measured over the same number of tokens; the row's note says
-"decode 128 tok, end of turn ignored". (A session without `decodeMode` whose median repetition
-stopped at the end of turn before the budget says "decode N of 128 tok, stopped at the end of
-turn"; one that reached the budget says "decode 128 tok".) LiteRT-LM's public API always stops at the artifact's stop
+"decode 128 tok, end of turn ignored". (A session without `decodeMode` says "decode 128 tok" when
+every repetition reached the budget, "decode N of 128 tok, stopped at the end of turn" when every
+repetition stopped at the same N, and the range, e.g. "decode 16–128 of 128 tok", when the
+lengths differ.) LiteRT-LM's public API always stops at the artifact's stop
 tokens. Its engine decodes a fixed number of steps only when created for benchmarking with a
 decode count, so [`LiteRtFixedDecode.kt`](../xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt)
 creates the measured engines with `nativeCreateBenchmark` (prefill count 0, so the real prompt is
@@ -343,6 +344,19 @@ bundled default. Unknown fields, unsupported engines, paths/URLs and invalid
 limits fail before model loading. A model whose SHA-256 differs from the run's
 `modelSha256` is never loaded: the run is saved as a failed `model-hash-mismatch`
 session with both hashes, and every later run is saved as `configuration-aborted`.
+Before it starts the app, `capture_app_run.py` wakes the screen (`KEYCODE_WAKEUP`, which only
+turns the screen on) and then reads the keyguard state (`dumpsys window policy`,
+`KeyguardServiceDelegate`: `showing` and `secure`). A swipe lock that is showing is dismissed with
+`wm dismiss-keyguard`; with the keyguard showing, the app would start behind it and wait on
+`device-locked` until its readiness timeout. The capture never dismisses or enters anything on a
+secure lock (PIN, pattern or password): it stops with `setup-failed` and says so, before the app
+starts. A lock screen still showing after the dismissal stops it the same way. `secure` is the
+system's cached view and can lag right after the lock settings change; a secure lock reported as
+not secure gets one `wm dismiss-keyguard`, which only brings up the PIN entry, and the capture
+then stops because the lock is still showing. A refused or timed-out dump leaves the state unknown
+and nothing is dismissed. The local manifest records what was done (`screenPreparation`: the wake
+key and `dismissed`, `not-showing`, `secure`, `still-showing` or `unknown`); it is never exported.
+Lab phones use a swipe lock or none.
 Each repetition waits for measured [readiness](RUN-CONDITIONS.md) and is sampled
 while it runs; overall guards stay
 **unverified** unless a failure is known, because backend execution is unverified.
@@ -530,7 +544,11 @@ Export fails closed (exit 1, nothing written) if any check fails. It checks ever
 listed record and checkpoint against its capture checksum and re-validates it with
 `raw_session.py`. It refuses legacy records, unlisted record files, inconsistent
 counts, duplicate sessions and captures without a terminal record. It also refuses
-an approved field whose value does not have the expected form. A final screen
+an approved field whose value does not have the expected form. Labels (model, quant, run and
+probe ids) use a closed alphabet (letters, digits, space and `._+()-`) plus `/` only between two
+digits and `,` only after a letter or digit and before a space and a letter or digit (so a
+trailing `, ` is refused). The board's quant labels (`mixed 2/4/8-bit`,
+`4-bit weights, 8-bit activations`) export, and no label can hold a path. A final screen
 refuses an export if any output string looks like an email, local path, token,
 ANDROID_ID-like hex or network serial. Refusal messages name inputs by position
 and JSON location, never by value. A complete capture must have no errors,
@@ -557,7 +575,8 @@ definition come from a closed app/host vocabulary. Other values become `unrecogn
 - **Never exported:** serials, ANDROID_ID, the `ro.product.device` codename,
   install and host paths, usernames, logcat, error logs, error and cleanup
   messages, invalid payloads and their reason files, signing-certificate
-  fingerprints, the raw `systemInfo` line, and `publicationReady`.
+  fingerprints, the raw `systemInfo` line, `publicationReady`, and the capture's
+  `screenPreparation`.
 
 The bundle `<bundleSha256>/` holds `manifest.json`, `captures/<captureId>.json` and
 `sessions/<runId>.json`. Every file is canonical JSON: sorted keys, `,`/`:`
