@@ -51,7 +51,7 @@ class ModelRefreshSpikeBundleTests(unittest.TestCase):
             with self.subTest(session_id):
                 self.assertTrue(session["facts"]["configurationFile"]["id"].startswith("spike-refresh-"))
                 self.assertFalse(session["decision"]["publishable"])
-                self.assertIn("spike-* configuration id", session["decision"]["refusal"])
+                self.assertEqual(session["decision"]["refusal"], "spike session (spike-* configuration id)")
 
     def test_the_board_configuration_sessions_of_the_npu_check_stay_publishable(self):
         for session_id, session in self.reports[NPU_CHECK].items():

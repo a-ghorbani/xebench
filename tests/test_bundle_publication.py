@@ -961,11 +961,29 @@ class DecodeStatementTests(unittest.TestCase):
     def test_genie_x_one_token_short_stopped_at_the_end_of_turn(self):
         self.assertEqual(self.stated("genie-x", [127, 127, 127]), "decode 127 of 128 tok, stopped at the end of turn")
         self.assertEqual(self.stated("genie-x", [128, 128, 128]), "decode 128 tok")
-        self.assertEqual(self.stated("genie-x", [96, 97, 98]), "decode 97 of 128 tok, stopped at the end of turn")
 
     def test_llama_cpp_keeps_its_slack(self):
         self.assertEqual(self.stated("llama.cpp", [127, 127, 127]), "decode 128 tok")
         self.assertEqual(self.stated("llama.cpp", [126, 126, 126]), "decode 126 of 128 tok, stopped at the end of turn")
+
+    def test_lengths_that_differ_state_their_range(self):
+        """A short repetition is never hidden behind the budget (or a median)."""
+        self.assertEqual(self.stated("genie-x", [16, 128, 128]),
+                         "decode 16–128 of 128 tok, some repetitions stopped at the end of turn")
+        self.assertEqual(self.stated("llama.cpp", [16, 127, 127]),
+                         "decode 16–128 of 128 tok, some repetitions stopped at the end of turn")
+        self.assertEqual(self.stated("genie-x", [96, 97, 98]), "decode 96–98 of 128 tok, stopped at the end of turn")
+        self.assertEqual(self.stated("genie-x", [127, 128, 128]),
+                         "decode 127–128 of 128 tok, some repetitions stopped at the end of turn")
+        self.assertEqual(self.stated("llama.cpp", [16]), "decode 16 of 128 tok, stopped at the end of turn")
+
+    def test_fixed_decode_states_the_budget(self):
+        record = {"engine": "litert-lm", "protocol": {"maxDecodeTokens": 128, "decodeMode": "fixed"},
+                  "coldRuns": [{"status": "complete", "decodeTokens": 128}] * 3}
+        script = ("import {decodeStated} from './scripts/lib/bundles.mjs';"
+                  f"console.log(decodeStated({json.dumps(record)}));")
+        result = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(result.stdout.strip(), "decode 128 tok, end of turn ignored")
 
 
 if __name__ == "__main__":

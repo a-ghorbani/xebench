@@ -26,6 +26,7 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { CONFIGURATION_ID, PublicationError } from './publication.mjs';
 
 export const BOARD_SCHEMA = 'xebench-board';
@@ -55,8 +56,17 @@ export const keyParts = (key) => {
   return parts.length === 7 && parts.every((part) => part !== '') && parts[6] === 'measured' ? parts : null;
 };
 
-/** Configuration id prefixes that never name a board set: experiments and device spikes. */
-export const NEVER_ON_BOARD_PREFIXES = ['experiment-', 'spike-'];
+/**
+ * Configuration id prefixes whose sessions are never published and that no set may name
+ * (experiments and device spikes): scripts/lib/never-published-configurations.json, which
+ * publication_policy.py reads too.
+ */
+export const NEVER_PUBLISHED = Object.freeze(JSON.parse(readFileSync(
+  fileURLToPath(new URL('./never-published-configurations.json', import.meta.url)), 'utf8')).prefixes);
+
+/** The never-published entry ({prefix, kind}) a configuration id starts with, or null. */
+export const neverPublished = (id) =>
+  (typeof id === 'string' && NEVER_PUBLISHED.find(({ prefix }) => id.startsWith(prefix))) || null;
 
 /** The ids of the committed run configurations under xebenchapp/configs/ a set may name (no experiment or spike). */
 export function reviewedConfigurationIds(root) {
@@ -64,7 +74,7 @@ export function reviewedConfigurationIds(root) {
   for (const name of readdirSync(join(root, 'xebenchapp/configs')).sort()) {
     if (!name.endsWith('.json')) continue;
     const id = JSON.parse(readFileSync(join(root, 'xebenchapp/configs', name), 'utf8')).id;
-    if (typeof id === 'string' && !NEVER_ON_BOARD_PREFIXES.some((prefix) => id.startsWith(prefix))) ids.add(id);
+    if (typeof id === 'string' && !neverPublished(id)) ids.add(id);
   }
   return ids;
 }

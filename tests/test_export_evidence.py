@@ -1065,7 +1065,7 @@ class LabelAlphabetTests(unittest.TestCase):
         accepted = (*self.BOARD_LABELS, "Q4_0", "Q4_0 (QAT)", "4-bit QAT + LoRA", "W4A16", "1/2", "x" * 128)
         refused = (
             "/data/app", "data/app", "a/b", "2/b", "b/2", "2/", "/2", "1//2", "2/ 4", "lib/arm64/libx.so",
-            "x,y", "x ,y", ",x", "x,,y", "x" * 129, "x" * 127 + "/", "mixed 2/4/8-bit\n", "x\\y", "x@y",
+            "x,y", "x ,y", ",x", "x,,y", "x, ", "x,  y", "x" * 129, "x" * 127 + "/", "mixed 2/4/8-bit\n", "x\\y", "x@y",
             "mixed 2⁄4-bit", "4-bit weights， 8-bit",
         )
         for value in accepted:

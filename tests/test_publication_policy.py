@@ -11,6 +11,7 @@ import importlib.util
 import itertools
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 
@@ -317,7 +318,10 @@ class PolicyTests(unittest.TestCase):
     def test_refusals(self):
         cases = {
             "experiment": (facts(experiment=["experiment-* configuration id"]), "experiment session"),
-            "spike": (accel(experiment=["spike-* configuration id"]), "spike-* configuration id"),
+            "spike": (accel(experiment=["spike-* configuration id"]), "spike session (spike-* configuration id)"),
+            "spike with an experiment marker": (
+                accel(experiment=["record-only-experiment charging readiness", "spike-* configuration id"]),
+                "experiment session"),
             "bug-repro": (accel(purpose="bug-repro"), "bug-repro session"),
             "no measured repetition": (facts(status="failed", measured=0, attempts=0, stopReason="setup-failed"),
                                        "no measured repetition"),
@@ -352,6 +356,17 @@ class PolicyTests(unittest.TestCase):
                 mutate(value)
                 check = next(item for item in policy.evaluate(value)["checks"] if item["check"] == "decode")
                 self.assertEqual(check["detail"], detail)
+
+    def test_one_prefix_list_for_the_policy_and_the_board(self):
+        listed = json.loads((ROOT / "scripts/lib/never-published-configurations.json").read_text())["prefixes"]
+        self.assertEqual(policy.NEVER_PUBLISHED, (("experiment-", "experiment"), ("spike-", "spike")))
+        self.assertEqual([(item["prefix"], item["kind"]) for item in listed], list(policy.NEVER_PUBLISHED))
+        script = ("import {NEVER_PUBLISHED} from './scripts/lib/board.mjs';"
+                  "console.log(JSON.stringify(NEVER_PUBLISHED));")
+        result = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True,
+                                cwd=ROOT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), listed)
 
     def test_spike_and_experiment_markers_come_from_the_configuration_id(self):
         record = {"configuration": {"id": "spike-refresh-llamacpp-gemma3-v1"}}

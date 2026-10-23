@@ -162,39 +162,62 @@ rows where differences are below about 3% plus the observed CI ([charging A/B de
 [rule traceability](docs/RUN-CONDITIONS.md#rule-traceability).
 
 ### 6. An accelerator row needs evidence of where it ran
+Terms used here: a **session** is one run of the benchmark app on one phone for one model and
+backend, with its repetitions; its **configuration** is the committed file under
+[`xebenchapp/configs/`](xebenchapp/configs/) that fixes the model file, backend, prompt and
+limits; the **publication policy**
+([publication policy v1](docs/RUN-CONDITIONS.md#publication-policy-v1)) decides from a session's
+evidence bundle (the sanitized record of the run, under [`evidence/`](evidence/README.md))
+whether its row is verified. The board shows each setup's newest verified session; a setup with
+no verified session shows its newest unverified one, and that row's `validation` field says
+"unverified".
+
 A GPU or NPU row is verified only when its backend is `confirmed`. For llama.cpp that is
 llama.rn's own report of the devices the model was placed on. LiteRT-LM reports no backend, so
-for its NPU rows the evidence is the app's own log: a QNN HTP context created from the bundle for
-each load; the dispatch library and HTP backend loaded earlier in the same process; and the HTP
-library opened on the compute DSP. The capture keeps only those
-log lines of the app's process, the evidence bundle carries them, and the publication policy
-recomputes the verdict from the bundle ([rule](docs/RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
-LiteRT-LM GPU rows have no such evidence and stay unverified. GENIE-X measured in the app reports no
-backend either, and its NPU rows are confirmed the same way, from its own log lines for each load:
-the QNN runtime the app packages, the HTP architecture the compute DSP reports, the bundle's HTP
-graphs and the request's prefill, plus the HTP library opened on the compute DSP. These are the
-lines geniex-android 0.8.0 writes on the POCO F8 Ultra
-([rule](docs/RUN-CONDITIONS.md#genie-x-npu-backend-confirmed-by-the-apps-log-geniex-npu-log-v1)).
+for its NPU rows the evidence is the app's own log, for each engine load the benchmark app makes:
+a QNN HTP context (Qualcomm's NPU runtime, QNN, on its Hexagon tensor processor, HTP) created
+from the model file; the dispatch library and HTP backend loaded earlier in the same app
+process; and the HTP library opened on the compute DSP (the phone's Hexagon processor that runs
+NPU work). The capture keeps only those log lines of the app's process, the session's evidence
+bundle carries them, and the publication policy recomputes the verdict from that evidence
+([rule](docs/RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
+LiteRT-LM GPU rows have no such evidence and stay unverified.
+
+GENIE-X measured in the app reports no backend either, and its NPU rows are confirmed the same
+way, from the app's own log. For each engine load and each request the benchmark app sends, the
+log must show: the QNN runtime libraries came from the app itself; the compute DSP reported its
+HTP architecture (its generation, e.g. v81); the HTP graphs (the compiled model parts in
+Qualcomm's model bundle) were created on the HTP; and GENIE-X's NPU pipeline prefilled that
+request. The HTP library must also open on the compute DSP once. The patterns are the lines
+geniex-android 0.8.0 writes on the POCO F8 Ultra; the rule applies to any phone whose log has
+them ([rule](docs/RUN-CONDITIONS.md#genie-x-npu-backend-confirmed-by-the-apps-log-geniex-npu-log-v1)).
 
 ### 7. A fixed decode length where the engine allows it
-LiteRT-LM board rows decode exactly 128 tokens per repetition, past the model's end of turn, so
-decode speed is always measured over the same number of tokens; the row states "end of turn
-ignored". The output check runs the same file on the same backend through LiteRT-LM's public
-engine API; the measured repetitions use engines created with LiteRT-LM's benchmark parameters.
-llama.cpp rows decode up to 128 tokens and stop at the end of turn; in every published llama.cpp
-session the model ran to the limit. → `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
-GENIE-X measured in the app (geniex-android 0.8.0) has no option to decode past the end of turn: it
-decodes up to 128 tokens and stops there, so its decode length varies from run to run with where the
-model ends its turn, and the record keeps the number of tokens it produced
+Every row decodes at most 128 tokens per repetition; this document calls that limit the budget.
+LiteRT-LM board rows decode exactly the budget, past the model's end of turn, so decode speed is
+always measured over the same number of tokens; the row states "end of turn ignored". The output
+check runs the same file on the same backend through LiteRT-LM's public engine API; the measured
+repetitions use engines created with LiteRT-LM's benchmark parameters.
+→ `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
+llama.cpp rows decode up to the budget and stop at the end of turn; in every published llama.cpp
+session the model ran to the budget. GENIE-X measured in the app (geniex-android 0.8.0) has no
+option to decode past the end of turn: it decodes up to the budget and stops there, so its decode
+length varies from run to run with where the model ends its turn, and the record keeps the number
+of tokens it produced
 ([notes](docs/experiments/geniex-inapp.md#decode-length-genie-x-080-cannot-decode-past-the-end-of-turn)).
-The publication policy checks every session's decode length against its configuration: with a
-fixed decode, every repetition must decode exactly 128 tokens; otherwise the row states the length
-decoded ("decode N of 128 tok, stopped at the end of turn" when it stops short of the limit), and a
-session whose repetitions stop at different lengths short of the limit is not verified
-([decode check](docs/RUN-CONDITIONS.md#publication-policy-v1)).
-Its NPU prefill speed is TTFT-derived (`ttft-derived`): prompt tokens over GENIE-X's own time to the
-first token, which includes sampling that token, because its QAIRT plugin reports no separate prefill
-time ([notes](docs/experiments/geniex-inapp.md#timings-what-each-number-is-and-where-it-comes-from)).
+GENIE-X's NPU prefill speed is TTFT-derived (`ttft-derived`): prompt tokens over GENIE-X's own time
+to the first token, which includes sampling that token, because its QAIRT plugin reports no
+separate prefill time
+([notes](docs/experiments/geniex-inapp.md#timings-what-each-number-is-and-where-it-comes-from)).
+
+The publication policy checks every session's decode length against its configuration. With a
+fixed decode, every repetition must decode exactly the budget, or the session fails. Otherwise the
+row's note in the data (`asStated` in `data/benchmarks.json`) states the length decoded: "decode
+128 tok" when every repetition reached the budget, "decode N of 128 tok, stopped at the end of
+turn" when every repetition stopped at the same N, and the range, minimum to maximum ("decode
+16–128 of 128 tok"), when repetitions decoded different lengths. A session whose repetitions
+decoded different lengths is not verified; it can still be the row a setup shows, marked
+unverified as above ([decode check](docs/RUN-CONDITIONS.md#publication-policy-v1)).
 
 ## Cold-start is not the whole story (why the sustained phase exists)
 A single cold `pp512/tg128` number materially misrepresents sustained use:

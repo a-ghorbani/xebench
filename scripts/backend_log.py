@@ -18,8 +18,9 @@ litert-npu-log-v1. A LiteRT-LM NPU repetition is `confirmed` when the log of its
     in the same process do not log them again;
   - at least once in the capture: the HTP skel opened on the compute DSP (`htp-skel-cdsp`).
 
-geniex-npu-log-v1 (pending device confirmation: written from the geniex-android 0.8.0 sources and
-the format strings in its shipped libraries, not yet from a device log). A GENIE-X NPU repetition is
+geniex-npu-log-v1 (written from the geniex-android 0.8.0 sources and the format strings in its
+shipped libraries; the POCO F8 Ultra's log matches every pattern as written, see
+docs/experiments/model-refresh.md section 5). A GENIE-X NPU repetition is
 `confirmed` when the log of its capture shows, within that repetition's window (its engine load and
 request; GENIE-X's QAIRT plugin logs each of these once per model load or request):
   - `htp-runtime`: the QNN runtime resolved from the APK's own native library directory

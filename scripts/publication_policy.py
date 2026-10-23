@@ -39,10 +39,13 @@ CHARGING_POLICY = "charging-policy-v3"
 CONDITION_PROTOCOLS = ("cpu-reference-v2", "cpu-reference-v3") + raw_session.ACCELERATOR_PROTOCOLS
 CHECKS = ("complete", "conditions", "charging", "coverage", "artifact", "backend", "correctness", "comparison",
           "decode", "build", "app-identity", "device")
-# Configuration id prefixes whose sessions are never published: experiments and device spikes
-# (docs/experiments/). Their sessions are still decided, so lab notes can cite each check.
-NEVER_PUBLISHED_PREFIXES = {"experiment-": "experiment-* configuration id", "spike-": "spike-* configuration id"}
 ROOT = Path(__file__).resolve().parents[1]
+# Configuration id prefixes whose sessions are never published: experiments and device spikes
+# (docs/experiments/). One list for the policy, aggregate.mjs and board.mjs. Their sessions are
+# still decided, so lab notes can cite each check.
+_NEVER_PUBLISHED_FILE = Path(__file__).resolve().parent / "lib/never-published-configurations.json"
+NEVER_PUBLISHED = tuple((item["prefix"], item["kind"])
+                        for item in json.loads(_NEVER_PUBLISHED_FILE.read_text(encoding="utf-8"))["prefixes"])
 # A configured run's model identity; a reviewed run must agree on every one of these.
 RUN_IDENTITY = ("engine", "backend", "model", "quant", "modelFile", "modelSha256")
 # raw_session.TOLERANCE: engine-reported and published speeds are the same number.
@@ -155,7 +158,7 @@ def _experiment_markers(record):
         markers.append("record-only-experiment charging readiness")
     if "experimentChargingReadiness" in config:
         markers.append("experimentChargingReadiness configuration")
-    markers += [marker for prefix, marker in NEVER_PUBLISHED_PREFIXES.items()
+    markers += [f"{prefix}* configuration id" for prefix, _ in NEVER_PUBLISHED
                 if str(config.get("id", "")).startswith(prefix)]
     return markers
 
@@ -547,7 +550,9 @@ def evaluate(facts):
     """
     refusal = None
     if facts["experiment"]:
-        refusal = "experiment session (" + ", ".join(facts["experiment"]) + ")"
+        spikes = {f"{prefix}* configuration id" for prefix, kind in NEVER_PUBLISHED if kind == "spike"}
+        kind = "spike" if set(facts["experiment"]) <= spikes else "experiment"
+        refusal = f"{kind} session (" + ", ".join(facts["experiment"]) + ")"
     elif facts["purpose"] == "bug-repro":
         refusal = "bug-repro session"
     elif not facts["measured"]:

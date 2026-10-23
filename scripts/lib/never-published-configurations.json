@@ -1,0 +1,7 @@
+{
+  "description": "Run configuration id prefixes whose sessions are never published and that no board set may name: lab experiments and device spikes (docs/experiments/). Read by scripts/publication_policy.py, scripts/aggregate.mjs and scripts/lib/board.mjs; it sits next to the code because tests copy scripts/ alone.",
+  "prefixes": [
+    {"prefix": "experiment-", "kind": "experiment"},
+    {"prefix": "spike-", "kind": "spike"}
+  ]
+}

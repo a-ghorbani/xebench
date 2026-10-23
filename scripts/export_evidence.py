@@ -218,9 +218,9 @@ VERSION = _text(r"[A-Za-z][A-Za-z0-9._-]{0,63}", "version identifier")
 # A label is 1-128 characters of a closed alphabet ([A-Za-z0-9 ._+()-]) plus the two separators
 # the board's quant labels use (docs/STYLE.md: "mixed 2/4/8-bit", "4-bit weights, 8-bit
 # activations"), each only where those labels put it: '/' between two digits, so a label never
-# holds a path segment, and ',' after a letter or digit and before a space.
-LABEL = _text(r"(?=.{1,128}\Z)[A-Za-z0-9](?:[A-Za-z0-9 ._+()-]|(?<=[0-9])/(?=[0-9])|(?<=[A-Za-z0-9]),(?= ))*",
-              "label")
+# holds a path segment, and ',' after a letter or digit and before a space and a letter or digit.
+LABEL = _text(r"(?=.{1,128}\Z)[A-Za-z0-9]"
+              r"(?:[A-Za-z0-9 ._+()-]|(?<=[0-9])/(?=[0-9])|(?<=[A-Za-z0-9]),(?= [A-Za-z0-9]))*", "label")
 PROSE = _text(r"[A-Za-z0-9][A-Za-z0-9 ,.;:()'_-]{0,199}", "short plain-text constant")
 HEX64 = _text(r"[0-9a-f]{64}", "lowercase SHA-256")
 RUN_ID = _text(r"[A-Za-z0-9][A-Za-z0-9-]{0,99}", "run id")
