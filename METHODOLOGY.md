@@ -170,10 +170,11 @@ library opened on the compute DSP. The capture keeps only those
 log lines of the app's process, the evidence bundle carries them, and the publication policy
 recomputes the verdict from the bundle ([rule](docs/RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
 LiteRT-LM GPU rows have no such evidence and stay unverified. GENIE-X measured in the app reports no
-backend either; its log rule (the QNN runtime the app packages, the bundle's HTP graphs and the
-request's prefill, for each load) is written from geniex-android 0.8.0's sources and has not been
-checked against a device log, so it does not verify a row
-([rule](docs/RUN-CONDITIONS.md#genie-x-npu-backend-from-the-apps-log-geniex-npu-log-v1-pending-device-confirmation)).
+backend either, and its NPU rows are confirmed the same way, from its own log lines for each load:
+the QNN runtime the app packages, the HTP architecture the compute DSP reports, the bundle's HTP
+graphs and the request's prefill, plus the HTP library opened on the compute DSP. These are the
+lines geniex-android 0.8.0 writes on the POCO F8 Ultra
+([rule](docs/RUN-CONDITIONS.md#genie-x-npu-backend-confirmed-by-the-apps-log-geniex-npu-log-v1)).
 
 ### 7. A fixed decode length where the engine allows it
 LiteRT-LM board rows decode exactly 128 tokens per repetition, past the model's end of turn, so
@@ -186,6 +187,11 @@ GENIE-X measured in the app (geniex-android 0.8.0) has no option to decode past 
 decodes up to 128 tokens and stops there, so its decode length varies from run to run with where the
 model ends its turn, and the record keeps the number of tokens it produced
 ([notes](docs/experiments/geniex-inapp.md#decode-length-genie-x-080-cannot-decode-past-the-end-of-turn)).
+The publication policy checks every session's decode length against its configuration: with a
+fixed decode, every repetition must decode exactly 128 tokens; otherwise the row states the length
+decoded ("decode N of 128 tok, stopped at the end of turn" when it stops short of the limit), and a
+session whose repetitions stop at different lengths short of the limit is not verified
+([decode check](docs/RUN-CONDITIONS.md#publication-policy-v1)).
 Its NPU prefill speed is TTFT-derived (`ttft-derived`): prompt tokens over GENIE-X's own time to the
 first token, which includes sampling that token, because its QAIRT plugin reports no separate prefill
 time ([notes](docs/experiments/geniex-inapp.md#timings-what-each-number-is-and-where-it-comes-from)).

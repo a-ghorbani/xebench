@@ -235,6 +235,33 @@ Galaxy S23 (8 GB) the llama.cpp CPU figure is the one to watch: about 3.9 GB of 
 9. Lab procedure: dismiss the swipe keyguard before each capture (`KEYCODE_WAKEUP`, `wm dismiss-keyguard`); with it
    showing, the app starts behind it and stalls.
 
+## Harness follow-ups
+
+Changes made after the spike, in the harness (`harness/validation-followups`):
+
+- **Board quant labels export** (item 6). `export_evidence.py`'s label form accepts `/` between two
+  digits and `,` before a space, so `mixed 2/4/8-bit`, `mixed 4/16-bit` and `4-bit weights, 8-bit
+  activations` export as written; no label can hold a path segment, and the privacy screen runs
+  unchanged. New configurations use the board labels directly; the `-v2` label-only configurations
+  are not needed again and stay as the record of these sessions.
+- **Spike sessions are never publishable** (item 8). Publication policy v1 refuses `spike-*`
+  configuration ids as it refuses `experiment-*` ones, `aggregate.mjs` refuses their records, and
+  `configs/board.json` cannot name one. All 17 spike sessions above read `publishable: false`.
+- **The policy checks decode length** (items 2 and 8). New check `decode`: under `decodeMode: fixed`
+  every repetition must decode `maxDecodeTokens`; otherwise the check states the count, and
+  repetitions that stop at different lengths before the budget leave it unknown. The Gemma 3 OpenCL
+  session now reads "every repetition decoded 16 of 128 tokens, stopped at the end of turn", and its
+  row statement is "decode 16 of 128 tok, stopped at the end of turn"; the Gemma 4 sessions state
+  85, 79 and 83.
+- **geniex-npu-log-v1 is confirmed** (item 5c): it left `PENDING_DEVICE_CONFIRMATION`, and the
+  GENIE-X NPU session of bundle `8c41c4e258ff…` reads backend `confirmed for npu by the app log
+  (geniex-npu-log-v1)` from the bundle alone. [geniex-inapp.md](geniex-inapp.md#device-run-poco-f8-ultra-model-refresh-spike)
+  records the device run.
+- **Captures wake the screen and dismiss a swipe keyguard** (item 9,
+  [#27](https://github.com/a-ghorbani/xebench/issues/27)). `capture_app_run.py` sends
+  `KEYCODE_WAKEUP`, reads the keyguard state, dismisses a swipe lock with `wm dismiss-keyguard`,
+  stops with a clear error at a secure lock, and records what it did in the local manifest.
+
 ## Evidence
 
 | Bundle | Sessions | What |

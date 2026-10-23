@@ -343,6 +343,14 @@ bundled default. Unknown fields, unsupported engines, paths/URLs and invalid
 limits fail before model loading. A model whose SHA-256 differs from the run's
 `modelSha256` is never loaded: the run is saved as a failed `model-hash-mismatch`
 session with both hashes, and every later run is saved as `configuration-aborted`.
+Before it starts the app, `capture_app_run.py` wakes the screen (`KEYCODE_WAKEUP`) and reads the
+keyguard state (`dumpsys window policy`). A swipe lock that is showing is dismissed with
+`wm dismiss-keyguard`; with the keyguard showing, the app would start behind it and wait on
+`device-locked` until its readiness timeout. A secure lock (PIN, pattern or password) is never
+dismissed or worked around: the capture stops with `setup-failed` and says so, before the app
+starts. The local manifest records what was done (`screenPreparation`: the wake key and
+`dismissed`, `not-showing`, `secure`, `still-showing` or `unknown`); it is never exported. Lab
+phones use a swipe lock or none.
 Each repetition waits for measured [readiness](RUN-CONDITIONS.md) and is sampled
 while it runs; overall guards stay
 **unverified** unless a failure is known, because backend execution is unverified.
@@ -530,7 +538,10 @@ Export fails closed (exit 1, nothing written) if any check fails. It checks ever
 listed record and checkpoint against its capture checksum and re-validates it with
 `raw_session.py`. It refuses legacy records, unlisted record files, inconsistent
 counts, duplicate sessions and captures without a terminal record. It also refuses
-an approved field whose value does not have the expected form. A final screen
+an approved field whose value does not have the expected form. Labels (model, quant, run and
+probe ids) use a closed alphabet (letters, digits, space and `._+()-`) plus `/` only between two
+digits and `,` only before a space, so the board's quant labels (`mixed 2/4/8-bit`,
+`4-bit weights, 8-bit activations`) export and no label can hold a path. A final screen
 refuses an export if any output string looks like an email, local path, token,
 ANDROID_ID-like hex or network serial. Refusal messages name inputs by position
 and JSON location, never by value. A complete capture must have no errors,
@@ -557,7 +568,8 @@ definition come from a closed app/host vocabulary. Other values become `unrecogn
 - **Never exported:** serials, ANDROID_ID, the `ro.product.device` codename,
   install and host paths, usernames, logcat, error logs, error and cleanup
   messages, invalid payloads and their reason files, signing-certificate
-  fingerprints, the raw `systemInfo` line, and `publicationReady`.
+  fingerprints, the raw `systemInfo` line, `publicationReady`, and the capture's
+  `screenPreparation`.
 
 The bundle `<bundleSha256>/` holds `manifest.json`, `captures/<captureId>.json` and
 `sessions/<runId>.json`. Every file is canonical JSON: sorted keys, `,`/`:`
