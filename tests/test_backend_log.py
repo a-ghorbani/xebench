@@ -384,8 +384,10 @@ class GenieXConfirmationTests(unittest.TestCase):
         self.assertIsNone(backend_log.confirmation(npu_record(), gx_log(lines)))  # a LiteRT-LM session
         self.assertIsNone(backend_log.confirmation(gx_record(), log_of(gate_lines())))  # the LiteRT-LM rule
 
-    def test_the_rule_is_pending_device_confirmation(self):
-        self.assertIn(GX, backend_log.PENDING_DEVICE_CONFIRMATION)
+    def test_both_rules_are_confirmed_on_a_device(self):
+        # geniex-npu-log-v1: every event of the POCO F8 Ultra spike capture matched
+        # (docs/experiments/model-refresh.md, section 5; ModelRefreshSpikeBundleTests).
+        self.assertNotIn(GX, backend_log.PENDING_DEVICE_CONFIRMATION)
         self.assertNotIn(backend_log.RULE, backend_log.PENDING_DEVICE_CONFIRMATION)
 
 
@@ -410,7 +412,8 @@ class GenieXBundleTests(unittest.TestCase):
         return Path(report["bundle"]), report["evidence"]["bundleSha256"], npu
 
     def test_the_bundle_reports_the_rule_but_a_pending_rule_confirms_nothing(self):
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory() as root, \
+                unittest.mock.patch.object(policy.backend_log, "PENDING_DEVICE_CONFIRMATION", frozenset({GX})):
             npu = fx.accel_record(GX_NPU, "1767225600000-0-npu")
             bundle, sha, _ = self.bundle(root, gx_gate_lines() + repetition_lines(npu, GX_WINDOW))
             self.assertTrue(evidence.verify(bundle)["valid"])
@@ -423,9 +426,8 @@ class GenieXBundleTests(unittest.TestCase):
             self.assertEqual(backend["outcome"], "unknown")
             self.assertIn(f"rule {GX} is pending device confirmation", backend["detail"])
 
-    def test_once_confirmed_on_a_device_the_rule_confirms_the_npu_backend(self):
-        with tempfile.TemporaryDirectory() as root, \
-                unittest.mock.patch.object(policy.backend_log, "PENDING_DEVICE_CONFIRMATION", frozenset()):
+    def test_the_device_confirmed_rule_confirms_the_npu_backend(self):
+        with tempfile.TemporaryDirectory() as root:
             npu = fx.accel_record(GX_NPU, "1767225600000-0-npu")
             bundle, sha, _ = self.bundle(root, gx_gate_lines() + repetition_lines(npu, GX_WINDOW))
             session = {item["sessionId"]: item for item in policy.bundle_report(bundle, sha)["sessions"]}[

@@ -25,6 +25,87 @@ ROOT = Path(__file__).resolve().parents[1]
 MAX_RECORD_BYTES = 1024 * 1024
 
 
+class KeyguardStop(Exception):
+    """The keyguard is still up before the launch, so the capture stops (setup-failed) instead of
+    starting the app behind it. args: (screenPreparation result, message for the operator)."""
+
+
+SECURE_LOCK_MESSAGE = (
+    "The phone shows a secure lock screen (PIN, pattern or password). The capture never dismisses or enters "
+    "anything on a secure lock: unlock the phone by hand, or set the lab phone's screen lock to Swipe or None, "
+    "then run the capture again.")
+STILL_SHOWING_MESSAGE = (
+    "The lock screen is still showing after `wm dismiss-keyguard`. Unlock the phone by hand and run the capture "
+    "again; the app is not started behind a lock screen.")
+
+# `dumpsys window policy` prints a line that is exactly "KeyguardServiceDelegate" (indented), then
+# the delegate's flags, among them whether the keyguard is showing and whether it is secure (a PIN,
+# pattern or password; a swipe lock is not). Both are the system's cached view, updated by
+# keyguard callbacks: right after the lock settings change, `secure` can lag. A stale
+# `secure=false` on a secure lock is still safe here: `wm dismiss-keyguard` then brings up the
+# bouncer and unlocks nothing, the re-check still sees the keyguard showing, and the capture stops.
+_KEYGUARD_DELEGATE = re.compile(r"^[ \t]*KeyguardServiceDelegate[ \t]*$", re.MULTILINE)
+_KEYGUARD_FLAG = re.compile(r"^\s*(showing|secure)=(true|false)\s*$", re.MULTILINE)
+KEYGUARD_BLOCK_LINES = 24
+KEYGUARD_DISMISS_CHECKS = 5
+
+
+def keyguard_state(dump):
+    """{"showing": bool or None, "secure": bool or None} from `dumpsys window policy`."""
+    state = {"showing": None, "secure": None}
+    marker = _KEYGUARD_DELEGATE.search(dump)
+    if marker:
+        # Only the delegate's own block: its flags follow the marker line within a few lines.
+        block = "\n".join(dump[marker.end():].splitlines()[:KEYGUARD_BLOCK_LINES])
+        for match in _KEYGUARD_FLAG.finditer(block):
+            if state[match[1]] is None:
+                state[match[1]] = match[2] == "true"
+    return state
+
+
+def _read_keyguard(command):
+    # A refused or timed-out dump leaves the state unknown; it never fails the capture by itself.
+    try:
+        return keyguard_state(command("shell", "dumpsys", "window", "policy"))
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return {"showing": None, "secure": None}
+
+
+def prepare_screen(command, sleep):
+    """Wake the screen and dismiss a swipe keyguard before the app starts; the result for the manifest.
+
+    With the keyguard showing, the app starts behind it and its readiness check waits on
+    `device-locked` until the timeout. The wake key is sent first (it only turns the screen on),
+    then the keyguard state is read. A swipe lock (not secure) is dismissed with
+    `wm dismiss-keyguard`. On a secure lock nothing is dismissed or entered: KeyguardStop. A lock
+    screen still showing after the dismissal also stops the capture. When the state cannot be read,
+    nothing is dismissed and the app's own readiness check (keyguardLocked) still guards the run.
+    """
+    command("shell", "input", "keyevent", "KEYCODE_WAKEUP")
+    result = {"wake": "KEYCODE_WAKEUP", "keyguard": "unknown"}
+    state = _read_keyguard(command)
+    if state["showing"] is False:
+        result["keyguard"] = "not-showing"
+    elif state["showing"] is True and state["secure"] is True:
+        result["keyguard"] = "secure"
+        raise KeyguardStop(result, SECURE_LOCK_MESSAGE)
+    elif state["showing"] is True and state["secure"] is False:
+        command("shell", "wm", "dismiss-keyguard")
+        for _ in range(KEYGUARD_DISMISS_CHECKS):
+            state = _read_keyguard(command)
+            if state["showing"] is False:
+                result["keyguard"] = "dismissed"
+                break
+            if state["secure"] is True:
+                result["keyguard"] = "secure"
+                raise KeyguardStop(result, SECURE_LOCK_MESSAGE)
+            sleep(0.5)
+        else:
+            result["keyguard"] = "still-showing"
+            raise KeyguardStop(result, STILL_SHOWING_MESSAGE)
+    return result
+
+
 class CaptureInterrupted(BaseException):
     def __init__(self, signum):
         self.signum = signum
@@ -126,6 +207,8 @@ class Capture:
         self.backend_lines = None
         # Engines of the records kept: they select the backend log's rule (backend_log.rule_for_engines).
         self.engines = set()
+        # What prepare_screen did before the launch (wake key sent, keyguard state); None until it ran.
+        self.screen = None
 
     def read_reference(self, payload, read_file):
         """Resolve a bounded logcat file reference to the exact checksummed bytes."""
@@ -290,6 +373,8 @@ class Capture:
         }
         if backend is not None:
             manifest["backendLog"] = backend
+        if self.screen is not None:
+            manifest["screenPreparation"] = self.screen
         with (self.directory / "manifest.json").open("x", encoding="utf-8") as out:
             json.dump(manifest, out, indent=2, allow_nan=False)
             out.write("\n")
@@ -327,6 +412,7 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
 
     capture = Capture(output_root, {})
     status, code = "setup-failed", 2
+    stopped = None
     launched = False
     previous_handlers = {}
 
@@ -346,7 +432,12 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
             capture.device_info["soc"] = command("shell", "getprop", "ro.board.platform")
         command("shell", "am", "force-stop", APP)
         capture.app_identity['before'] = installed_apks(command)
-        command("shell", "input", "keyevent", "KEYCODE_WAKEUP")
+        # Before every launch: wake the screen and dismiss a swipe keyguard (never a secure one).
+        try:
+            capture.screen = prepare_screen(command, sleep)
+        except KeyguardStop as error:
+            capture.screen = error.args[0]
+            raise
         # Device time avoids host/device skew; PID filtering excludes other apps.
         since = command("shell", "date", "+%s.000")
         event_args = ("logcat", "-b", "events", "-d", "-v", "epoch", "-T", since,
@@ -406,6 +497,9 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
                         status, code = 'app-changed', 4
                 break
             sleep(min(1, max(0, deadline - monotonic())))
+    except KeyguardStop as error:
+        status, code = "setup-failed", 2
+        stopped = error.args[1]
     except (TimeoutError, subprocess.TimeoutExpired):
         status, code = "timeout", 3
     except (OSError, subprocess.CalledProcessError, ValueError):
@@ -437,6 +531,8 @@ def capture_device(serial, timeout, output_root, adb=None, monotonic=time.monoto
         finally:
             for signum, handler in previous_handlers.items():
                 signal.signal(signum, handler)
+    if stopped is not None:
+        print(f"Capture stopped: {stopped}", file=sys.stderr)
     print(f"Capture {capture.capture_id}: {status}; {len(capture.records)} record(s), "
           f"{capture.errors} engine error(s), {capture.invalid} invalid record(s).")
     print(f"Local evidence: {capture.directory}")

@@ -282,9 +282,10 @@ passes:
 | `charging` | every measured repetition recomputes to `satisfied` under `charging-policy-v3` | `violated` or `on-battery` | `unknown`, or another charging policy |
 | `coverage` | every measured repetition was sampled throughout (the coverage rule above) | — | a gap, expiry, dropped tick or missing monitor |
 | `artifact` | the session's `configurationSource` hash names a reviewed configuration file, the session carries that file's content, its configured run (engine, backend, model, quant, model file, `modelSha256`) is exactly a run of that file, and the artifact SHA-256 equals both that `modelSha256` and the model manifest entry for the file | the artifact differs from the configured `modelSha256` or from the manifest entry | the run pins no `modelSha256`, the session names no reviewed configuration file or carries other content, the run is not in that file, or its file has no manifest entry |
-| `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed`; for LiteRT-LM NPU, `confirmed` comes from the app's own log (below), and for GENIE-X NPU from its own log rule once that rule is confirmed on a device (below) | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU evidence is at most `consistent` |
+| `backend` | CPU: `confirmed` or `consistent`, and for llama.cpp no offloaded layer or device in the effective settings. GPU/NPU: `confirmed`; for LiteRT-LM and GENIE-X NPU, `confirmed` comes from the app's own log (below) | `mismatch`, or a llama.cpp CPU run that offloads layers | anything else, including `consistent` on GPU/NPU and llama.cpp CPU runs without effective settings; LiteRT-LM GPU evidence is at most `consistent` |
 | `correctness` (accelerator protocols) | output gate `pass` | `fail` | `unverified` |
 | `comparison` (accelerator protocols) | `valid` | `invalid` | `unverified` |
+| `decode` | `decodeMode: fixed` in the configuration: every measured repetition decoded exactly `maxDecodeTokens`. Otherwise: every repetition reached the budget (llama.cpp counts one token less there, the first one coming from prefill), or every repetition decoded the same count before the end of turn, which the check states ("decoded N of 128 tokens, stopped at the end of turn"). The row's `asStated` gives the same length, and the range, minimum to maximum ("decode 16–128 of 128 tok"), when the lengths differ | a fixed-decode repetition decoded another length, the protocol's `decodeMode` differs from the configuration's, or a repetition decoded more than the budget | repetitions stopped at different lengths before the budget, a measured repetition has no count, or an unknown `decodeMode` |
 | `build` | reported release build, clean tree (`gitDirty: false`), known commit, flavor `reference`, `experimental` or `geniex` | dirty tree | not reported, any field unknown, or a debug build (its JavaScript comes from Metro, so the commit does not identify the code that ran) |
 | `app-identity` | two recorded, identical APK snapshots (before and after the run) | the snapshots differ, or the capture reports `changed` | a missing or unrecorded snapshot |
 | `device` | the device model is in `configs/devices.json` and the capture's SoC matches it | — (a contradiction refuses the bundle) | the model is not in the table, or no SoC is reported |
@@ -332,7 +333,7 @@ LiteRT-LM reports no executing backend, so its process-library evidence for an N
   The rule shows a QNN HTP context created from the bundle for each load, and the dispatch library
   and HTP backend loaded earlier in the same process; it does not show where each operation ran.
 
-### GENIE-X NPU: backend from the app's log (geniex-npu-log-v1, pending device confirmation)
+### GENIE-X NPU: backend confirmed by the app's log (geniex-npu-log-v1)
 
 GENIE-X (geniex-android, the `geniex` flavor) reports no executing backend either. Its
 process-library evidence for an NPU run is `consistent` when the load newly maps `libQnnHtp.so`,
@@ -350,27 +351,33 @@ GENIE-X session keeps its log under this rule, any other under litert-npu-log-v1
 | `htp-skel-cdsp` | the FastRPC skel line of litert-npu-log-v1 | at least once in the capture |
 
 GENIE-X's QAIRT plugin logs the first four for every model load and request, so each repetition
-must show its own. The patterns are written from geniex-android 0.8.0's sources and the format
-strings in its shipped libraries; no device capture has shown them. Until one does, the rule is
-listed in `backend_log.PENDING_DEVICE_CONFIRMATION`: captures keep its events and the policy reports
-its result, but it does not confirm a backend, so a GENIE-X NPU session's `backend` check stays
-unknown and names the pending rule. A device check that shows every event removes it from that
-set in a reviewed change. Design and sources:
+must show its own. The patterns match the log geniex-android 0.8.0 writes on the POCO F8 Ultra as
+written (release builds log the message without a `[file:line:func]` prefix): every event appears
+in the measured repetition of the model-refresh spike's GENIE-X capture
+([model-refresh.md, section 5](experiments/model-refresh.md#5-genie-x-080-qwen3-17b-npu); bundle
+[`8c41c4e258ff…`](../evidence/8c41c4e258ff4dd1fc149f165b8c45c7fe2cc3bb91f1db13b2db2acf078befb5/)).
+A GENIE-X NPU session is `confirmed` when every measured repetition is. `backend_log.PENDING_DEVICE_CONFIRMATION`
+lists rules whose patterns no device log has shown; a listed rule is evaluated and reported but
+confirms no backend. No rule is listed. Design and sources:
 [docs/experiments/geniex-inapp.md](experiments/geniex-inapp.md).
 
 Two measurement facts of GENIE-X NPU sessions: the prefill speed is `ttft-derived` (prompt tokens
 over GENIE-X's own time to the first token, which includes sampling that token; its QAIRT plugin
 reports no separate prefill time), and the decode length varies with the end of turn (GENIE-X
-0.8.0 cannot decode past it), so `decodeTokens` is at most 128 and a row states the median it
-decoded when that is below 128.
+0.8.0 cannot decode past it), so `decodeTokens` is at most 128 and a row states the length it
+decoded when that is below 128 (the range when repetitions differ; the `decode` check above).
 
 Any failed check gives `validation: "failed"` and `guardsPassed: false`. Otherwise,
 any unknown check gives `validation: "unverified"` and `guardsPassed: null`. Unknown
 is never a pass. Three kinds of session are never published at all:
 
-- experiments: `record-only-experiment` charging readiness, an
+- experiments and device spikes: `record-only-experiment` charging readiness, an
   `experimentChargingReadiness` configuration, or a configuration id starting
-  `experiment-`;
+  `experiment-` or `spike-` (one list,
+  [`scripts/lib/never-published-configurations.json`](../scripts/lib/never-published-configurations.json),
+  read by the policy, `aggregate.mjs` and the board check). The refusal names an
+  "experiment session" or a "spike session". Their sessions are still decided, so lab notes can
+  cite each check, and a board set can name neither (`configs/board.json`);
 - bug reproductions (`purpose: "bug-repro"`);
 - sessions without a measured repetition.
 
@@ -385,7 +392,11 @@ bundle with the current code. The one migration so far is a label migration (202
 `scripts/migrate_board_labels.mjs`): lab rows name their source "xebench" and carry the device's
 `chipName`; the producer emits the same labels, so every session still reproduces, and no
 measured value changed. A change to the policy, the row format or its rounding
-therefore comes with a new policy version and a migration of the published index.
+therefore comes with a new policy version and a migration of the published index, unless every
+published session still reproduces unchanged. Additions to publication policy v1 under that rule:
+the `decode` check, the `spike-*` refusal and the confirmed geniex-npu-log-v1 rule (2026-10-23,
+from the [model-refresh spike](experiments/model-refresh.md#harness-follow-ups)); every published
+row reproduced unchanged.
 
 Limits: for engines whose only timing source is the engine's own benchmark API
 (LiteRT-LM's `getBenchmarkInfo`), the counter cross-check does not apply: that API is the

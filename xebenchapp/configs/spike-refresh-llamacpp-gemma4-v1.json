@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 2,
+  "id": "spike-refresh-llamacpp-gemma4-v1",
+  "nColdRuns": 1,
+  "cooldownSec": 120,
+  "readinessTimeoutSec": 900,
+  "maxBatteryTempRiseC": 2,
+  "maxDecodeTokens": 128,
+  "chatTemplate": "gemma4",
+  "measuredPrompt": "std-pp512-v1",
+  "orderSeed": 20261023,
+  "runs": [
+    {
+      "id": "gemma4-e2b-q40-qat-cpu",
+      "engine": "llama.cpp",
+      "backend": "cpu",
+      "purpose": "measurement",
+      "model": "Gemma 4 E2B",
+      "modelFile": "gemma-4-E2B_q4_0-it.gguf",
+      "quant": "Q4_0 (QAT)",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "nGpuLayers": 0,
+      "useMmap": false,
+      "useMlock": false,
+      "noExtraBufts": false,
+      "flashAttnType": "auto",
+      "referenceRunId": null,
+      "modelSha256": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634"
+    },
+    {
+      "id": "gemma4-e2b-q40-qat-opencl",
+      "engine": "llama.cpp",
+      "backend": "gpu",
+      "purpose": "measurement",
+      "model": "Gemma 4 E2B",
+      "modelFile": "gemma-4-E2B_q4_0-it.gguf",
+      "quant": "Q4_0 (QAT)",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "nGpuLayers": 99,
+      "useMmap": false,
+      "useMlock": false,
+      "noExtraBufts": false,
+      "flashAttnType": "auto",
+      "referenceRunId": "gemma4-e2b-q40-qat-cpu",
+      "modelSha256": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634"
+    },
+    {
+      "id": "gemma4-e2b-q40-qat-hexagon",
+      "engine": "llama.cpp",
+      "backend": "npu",
+      "purpose": "measurement",
+      "model": "Gemma 4 E2B",
+      "modelFile": "gemma-4-E2B_q4_0-it.gguf",
+      "quant": "Q4_0 (QAT)",
+      "nThreads": 4,
+      "nCtx": 2048,
+      "nGpuLayers": 99,
+      "devices": [
+        "HTP0"
+      ],
+      "useMmap": false,
+      "useMlock": false,
+      "noExtraBufts": false,
+      "flashAttnType": "auto",
+      "referenceRunId": "gemma4-e2b-q40-qat-cpu",
+      "modelSha256": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634"
+    }
+  ]
+}

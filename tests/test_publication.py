@@ -465,6 +465,15 @@ class PublicationTests(unittest.TestCase):
         # Only the prefix counts: other ids are unaffected.
         self.preview(self.write({**reference_record(), 'configuration': {'id': 'cpu-reference-v1-experimental'}}))
 
+    def test_spike_configurations_are_never_published(self):
+        """A record from a device spike (spike-*, docs/experiments/model-refresh.md) is never a row."""
+        spike = {**reference_record(), 'configuration': {**reference_record()['configuration'],
+                                                         'id': 'spike-refresh-llamacpp-gemma3-v1'}}
+        for args in ((), ('--update', '--allow-legacy')):
+            with self.subTest(args=args):
+                self.assert_rejected(self.write(spike), *args, reason='spike configuration')
+        self.preview(self.write({**reference_record(), 'configuration': {'id': 'cpu-reference-v1-spike'}}))
+
 
 class DataValidationTests(unittest.TestCase):
     def run_node(self, script):

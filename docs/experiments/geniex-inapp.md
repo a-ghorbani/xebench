@@ -5,8 +5,9 @@ measured in the installed app on the POCO F8 Ultra (SM8850) NPU, for Qwen3 1.7B 
 `geniex_qairt` W4A16 bundle. Everything below was read from the geniex-android 0.8.0 AAR (Maven
 Central), its sources at the `v0.8.0` tag of [qualcomm/GenieX](https://github.com/qualcomm/GenieX)
 (`a5c8e7f`) and the QAIRT plugin it pins ([qualcomm/geniex-qairt-plugin](https://github.com/qualcomm/geniex-qairt-plugin)
-`a80a890`), and the bundle itself. No phone has run this path yet; the device spike decides the
-open points at the end.
+`a80a890`), and the bundle itself. **The path has run on a device:** the model-refresh spike ran it
+on the POCO F8 Ultra on 2026-10-22 ([device run](#device-run-poco-f8-ultra-model-refresh-spike);
+[model-refresh.md, section 5](model-refresh.md#5-genie-x-080-qwen3-17b-npu)).
 
 ## What runs
 
@@ -53,7 +54,8 @@ window, and nothing that ignores the end of turn. The QAIRT pipeline's decode lo
 bundle's `eos-token` ids or a token the tokenizer marks as end of generation. The llama_cpp
 plugin stops on `llama_vocab_is_eog`. So a repetition decodes up to 128 tokens and stops at the end
 of turn, like llama.cpp rows; `decodeTokens` records what it produced. With std-pp512-v1 (a Llama
-3.2 turn sent as text) Qwen3 may or may not reach 128; the spike records it.
+3.2 turn sent as text) Qwen3 1.7B decodes the full 128 tokens on the POCO F8 Ultra, on the NPU and
+on the llama_cpp CPU plugin.
 
 ### Timings: what each number is and where it comes from
 
@@ -143,7 +145,7 @@ The files differ (Q4_0 GGUF against W4A16 context binaries), so `sameArtifact` i
 Android the plugin registers ggml's Hexagon backend whatever the device (`htp_backend_present`);
 `n_gpu_layers` 0 and the CPU device keep the model on the CPU.
 
-## Backend evidence: geniex-npu-log-v1, pending device confirmation
+## Backend evidence: geniex-npu-log-v1
 
 GENIE-X does not report where it ran. Its process-library evidence is like LiteRT-LM's: the first
 NPU load in a process maps `libQnnHtp.so` (`consistent`); later loads find it mapped (`unknown`).
@@ -161,10 +163,13 @@ included, to logcat under the tag `GenieXSdk` (release builds log the message al
 
 and, once in the capture, `htp-skel-cdsp`: FastRPC's `remote_handle64_open: opened handle …
 libQnnHtpV81Skel.so … _dom=cdsp`, the same line litert-npu-log-v1 uses. The formats come from the
-sources and the strings in the shipped `libgeniex_core.so`; no device log has shown them yet, so
-`backend_log.PENDING_DEVICE_CONFIRMATION` holds the rule: captures keep its events, bundles carry
-them and the policy reports the result, but a GENIE-X NPU backend stays `unknown` until a reviewed
-change removes the rule from that set after the spike.
+sources and the strings in the shipped `libgeniex_core.so`, and the POCO F8 Ultra's log matches
+them as written: in the spike capture (bundle
+[`8c41c4e258ff…`](../../evidence/8c41c4e258ff4dd1fc149f165b8c45c7fe2cc3bb91f1db13b2db2acf078befb5/))
+every event appears in the measured repetition's window with no event missing, and the release AAR's
+lines carry no `[file:line:func]` prefix. The rule therefore confirms a GENIE-X NPU backend: the
+publication policy rates the spike's NPU session's backend `confirmed for npu by the app log
+(geniex-npu-log-v1)` from the bundle alone (`tests/test_model_refresh_spike.py`).
 
 ## Genie's deprecation
 
@@ -175,19 +180,34 @@ run on GENIE-X's own pipeline over the QNN C API and do not load `libGenie.so`. 
 in-app path does not depend on Genie; the CLI path is the one that may stop getting new bundles.
 `release_assets.json` 0.65.0 still lists a `genie` zip next to each `geniex_qairt` one.
 
-## For the device spike (POCO F8 Ultra)
+## Device run (POCO F8 Ultra, model-refresh spike)
 
-1. Build `assembleGeniexRelease` from a clean commit with QAIRT 2.50 staged; check it with
-   `check_reference_apk.py --flavor geniex --qairt-version 2.50.0.260828221209 --qairt-libs app/src/geniex/jniLibs/qairt-libs.json`.
-2. Stage the bundle (`stage_geniex_bundle.py`, then `--push --serial …`) and the Q4_0 GGUF
-   (`stage_model.py`, once its pin lands).
-3. Run a configuration like the one below (it needs the `qwen3` gate template and the GGUF pin).
-4. Check, from the capture: the bundle loads on a non-Galaxy SM8850 (a refusal is a QNN context
-   error from create, or a `soc_model` complaint); every geniex-npu-log-v1 line appears in each
-   repetition window with the format above; `runtimeVersions.qairt` is 2.50.0.260828221209; how
-   many tokens Qwen3 decodes; and the gate result against the CPU reference. If the bundle
-   refuses QAIRT 2.50 on this phone, build once with `-Pxebench.geniexAarQairt=true` (the AAR's
-   QAIRT 2.45) to separate a version problem from a chipset one.
+The spike ran this path on 2026-10-22 with a geniex release APK built from a clean commit with
+QAIRT 2.50 staged, the configuration
+[`spike-refresh-geniex-qwen3-v1`](../../xebenchapp/configs/spike-refresh-geniex-qwen3-v1.json) (one
+measured repetition after the gate; a spike configuration, never a board row) and the bundle and
+GGUF staged at their pins. Full notes:
+[model-refresh.md, section 5](model-refresh.md#5-genie-x-080-qwen3-17b-npu); evidence: bundle
+[`8c41c4e258ff…`](../../evidence/8c41c4e258ff4dd1fc149f165b8c45c7fe2cc3bb91f1db13b2db2acf078befb5/).
+
+- **The "for Galaxy" SM8850 bundle loads and runs on the non-Galaxy POCO F8 Ultra.** No QNN
+  context error, no `soc_model` complaint; the log reads `HTP arch v81 detected.`
+- **QAIRT 2.50 is the runtime that loads.** `runtimeVersions.qairt` is 2.50.0.260828221209, the
+  build of the packaged `libQnnHtp.so`, and the FastRPC skel line names `qnn_2_50_0`. The 2.45
+  comparison build was not needed.
+- **The QAIRT pipeline prepends BOS 151643** (`<|endoftext|>`) to the Qwen3 prompt
+  (`first-turn BOS=true, ids start with [151643, …]`): std-pp512-v1 is 520 tokens on the NPU and
+  519 on the llama_cpp CPU plugin, as [What runs](#what-runs) states.
+- **The pushed bundle directory must be readable by the app.** The first attempt was recorded
+  `setup-failed` ("the model artifact could not be read"): adb had created the directory owned by
+  `shell` with mode 2770 (group `ext_data_rw`), which the app's uid cannot enter. With mode 2775
+  the rerun loaded; `stage_geniex_bundle.py --push` sets and checks that mode.
+- **Output gate: pass** against GENIE-X's own llama_cpp CPU run.
+- **Backend: every geniex-npu-log-v1 event matched** the real log lines as written (see
+  [Backend evidence](#backend-evidence-geniex-npu-log-v1)).
+- **Decode:** 128 tokens on both backends (std-pp512-v1 does not reach Qwen3's end of turn).
+
+A board configuration for this setup has the same shape, with three repetitions:
 
 ```json
 {
