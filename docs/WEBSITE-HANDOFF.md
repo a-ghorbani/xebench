@@ -230,19 +230,18 @@ for three models (Gemma 4 E2B, Qwen3 1.7B, Gemma 3 1B):
 | Engine | `build.engineVersion` · `build.bindingVersion` | Rows |
 | --- | --- | --- |
 | `llama.cpp` | llama.cpp b11804 (c7fc509) · llama.rn 0.13.0-rc.8 | 14: CPU on the POCO F8 Ultra and Pixel 9 (three models each) and the Galaxy S23 (Qwen3 1.7B, Gemma 3 1B); `gpu` and `npu` on the POCO F8 Ultra (three models each) |
-| `litert-lm` | LiteRT-LM 0.18.1 (no binding; the NPU row's `runtimes` add litert-npu-runtime-qualcomm 2.3.0 and QAIRT 2.50.0.260828221209) | 9: CPU on the POCO F8 Ultra and Pixel 9 (three models each) and the Galaxy S23 (Gemma 4 E2B, Gemma 3 1B); `npu` on the POCO F8 Ultra (Gemma 3 1B) |
+| `litert-lm` | LiteRT-LM 0.18.1 (no binding; the NPU row's `runtimes` add litert-npu-runtime-qualcomm 2.3.0 and QAIRT 2.50.0.260828221209) | 10: CPU on all three phones (three models each); `npu` on the POCO F8 Ultra (Gemma 3 1B) |
 | `executorch` | ExecuTorch 1.4.1 · react-native-executorch 0.10.7 | 6: CPU on all three phones (Gemma 4 E2B, Qwen3 1.7B) |
 | `genie-x` | geniex-android 0.8.0 (no binding; `runtimes` add QAIRT 2.50.0.260828221209) | 1: `npu` on the POCO F8 Ultra (Qwen3 1.7B) |
 
-Every one of the 30 lab rows is `verified`. Two quant labels state no single bit width and carry
+Every one of the 31 lab rows is `verified`. Two quant labels state no single bit width and carry
 no `quantBits`: `mixed 2/4/8-bit` (LiteRT-LM Gemma 4 E2B) and `mixed 4/16-bit` (ExecuTorch Gemma 4
 E2B); ExecuTorch's Qwen3 1.7B rows are `4-bit weights, 8-bit activations` (`quantBits` 4). The
 GENIE-X row's prefill is `ttft-derived`: GENIE-X reports no separate prefill time. A model, engine
 and phone without a row has no row in `rows`, for one of two reasons the page does not need to
 tell apart: the board has no setup for it (no file for that engine, or the phone cannot run it),
-or the setup is in its engine's set but has no displayable session. One setup is in the second
-case: Galaxy S23, LiteRT-LM, Qwen3 1.7B, whose only session ran while the phone charged; its
-rerun, once it passes, appears as an ordinary row with no other change. Either way the page shows
+or the setup is in its engine's set but has no displayable session (no setup is in that case
+now; a later passing session appears as an ordinary row with no other change). Either way the page shows
 nothing for it, never a placeholder that suggests a failed or missing run. A board that declares a `carryover` would show
 an engine's July rows next to its new set; the row text tells them apart, and the page should
 then not present the two as one comparable series. No engine declares one.

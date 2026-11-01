@@ -30,13 +30,13 @@ A set change, not a correction: no published number was wrong. Owner decision 20
 
   ENGINES.md's headline compared the July GENIE-X NPU row (Genie 1.19 through the CLI, "it just
   runs") with LiteRT-LM's assembled NPU stack.
-- **What is true.** The board shows 30 lab rows for Gemma 4 E2B, Qwen3 1.7B and Gemma 3 1B, all
+- **What is true.** The board shows 31 lab rows for Gemma 4 E2B, Qwen3 1.7B and Gemma 3 1B, all
   verified, measured in November 2026, one set per engine:
 
   | Engine | Versions | Rows |
   | --- | --- | --- |
   | llama.cpp | llama.cpp b11804 (c7fc509) + llama.rn 0.13.0-rc.8 | CPU: three models on the POCO F8 Ultra and Pixel 9, Qwen3 1.7B and Gemma 3 1B on the Galaxy S23; GPU (OpenCL) and NPU (Hexagon): three models on the POCO F8 Ultra (14) |
-  | LiteRT-LM | 0.18.1 | CPU: three models on the POCO F8 Ultra and Pixel 9, Gemma 4 E2B and Gemma 3 1B on the Galaxy S23; NPU: Gemma 3 1B on the POCO F8 Ultra (9) |
+  | LiteRT-LM | 0.18.1 | CPU: three models on all three phones; NPU: Gemma 3 1B on the POCO F8 Ultra (10) |
   | ExecuTorch | ExecuTorch 1.4.1 + react-native-executorch 0.10.7 | CPU (XNNPACK): Gemma 4 E2B and Qwen3 1.7B on all three phones (6) |
   | GENIE-X | geniex-android 0.8.0, in the app | NPU: Qwen3 1.7B W4A16 on the POCO F8 Ultra (1) |
 
@@ -44,10 +44,11 @@ A set change, not a correction: no published number was wrong. Owner decision 20
   through a −∞ logit bias on every end-of-generation token, LiteRT-LM through its benchmark
   engine, ExecuTorch through `ignoreEos`); GENIE-X cannot, and its row decoded 128 tokens in every
   repetition. Quant labels: Q4_0 (QAT) and Q4_0 (GGUF), `mixed 2/4/8-bit` and int4 (LiteRT-LM),
-  `mixed 4/16-bit` and `4-bit weights, 8-bit activations` (ExecuTorch), W4A16 (GENIE-X). Two
-  phone setups in the measured matrix have no row: llama.cpp Gemma 4 E2B on the Galaxy S23 (the file does not fit
-  with full loading), and LiteRT-LM Qwen3 1.7B on the Galaxy S23 (its only session failed the
-  charging check; one rerun under the single-rerun rule). The ENGINES.md headline is now the NPU
+  `mixed 4/16-bit` and `4-bit weights, 8-bit activations` (ExecuTorch), W4A16 (GENIE-X). One
+  phone setup in the measured matrix has no row: llama.cpp Gemma 4 E2B on the Galaxy S23 (the file
+  does not fit with full loading). The Galaxy S23 LiteRT-LM Qwen3 1.7B row is that setup's rerun
+  under the single-rerun rule; its first session failed the charging check and stays in the
+  history. The ENGINES.md headline is now the NPU
   contrast on the POCO F8 Ultra: llama.cpp's Hexagon backend runs all three models, LiteRT-LM and
   GENIE-X run the one model their vendor compiles for the chip.
 - **What changed.**
@@ -60,8 +61,9 @@ A set change, not a correction: no published number was wrong. Owner decision 20
     1B SpinQuant 4-bit on four phones (4); GENIE-X Llama 3.2 1B W4A16 NPU and Qwen2.5 1.5B Q8_0 CPU
     (2). `data/sessions/index.json` keeps every retired row and session; the six July ExecuTorch
     and GENIE-X rows sit under `replacedRows` with `reason: "retired"`, their month and its basis.
-  - The Galaxy S23 LiteRT-LM Qwen3 1.7B key stays in the set without a displayed session
-    (`no-session-in-set`); its rerun, when it passes, is published without a board change.
+  - The Galaxy S23 LiteRT-LM Qwen3 1.7B rerun (`1793562078967-0-hjdzmf7lkhm`, staged in
+    [#56](https://github.com/a-ghorbani/xebench/pull/56)) is in the set and displays; its failed
+    first session (`1793530513103-0-0corrg3f8ple`) stays in the history.
   - `data/benchmarks.json` moves to contract 1.4 (its ExecuTorch rows carry ExecuTorch and
     react-native-executorch versions).
   - `data/findings.json`: `litert-lm-npu-integration` states LiteRT-LM 0.18.1 and the missing NPU

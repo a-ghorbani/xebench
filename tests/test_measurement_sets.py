@@ -27,15 +27,14 @@ MODEL_REFRESH_ROWS = {
     *(f"llama.cpp|{backend}|android|{F8}|{model}|{quant}|measured" for backend in ("gpu", "npu")
       for model, quant in ((GEMMA4, "Q4_0 (QAT)"), (QWEN3, "Q4_0"), (GEMMA3, "Q4_0 (QAT)"))),
     *(f"litert-lm|cpu|android|{device}|{model}|{quant}|measured"
-      for device in (F8, S23, P9) for model, quant in ((GEMMA4, "mixed 2/4/8-bit"), (QWEN3, "int4"), (GEMMA3, "int4"))
-      if (device, model) != (S23, QWEN3)),
+      for device in (F8, S23, P9) for model, quant in ((GEMMA4, "mixed 2/4/8-bit"), (QWEN3, "int4"), (GEMMA3, "int4"))),
     f"litert-lm|npu|android|{F8}|{GEMMA3}|int4|measured",
     *(f"executorch|cpu|android|{device}|{model}|{quant}|measured"
       for device in (F8, S23, P9) for model, quant in ((GEMMA4, "mixed 4/16-bit"), (QWEN3, "4-bit weights, 8-bit activations"))),
     f"genie-x|npu|android|{F8}|{QWEN3}|W4A16|measured",
 }
-# In the LiteRT-LM set, but its only session failed the charging check (one rerun under the single-rerun rule).
-S23_LITERT_QWEN3 = f"litert-lm|cpu|android|{S23}|{QWEN3}|int4|measured"
+# Its first session failed the charging check; its one rerun under the single-rerun rule is the board row.
+S23_LITERT_QWEN3 =f"litert-lm|cpu|android|{S23}|{QWEN3}|int4|measured"
 PHONE = "llama.cpp|cpu|android|Google Fixture Phone|Llama 3.2 1B|Q4_K_M|measured"
 TABLET = "llama.cpp|cpu|android|Google Fixture Tablet|Llama 3.2 1B|Q4_K_M|measured"
 
@@ -118,7 +117,7 @@ class CheckedInSetTests(unittest.TestCase):
                     self.assertEqual(row["sourceDate"], engine_set["measured"])
 
     def test_the_model_refresh_board(self):
-        """Exactly the 30 lab rows of the model-refresh sets, every one verified and measured in
+        """Exactly the 31 lab rows of the model-refresh sets, every one verified and measured in
         November 2026 with its engine's versions; every engine but GENIE-X decodes 128 tokens past the
         end of turn, and GENIE-X states that it decoded 128."""
         lab = {key_of(row): row for row in self.data["rows"] if row["provenance"] == "measured"}
@@ -161,14 +160,16 @@ class CheckedInSetTests(unittest.TestCase):
             with self.subTest(key):
                 self.assertEqual((entries[key]["displayed"], entries[key]["rule"]), (None, "retired"))
 
-    def test_the_galaxy_s23_litert_lm_qwen3_setup_shows_no_row(self):
-        """The setup's only session failed the charging check: it is in the history, the key is in the
-        set and not retired, and the board shows nothing until a session of the set passes."""
+    def test_the_galaxy_s23_litert_lm_qwen3_setup_shows_its_rerun(self):
+        """The setup's first session failed the charging check and stays in the history; its one rerun
+        under the single-rerun rule is verified and is the board row."""
         entry = next(entry for entry in self.index["keys"] if entry["key"] == S23_LITERT_QWEN3)
-        self.assertEqual((entry["displayed"], entry["rule"]), (None, "no-session-in-set"))
-        self.assertEqual([session["validation"] for session in entry["sessions"]], ["failed"])
-        self.assertEqual(entry["sessions"][0]["row"]["configurationId"], "litertlm-qwen3-int4-cpu-v2")
-        self.assertNotIn(S23_LITERT_QWEN3, {key_of(row) for row in self.data["rows"]})
+        self.assertEqual((entry["displayed"], entry["rule"]), ("1793562078967-0-hjdzmf7lkhm", "newest-verified"))
+        self.assertEqual([(session["sessionId"], session["validation"]) for session in entry["sessions"]],
+                         [("1793530513103-0-0corrg3f8ple", "failed"), ("1793562078967-0-hjdzmf7lkhm", "verified")])
+        self.assertTrue(all(session["row"]["configurationId"] == "litertlm-qwen3-int4-cpu-v2" for session in entry["sessions"]))
+        row = next(row for row in self.data["rows"] if key_of(row) == S23_LITERT_QWEN3)
+        self.assertEqual(row["evidence"]["sessionIds"], ["1793562078967-0-hjdzmf7lkhm"])
         self.assertNotIn(S23_LITERT_QWEN3, {item["key"] for item in self.board["retiredKeys"]})
 
     def test_board_labels(self):

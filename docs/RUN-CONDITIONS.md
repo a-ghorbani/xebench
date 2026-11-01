@@ -471,19 +471,16 @@ measured from 2026-11-01, for Gemma 4 E2B, Qwen3 1.7B and Gemma 3 1B:
 | `executorch` | `ExecuTorch 1.4.1` + `react-native-executorch 0.10.7` | `executorch-gemma4-cpu-v1`, `executorch-qwen3-cpu-v1` (`cpu`) |
 | `genie-x` | `geniex-android 0.8.0`, no binding | `geniex-qwen3-sm8850-npu-v1` (`npu`) |
 
-Every lab row on the board is a session of these sets: 30 rows, all verified (llama.cpp 14,
-LiteRT-LM 9, ExecuTorch 6, GENIE-X 1). The board shows no July 2026 row. The CPU runs of the
-accelerator configurations (gate references) are in the history only.
+Every lab row on the board is a session of these sets: 31 rows, all verified (llama.cpp 14,
+LiteRT-LM 10, ExecuTorch 6, GENIE-X 1). The board shows no July 2026 row. The CPU runs of the
+accelerator configurations (gate references) are in the history only. Every setup of the sets
+has a row; the one phone setup without a configuration is llama.cpp Gemma 4 E2B on the Galaxy S23.
 
-One setup of the sets has no row: Galaxy S23, LiteRT-LM, Qwen3 1.7B (`litertlm-qwen3-int4-cpu-v2`).
-Its only session (`1793530513103-0-0corrg3f8ple`) ran while the phone charged in its third
-repetition, so publication policy v1 rates it `failed` (charging), and a failed session is never
-displayed. Its key is in the set and not retired: its index entry displays nothing
-(`no-session-in-set`). The single-rerun rule gives it one unchanged rerun on the same phone and
-APK ([REFERENCE-RUNS.md](REFERENCE-RUNS.md#model-refresh-board-configurations)). Publishing that
-session with `aggregate.mjs --from-bundles evidence/ --session <id> --update` (it is in the set,
-so no flag is needed) displays it when it passes, with no change to `configs/board.json`; if it
-does not pass, the key is retired with the reason.
+The Galaxy S23 LiteRT-LM Qwen3 1.7B row (`litertlm-qwen3-int4-cpu-v2`) is the setup's second
+session (`1793562078967-0-hjdzmf7lkhm`), its one rerun under the single-rerun rule
+([REFERENCE-RUNS.md](REFERENCE-RUNS.md#model-refresh-board-configurations)). The first
+(`1793530513103-0-0corrg3f8ple`) ran while the phone charged in its third repetition; publication
+policy v1 rates it `failed` (charging), and it stays in the history.
 
 Setups that are retired (`retiredKeys`, each with its reason; the rows and sessions stay in
 `data/sessions/index.json`):
