@@ -160,6 +160,161 @@
       "replacedRows": []
     },
     {
+      "key": "executorch|cpu|android|POCO F8 Ultra|Gemma 4 E2B|mixed 4/16-bit|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793535622764-0-ktcp60m895r",
+          "timestampIso": "2026-11-01T12:20:22.764Z",
+          "bundleSha256": "27286631777c4bd7b970f2aaa6de8ca1ceb9d1d2bd62169a78b1337f668516d2",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/27286631777c4bd7b970f2aaa6de8ca1ceb9d1d2bd62169a78b1337f668516d2/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "executorch",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 4 E2B",
+            "quant": "mixed 4/16-bit",
+            "ppTps": 66.6,
+            "tgTps": 6.9,
+            "ttftMs": 7798.3,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "executorch-gemma4-cpu-v1",
+            "configurationSha256": "205b979977a868d604467d235c5c77eebd94632b9b031d589197d7259cca5074",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.1,
+                "min": 66.3,
+                "max": 66.6
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 6.8,
+                "max": 7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793535622764-0-ktcp60m895r"
+              ],
+              "bundleSha256": "27286631777c4bd7b970f2aaa6de8ca1ceb9d1d2bd62169a78b1337f668516d2",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/27286631777c4bd7b970f2aaa6de8ca1ceb9d1d2bd62169a78b1337f668516d2/manifest.json"
+            },
+            "build": {
+              "engineVersion": "ExecuTorch 1.4.1",
+              "bindingVersion": "react-native-executorch 0.10.7",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "ExecuTorch",
+                  "version": "1.4.1"
+                },
+                {
+                  "name": "react-native-executorch",
+                  "version": "0.10.7"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "executorch|cpu|android|POCO F8 Ultra|Qwen3 1.7B|4-bit weights, 8-bit activations|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793536089765-0-scjybiccsg",
+          "timestampIso": "2026-11-01T12:28:09.765Z",
+          "bundleSha256": "01a7fe322fe4532da207c191cc46b755bc9fc8bc9df022402201777dafa143e6",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/01a7fe322fe4532da207c191cc46b755bc9fc8bc9df022402201777dafa143e6/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "executorch",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "4-bit weights, 8-bit activations",
+            "quantBits": 4,
+            "ppTps": 323,
+            "tgTps": 31.3,
+            "ttftMs": 1606.8,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "executorch-qwen3-cpu-v1",
+            "configurationSha256": "67c0068b431b36fe95e8fb278809ca80bfd3f30a6b235f3b48f5b2cc9b49889f",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 2.1,
+                "min": 319.6,
+                "max": 323.8
+              },
+              "tgTps": {
+                "iqr": 0.4,
+                "min": 30.9,
+                "max": 31.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793536089765-0-scjybiccsg"
+              ],
+              "bundleSha256": "01a7fe322fe4532da207c191cc46b755bc9fc8bc9df022402201777dafa143e6",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/01a7fe322fe4532da207c191cc46b755bc9fc8bc9df022402201777dafa143e6/manifest.json"
+            },
+            "build": {
+              "engineVersion": "ExecuTorch 1.4.1",
+              "bindingVersion": "react-native-executorch 0.10.7",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "ExecuTorch",
+                  "version": "1.4.1"
+                },
+                {
+                  "name": "react-native-executorch",
+                  "version": "0.10.7"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "executorch|cpu|android|Samsung Galaxy S23|Gemma 4 E2B|mixed 4/16-bit|measured",
       "displayed": null,
       "rule": "no-session-in-set",
@@ -306,6 +461,156 @@
                 {
                   "name": "react-native-executorch",
                   "version": "0.10.7"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "genie-x|cpu|android|POCO F8 Ultra|Qwen3 1.7B|Q4_0|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793536545040-0-xf8twobz2gk",
+          "timestampIso": "2026-11-01T12:35:45.040Z",
+          "bundleSha256": "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "genie-x",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "Q4_0",
+            "quantBits": 4,
+            "ppTps": 155.7,
+            "tgTps": 34.3,
+            "ttftMs": 3336.9,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "geniex-qwen3-sm8850-npu-v1",
+            "configurationSha256": "ff2a3390002dff9dc2f81e123cdeb97296e5c7d8ef5be4b9a1ff520ace96219e",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.2,
+                "min": 155.4,
+                "max": 155.8
+              },
+              "tgTps": {
+                "iqr": 0.4,
+                "min": 33.5,
+                "max": 34.3
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793536545040-0-xf8twobz2gk"
+              ],
+              "bundleSha256": "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/manifest.json"
+            },
+            "build": {
+              "engineVersion": "geniex-android 0.8.0",
+              "apkSha256": "ff3ee310ebe61c7ac404aa0c7c71149f62e1fcb390a7ed02bbce8b5f0cf58cbd",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "geniex-android",
+                  "version": "0.8.0"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "genie-x|npu|android|POCO F8 Ultra|Qwen3 1.7B|W4A16|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793536930813-1-p8yctwh7tum",
+          "timestampIso": "2026-11-01T12:42:10.813Z",
+          "bundleSha256": "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "genie-x",
+            "backend": "npu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "W4A16",
+            "quantBits": 4,
+            "ppTps": 2297.1,
+            "tgTps": 27.9,
+            "ttftMs": 229.3,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter); publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "geniex-qwen3-sm8850-npu-v1",
+            "configurationSha256": "ff2a3390002dff9dc2f81e123cdeb97296e5c7d8ef5be4b9a1ff520ace96219e",
+            "timingMethod": "prefill ttft-derived, decode engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 217,
+                "min": 2246.9,
+                "max": 2680.9
+              },
+              "tgTps": {
+                "iqr": 0.9,
+                "min": 27.4,
+                "max": 29.3
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793536930813-1-p8yctwh7tum"
+              ],
+              "bundleSha256": "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/manifest.json"
+            },
+            "build": {
+              "engineVersion": "geniex-android 0.8.0",
+              "apkSha256": "ff3ee310ebe61c7ac404aa0c7c71149f62e1fcb390a7ed02bbce8b5f0cf58cbd",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "QAIRT",
+                  "version": "2.50.0.260828221209"
+                },
+                {
+                  "name": "geniex-android",
+                  "version": "0.8.0"
                 }
               ]
             }
@@ -897,6 +1202,136 @@
               ]
             }
           }
+        },
+        {
+          "sessionId": "1793534450540-0-6rbrh8x22cs",
+          "timestampIso": "2026-11-01T12:00:50.540Z",
+          "bundleSha256": "4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 3 1B",
+            "quant": "int4",
+            "quantBits": 4,
+            "ppTps": 661.7,
+            "tgTps": 42.2,
+            "ttftMs": 855.9,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-gemma3-int4-cpu-v2",
+            "configurationSha256": "3392626264601b55a254cafddc7d96f446f8ed99eae1be0bfca95db72f3dccd4",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 5.5,
+                "min": 650.7,
+                "max": 661.7
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 42,
+                "max": 42.2
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793534450540-0-6rbrh8x22cs"
+              ],
+              "bundleSha256": "4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "sessionId": "1793535204332-1-fyi6dc2vmz",
+          "timestampIso": "2026-11-01T12:13:24.332Z",
+          "bundleSha256": "9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 3 1B",
+            "quant": "int4",
+            "quantBits": 4,
+            "ppTps": 661.6,
+            "tgTps": 42.1,
+            "ttftMs": 855.8,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-gemma3-sm8850-npu-v2",
+            "configurationSha256": "dcb10952eb1d3e0d2116246992c45f3101df4217fd00cb430e3df08fdf771b7f",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 6.5,
+                "min": 655.5,
+                "max": 668.5
+              },
+              "tgTps": {
+                "iqr": 0.2,
+                "min": 42.1,
+                "max": 42.5
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793535204332-1-fyi6dc2vmz"
+              ],
+              "bundleSha256": "9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
+                }
+              ]
+            }
+          }
         }
       ],
       "replacedRows": [
@@ -928,6 +1363,78 @@
           }
         }
       ]
+    },
+    {
+      "key": "litert-lm|cpu|android|POCO F8 Ultra|Gemma 4 E2B|mixed 2/4/8-bit|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793533611266-0-joii7rfsgih",
+          "timestampIso": "2026-11-01T11:46:51.266Z",
+          "bundleSha256": "cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 4 E2B",
+            "quant": "mixed 2/4/8-bit",
+            "ppTps": 259.3,
+            "tgTps": 29.7,
+            "ttftMs": 2116.7,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-gemma4-cpu-v2",
+            "configurationSha256": "7681ebf86007662cefb70ac74f603fb686896048091bf727429069ade37384f9",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.5,
+                "min": 259,
+                "max": 260
+              },
+              "tgTps": {
+                "iqr": 0.2,
+                "min": 29.4,
+                "max": 29.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793533611266-0-joii7rfsgih"
+              ],
+              "bundleSha256": "cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
     },
     {
       "key": "litert-lm|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8|measured",
@@ -1094,6 +1601,79 @@
           }
         }
       ]
+    },
+    {
+      "key": "litert-lm|cpu|android|POCO F8 Ultra|Qwen3 1.7B|int4|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793534024008-0-vrm9j74lr98",
+          "timestampIso": "2026-11-01T11:53:44.008Z",
+          "bundleSha256": "73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "int4",
+            "quantBits": 4,
+            "ppTps": 91.7,
+            "tgTps": 10.6,
+            "ttftMs": 6374.8,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-qwen3-int4-cpu-v2",
+            "configurationSha256": "3d1f4a5747e4eeaa0859d6d7e8533342acb64e9445f77c6f7d4a38b752746b4b",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.2,
+                "min": 91.5,
+                "max": 91.9
+              },
+              "tgTps": {
+                "iqr": 0,
+                "min": 10.6,
+                "max": 10.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793534024008-0-vrm9j74lr98"
+              ],
+              "bundleSha256": "73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
     },
     {
       "key": "litert-lm|cpu|android|Samsung Galaxy S23|Gemma 3 1B|int4|measured",
@@ -1775,6 +2355,79 @@
                 {
                   "name": "LiteRT-LM",
                   "version": "0.18.0"
+                },
+                {
+                  "name": "litert-npu-runtime-qualcomm",
+                  "version": "2.3.0"
+                },
+                {
+                  "name": "QAIRT",
+                  "version": "2.50.0.260828221209"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "sessionId": "1793534832599-0-agxjwf3zgng",
+          "timestampIso": "2026-11-01T12:07:12.599Z",
+          "bundleSha256": "9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "npu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 3 1B",
+            "quant": "int4",
+            "quantBits": 4,
+            "ppTps": 5010.7,
+            "tgTps": 68.8,
+            "ttftMs": 165.5,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-gemma3-sm8850-npu-v2",
+            "configurationSha256": "dcb10952eb1d3e0d2116246992c45f3101df4217fd00cb430e3df08fdf771b7f",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 110.8,
+                "min": 4859.7,
+                "max": 5081.4
+              },
+              "tgTps": {
+                "iqr": 0.7,
+                "min": 67.9,
+                "max": 69.2
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793534832599-0-agxjwf3zgng"
+              ],
+              "bundleSha256": "9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
                 },
                 {
                   "name": "litert-npu-runtime-qualcomm",
@@ -2559,6 +3212,146 @@
               ]
             }
           }
+        },
+        {
+          "sessionId": "1793529671406-0-kejv04w7u1",
+          "timestampIso": "2026-11-01T10:41:11.406Z",
+          "bundleSha256": "b8d1aaa9922e05870eebe9ec0e8acb66e7440d0333d233f26dcb15f653d63dfe",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/b8d1aaa9922e05870eebe9ec0e8acb66e7440d0333d233f26dcb15f653d63dfe/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 3 1B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 404.7,
+            "tgTps": 50.3,
+            "ttftMs": 1287.5,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "cpu-reference-v4-gemma3",
+            "configurationSha256": "1df6e1f614cfa574f32e06f5fcb6e83ae3f256d35e38d8101ebb0d233e260bbb",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 2.2,
+                "min": 401.4,
+                "max": 405.8
+              },
+              "tgTps": {
+                "iqr": 0.2,
+                "min": 50.2,
+                "max": 50.5
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793529671406-0-kejv04w7u1"
+              ],
+              "bundleSha256": "b8d1aaa9922e05870eebe9ec0e8acb66e7440d0333d233f26dcb15f653d63dfe",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/b8d1aaa9922e05870eebe9ec0e8acb66e7440d0333d233f26dcb15f653d63dfe/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "sessionId": "1793533222721-2-9h9ffjxra69",
+          "timestampIso": "2026-11-01T11:40:22.721Z",
+          "bundleSha256": "54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 3 1B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 405.5,
+            "tgTps": 50.6,
+            "ttftMs": 1285.7,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-gemma3-opencl-hexagon-v1",
+            "configurationSha256": "eaf46be288a6cdb43c049dee26d9434ad7fed19309dea07c52ce8b23f838e59b",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.8,
+                "min": 404.4,
+                "max": 406
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 50.6,
+                "max": 50.8
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793533222721-2-9h9ffjxra69"
+              ],
+              "bundleSha256": "54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
         }
       ],
       "replacedRows": [
@@ -2590,6 +3383,154 @@
           }
         }
       ]
+    },
+    {
+      "key": "llama.cpp|cpu|android|POCO F8 Ultra|Gemma 4 E2B|Q4_0 (QAT)|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793529262255-0-5q39sg7gtsf",
+          "timestampIso": "2026-11-01T10:34:22.255Z",
+          "bundleSha256": "d4868653a0473672942213ae4212aba783457b77676198235eaa8f81d639ac56",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/d4868653a0473672942213ae4212aba783457b77676198235eaa8f81d639ac56/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 4 E2B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 129.8,
+            "tgTps": 26.7,
+            "ttftMs": 4005,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "cpu-reference-v4-gemma4",
+            "configurationSha256": "d365c7eaea1d0ffdf8059a9b8f3ce87571f0dd9d0af1648063e4b04fef123695",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 12.5,
+                "min": 117.6,
+                "max": 142.7
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 26.6,
+                "max": 26.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793529262255-0-5q39sg7gtsf"
+              ],
+              "bundleSha256": "d4868653a0473672942213ae4212aba783457b77676198235eaa8f81d639ac56",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/d4868653a0473672942213ae4212aba783457b77676198235eaa8f81d639ac56/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "sessionId": "1793530881477-2-3h0q1d0taof",
+          "timestampIso": "2026-11-01T11:01:21.478Z",
+          "bundleSha256": "658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 4 E2B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 141.2,
+            "tgTps": 26.8,
+            "ttftMs": 3725.6,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-gemma4-opencl-hexagon-v1",
+            "configurationSha256": "f7d4201de35d07bc90f4f5c5276f46133f70164b54c2d28226974ed0524d8303",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 8.1,
+                "min": 126.6,
+                "max": 142.9
+              },
+              "tgTps": {
+                "iqr": 0,
+                "min": 26.8,
+                "max": 26.8
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793530881477-2-3h0q1d0taof"
+              ],
+              "bundleSha256": "658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
     },
     {
       "key": "llama.cpp|cpu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_0|measured",
@@ -2978,6 +3919,154 @@
           }
         }
       ]
+    },
+    {
+      "key": "llama.cpp|cpu|android|POCO F8 Ultra|Qwen3 1.7B|Q4_0|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793528833103-0-lbkaqccwro",
+          "timestampIso": "2026-11-01T10:27:13.103Z",
+          "bundleSha256": "4962248f3874aa41ef01e2f4efed34f0f02c691bc72db295f594711299678a7d",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/4962248f3874aa41ef01e2f4efed34f0f02c691bc72db295f594711299678a7d/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "Q4_0",
+            "quantBits": 4,
+            "ppTps": 203.4,
+            "tgTps": 35.6,
+            "ttftMs": 2555.8,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "cpu-reference-v4-qwen3",
+            "configurationSha256": "56956cf172e36b7b93579e4f8ea5b3d85d88b6707a58ee618b15eada4342cdc7",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.9,
+                "min": 201.9,
+                "max": 203.7
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 35.6,
+                "max": 35.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793528833103-0-lbkaqccwro"
+              ],
+              "bundleSha256": "4962248f3874aa41ef01e2f4efed34f0f02c691bc72db295f594711299678a7d",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/4962248f3874aa41ef01e2f4efed34f0f02c691bc72db295f594711299678a7d/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "sessionId": "1793531694897-1-m1hckbaqmzq",
+          "timestampIso": "2026-11-01T11:14:54.897Z",
+          "bundleSha256": "57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "Q4_0",
+            "quantBits": 4,
+            "ppTps": 203.5,
+            "tgTps": 35.5,
+            "ttftMs": 2553.5,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-qwen3-opencl-hexagon-v1",
+            "configurationSha256": "e088204a851b822419cac78e8e350137643975cd6011fa1e54cb020ffcb615d5",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.4,
+                "min": 202.9,
+                "max": 203.6
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 35.5,
+                "max": 35.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793531694897-1-m1hckbaqmzq"
+              ],
+              "bundleSha256": "57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
     },
     {
       "key": "llama.cpp|cpu|android|Samsung Galaxy S23|Gemma 3 1B|Q4_0 (QAT)|measured",
@@ -3598,6 +4687,162 @@
       "replacedRows": []
     },
     {
+      "key": "llama.cpp|gpu|android|POCO F8 Ultra|Gemma 3 1B|Q4_0 (QAT)|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793532838998-1-8njmz5i94c6",
+          "timestampIso": "2026-11-01T11:33:58.998Z",
+          "bundleSha256": "54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "gpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 3 1B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 966.2,
+            "tgTps": 42.1,
+            "ttftMs": 547.2,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-gemma3-opencl-hexagon-v1",
+            "configurationSha256": "eaf46be288a6cdb43c049dee26d9434ad7fed19309dea07c52ce8b23f838e59b",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 12.5,
+                "min": 946.2,
+                "max": 971.2
+              },
+              "tgTps": {
+                "iqr": 0.3,
+                "min": 41.6,
+                "max": 42.1
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793532838998-1-8njmz5i94c6"
+              ],
+              "bundleSha256": "54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "llama.cpp|gpu|android|POCO F8 Ultra|Gemma 4 E2B|Q4_0 (QAT)|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793530464960-1-w452032gqz",
+          "timestampIso": "2026-11-01T10:54:24.960Z",
+          "bundleSha256": "658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "gpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 4 E2B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 400.4,
+            "tgTps": 29.4,
+            "ttftMs": 1343.3,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-gemma4-opencl-hexagon-v1",
+            "configurationSha256": "f7d4201de35d07bc90f4f5c5276f46133f70164b54c2d28226974ed0524d8303",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 2.2,
+                "min": 397.3,
+                "max": 401.7
+              },
+              "tgTps": {
+                "iqr": 0.3,
+                "min": 29.2,
+                "max": 29.8
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793530464960-1-w452032gqz"
+              ],
+              "bundleSha256": "658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "llama.cpp|gpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured",
       "displayed": "1792414018964-1-mg19hjel11r",
       "rule": "newest-verified",
@@ -3704,6 +4949,84 @@
       ]
     },
     {
+      "key": "llama.cpp|gpu|android|POCO F8 Ultra|Qwen3 1.7B|Q4_0|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793531294541-0-qo9a0qiaoli",
+          "timestampIso": "2026-11-01T11:08:14.541Z",
+          "bundleSha256": "57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "gpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "Q4_0",
+            "quantBits": 4,
+            "ppTps": 415.9,
+            "tgTps": 27.1,
+            "ttftMs": 1259.1,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-qwen3-opencl-hexagon-v1",
+            "configurationSha256": "e088204a851b822419cac78e8e350137643975cd6011fa1e54cb020ffcb615d5",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.6,
+                "min": 414.7,
+                "max": 416
+              },
+              "tgTps": {
+                "iqr": 1.4,
+                "min": 26.9,
+                "max": 29.8
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793531294541-0-qo9a0qiaoli"
+              ],
+              "bundleSha256": "57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
       "displayed": null,
       "rule": "retired",
@@ -3738,6 +5061,162 @@
           }
         }
       ]
+    },
+    {
+      "key": "llama.cpp|npu|android|POCO F8 Ultra|Gemma 3 1B|Q4_0 (QAT)|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793532463356-0-k0dqkk33548",
+          "timestampIso": "2026-11-01T11:27:43.356Z",
+          "bundleSha256": "54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "npu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 3 1B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 3634.7,
+            "tgTps": 46.6,
+            "ttftMs": 148.7,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-gemma3-opencl-hexagon-v1",
+            "configurationSha256": "eaf46be288a6cdb43c049dee26d9434ad7fed19309dea07c52ce8b23f838e59b",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 40.8,
+                "min": 3634.4,
+                "max": 3716
+              },
+              "tgTps": {
+                "iqr": 0.7,
+                "min": 45.8,
+                "max": 47.2
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793532463356-0-k0dqkk33548"
+              ],
+              "bundleSha256": "54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "llama.cpp|npu|android|POCO F8 Ultra|Gemma 4 E2B|Q4_0 (QAT)|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793530071131-0-m7ydqxrk9wh",
+          "timestampIso": "2026-11-01T10:47:51.131Z",
+          "bundleSha256": "658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "npu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 4 E2B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 1688.3,
+            "tgTps": 31.2,
+            "ttftMs": 345.3,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-gemma4-opencl-hexagon-v1",
+            "configurationSha256": "f7d4201de35d07bc90f4f5c5276f46133f70164b54c2d28226974ed0524d8303",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 26.1,
+                "min": 1681.1,
+                "max": 1733.3
+              },
+              "tgTps": {
+                "iqr": 0.6,
+                "min": 30.1,
+                "max": 31.3
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793530071131-0-m7ydqxrk9wh"
+              ],
+              "bundleSha256": "658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
     },
     {
       "key": "llama.cpp|npu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_0|measured",
@@ -3841,6 +5320,84 @@
                 {
                   "name": "llama.rn",
                   "version": "0.13.0-rc.7"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "llama.cpp|npu|android|POCO F8 Ultra|Qwen3 1.7B|Q4_0|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793532077408-2-ki7wxv0zx7",
+          "timestampIso": "2026-11-01T11:21:17.408Z",
+          "bundleSha256": "57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "npu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "Q4_0",
+            "quantBits": 4,
+            "ppTps": 2514.1,
+            "tgTps": 45.1,
+            "ttftMs": 212.3,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "llamacpp-qwen3-opencl-hexagon-v1",
+            "configurationSha256": "e088204a851b822419cac78e8e350137643975cd6011fa1e54cb020ffcb615d5",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 21.2,
+                "min": 2499.6,
+                "max": 2542.1
+              },
+              "tgTps": {
+                "iqr": 0.8,
+                "min": 43.7,
+                "max": 45.4
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793532077408-2-ki7wxv0zx7"
+              ],
+              "bundleSha256": "57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
                 }
               ]
             }
