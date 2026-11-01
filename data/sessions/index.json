@@ -160,6 +160,156 @@
       "replacedRows": []
     },
     {
+      "key": "genie-x|cpu|android|POCO F8 Ultra|Qwen3 1.7B|Q4_0|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793536545040-0-xf8twobz2gk",
+          "timestampIso": "2026-11-01T12:35:45.040Z",
+          "bundleSha256": "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "genie-x",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "Q4_0",
+            "quantBits": 4,
+            "ppTps": 155.7,
+            "tgTps": 34.3,
+            "ttftMs": 3336.9,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "geniex-qwen3-sm8850-npu-v1",
+            "configurationSha256": "ff2a3390002dff9dc2f81e123cdeb97296e5c7d8ef5be4b9a1ff520ace96219e",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.2,
+                "min": 155.4,
+                "max": 155.8
+              },
+              "tgTps": {
+                "iqr": 0.4,
+                "min": 33.5,
+                "max": 34.3
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793536545040-0-xf8twobz2gk"
+              ],
+              "bundleSha256": "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/manifest.json"
+            },
+            "build": {
+              "engineVersion": "geniex-android 0.8.0",
+              "apkSha256": "ff3ee310ebe61c7ac404aa0c7c71149f62e1fcb390a7ed02bbce8b5f0cf58cbd",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "geniex-android",
+                  "version": "0.8.0"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
+      "key": "genie-x|npu|android|POCO F8 Ultra|Qwen3 1.7B|W4A16|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793536930813-1-p8yctwh7tum",
+          "timestampIso": "2026-11-01T12:42:10.813Z",
+          "bundleSha256": "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "genie-x",
+            "backend": "npu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "W4A16",
+            "quantBits": 4,
+            "ppTps": 2297.1,
+            "tgTps": 27.9,
+            "ttftMs": 229.3,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter); publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "geniex-qwen3-sm8850-npu-v1",
+            "configurationSha256": "ff2a3390002dff9dc2f81e123cdeb97296e5c7d8ef5be4b9a1ff520ace96219e",
+            "timingMethod": "prefill ttft-derived, decode engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 217,
+                "min": 2246.9,
+                "max": 2680.9
+              },
+              "tgTps": {
+                "iqr": 0.9,
+                "min": 27.4,
+                "max": 29.3
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793536930813-1-p8yctwh7tum"
+              ],
+              "bundleSha256": "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/manifest.json"
+            },
+            "build": {
+              "engineVersion": "geniex-android 0.8.0",
+              "apkSha256": "ff3ee310ebe61c7ac404aa0c7c71149f62e1fcb390a7ed02bbce8b5f0cf58cbd",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "QAIRT",
+                  "version": "2.50.0.260828221209"
+                },
+                {
+                  "name": "geniex-android",
+                  "version": "0.8.0"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "litert-lm|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8|measured",
       "displayed": "1792496109933-0-sbwcntrv1nf",
       "rule": "newest-verified",
