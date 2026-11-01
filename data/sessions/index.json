@@ -5,6 +5,83 @@
   "selectionRule": "engine-set-newest-verified-else-newest-unverified",
   "keys": [
     {
+      "key": "executorch|cpu|android|Google Pixel 9|Gemma 4 E2B|mixed 4/16-bit|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793532613003-0-zz0b0x2uzag",
+          "timestampIso": "2026-11-01T11:30:13.003Z",
+          "bundleSha256": "8041a206363725e7fe077fb570469f132eeabe9ddb6554266cb5a0e7fd83ffe9",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/8041a206363725e7fe077fb570469f132eeabe9ddb6554266cb5a0e7fd83ffe9/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "executorch",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Pixel 9",
+            "soc": "Tensor G4",
+            "chipName": "Google Tensor G4",
+            "model": "Gemma 4 E2B",
+            "quant": "mixed 4/16-bit",
+            "ppTps": 45,
+            "tgTps": 4.9,
+            "ttftMs": 11536.8,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "executorch-gemma4-cpu-v1",
+            "configurationSha256": "205b979977a868d604467d235c5c77eebd94632b9b031d589197d7259cca5074",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.3,
+                "min": 44.5,
+                "max": 45.1
+              },
+              "tgTps": {
+                "iqr": 0,
+                "min": 4.9,
+                "max": 5
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793532613003-0-zz0b0x2uzag"
+              ],
+              "bundleSha256": "8041a206363725e7fe077fb570469f132eeabe9ddb6554266cb5a0e7fd83ffe9",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/8041a206363725e7fe077fb570469f132eeabe9ddb6554266cb5a0e7fd83ffe9/manifest.json"
+            },
+            "build": {
+              "engineVersion": "ExecuTorch 1.4.1",
+              "bindingVersion": "react-native-executorch 0.10.7",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "ExecuTorch",
+                  "version": "1.4.1"
+                },
+                {
+                  "name": "react-native-executorch",
+                  "version": "0.10.7"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "executorch|cpu|android|Samsung Galaxy S23|Gemma 4 E2B|mixed 4/16-bit|measured",
       "displayed": null,
       "rule": "no-session-in-set",
