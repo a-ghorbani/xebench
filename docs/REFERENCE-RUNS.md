@@ -364,8 +364,9 @@ Sessions per setup (one configuration on one phone), fixed before any measuremen
 
 1. Run the configuration once.
 2. If that session does not pass (fewer than 3 of 3 repetitions, a condition verdict other than
-   `pass`, or an output gate other than `pass`), run it once more, unchanged, on the same phone
-   and APK.
+   `pass`, a charging assessment other than `satisfied`, or an output gate other than `pass`),
+   run it once more, unchanged, on the same phone and APK. The charging trigger was added on
+   2026-11-01, before any second run of this set; it applies to every setup of the set.
 3. Publish every session run under these configurations to the history. The board shows each
    key's newest verified session, else its newest unverified one (the selection rule); no
    session is left out by hand.
