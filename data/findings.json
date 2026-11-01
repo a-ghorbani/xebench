@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-10-19",
+  "generatedAt": "2026-11-01",
   "source": "https://github.com/a-ghorbani/xebench",
   "description": "Narrative findings from the xebench cross-engine benchmark, published as data so consumers render the lab's wording verbatim and never re-word a claim. Schema: data/findings.schema.json.",
   "findings": [
@@ -14,14 +14,15 @@
           "device": "Samsung Galaxy S23"
         }
       ],
-      "headline": "LiteRT-LM on NPU: POCO F8 Ultra only",
-      "deck": "Gemma 3 1B runs with correct output on the POCO F8 Ultra's NPU (Snapdragon 8 Elite Gen 5). On the Galaxy S23 (Snapdragon 8 Gen 2 for Galaxy), Google's published model bundle drops part of long prompts, a known LiteRT-LM issue.",
-      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/08c8b7fedea19664ab8bd4c7bf78e8a526a5d791/docs/experiments/litert-accelerators.md#litert-lm-on-npu",
+      "headline": "LiteRT-LM on NPU: Gemma 3 1B on the POCO F8 Ultra only",
+      "deck": "With LiteRT-LM 0.18.1, Gemma 3 1B runs with correct output on the POCO F8 Ultra's NPU (Snapdragon 8 Elite Gen 5). Google's Galaxy S23 bundle drops part of long prompts, a known LiteRT-LM issue, and Google publishes no file for these phones' NPUs for Gemma 4 E2B or Qwen3 1.7B.",
+      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/litert-accelerators.md#litert-lm-on-npu",
       "claims": [
-        "The NPU path needs four pieces: the litertlm-android AAR, Google's litert-npu-runtime-qualcomm (it provides libLiteRtDispatch_Qualcomm.so; 2.3.0 tested), a QAIRT version that matches the release's LITERT_REF, and <uses-native-library> manifest declarations.",
+        "The NPU path needs four pieces: the litertlm-android AAR, Google's litert-npu-runtime-qualcomm (it provides libLiteRtDispatch_Qualcomm.so; 2.3.0 tested), a QAIRT version that matches the release's LITERT_REF (2.50.0.260828 for LiteRT-LM 0.18.1), and <uses-native-library> manifest declarations.",
         "A version mismatch logs 'Unsupported dispatch runtime version'; the Kotlin API reports only 'Failed to create engine'.",
-        "LiteRT-LM CPU and GPU output also passes the correctness gate on both phones.",
-        "This board has a lab-measured LiteRT-LM NPU row for the POCO F8 Ultra, whose backend is confirmed from the app's own log of each measured load. It has no LiteRT-LM GPU row: nothing in the record confirms that the GPU executes."
+        "LiteRT-LM CPU and GPU output also passes the correctness gate on both phones (LiteRT-LM 0.18.0).",
+        "This board has a lab-measured LiteRT-LM NPU row for the POCO F8 Ultra (Gemma 3 1B, Google's SM8850 bundle, LiteRT-LM 0.18.1), whose backend is confirmed from the app's own log of each measured load. It has no LiteRT-LM GPU row: nothing in the record confirms that the GPU executes.",
+        "Google's LiteRT-LM repositories for Gemma 4 E2B (at its pinned revision) and Qwen3 1.7B have no file compiled for the SM8850 or SM8550 NPU."
       ],
       "steps": [
         {
@@ -43,28 +44,32 @@
         {
           "label": "Galaxy S23 NPU row on this board",
           "status": "missing"
+        },
+        {
+          "label": "Gemma 4 E2B, Qwen3 1.7B: a file compiled for these phones' NPUs",
+          "status": "missing"
         }
       ],
-      "resolution": "The Galaxy S23 needs a fixed SM8550 bundle (LiteRT-LM #3508).",
+      "resolution": "The Galaxy S23 needs a fixed SM8550 bundle (LiteRT-LM #3508); Gemma 4 E2B and Qwen3 1.7B need files compiled for these chips.",
       "context": {
         "device": "Galaxy S23 + POCO F8 Ultra",
         "soc": "SM8550 + SM8850",
         "hexagon": "v73 + v81",
         "qairtVersion": "2.50.0.260828",
-        "litertLmVersion": "0.18.0",
+        "litertLmVersion": "0.18.1",
         "npuRuntime": "com.google.ai.edge.litert:litert-npu-runtime-qualcomm:2.3.0",
         "correctedAt": "2026-10-17",
         "supersedes": "litert-lm-npu-blocked",
         "evidenceBundles": [
           "c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972",
           "1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403",
-          "019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6"
+          "9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0"
         ]
       },
       "sources": [
         {
           "label": "Experiment notes",
-          "url": "https://github.com/a-ghorbani/xebench/blob/08c8b7fedea19664ab8bd4c7bf78e8a526a5d791/docs/experiments/litert-accelerators.md#results"
+          "url": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/litert-accelerators.md#results"
         },
         {
           "label": "Evidence: F8 Ultra Gemma 3 runs",
@@ -75,8 +80,8 @@
           "url": "https://github.com/a-ghorbani/xebench/tree/main/evidence/1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403"
         },
         {
-          "label": "Evidence: F8 Ultra board set",
-          "url": "https://github.com/a-ghorbani/xebench/tree/main/evidence/019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6"
+          "label": "Evidence: F8 Ultra board session (LiteRT-LM 0.18.1)",
+          "url": "https://github.com/a-ghorbani/xebench/tree/main/evidence/9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0"
         },
         {
           "label": "LiteRT-LM #3508",
@@ -97,9 +102,149 @@
         {
           "label": "Gemma3-1B-IT bundles",
           "url": "https://huggingface.co/litert-community/Gemma3-1B-IT"
+        },
+        {
+          "label": "Model-refresh notes: POCO F8 Ultra board sessions",
+          "url": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/model-refresh.md#board-sessions-poco-f8-ultra-2026-11-01"
+        },
+        {
+          "label": "Gemma 4 E2B LiteRT-LM files",
+          "url": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/tree/41c5569623a7c189d6eec3e5225260c58cedbce7"
+        },
+        {
+          "label": "Qwen3 1.7B LiteRT-LM files",
+          "url": "https://huggingface.co/litert-community/Qwen3-1.7B/tree/79bf0667b32ae025b972e5fe555fe72ca6e8816c"
         }
       ],
-      "verifiedAt": "2026-10-20",
+      "verifiedAt": "2026-11-01",
+      "verifiedBy": "PocketPal R&D lab (xebench)"
+    },
+    {
+      "id": "genie-x-npu-files",
+      "kind": "gap",
+      "blocks": [
+        {
+          "engine": "genie-x",
+          "backend": "npu",
+          "device": "Samsung Galaxy S23"
+        }
+      ],
+      "headline": "GENIE-X on NPU: Qwen3 1.7B on the POCO F8 Ultra only",
+      "deck": "geniex-android 0.8.0 runs Qwen3 1.7B on the POCO F8 Ultra's NPU with Qualcomm's W4A16 bundle and decodes all 128 tokens in every run. Among phone chips, Qualcomm publishes this bundle only for the Snapdragon 8 Elite and 8 Elite Gen 5, not for the Galaxy S23, and publishes no GENIE-X NPU bundle of Gemma 4 E2B or Gemma 3 1B.",
+      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/geniex-inapp.md#board-finding-genie-x-on-npu",
+      "claims": [
+        "geniex-android 0.8.0 runs Qualcomm's W4A16 Qwen3 1.7B bundle (Qualcomm AI Hub Models v0.65.0, built with QAIRT 2.50.0.260828221209) on the POCO F8 Ultra's Hexagon v81 NPU; the bundle is labelled for the Snapdragon 8 Elite Gen 5 for Galaxy and loads on this non-Galaxy phone.",
+        "geniex-android 0.8.0 packages the QAIRT 2.45 runtime and cannot load another one at run time, so the benchmark app packages the QAIRT 2.50 libraries in place of the AAR's.",
+        "Its output matches GENIE-X's own CPU run (the llama_cpp plugin with the Qwen3 1.7B Q4_0 GGUF), and its backend is confirmed from the app's own log of each load and request.",
+        "GENIE-X 0.8.0 cannot decode past the end of turn; on the board's prompt Qwen3 1.7B decodes the full 128 tokens in every repetition. Its prefill speed is derived from its time to the first token.",
+        "For phone chips, Qualcomm AI Hub Models v0.65.0 lists the W4A16 Qwen3 1.7B bundle for the Snapdragon 8 Elite for Galaxy and 8 Elite Gen 5 for Galaxy only; its Gemma 4 E2B card lists only a GGUF for the llama_cpp plugin, and Qualcomm lists no Gemma 3 model."
+      ],
+      "steps": [
+        {
+          "label": "Qwen3 1.7B bundle loads on the POCO F8 Ultra",
+          "status": "ok"
+        },
+        {
+          "label": "Output matches GENIE-X's own CPU run",
+          "status": "ok"
+        },
+        {
+          "label": "POCO F8 Ultra NPU row on this board",
+          "status": "ok"
+        },
+        {
+          "label": "Galaxy S23 (SM8550): a Qwen3 1.7B bundle",
+          "status": "missing"
+        },
+        {
+          "label": "Gemma 4 E2B, Gemma 3 1B: a GENIE-X NPU bundle",
+          "status": "missing"
+        }
+      ],
+      "resolution": "A GENIE-X NPU row on another phone or model needs a Qualcomm AI Hub bundle for that chip and model.",
+      "context": {
+        "device": "POCO F8 Ultra",
+        "soc": "SM8850",
+        "hexagon": "v81",
+        "geniexAndroidVersion": "0.8.0",
+        "qairtVersion": "2.50.0.260828221209",
+        "aiHubModelsVersion": "0.65.0",
+        "bundle": "qwen3_1_7b-geniex_qairt-w4a16-qualcomm_snapdragon_8_elite_gen5_for_galaxy",
+        "evidenceBundles": [
+          "304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2"
+        ]
+      },
+      "sources": [
+        {
+          "label": "GENIE-X in the app (notes)",
+          "url": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/geniex-inapp.md#board-finding-genie-x-on-npu"
+        },
+        {
+          "label": "Evidence: F8 Ultra GENIE-X board sessions",
+          "url": "https://github.com/a-ghorbani/xebench/tree/main/evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2"
+        },
+        {
+          "label": "Qualcomm Qwen3-1.7B (AI Hub)",
+          "url": "https://huggingface.co/qualcomm/Qwen3-1.7B"
+        },
+        {
+          "label": "Qualcomm Gemma-4-E2B-it (AI Hub)",
+          "url": "https://huggingface.co/qualcomm/Gemma-4-E2B-it"
+        },
+        {
+          "label": "GENIE-X",
+          "url": "https://github.com/qualcomm/GenieX"
+        }
+      ],
+      "verifiedAt": "2026-11-01",
+      "verifiedBy": "PocketPal R&D lab (xebench)"
+    },
+    {
+      "id": "executorch-gemma4-export",
+      "kind": "caveat",
+      "headline": "ExecuTorch Gemma 4 E2B: the export sets the speed",
+      "deck": "With react-native-executorch 0.10.7, Software Mansion's Gemma 4 E2B file decodes at 4.9 to 6.9 tok/s on the three phones, against 18.3 to 31.3 tok/s for its Qwen3 1.7B file. That export keeps attention and per-layer embeddings in 16-bit and runs many steps outside ExecuTorch's fast CPU kernels, so these rows measure this file, not ExecuTorch on Gemma 4 E2B in general.",
+      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/model-refresh.md#executorch-gemma-4-e2b-why-it-decodes-slowly-host-analysis-2026-10-23",
+      "claims": [
+        "ExecuTorch 1.4.1 through react-native-executorch 0.10.7 decodes the Gemma 4 E2B export (mixed 4/16-bit) at 6.9 tok/s on the POCO F8 Ultra, 6.7 on the Galaxy S23 and 4.9 on the Pixel 9, and the Qwen3 1.7B export (4-bit weights, 8-bit activations) at 31.3, 23.3 and 18.3 tok/s on the same phones.",
+        "In the Gemma 4 E2B export, attention and the per-layer-embedding projections use 16-bit weights, and its forward pass makes 953 XNNPACK calls and 2,083 calls to portable (non-delegated) kernels, against 340 and 709 in the Qwen3 1.7B export.",
+        "The Gemma 4 E2B export dequantizes its whole int8 KV cache with single-threaded kernels on every forward pass, each decoded token included.",
+        "Both exports run on the same ExecuTorch threadpool and runner settings; no setting of the benchmark app explains the gap."
+      ],
+      "context": {
+        "engineVersion": "ExecuTorch 1.4.1",
+        "bindingVersion": "react-native-executorch 0.10.7",
+        "file": "software-mansion/react-native-executorch-gemma-4 e2b/xnnpack/gemma_4_e2b_xnnpack_8da4w.pte",
+        "revision": "27ecbb4d21feaaeb0e1908bd06aceaf6eddb313a",
+        "evidenceBundles": [
+          "27286631777c4bd7b970f2aaa6de8ca1ceb9d1d2bd62169a78b1337f668516d2",
+          "2859a75aa721d35c567ddddc02931eaa0fbdf9bdeb0afbf404538a0b8114654e",
+          "8041a206363725e7fe077fb570469f132eeabe9ddb6554266cb5a0e7fd83ffe9"
+        ]
+      },
+      "sources": [
+        {
+          "label": "Host analysis (model-refresh notes)",
+          "url": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/model-refresh.md#executorch-gemma-4-e2b-why-it-decodes-slowly-host-analysis-2026-10-23"
+        },
+        {
+          "label": "Evidence: F8 Ultra ExecuTorch Gemma 4 E2B",
+          "url": "https://github.com/a-ghorbani/xebench/tree/main/evidence/27286631777c4bd7b970f2aaa6de8ca1ceb9d1d2bd62169a78b1337f668516d2"
+        },
+        {
+          "label": "Evidence: Galaxy S23 ExecuTorch Gemma 4 E2B",
+          "url": "https://github.com/a-ghorbani/xebench/tree/main/evidence/2859a75aa721d35c567ddddc02931eaa0fbdf9bdeb0afbf404538a0b8114654e"
+        },
+        {
+          "label": "Evidence: Pixel 9 ExecuTorch Gemma 4 E2B",
+          "url": "https://github.com/a-ghorbani/xebench/tree/main/evidence/8041a206363725e7fe077fb570469f132eeabe9ddb6554266cb5a0e7fd83ffe9"
+        },
+        {
+          "label": "Gemma 4 E2B export",
+          "url": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4/tree/27ecbb4d21feaaeb0e1908bd06aceaf6eddb313a"
+        }
+      ],
+      "verifiedAt": "2026-11-01",
       "verifiedBy": "PocketPal R&D lab (xebench)"
     }
   ]

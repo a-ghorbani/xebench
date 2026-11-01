@@ -7,6 +7,70 @@ facts, a short dated label is left where a reader needs it ("Corrected <date>", 
 
 Newest first.
 
+## 2026-11-01 — Model refresh: Gemma 4 E2B, Qwen3 1.7B and Gemma 3 1B on all four engines
+
+A set change, not a correction: no published number was wrong. Owner decision 2026-10-22
+([#43](https://github.com/a-ghorbani/xebench/issues/43)).
+
+- **What the board showed.** 27 lab rows for Llama 3.2 1B, Qwen2.5 1.5B and Gemma 3 1B:
+  - llama.cpp b11385 (bf9a0cc) + llama.rn 0.13.0-rc.7, measured from 2026-10-18: 15 rows. CPU:
+    Llama 3.2 1B Q4_0, Q4_K_M and Q8_0 on the POCO F8 Ultra, Galaxy S23 and Pixel 9; Qwen2.5 1.5B
+    Q8_0 on the POCO F8 Ultra and Pixel 9; Gemma 3 1B Q4_0 (QAT) on the POCO F8 Ultra and Galaxy
+    S23. GPU (OpenCL): Qwen2.5 1.5B Q8_0 on the POCO F8 Ultra. NPU (Hexagon): Llama 3.2 1B Q4_K_M on
+    the POCO F8 Ultra (4098.3 / 57.0 tok/s). llama.cpp rows stopped at the end of turn (every one
+    reached the 128-token budget).
+  - LiteRT-LM 0.18.0, measured from 2026-10-20: 6 rows. Gemma 3 1B int4 and Qwen2.5 1.5B Q8 on the
+    CPU of the POCO F8 Ultra and Galaxy S23, Qwen2.5 1.5B Q8 on the Pixel 9's CPU, and Gemma 3 1B on
+    the POCO F8 Ultra's NPU (SM8850 bundle, 4578.9 / 56.9 tok/s).
+  - ExecuTorch: four July 2026 rows without versions, Llama 3.2 1B SpinQuant 4-bit on the CPU of
+    the POCO F8 Ultra, Galaxy S23, Pixel 9 and OnePlus 6.
+  - GENIE-X: two July 2026 rows without versions: Llama 3.2 1B W4A16 on the POCO F8 Ultra's NPU
+    (354.6 / 16.8 tok/s, Genie 1.19 through Qualcomm's `genie-t2t-run` CLI) and Qwen2.5 1.5B Q8_0
+    on the Galaxy S23's CPU.
+
+  ENGINES.md's headline compared the July GENIE-X NPU row (Genie 1.19 through the CLI, "it just
+  runs") with LiteRT-LM's assembled NPU stack.
+- **What is true.** The board shows 30 lab rows for Gemma 4 E2B, Qwen3 1.7B and Gemma 3 1B, all
+  verified, measured in November 2026, one set per engine:
+
+  | Engine | Versions | Rows |
+  | --- | --- | --- |
+  | llama.cpp | llama.cpp b11804 (c7fc509) + llama.rn 0.13.0-rc.8 | CPU: three models on the POCO F8 Ultra and Pixel 9, Qwen3 1.7B and Gemma 3 1B on the Galaxy S23; GPU (OpenCL) and NPU (Hexagon): three models on the POCO F8 Ultra (14) |
+  | LiteRT-LM | 0.18.1 | CPU: three models on the POCO F8 Ultra and Pixel 9, Gemma 4 E2B and Gemma 3 1B on the Galaxy S23; NPU: Gemma 3 1B on the POCO F8 Ultra (9) |
+  | ExecuTorch | ExecuTorch 1.4.1 + react-native-executorch 0.10.7 | CPU (XNNPACK): Gemma 4 E2B and Qwen3 1.7B on all three phones (6) |
+  | GENIE-X | geniex-android 0.8.0, in the app | NPU: Qwen3 1.7B W4A16 on the POCO F8 Ultra (1) |
+
+  Every engine except GENIE-X decodes exactly 128 tokens with the end of turn ignored (llama.cpp
+  through a −∞ logit bias on every end-of-generation token, LiteRT-LM through its benchmark
+  engine, ExecuTorch through `ignoreEos`); GENIE-X cannot, and its row decoded 128 tokens in every
+  repetition. Quant labels: Q4_0 (QAT) and Q4_0 (GGUF), `mixed 2/4/8-bit` and int4 (LiteRT-LM),
+  `mixed 4/16-bit` and `4-bit weights, 8-bit activations` (ExecuTorch), W4A16 (GENIE-X). Two
+  phone setups in the measured matrix have no row: llama.cpp Gemma 4 E2B on the Galaxy S23 (the file does not fit
+  with full loading), and LiteRT-LM Qwen3 1.7B on the Galaxy S23 (its only session failed the
+  charging check; one rerun under the single-rerun rule). The ENGINES.md headline is now the NPU
+  contrast on the POCO F8 Ultra: llama.cpp's Hexagon backend runs all three models, LiteRT-LM and
+  GENIE-X run the one model their vendor compiles for the chip.
+- **What changed.**
+  - `configs/board.json` declares the four sets of the model-refresh configurations
+    ([REFERENCE-RUNS.md](./REFERENCE-RUNS.md#model-refresh-board-configurations)), measured from
+    2026-11-01, and adds 22 `retiredKeys` with the reason "model no longer on the board (owner
+    decision 2026-10-22)": llama.cpp Llama 3.2 1B Q4_0, Q4_K_M and Q8_0 CPU on three phones (9),
+    Llama 3.2 1B Q4_K_M NPU (1), Qwen2.5 1.5B Q8_0 CPU on the POCO F8 Ultra and Pixel 9 and GPU on
+    the POCO F8 Ultra (3); LiteRT-LM Qwen2.5 1.5B Q8 CPU on three phones (3); ExecuTorch Llama 3.2
+    1B SpinQuant 4-bit on four phones (4); GENIE-X Llama 3.2 1B W4A16 NPU and Qwen2.5 1.5B Q8_0 CPU
+    (2). `data/sessions/index.json` keeps every retired row and session; the six July ExecuTorch
+    and GENIE-X rows sit under `replacedRows` with `reason: "retired"`, their month and its basis.
+  - The Galaxy S23 LiteRT-LM Qwen3 1.7B key stays in the set without a displayed session
+    (`no-session-in-set`); its rerun, when it passes, is published without a board change.
+  - `data/benchmarks.json` moves to contract 1.4 (its ExecuTorch rows carry ExecuTorch and
+    react-native-executorch versions).
+  - `data/findings.json`: `litert-lm-npu-integration` states LiteRT-LM 0.18.1 and the missing NPU
+    files for Gemma 4 E2B and Qwen3 1.7B; `genie-x-npu-files` (GENIE-X's one NPU row and the
+    bundles Qualcomm publishes) and `executorch-gemma4-export` (why the ExecuTorch Gemma 4 E2B rows
+    decode slowly) are new.
+  - README, ENGINES, METHODOLOGY, MODELS, REFERENCE-RUNS, RUN-CONDITIONS, WEBSITE-HANDOFF and
+    `evidence/README.md` state the new sets.
+
 ## 2026-10-20 — LiteRT-LM board rows measured on the board prompt with LiteRT-LM 0.18.0
 
 - **What the board showed.** Five July 2026 LiteRT-LM CPU rows without versions, each labelled
