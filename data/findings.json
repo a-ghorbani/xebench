@@ -15,8 +15,8 @@
         }
       ],
       "headline": "LiteRT-LM on NPU: Gemma 3 1B on the POCO F8 Ultra only",
-      "deck": "With LiteRT-LM 0.18.1, Gemma 3 1B runs with correct output on the POCO F8 Ultra's NPU (Snapdragon 8 Elite Gen 5). Google's Galaxy S23 bundle drops part of long prompts, a known LiteRT-LM issue, and Google publishes no file for these phones' NPUs for Gemma 4 E2B or Qwen3 1.7B.",
-      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/litert-accelerators.md#litert-lm-on-npu",
+      "deck": "With LiteRT-LM 0.18.1, Gemma 3 1B runs with correct output on the POCO F8 Ultra's NPU (Snapdragon 8 Elite Gen 5). Google's Galaxy S23 bundle drops part of long prompts, a known LiteRT-LM issue, and Google publishes no file compiled for these phones' NPUs for Gemma 4 E2B or Qwen3 1.7B.",
+      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/f807243347f4e4b69f8b234c49862cf3e8f336b0/docs/experiments/litert-accelerators.md#litert-lm-on-npu",
       "claims": [
         "The NPU path needs four pieces: the litertlm-android AAR, Google's litert-npu-runtime-qualcomm (it provides libLiteRtDispatch_Qualcomm.so; 2.3.0 tested), a QAIRT version that matches the release's LITERT_REF (2.50.0.260828 for LiteRT-LM 0.18.1), and <uses-native-library> manifest declarations.",
         "A version mismatch logs 'Unsupported dispatch runtime version'; the Kotlin API reports only 'Failed to create engine'.",
@@ -69,7 +69,7 @@
       "sources": [
         {
           "label": "Experiment notes",
-          "url": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/litert-accelerators.md#results"
+          "url": "https://github.com/a-ghorbani/xebench/blob/f807243347f4e4b69f8b234c49862cf3e8f336b0/docs/experiments/litert-accelerators.md#results"
         },
         {
           "label": "Evidence: F8 Ultra Gemma 3 runs",
@@ -105,7 +105,7 @@
         },
         {
           "label": "Model-refresh notes: POCO F8 Ultra board sessions",
-          "url": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/model-refresh.md#board-sessions-poco-f8-ultra-2026-11-01"
+          "url": "https://github.com/a-ghorbani/xebench/blob/f807243347f4e4b69f8b234c49862cf3e8f336b0/docs/experiments/model-refresh.md#board-sessions-poco-f8-ultra-2026-11-01"
         },
         {
           "label": "Gemma 4 E2B LiteRT-LM files",
@@ -130,8 +130,8 @@
         }
       ],
       "headline": "GENIE-X on NPU: Qwen3 1.7B on the POCO F8 Ultra only",
-      "deck": "geniex-android 0.8.0 runs Qwen3 1.7B on the POCO F8 Ultra's NPU with Qualcomm's W4A16 bundle and decodes all 128 tokens in every run. Among phone chips, Qualcomm publishes this bundle only for the Snapdragon 8 Elite and 8 Elite Gen 5, not for the Galaxy S23, and publishes no GENIE-X NPU bundle of Gemma 4 E2B or Gemma 3 1B.",
-      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/geniex-inapp.md#board-finding-genie-x-on-npu",
+      "deck": "geniex-android 0.8.0 runs Qwen3 1.7B on the POCO F8 Ultra's NPU with Qualcomm's W4A16 bundle and decodes all 128 tokens in every run. Among phone chips, Qualcomm publishes this bundle only for the Snapdragon 8 Elite and 8 Elite Gen 5 (both labelled for Galaxy), not for the Galaxy S23, and publishes no GENIE-X NPU bundle of Gemma 4 E2B or Gemma 3 1B.",
+      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/f807243347f4e4b69f8b234c49862cf3e8f336b0/docs/experiments/geniex-inapp.md#board-finding-genie-x-on-npu",
       "claims": [
         "geniex-android 0.8.0 runs Qualcomm's W4A16 Qwen3 1.7B bundle (Qualcomm AI Hub Models v0.65.0, built with QAIRT 2.50.0.260828221209) on the POCO F8 Ultra's Hexagon v81 NPU; the bundle is labelled for the Snapdragon 8 Elite Gen 5 for Galaxy and loads on this non-Galaxy phone.",
         "geniex-android 0.8.0 packages the QAIRT 2.45 runtime and cannot load another one at run time, so the benchmark app packages the QAIRT 2.50 libraries in place of the AAR's.",
@@ -177,7 +177,7 @@
       "sources": [
         {
           "label": "GENIE-X in the app (notes)",
-          "url": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/geniex-inapp.md#board-finding-genie-x-on-npu"
+          "url": "https://github.com/a-ghorbani/xebench/blob/f807243347f4e4b69f8b234c49862cf3e8f336b0/docs/experiments/geniex-inapp.md#board-finding-genie-x-on-npu"
         },
         {
           "label": "Evidence: F8 Ultra GENIE-X board sessions",
@@ -203,8 +203,8 @@
       "id": "executorch-gemma4-export",
       "kind": "caveat",
       "headline": "ExecuTorch Gemma 4 E2B: the export sets the speed",
-      "deck": "With react-native-executorch 0.10.7, Software Mansion's Gemma 4 E2B file decodes at 4.9 to 6.9 tok/s on the three phones, against 18.3 to 31.3 tok/s for its Qwen3 1.7B file. That export keeps attention and per-layer embeddings in 16-bit and runs many steps outside ExecuTorch's fast CPU kernels, so these rows measure this file, not ExecuTorch on Gemma 4 E2B in general.",
-      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/model-refresh.md#executorch-gemma-4-e2b-why-it-decodes-slowly-host-analysis-2026-10-23",
+      "deck": "With react-native-executorch 0.10.7, Software Mansion's Gemma 4 E2B file decodes at 4.9 to 6.9 tok/s on the three phones, against 18.3 to 31.3 tok/s for its Qwen3 1.7B file. That export keeps attention and the per-layer-embedding projections in 16-bit and runs many steps outside ExecuTorch's fast CPU kernels, so these rows measure this file, not ExecuTorch on Gemma 4 E2B in general.",
+      "detailsUrl": "https://github.com/a-ghorbani/xebench/blob/f807243347f4e4b69f8b234c49862cf3e8f336b0/docs/experiments/model-refresh.md#executorch-gemma-4-e2b-why-it-decodes-slowly-host-analysis-2026-10-23",
       "claims": [
         "ExecuTorch 1.4.1 through react-native-executorch 0.10.7 decodes the Gemma 4 E2B export (mixed 4/16-bit) at 6.9 tok/s on the POCO F8 Ultra, 6.7 on the Galaxy S23 and 4.9 on the Pixel 9, and the Qwen3 1.7B export (4-bit weights, 8-bit activations) at 31.3, 23.3 and 18.3 tok/s on the same phones.",
         "In the Gemma 4 E2B export, attention and the per-layer-embedding projections use 16-bit weights, and its forward pass makes 953 XNNPACK calls and 2,083 calls to portable (non-delegated) kernels, against 340 and 709 in the Qwen3 1.7B export.",
@@ -225,7 +225,7 @@
       "sources": [
         {
           "label": "Host analysis (model-refresh notes)",
-          "url": "https://github.com/a-ghorbani/xebench/blob/48495988f45352936eb36d9044bde63b36f15e83/docs/experiments/model-refresh.md#executorch-gemma-4-e2b-why-it-decodes-slowly-host-analysis-2026-10-23"
+          "url": "https://github.com/a-ghorbani/xebench/blob/f807243347f4e4b69f8b234c49862cf3e8f336b0/docs/experiments/model-refresh.md#executorch-gemma-4-e2b-why-it-decodes-slowly-host-analysis-2026-10-23"
         },
         {
           "label": "Evidence: F8 Ultra ExecuTorch Gemma 4 E2B",
