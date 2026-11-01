@@ -6,8 +6,8 @@
   "keys": [
     {
       "key": "executorch|cpu|android|Google Pixel 9|Gemma 4 E2B|mixed 4/16-bit|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793532613003-0-zz0b0x2uzag",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793532613003-0-zz0b0x2uzag",
@@ -82,9 +82,45 @@
       "replacedRows": []
     },
     {
-      "key": "executorch|cpu|android|Google Pixel 9|Qwen3 1.7B|4-bit weights, 8-bit activations|measured",
+      "key": "executorch|cpu|android|Google Pixel 9|Llama 3.2 1B|SpinQuant 4-bit|measured",
       "displayed": null,
-      "rule": "no-session-in-set",
+      "rule": "retired",
+      "sessions": [],
+      "replacedRows": [
+        {
+          "reason": "retired",
+          "note": "model no longer on the board (owner decision 2026-10-22)",
+          "retiredAt": "2026-11-01",
+          "row": {
+            "engine": "executorch",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Pixel 9",
+            "soc": "Tensor G4",
+            "chipName": "Google Tensor G4",
+            "model": "Llama 3.2 1B",
+            "quant": "SpinQuant 4-bit",
+            "quantBits": 4,
+            "ppTps": 171.7,
+            "tgTps": 15.9,
+            "ttftMs": 2743,
+            "memoryMb": null,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-07",
+            "dateBasis": "measured",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)",
+            "validation": "legacy"
+          }
+        }
+      ]
+    },
+    {
+      "key": "executorch|cpu|android|Google Pixel 9|Qwen3 1.7B|4-bit weights, 8-bit activations|measured",
+      "displayed": "1793533133727-0-fowesvfu7hd",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793533133727-0-fowesvfu7hd",
@@ -160,9 +196,45 @@
       "replacedRows": []
     },
     {
-      "key": "executorch|cpu|android|POCO F8 Ultra|Gemma 4 E2B|mixed 4/16-bit|measured",
+      "key": "executorch|cpu|android|OnePlus 6|Llama 3.2 1B|SpinQuant 4-bit|measured",
       "displayed": null,
-      "rule": "no-session-in-set",
+      "rule": "retired",
+      "sessions": [],
+      "replacedRows": [
+        {
+          "reason": "retired",
+          "note": "model no longer on the board (owner decision 2026-10-22)",
+          "retiredAt": "2026-11-01",
+          "row": {
+            "engine": "executorch",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "OnePlus 6",
+            "soc": "SDM845",
+            "chipName": "Snapdragon 845",
+            "model": "Llama 3.2 1B",
+            "quant": "SpinQuant 4-bit",
+            "quantBits": 4,
+            "ppTps": 11.4,
+            "tgTps": 4.8,
+            "ttftMs": 41409,
+            "memoryMb": null,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-07",
+            "dateBasis": "measured",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)",
+            "validation": "legacy"
+          }
+        }
+      ]
+    },
+    {
+      "key": "executorch|cpu|android|POCO F8 Ultra|Gemma 4 E2B|mixed 4/16-bit|measured",
+      "displayed": "1793535622764-0-ktcp60m895r",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793535622764-0-ktcp60m895r",
@@ -237,9 +309,45 @@
       "replacedRows": []
     },
     {
-      "key": "executorch|cpu|android|POCO F8 Ultra|Qwen3 1.7B|4-bit weights, 8-bit activations|measured",
+      "key": "executorch|cpu|android|POCO F8 Ultra|Llama 3.2 1B|SpinQuant 4-bit|measured",
       "displayed": null,
-      "rule": "no-session-in-set",
+      "rule": "retired",
+      "sessions": [],
+      "replacedRows": [
+        {
+          "reason": "retired",
+          "note": "model no longer on the board (owner decision 2026-10-22)",
+          "retiredAt": "2026-11-01",
+          "row": {
+            "engine": "executorch",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Llama 3.2 1B",
+            "quant": "SpinQuant 4-bit",
+            "quantBits": 4,
+            "ppTps": 311.9,
+            "tgTps": 34.3,
+            "ttftMs": 1510,
+            "memoryMb": null,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-07",
+            "dateBasis": "measured",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)",
+            "validation": "legacy"
+          }
+        }
+      ]
+    },
+    {
+      "key": "executorch|cpu|android|POCO F8 Ultra|Qwen3 1.7B|4-bit weights, 8-bit activations|measured",
+      "displayed": "1793536089765-0-scjybiccsg",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793536089765-0-scjybiccsg",
@@ -316,8 +424,8 @@
     },
     {
       "key": "executorch|cpu|android|Samsung Galaxy S23|Gemma 4 E2B|mixed 4/16-bit|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793531968376-0-nm8f4rb5qbg",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793531968376-0-nm8f4rb5qbg",
@@ -392,9 +500,45 @@
       "replacedRows": []
     },
     {
-      "key": "executorch|cpu|android|Samsung Galaxy S23|Qwen3 1.7B|4-bit weights, 8-bit activations|measured",
+      "key": "executorch|cpu|android|Samsung Galaxy S23|Llama 3.2 1B|SpinQuant 4-bit|measured",
       "displayed": null,
-      "rule": "no-session-in-set",
+      "rule": "retired",
+      "sessions": [],
+      "replacedRows": [
+        {
+          "reason": "retired",
+          "note": "model no longer on the board (owner decision 2026-10-22)",
+          "retiredAt": "2026-11-01",
+          "row": {
+            "engine": "executorch",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Samsung Galaxy S23",
+            "soc": "SM8550",
+            "chipName": "Snapdragon 8 Gen 2 for Galaxy",
+            "model": "Llama 3.2 1B",
+            "quant": "SpinQuant 4-bit",
+            "quantBits": 4,
+            "ppTps": 149.9,
+            "tgTps": 21.1,
+            "ttftMs": 3142,
+            "memoryMb": null,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-07",
+            "dateBasis": "measured",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok; prefill ttft-derived (no engine counter)",
+            "validation": "legacy"
+          }
+        }
+      ]
+    },
+    {
+      "key": "executorch|cpu|android|Samsung Galaxy S23|Qwen3 1.7B|4-bit weights, 8-bit activations|measured",
+      "displayed": "1793532460521-0-chuv3do03n",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793532460521-0-chuv3do03n",
@@ -543,9 +687,81 @@
       "replacedRows": []
     },
     {
-      "key": "genie-x|npu|android|POCO F8 Ultra|Qwen3 1.7B|W4A16|measured",
+      "key": "genie-x|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
       "displayed": null,
-      "rule": "no-session-in-set",
+      "rule": "retired",
+      "sessions": [],
+      "replacedRows": [
+        {
+          "reason": "retired",
+          "note": "model no longer on the board (owner decision 2026-10-22)",
+          "retiredAt": "2026-11-01",
+          "row": {
+            "engine": "genie-x",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Samsung Galaxy S23",
+            "soc": "SM8550",
+            "chipName": "Snapdragon 8 Gen 2 for Galaxy",
+            "model": "Qwen2.5 1.5B",
+            "quant": "Q8_0",
+            "quantBits": 8,
+            "ppTps": 87.9,
+            "tgTps": 12.3,
+            "ttftMs": 5906,
+            "memoryMb": null,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-07",
+            "dateBasis": "measured",
+            "sampleCount": 1,
+            "asStated": "n=1 cold-run median; prompt std-pp512-v1; decode 128 tok",
+            "validation": "legacy"
+          }
+        }
+      ]
+    },
+    {
+      "key": "genie-x|npu|android|POCO F8 Ultra|Llama 3.2 1B|W4A16|measured",
+      "displayed": null,
+      "rule": "retired",
+      "sessions": [],
+      "replacedRows": [
+        {
+          "reason": "retired",
+          "note": "model no longer on the board (owner decision 2026-10-22)",
+          "retiredAt": "2026-11-01",
+          "row": {
+            "engine": "genie-x",
+            "backend": "npu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Llama 3.2 1B",
+            "quant": "W4A16",
+            "quantBits": 4,
+            "ppTps": 354.6,
+            "tgTps": 16.8,
+            "ttftMs": 71,
+            "memoryMb": null,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-07",
+            "dateBasis": "measured",
+            "sampleCount": 3,
+            "asStated": "n=3 median; Genie 1.19 (QAIRT 2.42.0 bundle, runanywhere) on Hexagon v81; engine-profiler KPIs. CLI-measured (genie-t2t-run); decode dead-stable across runs (16.72/16.90/16.78) => NPU/memory-bound, not CPU-throttle-limited, so the background-cpuset caveat is negligible. A foreground/top-app run was built and attempted (app confirmed in top-app) but HyperOS blocks app exec of the packaged binary (EACCES); an in-process libGenie/JNI path is roadmapped to make it fully Rule-0-clean. W4A16 quant differs from other rows.",
+            "validation": "legacy"
+          }
+        }
+      ]
+    },
+    {
+      "key": "genie-x|npu|android|POCO F8 Ultra|Qwen3 1.7B|W4A16|measured",
+      "displayed": "1793536930813-1-p8yctwh7tum",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793536930813-1-p8yctwh7tum",
@@ -621,8 +837,8 @@
     },
     {
       "key": "litert-lm|cpu|android|Google Pixel 9|Gemma 3 1B|int4|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793532024743-0-q5iwrhjqcuo",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793532024743-0-q5iwrhjqcuo",
@@ -694,8 +910,8 @@
     },
     {
       "key": "litert-lm|cpu|android|Google Pixel 9|Gemma 4 E2B|mixed 2/4/8-bit|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793531082994-0-uq07mqfaa3",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793531082994-0-uq07mqfaa3",
@@ -766,8 +982,8 @@
     },
     {
       "key": "litert-lm|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8|measured",
-      "displayed": "1792496109933-0-sbwcntrv1nf",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792496109933-0-sbwcntrv1nf",
@@ -867,8 +1083,8 @@
     },
     {
       "key": "litert-lm|cpu|android|Google Pixel 9|Qwen3 1.7B|int4|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793531535530-0-8f2vg3uxj1m",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793531535530-0-8f2vg3uxj1m",
@@ -940,7 +1156,7 @@
     },
     {
       "key": "litert-lm|cpu|android|POCO F8 Ultra|Gemma 3 1B|int4|measured",
-      "displayed": "1792478400915-0-54zhyl2gw9e",
+      "displayed": "1793534450540-0-6rbrh8x22cs",
       "rule": "newest-verified",
       "sessions": [
         {
@@ -1366,8 +1582,8 @@
     },
     {
       "key": "litert-lm|cpu|android|POCO F8 Ultra|Gemma 4 E2B|mixed 2/4/8-bit|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793533611266-0-joii7rfsgih",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793533611266-0-joii7rfsgih",
@@ -1438,8 +1654,8 @@
     },
     {
       "key": "litert-lm|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8|measured",
-      "displayed": "1792477982490-0-ega6r3qa36f",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792448931295-0-tq4sndqftgf",
@@ -1604,8 +1820,8 @@
     },
     {
       "key": "litert-lm|cpu|android|POCO F8 Ultra|Qwen3 1.7B|int4|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793534024008-0-vrm9j74lr98",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793534024008-0-vrm9j74lr98",
@@ -1677,7 +1893,7 @@
     },
     {
       "key": "litert-lm|cpu|android|Samsung Galaxy S23|Gemma 3 1B|int4|measured",
-      "displayed": "1792478409685-0-460hv9jut6f",
+      "displayed": "1793530981456-0-3bor5ypjkk5",
       "rule": "newest-verified",
       "sessions": [
         {
@@ -1908,8 +2124,8 @@
     },
     {
       "key": "litert-lm|cpu|android|Samsung Galaxy S23|Gemma 4 E2B|mixed 2/4/8-bit|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793530063260-0-cazlp1ncq1k",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793530063260-0-cazlp1ncq1k",
@@ -1980,8 +2196,8 @@
     },
     {
       "key": "litert-lm|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8|measured",
-      "displayed": "1792478841240-0-r571zp0y8or",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792450941061-0-ypl41raqys",
@@ -2219,7 +2435,7 @@
     },
     {
       "key": "litert-lm|npu|android|POCO F8 Ultra|Gemma 3 1B|int4|measured",
-      "displayed": "1792478801983-0-jva3zm192p",
+      "displayed": "1793534832599-0-agxjwf3zgng",
       "rule": "newest-verified",
       "sessions": [
         {
@@ -2446,8 +2662,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Google Pixel 9|Gemma 3 1B|Q4_0 (QAT)|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793530066282-0-pegxdqk8lqm",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793530066282-0-pegxdqk8lqm",
@@ -2524,8 +2740,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Google Pixel 9|Gemma 4 E2B|Q4_0 (QAT)|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793530497451-0-7eepgm52wev",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793530497451-0-7eepgm52wev",
@@ -2602,8 +2818,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q4_0|measured",
-      "displayed": "1792361798037-0-38m58bmidgp",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792361798037-0-38m58bmidgp",
@@ -2704,8 +2920,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q4_K_M|measured",
-      "displayed": "1792362579809-2-jby0inb23h",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792362579809-2-jby0inb23h",
@@ -2806,8 +3022,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q8_0|measured",
-      "displayed": "1792362184065-1-j3vi0hsosnf",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792362184065-1-j3vi0hsosnf",
@@ -2884,8 +3100,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8_0|measured",
-      "displayed": "1792404511469-0-to6b5avrsdo",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792404511469-0-to6b5avrsdo",
@@ -2990,8 +3206,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Google Pixel 9|Qwen3 1.7B|Q4_0|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793529641396-0-bn5bbeig96w",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793529641396-0-bn5bbeig96w",
@@ -3140,7 +3356,7 @@
     },
     {
       "key": "llama.cpp|cpu|android|POCO F8 Ultra|Gemma 3 1B|Q4_0 (QAT)|measured",
-      "displayed": "1792409386762-0-xq1gr9c5gz",
+      "displayed": "1793529671406-0-kejv04w7u1",
       "rule": "newest-verified",
       "sessions": [
         {
@@ -3386,8 +3602,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|POCO F8 Ultra|Gemma 4 E2B|Q4_0 (QAT)|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793529262255-0-5q39sg7gtsf",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793529262255-0-5q39sg7gtsf",
@@ -3534,8 +3750,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_0|measured",
-      "displayed": "1792359522046-1-ebq1yvykgwk",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792359522046-1-ebq1yvykgwk",
@@ -3636,8 +3852,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_K_M|measured",
-      "displayed": "1792359898454-2-hbsux95kaf8",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792359898454-2-hbsux95kaf8",
@@ -3738,8 +3954,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|POCO F8 Ultra|Llama 3.2 1B|Q8_0|measured",
-      "displayed": "1792359142111-0-uxw72a8o2t",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792359142111-0-uxw72a8o2t",
@@ -3816,8 +4032,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured",
-      "displayed": "1792408620177-0-t6jdnfe4ie",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792408620177-0-t6jdnfe4ie",
@@ -3922,8 +4138,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|POCO F8 Ultra|Qwen3 1.7B|Q4_0|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793528833103-0-lbkaqccwro",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793528833103-0-lbkaqccwro",
@@ -4070,7 +4286,7 @@
     },
     {
       "key": "llama.cpp|cpu|android|Samsung Galaxy S23|Gemma 3 1B|Q4_0 (QAT)|measured",
-      "displayed": "1792410525550-0-3mx40me5g21",
+      "displayed": "1793529645716-0-n3uxkkjqcee",
       "rule": "newest-verified",
       "sessions": [
         {
@@ -4246,8 +4462,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Samsung Galaxy S23|Llama 3.2 1B|Q4_0|measured",
-      "displayed": "1792360341500-1-c525jrlfgah",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792360341500-1-c525jrlfgah",
@@ -4324,8 +4540,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Samsung Galaxy S23|Llama 3.2 1B|Q4_K_M|measured",
-      "displayed": "1792360724444-2-9qvys5of8ju",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792360724444-2-9qvys5of8ju",
@@ -4426,8 +4642,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Samsung Galaxy S23|Llama 3.2 1B|Q8_0|measured",
-      "displayed": "1792359949797-0-sxd3ym4ml2o",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792359949797-0-sxd3ym4ml2o",
@@ -4610,8 +4826,8 @@
     },
     {
       "key": "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen3 1.7B|Q4_0|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793529132591-0-lgs4x3ev4f",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793529132591-0-lgs4x3ev4f",
@@ -4688,8 +4904,8 @@
     },
     {
       "key": "llama.cpp|gpu|android|POCO F8 Ultra|Gemma 3 1B|Q4_0 (QAT)|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793532838998-1-8njmz5i94c6",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793532838998-1-8njmz5i94c6",
@@ -4766,8 +4982,8 @@
     },
     {
       "key": "llama.cpp|gpu|android|POCO F8 Ultra|Gemma 4 E2B|Q4_0 (QAT)|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793530464960-1-w452032gqz",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793530464960-1-w452032gqz",
@@ -4844,8 +5060,8 @@
     },
     {
       "key": "llama.cpp|gpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured",
-      "displayed": "1792414018964-1-mg19hjel11r",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792414018964-1-mg19hjel11r",
@@ -4950,8 +5166,8 @@
     },
     {
       "key": "llama.cpp|gpu|android|POCO F8 Ultra|Qwen3 1.7B|Q4_0|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793531294541-0-qo9a0qiaoli",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793531294541-0-qo9a0qiaoli",
@@ -5064,8 +5280,8 @@
     },
     {
       "key": "llama.cpp|npu|android|POCO F8 Ultra|Gemma 3 1B|Q4_0 (QAT)|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793532463356-0-k0dqkk33548",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793532463356-0-k0dqkk33548",
@@ -5142,8 +5358,8 @@
     },
     {
       "key": "llama.cpp|npu|android|POCO F8 Ultra|Gemma 4 E2B|Q4_0 (QAT)|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793530071131-0-m7ydqxrk9wh",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793530071131-0-m7ydqxrk9wh",
@@ -5252,8 +5468,8 @@
     },
     {
       "key": "llama.cpp|npu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_K_M|measured",
-      "displayed": "1792412853124-0-s7h9w4i4vw",
-      "rule": "newest-verified",
+      "displayed": null,
+      "rule": "retired",
       "sessions": [
         {
           "sessionId": "1792412853124-0-s7h9w4i4vw",
@@ -5330,8 +5546,8 @@
     },
     {
       "key": "llama.cpp|npu|android|POCO F8 Ultra|Qwen3 1.7B|Q4_0|measured",
-      "displayed": null,
-      "rule": "no-session-in-set",
+      "displayed": "1793532077408-2-ki7wxv0zx7",
+      "rule": "newest-verified",
       "sessions": [
         {
           "sessionId": "1793532077408-2-ki7wxv0zx7",

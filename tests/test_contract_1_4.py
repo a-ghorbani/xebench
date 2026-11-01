@@ -171,11 +171,12 @@ class Contract14Tests(Workspace):
         envelope = load(FIXTURES / 'executorch-runtimes.json')
         self.assertEqual(self.module(f'p.migrationNeeds({json.dumps(envelope)})'), {'ok': []})
 
-    def test_the_canonical_file_stays_below_1_4(self):
-        # No ExecuTorch row with runtimes is published yet, so the canonical file keeps its version.
+    def test_the_canonical_file_is_1_4(self):
+        # The board's ExecuTorch rows name ExecuTorch and react-native-executorch in build.runtimes.
         data = load(ROOT / 'data/benchmarks.json')
-        self.assertNotEqual(data['schemaVersion'], '1.4')
-        self.assertEqual(self.module(f"p.contractVersionFor({json.dumps(data['rows'])})"), {'ok': data['schemaVersion']})
+        self.assertEqual(data['schemaVersion'], '1.4')
+        self.assertTrue(any(row['engine'] == 'executorch' and 'runtimes' in row.get('build', {}) for row in data['rows']))
+        self.assertEqual(self.module(f"p.contractVersionFor({json.dumps(data['rows'])})"), {'ok': '1.4'})
 
 
 if __name__ == '__main__':

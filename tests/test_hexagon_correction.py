@@ -85,7 +85,7 @@ class CheckedInDataTests(unittest.TestCase):
         others = [r for r in data['rows'] if r['provenance'] == 'measured' and not is_target(r)]
         self.assertTrue(others)
         unpublished = [r for r in others if 'evidence' not in r]
-        self.assertEqual({r['validation'] for r in unpublished}, {'legacy'})
+        self.assertEqual(unpublished, [], 'every displayed measured row is published from a bundle')
         for row in others:
             if 'evidence' in row:
                 self.assertTrue(set(row['evidence']['sessionIds']) <= published)
