@@ -640,6 +640,79 @@
       ]
     },
     {
+      "key": "litert-lm|cpu|android|POCO F8 Ultra|Qwen3 1.7B|int4|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793534024008-0-vrm9j74lr98",
+          "timestampIso": "2026-11-01T11:53:44.008Z",
+          "bundleSha256": "73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Qwen3 1.7B",
+            "quant": "int4",
+            "quantBits": 4,
+            "ppTps": 91.7,
+            "tgTps": 10.6,
+            "ttftMs": 6374.8,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-qwen3-int4-cpu-v2",
+            "configurationSha256": "3d1f4a5747e4eeaa0859d6d7e8533342acb64e9445f77c6f7d4a38b752746b4b",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.2,
+                "min": 91.5,
+                "max": 91.9
+              },
+              "tgTps": {
+                "iqr": 0,
+                "min": 10.6,
+                "max": 10.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793534024008-0-vrm9j74lr98"
+              ],
+              "bundleSha256": "73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "litert-lm|cpu|android|Samsung Galaxy S23|Gemma 3 1B|int4|measured",
       "displayed": "1792478409685-0-460hv9jut6f",
       "rule": "newest-verified",
