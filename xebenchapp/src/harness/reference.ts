@@ -12,7 +12,7 @@ import {stopMonitor} from './conditions';
 import {readBuildInfo} from './build';
 import type {BuildIdentity} from './build';
 import {AcceleratorSession, runAcceleratorConfiguration} from './accelerator';
-import {LiteRtAdapter} from './adapters/LiteRtAdapter';
+import {LiteRtAdapter, LITERT_RAW_GATE_TEMPLATES} from './adapters/LiteRtAdapter';
 import type {EngineAdapter} from './adapters/EngineAdapter';
 import type {ExecutorchAdapterOptions} from './adapters/ExecutorchAdapter';
 import {GenieXAdapter} from './adapters/GenieXAdapter';
@@ -192,6 +192,7 @@ export function acceleratorAdapter(run: AcceleratorRun, modelPath: string,
     return new LlamaRnAdapter({modelPath, modelLabel: run.model, quantLabel: run.quant,
       nThreads: run.nThreads!, nCtx: run.nCtx!, nGpuLayers: run.nGpuLayers ?? 0,
       ...(run.devices ? {devices: run.devices} : {}),
+      ...(run.eogTokenIds ? {eogTokenIds: run.eogTokenIds} : {}),
       // Unset load settings (undefined) keep the adapter defaults.
       useMmap: run.useMmap, useMlock: run.useMlock, noExtraBufts: run.noExtraBufts, flashAttnType: run.flashAttnType});
   }
@@ -200,7 +201,8 @@ export function acceleratorAdapter(run: AcceleratorRun, modelPath: string,
       quantLabel: run.quant, nThreads: run.nThreads, nCtx: run.nCtx});
   }
   return new LiteRtAdapter({modelPath, backend: run.backend, modelLabel: run.model, quantLabel: run.quant,
-    nThreads: run.nThreads});
+    nThreads: run.nThreads,
+    ...(options.chatTemplate && LITERT_RAW_GATE_TEMPLATES.includes(options.chatTemplate) ? {rawChatTurn: true} : {})});
 }
 
 /**

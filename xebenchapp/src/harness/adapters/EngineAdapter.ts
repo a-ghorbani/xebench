@@ -42,8 +42,20 @@ export interface LlamaRnEffectiveSettings {
     n_ctx: number; n_batch: number; n_ubatch: number; n_threads: number | null; n_gpu_layers: number;
     use_mmap: boolean; use_mlock: boolean; no_extra_bufts: boolean; flash_attn_type: 'auto' | 'on' | 'off';
     cache_type_k: 'f16'; cache_type_v: 'f16'; devices?: string[];
+    /**
+     * 0: llama.rn's prompt state cache is off. With it on (llama.rn's default, 160 MiB), a first
+     * prompt on a sliding-window model (Gemma 3, Gemma 4) is decoded in a separate one-token batch
+     * up to the first message boundary, so llama.cpp's prompt counters (timings.prompt_n,
+     * prompt_ms) leave out the BOS token. Absent in records of builds that did not pass it.
+     */
+    state_cache_budget_mb?: 0;
   };
-  completion: {n_predict: number; temperature: number; seed: number};
+  /**
+   * logit_bias (decodeMode fixed, measured repetitions): [token id, false] for every
+   * end-of-generation token of the run (eogTokenIds), llama.rn's form for a bias of -infinity
+   * (cpp/jsi/JSIParams.cpp), so decoding never stops before n_predict.
+   */
+  completion: {n_predict: number; temperature: number; seed: number; logit_bias?: [number, false][]};
   unlisted: 'binding-defaults';
   /**
    * Where the binding came from: the npm package as published, without patches (xebench is

@@ -191,6 +191,13 @@ export interface AcceleratorRun {
   tokenizerFile?: string;
   /** ExecuTorch only (required): SHA-256 of tokenizerFile; a mismatch is recorded unmeasured (tokenizer-hash-mismatch). */
   tokenizerSha256?: string;
+  /**
+   * llama.cpp runs under decodeMode fixed (required there, refused elsewhere): every token id the
+   * model's vocabulary treats as end of generation (llama.cpp's llama_vocab_is_eog), ascending.
+   * Derived from the GGUF on the host when the model is pinned (scripts/gguf_eog_tokens.py); the
+   * measured repetitions give each a logit bias of -infinity, so decoding runs to maxDecodeTokens.
+   */
+  eogTokenIds?: number[];
   /** llama.cpp only: the load and attention settings of ReferenceRun (LOAD_SETTINGS), when set. */
   useMmap?: boolean;
   useMlock?: boolean;
@@ -217,8 +224,9 @@ export interface AcceleratorConfig {
   measuredPrompt?: MeasuredPrompt;
   /**
    * fixed: every repetition decodes exactly maxDecodeTokens tokens, past the end of turn
-   * (LiteRT-LM runs, LiteRtFixedDecode.kt; ExecuTorch runs, ignoreEos with maxNewTokens). Absent: decoding stops at the end of turn or at
-   * maxDecodeTokens. Kept only when set, so the record echoes the file exactly.
+   * (LiteRT-LM runs, LiteRtFixedDecode.kt; ExecuTorch runs, ignoreEos with maxNewTokens; llama.cpp
+   * runs, a logit bias of -infinity on every eogTokenIds token). Absent: decoding stops at the end of
+   * turn or at maxDecodeTokens. Kept only when set, so the record echoes the file exactly.
    */
   decodeMode?: DecodeMode;
   orderSeed?: number;
@@ -227,7 +235,9 @@ export interface AcceleratorConfig {
 
 export const DECODE_MODES = ['fixed'] as const;
 /** The engines that can decode a fixed length past the end of turn (decodeMode fixed). */
-export const FIXED_DECODE_ENGINES: readonly AcceleratorEngine[] = ['litert-lm', 'executorch'];
+export const FIXED_DECODE_ENGINES: readonly AcceleratorEngine[] = ['litert-lm', 'executorch', 'llama.cpp'];
+/** Bounds of a run's eogTokenIds: llama.cpp vocabularies mark a handful of tokens as end of generation. */
+export const MAX_EOG_TOKENS = 32;
 export type DecodeMode = typeof DECODE_MODES[number];
 
 const BASENAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
@@ -248,10 +258,23 @@ function nullableInteger(value: unknown, low: number, high: number): number | nu
   return value === null ? null : integer(value, low, high);
 }
 
+/** 1–MAX_EOG_TOKENS distinct token ids in ascending order (one canonical spelling per set). */
+function eogTokenIds(value: unknown): number[] {
+  if (!Array.isArray(value) || !value.length || value.length > MAX_EOG_TOKENS) {
+    throw new Error(`eogTokenIds must list 1-${MAX_EOG_TOKENS} token ids`);
+  }
+  const ids = value as unknown[];
+  if (ids.some(id => typeof id !== 'number' || !Number.isInteger(id) || id < 0 || id > 0x7fffffff) ||
+      (ids as number[]).some((id, index) => index > 0 && id <= (ids as number[])[index - 1])) {
+    throw new Error('eogTokenIds must be distinct token ids in ascending order');
+  }
+  return [...ids as number[]];
+}
+
 function acceleratorRun(item: unknown): AcceleratorRun {
   const run = object(item);
   fields(run, [...RUN_FIELDS, 'nGpuLayers', 'devices', 'modelSha256', 'tokenizerFile', 'tokenizerSha256',
-    ...Object.keys(LOAD_SETTINGS)]);
+    'eogTokenIds', ...Object.keys(LOAD_SETTINGS)]);
   if (RUN_FIELDS.some(key => !(key in run))) {
     throw new Error('Every accelerator run field is required');
   }
@@ -293,7 +316,8 @@ function acceleratorRun(item: unknown): AcceleratorRun {
     if (!BASENAME.test(tokenizerFile) || !tokenizerFile.endsWith('.json')) {
       throw new Error('tokenizerFile must be a .json basename, not a path or URL');
     }
-    if ('nGpuLayers' in run || 'devices' in run || Object.keys(LOAD_SETTINGS).some(key => key in run)) {
+    if ('nGpuLayers' in run || 'devices' in run || 'eogTokenIds' in run ||
+        Object.keys(LOAD_SETTINGS).some(key => key in run)) {
       throw new Error('ExecuTorch runs take no llama.cpp settings');
     }
     if (backend !== 'cpu' || result.nThreads !== null || result.nCtx !== null) {
@@ -327,10 +351,16 @@ function acceleratorRun(item: unknown): AcceleratorRun {
     if (devices !== undefined) {
       result.devices = names;
     }
+    if (run.eogTokenIds !== undefined) {
+      result.eogTokenIds = eogTokenIds(run.eogTokenIds);
+    }
     Object.assign(result, loadSettings(run));
   } else {
     if ('nGpuLayers' in run || 'devices' in run) {
       throw new Error('nGpuLayers/devices apply to llama.cpp only');
+    }
+    if ('eogTokenIds' in run) {
+      throw new Error('eogTokenIds applies to llama.cpp only');
     }
     if (Object.keys(LOAD_SETTINGS).some(key => key in run)) {
       throw new Error('useMmap/useMlock/noExtraBufts/flashAttnType apply to llama.cpp only');
@@ -372,8 +402,15 @@ export function parseAcceleratorConfig(input: unknown): AcceleratorConfig {
   if (decodeMode === 'fixed' && runs.some(run => !FIXED_DECODE_ENGINES.includes(run.engine) ||
       (run.engine === 'litert-lm' && run.backend === 'cpu' && run.nThreads !== null && run.nThreads !== 4))) {
     // LiteRT-LM's fixed-length engine (nativeCreateBenchmark) takes no thread count: its CPU default is 4.
-    // ExecuTorch decodes a fixed length natively (ignoreEos with maxNewTokens).
-    throw new Error('decodeMode fixed applies to LiteRT-LM runs (nThreads 4 or null on CPU) and ExecuTorch runs');
+    // ExecuTorch decodes a fixed length natively (ignoreEos with maxNewTokens); llama.cpp with a logit
+    // bias on every end-of-generation token (eogTokenIds).
+    throw new Error('decodeMode fixed applies to LiteRT-LM runs (nThreads 4 or null on CPU), ExecuTorch runs ' +
+      'and llama.cpp runs');
+  }
+  if (runs.some(run => run.engine === 'llama.cpp' && (run.eogTokenIds !== undefined) !== (decodeMode === 'fixed'))) {
+    // llama.rn's ignore_eos biases the vocabulary's EOS alone, while its completion loop stops at any
+    // end-of-generation token (llama_vocab_is_eog), such as Gemma's end of turn.
+    throw new Error('llama.cpp runs list eogTokenIds exactly under decodeMode fixed');
   }
   for (const run of runs) {
     const reference = runs.find(item => item.id === run.referenceRunId);

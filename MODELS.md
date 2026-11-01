@@ -137,6 +137,20 @@ For llama.cpp, the app writes each model's single user turn exactly as the model
 template renders it, with thinking off: the chat templates `gemma4` and `qwen3`
 ([`prompts.ts`](xebenchapp/src/harness/prompts.ts); see [REFERENCE-RUNS.md](docs/REFERENCE-RUNS.md)).
 
+Each board GGUF's end-of-generation tokens, the tokens llama.cpp stops at
+(`llama_vocab_is_eog`), are pinned with it as the configurations' `eogTokenIds`: a fixed decode
+biases each of them to −∞ ([REFERENCE-RUNS.md](docs/REFERENCE-RUNS.md#model-refresh-board-configurations)).
+`scripts/gguf_eog_tokens.py <file>` derives them from the GGUF's tokenizer metadata with llama.cpp
+b11804's rules (the llama.cpp llama.rn 0.13.0-rc.8 vendors); for these three files its output
+equals the ids for which `llama_vocab_is_eog()` is true on a `vocab_only` load of that llama.cpp
+built from llama.rn's vendored sources.
+
+| GGUF | End-of-generation token ids |
+| --- | --- |
+| `gemma-4-E2B_q4_0-it.gguf` | 1 `<eos>`, 50 `<\|tool_response>`, 106 `<turn\|>` |
+| `Qwen3-1.7B-Q4_0.gguf` | 128247 `</s>`, 151643 `<\|endoftext\|>`, 151645 `<\|im_end\|>`, 151662 `<\|fim_pad\|>`, 151663 `<\|repo_name\|>`, 151664 `<\|file_sep\|>` |
+| `gemma-3-1b-it-q4_0.gguf` | 1 `<eos>`, 106 `<end_of_turn>`, 212 `</s>` |
+
 Licenses, as each repository states them: the Gemma 4 E2B GGUF and `.litertlm` files are under the
 [Apache License 2.0](https://ai.google.dev/gemma/docs/gemma_4_license), with base model
 `google/gemma-4-E2B-it`. The ExecuTorch Gemma 4 E2B repository's card states `license: gemma` and

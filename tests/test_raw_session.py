@@ -1199,7 +1199,7 @@ class ExecutorchRecordTests(unittest.TestCase):
         self.assertIn("configuration.run-invalid",
                       {item["code"] for item in raw_session._configuration_accelerator(litert)})
         # decodeMode fixed is an allow-list: only engines with a fixed-length decode.
-        self.assertEqual(raw_session.FIXED_DECODE_ENGINES, ("litert-lm", "executorch"))
+        self.assertEqual(raw_session.FIXED_DECODE_ENGINES, ("litert-lm", "executorch", "llama.cpp"))
         genie = copy.deepcopy(config)
         genie["runs"][0]["engine"] = "genie-x"
         self.assertIn("configuration.run-invalid",

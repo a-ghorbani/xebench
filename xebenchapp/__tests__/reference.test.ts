@@ -1,6 +1,8 @@
 import * as FS from '@dr.pogodin/react-native-fs';
 import {initLlama, LlamaContext} from 'llama.rn';
-import {runReference} from '../src/harness/reference';
+import {acceleratorAdapter, runReference} from '../src/harness/reference';
+import {fixedDecodeError, LlamaRnAdapter} from '../src/harness/adapters/LlamaRnAdapter';
+import {chatTurn} from '../src/harness/prompts';
 import bundled from '../configs/cpu-reference-v2.json';
 import v1 from '../configs/cpu-reference-v1.json';
 import v3 from '../configs/cpu-reference-v3.json';
@@ -217,7 +219,7 @@ test('records the engine settings actually passed and what the loaded context re
   // cpu-reference-v2: PocketPal's Android load defaults (no mmap or mlock, repacking on, flash attention off).
   expect(record.effectiveSettings).toEqual({binding: 'llama.rn', unlisted: 'binding-defaults',
     init: {n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4, n_gpu_layers: 0, use_mmap: false, use_mlock: false,
-      no_extra_bufts: false, flash_attn_type: 'off', cache_type_k: 'f16', cache_type_v: 'f16'},
+      no_extra_bufts: false, flash_attn_type: 'off', cache_type_k: 'f16', cache_type_v: 'f16', state_cache_budget_mb: 0},
     completion: {n_predict: 128, temperature: 0, seed: 42},
     // Vanilla npm llama.rn, exactly the pinned version, no patches.
     distribution: {source: 'npm', package: 'llama.rn', version: '0.13.0-rc.8', patches: []}});
@@ -243,7 +245,7 @@ test('a staged cpu-reference-v1 run keeps the harness defaults and its configura
   expect(record.configurationSource).toEqual({kind: 'staged', sha256: createHash('sha256').update(text).digest('hex')});
   expect(record.effectiveSettings.init).toEqual({n_ctx: 2048, n_batch: 512, n_ubatch: 512, n_threads: 4,
     n_gpu_layers: 0, use_mmap: true, use_mlock: false, no_extra_bufts: false, flash_attn_type: 'auto',
-    cache_type_k: 'f16', cache_type_v: 'f16'});
+    cache_type_k: 'f16', cache_type_v: 'f16', state_cache_budget_mb: 0});
   expect(initLlama).toHaveBeenCalledWith(expect.objectContaining({use_mmap: true, flash_attn_type: 'auto'}));
 });
 
@@ -374,4 +376,107 @@ test('a debug build loads JS from Metro, so its bundled configuration hash is un
   await runReference(() => {});
   expect(saved()[0].configurationSource).toEqual({kind: 'bundled', sha256: null});
   expect(saved()[0].build.buildType).toBe('debug');
+});
+
+// llama.cpp fixed decoding (decodeMode fixed): a -infinity logit bias on every end-of-generation token.
+const GEMMA4_EOG = [1, 50, 106];
+const fixedConfig = {schemaVersion: 2, id: 'llamacpp-fixed-fixture', nColdRuns: 1, cooldownSec: 0,
+  readinessTimeoutSec: 10, maxBatteryTempRiseC: 2, maxDecodeTokens: 128, chatTemplate: 'gemma4',
+  measuredPrompt: 'std-pp512-v1', decodeMode: 'fixed',
+  runs: [{id: 'gemma4-cpu', engine: 'llama.cpp', backend: 'cpu', purpose: 'measurement', model: 'Gemma 4 E2B',
+    modelFile: 'gemma-4-E2B_q4_0-it.gguf', quant: 'Q4_0 (QAT)', nThreads: 4, nCtx: 2048, nGpuLayers: 0,
+    referenceRunId: null, eogTokenIds: GEMMA4_EOG, modelSha256: MODEL_SHA}]};
+// What llama.rn returns for a completion that ran to n_predict 128: 127 decode steps after the first token.
+const LIMIT = {stopped_eos: false, stopped_word: false, stopped_limit: true, context_full: false, interrupted: false,
+  tokens_predicted: 127, timings: {prompt_n: 519, predicted_n: 127, prompt_ms: 4000, predicted_ms: 4700,
+    prompt_per_second: 129.75, predicted_per_second: 27.02}};
+
+function fixedContext(measured: Record<string, unknown>) {
+  const completion = jest.fn(async (options: {logit_bias?: unknown}, token?: () => void) => {
+    token?.();
+    // The gate runs on the engine's own stopping rule (no bias); the repetitions carry the bias.
+    return options.logit_bias === undefined ? {text: 'Paris pelican 417', timings: LIMIT.timings} : measured;
+  });
+  jest.mocked(initLlama).mockResolvedValue({...CONTEXT, completion, release: jest.fn(async () => {})} as unknown as LlamaContext);
+  return completion;
+}
+
+test('fixedDecodeError: exactly n tokens means stopped on the limit with n - 1 decode steps', () => {
+  expect(fixedDecodeError(LIMIT, 128)).toBeNull();
+  expect(fixedDecodeError({...LIMIT, stopped_limit: 1}, 128)).toBeNull();
+  expect(fixedDecodeError({...LIMIT, stopped_limit: false, stopped_eos: true,
+    timings: {predicted_n: 84}}, 128)).toContain('end-of-generation');
+  expect(fixedDecodeError({...LIMIT, stopped_word: true}, 128)).toContain('stop word');
+  expect(fixedDecodeError({...LIMIT, context_full: true}, 128)).toContain('full context');
+  expect(fixedDecodeError({...LIMIT, interrupted: true}, 128)).toContain('interrupted');
+  expect(fixedDecodeError({...LIMIT, stopped_limit: false}, 128)).toContain('n_predict limit');
+  // llama.rn counts the tokens after the first: 128 tokens are predicted_n 127, not 128.
+  expect(fixedDecodeError({...LIMIT, tokens_predicted: 128, timings: {predicted_n: 128}}, 128)).toContain('not 127');
+  expect(fixedDecodeError({...LIMIT, tokens_predicted: 126}, 128)).toContain('not 127');
+  expect(fixedDecodeError({...LIMIT, timings: {}}, 128)).toContain('not 127');
+});
+
+test('decodeMode fixed: the repetitions bias every end-of-generation token and record all 128 tokens', async () => {
+  files.set('/fixture/xebench-config.json', JSON.stringify(fixedConfig));
+  const completion = fixedContext(LIMIT);
+  await runReference(() => {});
+  const record = saved()[0];
+  expect(record.status).toBe('complete');
+  const bias = GEMMA4_EOG.map(id => [id, false]);
+  expect(record.effectiveSettings.completion).toEqual({n_predict: 128, temperature: 0, seed: 42, logit_bias: bias});
+  expect(record.effectiveSettings.init.state_cache_budget_mb).toBe(0);
+  expect(record.coldRuns[0]).toMatchObject({status: 'complete', promptTokens: 519, decodeTokens: 128,
+    decodeTps: 27.02, prefillTps: 129.75});
+  // Gate probes: no bias; the measured repetition: the bias, exactly as recorded.
+  const calls = completion.mock.calls.map(([options]) => options as Record<string, unknown>);
+  expect(calls.filter(options => options.logit_bias === undefined)).toHaveLength(5);
+  expect(calls.filter(options => options.logit_bias !== undefined)).toEqual([expect.objectContaining({
+    n_predict: 128, logit_bias: bias})]);
+  expect(initLlama).toHaveBeenCalledWith(expect.objectContaining({state_cache_budget_mb: 0}));
+});
+
+test('decodeMode fixed: a repetition that stopped at an end-of-generation token is refused', async () => {
+  files.set('/fixture/xebench-config.json', JSON.stringify(fixedConfig));
+  fixedContext({...LIMIT, stopped_limit: false, stopped_eos: true, tokens_predicted: 84,
+    timings: {...LIMIT.timings, predicted_n: 84}});
+  await runReference(() => {});
+  const record = saved()[0];
+  expect(record.status).toBe('failed');
+  expect(record.coldRuns[0]).toMatchObject({status: 'failed', error: {phase: 'inference',
+    message: expect.stringContaining('end-of-generation token')}});
+});
+
+test('llama.rn fixed decoding needs the end-of-generation ids and the configured length', async () => {
+  const plain = new LlamaRnAdapter({modelPath: '/fixture/m.gguf', modelLabel: 'M', quantLabel: 'Q4_0'});
+  expect(() => plain.prepareMeasurement({decodeMode: 'fixed', decodeTokens: 128})).toThrow('end-of-generation');
+  expect(() => plain.effectiveSettings({maxDecodeTokens: 128, decodeMode: 'fixed'})).toThrow('end-of-generation');
+  expect(plain.effectiveSettings({maxDecodeTokens: 128}).completion).toEqual({n_predict: 128, temperature: 0, seed: 42});
+  const adapter = new LlamaRnAdapter({modelPath: '/fixture/m.gguf', modelLabel: 'M', quantLabel: 'Q4_0',
+    eogTokenIds: GEMMA4_EOG});
+  expect(() => adapter.prepareMeasurement({decodeMode: 'fixed', decodeTokens: 1})).toThrow('at least 2');
+  fixedContext(LIMIT);
+  await adapter.load();
+  adapter.prepareMeasurement({decodeMode: 'fixed', decodeTokens: 128});
+  await expect(adapter.benchOnce({prompt: 'x', maxDecodeTokens: 64})).rejects.toThrow('not the fixed 128');
+  await expect(adapter.benchOnce({prompt: 'x', maxDecodeTokens: 128})).resolves.toMatchObject({decodeTokens: 128});
+  // The gate keeps the engine's own stopping rule.
+  await expect(adapter.generate({prompt: 'x', maxDecodeTokens: 32})).resolves.toBe('Paris pelican 417');
+});
+
+test('a LiteRT-LM Qwen3 gate sends the harness turn verbatim (thinking off); other templates use the artifact template', async () => {
+  const generate = jest.fn(async () => ({text: 'Paris'}));
+  (NativeModules as Record<string, unknown>).LiteRtBench = {generate, load: jest.fn(), release: jest.fn(),
+    getConstants: () => ({litertLmVersion: '0.18.1'})};
+  try {
+    const run = {id: 'q', engine: 'litert-lm' as const, backend: 'cpu' as const, purpose: 'measurement' as const,
+      model: 'Qwen3 1.7B', modelFile: 'q.litertlm', quant: 'int4', nThreads: 4, nCtx: null, referenceRunId: null};
+    const probe = {prompt: chatTurn('qwen3', 'Capital?'), text: 'Capital?', maxDecodeTokens: 32};
+    await acceleratorAdapter(run, '/fixture/q.litertlm', {chatTemplate: 'qwen3'}).generate!(probe);
+    expect(generate).toHaveBeenLastCalledWith(chatTurn('qwen3', 'Capital?'), 32, false, true);
+    expect(chatTurn('qwen3', 'Capital?').endsWith('<|im_start|>assistant\n<think>\n\n</think>\n\n')).toBe(true);
+    await acceleratorAdapter(run, '/fixture/q.litertlm', {chatTemplate: 'gemma4'}).generate!(probe);
+    expect(generate).toHaveBeenLastCalledWith('Capital?', 32, false, false);
+  } finally {
+    delete (NativeModules as Record<string, unknown>).LiteRtBench;
+  }
 });

@@ -3,6 +3,7 @@ import type {BackendId, SingleRunMetrics} from '../types';
 import type {BenchOnceConfig, EngineAdapter} from './EngineAdapter';
 import {backendEvidence, BackendEvidence} from '../backend';
 import {NO_RUNTIME_VERSIONS, RuntimeVersions, version} from '../runtime';
+import type {ChatTemplate} from '../prompts';
 
 /**
  * The versions LiteRtBenchModule reports from the APK: the AARs as Gradle resolved them and
@@ -32,7 +33,22 @@ export interface LiteRtAdapterOptions {
   modelLabel: string; // e.g. 'Gemma 3 1B'
   /** CPU backend threads; null = LiteRT-LM default. */
   nThreads?: number | null;
+  /**
+   * true: generate() (the output gate) sends the harness's pre-templated chat turn verbatim, through
+   * the pass-through template and its render check, instead of the user message in the artifact's
+   * own chat template (LITERT_RAW_GATE_TEMPLATES).
+   */
+  rawChatTurn?: boolean;
 }
+
+/**
+ * Chat templates whose LiteRT-LM gate sends the harness's turn verbatim. Qwen3's .litertlm template
+ * thinks unless enable_thinking is false, and LiteRT-LM returns the think block on a channel, not as
+ * reply text, so every gate answer was empty. The harness's qwen3 turn is what that template renders
+ * with enable_thinking false (an empty think block after the assistant header), so the gate answers
+ * with thinking off. The measured prompt (std-pp512-v1) is a raw pass-through either way.
+ */
+export const LITERT_RAW_GATE_TEMPLATES: readonly ChatTemplate[] = ['qwen3'];
 
 type Libraries = {before: string[] | null; after: string[] | null};
 
@@ -111,7 +127,7 @@ export class LiteRtAdapter implements EngineAdapter {
   }
 
   async generate(cfg: BenchOnceConfig): Promise<string> {
-    const raw = cfg.text === undefined;
+    const raw = cfg.text === undefined || this.opts.rawChatTurn === true;
     const result = await this.native.generate(raw ? cfg.prompt : cfg.text, cfg.maxDecodeTokens, false, raw);
     if (typeof result?.text !== 'string') {
       throw new Error('LiteRT-LM returned no text');

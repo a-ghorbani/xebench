@@ -293,6 +293,51 @@ For the configurations pull request (S23):
 2. LiteRT-LM and ExecuTorch Gemma 4 E2B fit with at least 2.7 GiB of `MemAvailable` left; no change needed.
 3. Qwen3 1.7B loads on all three engines; the LiteRT-LM file fails the gate here too (item 4 above).
 
+## ExecuTorch Gemma 4 E2B: why it decodes slowly (host analysis, 2026-10-23)
+
+ExecuTorch 0.10.7 decodes Gemma 4 E2B at 6.8 tok/s on the POCO F8 Ultra and 6.7 on the Galaxy S23, against 31.2 for
+Qwen3 1.7B on the same runtime (sections 4 and Galaxy S23). This analysis was done on the host from the
+react-native-executorch 0.10.7 package, the ExecuTorch v1.4.1 sources and the two pinned `.pte` files, which were
+parsed as flatbuffers. It finds no harness setting behind the gap; the gap is in the export.
+
+- **Threads.** react-native-executorch 0.10.7 does not resize ExecuTorch's threadpool and exposes no setting for it.
+  Its only `_unsafe_reset_threadpool` call is in its `legacy/` code, which the harness does not import. ExecuTorch
+  1.4.1 sizes the pool from `get_num_performant_cores()` (`extension/threadpool/threadpool.cpp`). Its cpuinfo
+  heuristic discounts only efficiency core types (Cortex-A53, A55, A510, A520 and Apple's), so every core of the
+  SM8850 counts: 8 threads. Both models run on the same pool, so threads do not explain the gap.
+- **Runner.** react-native-executorch creates the runner itself (`create_text_llm_runner`, method `forward`,
+  `LoadMode::Mmap`). It accepts `ignoreEos`, `maxNewTokens` and `temperature` from the caller, which the harness sets.
+  Both exports use a KV cache with dynamic shapes. The Gemma export takes at most 512 tokens per forward and holds a
+  4096-token context; the Qwen3 export takes 2048 per forward.
+- **What `forward` runs.**
+
+  | | Gemma 4 E2B | Qwen3 1.7B |
+  | --- | --- | --- |
+  | XNNPACK delegate calls | 953 (462 of them a single node) | 340 |
+  | Calls to portable (non-delegated) kernels | 2,083 | 709 |
+  | fp16↔fp32 casts (`_to_dim_order_copy`) | 881 | 0 |
+  | KV-cache writes | 121 `index_put` and 92 `copy_` | 56 `update_cache` |
+  | Linear-layer weights | 639 MB fp16 (205 layers) and 980 MB int4 | 860 MB int4 |
+
+  In the Gemma export, RMSNorm's mean and the attention (SDPA) run in fp32 outside the fp16 delegates, so each layer
+  casts its activations both ways. Its KV cache is int8 at a fixed full-window shape: 12 sliding layers of 1024 slots
+  and 3 global layers of 4096, for K and V. Every forward, each decode step included, dequantizes the whole cache
+  (about 18.9 million values) with single-threaded scalar kernels. It casts the result and copies the caches out of
+  place. The Qwen3 export updates its cache in place.
+- **Estimate.** Qwen3 moves about 0.9 GB of weights per decoded token at 31.2 tok/s. At that rate, Gemma's
+  roughly 1.65 GB per token (fp16 attention and per-layer-embedding projections plus the int4 layers) would allow
+  about 17 tok/s, or about 60 ms per token. The measured 147 ms per token leaves about 85 ms for the cache path and
+  about 3,000 kernel dispatches per token. So the 16-bit weights account for about 1.9× of the gap and the
+  partitioning of the export for the rest. Prefill is slow for the same reasons: each 512-token forward pushes about
+  1.7 GB through the casts and runs its fp16 layers as fp16 matrix products instead of int8 kernels.
+- **Software Mansion's own numbers.** Software Mansion's benchmark data (`docs/docs/04-benchmarks/imported.json` in
+  the react-native-executorch repository) uses a Galaxy S26 Ultra (also SM8850), react-native-executorch 0.11.0-dev,
+  64 greedy tokens and EOS ignored. It gives 4.5 tok/s for the Gemma 4 E2B 8da4w export and 15.9 for Qwen3 1.7B: the
+  same pattern, at lower speeds than these sessions. Their Gemma figure is for the export at the repository's
+  `v0.10.0` tag (2,635,017,344 bytes), which react-native-executorch 0.10.7's model registry downloads. MODELS.md
+  pins a later revision, `27ecbb4` (3,215,277,312 bytes), whose change keeps the per-layer-embedding dequantization
+  and sensitive projections at higher precision. The repository's model card gives no speed.
+
 ## Harness follow-ups
 
 Changes made after the spike, in the harness (`harness/validation-followups`):
