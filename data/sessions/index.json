@@ -1442,6 +1442,84 @@
       ]
     },
     {
+      "key": "llama.cpp|cpu|android|Google Pixel 9|Qwen3 1.7B|Q4_0|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793529641396-0-bn5bbeig96w",
+          "timestampIso": "2026-11-01T10:40:41.397Z",
+          "bundleSha256": "dc2c590568743747c936b436cba0debae0c8a602074a909705bf72ae0f93f9a2",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/dc2c590568743747c936b436cba0debae0c8a602074a909705bf72ae0f93f9a2/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Pixel 9",
+            "soc": "Tensor G4",
+            "chipName": "Google Tensor G4",
+            "model": "Qwen3 1.7B",
+            "quant": "Q4_0",
+            "quantBits": 4,
+            "ppTps": 150.8,
+            "tgTps": 17.7,
+            "ttftMs": 3447.3,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "cpu-reference-v4-qwen3",
+            "configurationSha256": "56956cf172e36b7b93579e4f8ea5b3d85d88b6707a58ee618b15eada4342cdc7",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.6,
+                "min": 150.4,
+                "max": 151.7
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 17.5,
+                "max": 17.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793529641396-0-bn5bbeig96w"
+              ],
+              "bundleSha256": "dc2c590568743747c936b436cba0debae0c8a602074a909705bf72ae0f93f9a2",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/dc2c590568743747c936b436cba0debae0c8a602074a909705bf72ae0f93f9a2/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "llama.cpp|cpu|android|OnePlus 6|Llama 3.2 1B|Q4_K_M|measured",
       "displayed": null,
       "rule": "retired",
@@ -2077,6 +2155,76 @@
                 {
                   "name": "llama.rn",
                   "version": "0.13.0-rc.7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "sessionId": "1793529645716-0-n3uxkkjqcee",
+          "timestampIso": "2026-11-01T10:40:45.716Z",
+          "bundleSha256": "d9d6990851d52602fd1fe8ad46ef624fb319e9ce38204ea9437ea6a105a3d73e",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/d9d6990851d52602fd1fe8ad46ef624fb319e9ce38204ea9437ea6a105a3d73e/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "llama.cpp",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Samsung Galaxy S23",
+            "soc": "SM8550",
+            "chipName": "Snapdragon 8 Gen 2 for Galaxy",
+            "model": "Gemma 3 1B",
+            "quant": "Q4_0 (QAT)",
+            "quantBits": 4,
+            "ppTps": 271.7,
+            "tgTps": 22.6,
+            "ttftMs": 1914.3,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "cpu-reference-v4-gemma3",
+            "configurationSha256": "1df6e1f614cfa574f32e06f5fcb6e83ae3f256d35e38d8101ebb0d233e260bbb",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 1,
+                "min": 271,
+                "max": 273
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 22.5,
+                "max": 22.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793529645716-0-n3uxkkjqcee"
+              ],
+              "bundleSha256": "d9d6990851d52602fd1fe8ad46ef624fb319e9ce38204ea9437ea6a105a3d73e",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/d9d6990851d52602fd1fe8ad46ef624fb319e9ce38204ea9437ea6a105a3d73e/manifest.json"
+            },
+            "build": {
+              "engineVersion": "llama.cpp b11804 (c7fc509)",
+              "bindingVersion": "llama.rn 0.13.0-rc.8",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "llama.cpp",
+                  "version": "b11804"
+                },
+                {
+                  "name": "llama.rn",
+                  "version": "0.13.0-rc.8"
                 }
               ]
             }
