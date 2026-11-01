@@ -373,6 +373,142 @@ Changes made after the spike, in the harness (`harness/validation-followups`):
   sets the bundle directory to mode 2775 and checks it, and geniex-inapp.md states that the QAIRT
   pipeline prepends BOS 151643 for Qwen3 (520 prompt tokens on the NPU against 519).
 
+## Board sessions: Galaxy S23, Pixel 9, POCO X8 Pro (2026-11-01)
+
+The board configurations of [REFERENCE-RUNS.md](../REFERENCE-RUNS.md#model-refresh-board-configurations) for the
+Galaxy S23 (seven; no llama.cpp Gemma 4 E2B) and the Pixel 9 (eight), CPU only, under the single-rerun rule. These are
+board sessions (3 repetitions, 120 s cooldown), staged into the history only (`aggregate.mjs --stage
+--allow-unlisted-configuration`); `configs/board.json` does not change. The POCO X8 Pro ran nothing (below).
+
+| Item | Value |
+| --- | --- |
+| APK | `xebench-experimental-release-3dff57e.apk` (main at `3dff57e`), SHA-256 `885ef843…c358`, checked against its `SHA256SUMS` before the install and on each phone after it (`base.apk`) |
+| Galaxy S23 | `SM-S911B`, `BP4A.251205.006.S911BXXSAFZI1`, `MemTotal` 7,242,456 kB; USB power, battery protection on |
+| Pixel 9 | `CP1A.260505.005`, `MemTotal` 11,848,700 kB; AC power |
+| POCO X8 Pro | `2511FPC34G` (MT6899), HyperOS `OS3.0.304.0.WPJEUXM` (`BP2A.250605.031.A3`), `MemTotal` 7,497,792 kB; USB power |
+| Files | Every file at its pin; SHA-256 checked on the host and on the phone after each push (`.partial` name, renamed only on a match). The Galaxy S23 kept the files of its October probe, each re-hashed on the phone |
+
+**Pixel 9 storage rotation.** The Pixel 9 had 2.0 GB free. The app's files directory held 8.2 GB of files of
+retired setups (Llama 3.2 1B Q4_0, Q4_K_M and Q8_0 GGUF; Qwen2.5 1.5B Q8_0 GGUF; both Qwen2.5 `.litertlm` files; the
+Llama 3.2 SpinQuant `.pte` and its `tokenizer.json` and `tokenizer_config.json`); they were deleted, leaving 10 GB
+free. The new set (about 14 GB) still did not fit, so the files went on per engine: the three GGUF files (5.4 GB),
+then the three `.litertlm` files (4.2 GB) after deleting the GGUF files, then the two `.pte` files and their
+tokenizers (4.6 GB) after deleting the `.litertlm` files. Each engine's sessions ran with only its own files on the
+phone. The ExecuTorch files stay on the phone.
+
+| Phone | Configuration | Session | Reps | Conditions | Gate | Prompt / decode tok | Prefill tok/s, median (range) | Decode tok/s, median (range) | Policy |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Galaxy S23 | `cpu-reference-v4-qwen3` | `1793529132591-0-lgs4x3ev4f` | 3/3 | pass, charging satisfied | pass | 519 / 128 | 136.6 (135.7–136.7) | 20.2 (20.0–20.2) | verified |
+| Galaxy S23 | `cpu-reference-v4-gemma3` | `1793529645716-0-n3uxkkjqcee` | 3/3 | pass, satisfied | pass | 519 / 128 | 271.7 (271.0–273.0) | 22.6 (22.5–22.7) | verified |
+| Galaxy S23 | `litertlm-gemma4-cpu-v2` | `1793530063260-0-cazlp1ncq1k` | 3/3 | pass, satisfied | pass | 519 / 128 | 185.9 (185.6–185.9) | 22.6 (22.5–22.6) | verified |
+| Galaxy S23 | `litertlm-qwen3-int4-cpu-v2` | `1793530513103-0-0corrg3f8ple` | 3/3 | pass, charging **violated** | pass | 519 / 128 | 49.6 (49.5–49.7) | 8.6 (8.5–8.6) | failed (charging) |
+| Galaxy S23 | `litertlm-gemma3-int4-cpu-v2` | `1793530981456-0-3bor5ypjkk5` | 3/3 | pass, satisfied | pass | 519 / 128 | 221.6 (221.0–221.7) | 38.0 (38.0–38.0) | verified |
+| Galaxy S23 | `executorch-gemma4-cpu-v1` | `1793531968376-0-nm8f4rb5qbg` | 3/3 | pass, satisfied | pass | 519 / 128 | 53.4 (51.9–54.4) | 6.7 (6.6–6.7) | verified |
+| Galaxy S23 | `executorch-qwen3-cpu-v1` | `1793532460521-0-chuv3do03n` | 3/3 | pass, satisfied | pass | 519 / 128 | 159.8 (158.4–161.7) | 23.3 (23.2–23.6) | verified |
+| Pixel 9 | `cpu-reference-v4-qwen3` | `1793529641396-0-bn5bbeig96w` | 3/3 | pass, satisfied | pass | 519 / 128 | 150.8 (150.4–151.7) | 17.7 (17.5–17.7) | verified |
+| Pixel 9 | `cpu-reference-v4-gemma3` | `1793530066282-0-pegxdqk8lqm` | 3/3 | pass, satisfied | pass | 519 / 128 | 302.1 (301.5–302.9) | 19.3 (19.2–19.3) | verified |
+| Pixel 9 | `cpu-reference-v4-gemma4` | `1793530497451-0-7eepgm52wev` | 3/3 | pass, satisfied | pass | 519 / 128 | 93.5 (93.2–94.3) | 11.9 (11.9–12.0) | verified |
+| Pixel 9 | `litertlm-gemma4-cpu-v2` | `1793531082994-0-uq07mqfaa3` | 3/3 | pass, satisfied | pass | 519 / 128 | 176.9 (176.8–178.1) | 19.3 (19.2–19.3) | verified |
+| Pixel 9 | `litertlm-qwen3-int4-cpu-v2` | `1793531535530-0-8f2vg3uxj1m` | 3/3 | pass, satisfied | pass | 519 / 128 | 51.6 (50.9–51.9) | 6.7 (6.6–6.7) | verified |
+| Pixel 9 | `litertlm-gemma3-int4-cpu-v2` | `1793532024743-0-q5iwrhjqcuo` | 3/3 | pass, satisfied | pass | 519 / 128 | 205.2 (196.4–205.7) | 26.1 (25.1–26.3) | verified |
+| Pixel 9 | `executorch-gemma4-cpu-v1` | `1793532613003-0-zz0b0x2uzag` | 3/3 | pass, satisfied | pass | 519 / 128 | 45.0 (44.5–45.1) | 4.9 (4.9–5.0) | verified |
+| Pixel 9 | `executorch-qwen3-cpu-v1` | `1793533133727-0-fowesvfu7hd` | 3/3 | pass, satisfied | pass | 519 / 128 | 159.6 (155.0–161.2) | 18.3 (16.8–18.4) | verified |
+
+- **The llama.cpp fixed decode works on the phones.** Every llama.cpp repetition decoded 128 tokens past the end of
+  turn: `decodeTokens` 128, and decode tok/s is 127 tokens over `predicted_ms` (llama.cpp's `predicted_n` 127).
+  `effectiveSettings.completion.logit_bias` lists each model's end-of-generation ids with `false` (Qwen3: 128247,
+  151643, 151645, 151662, 151663, 151664; Gemma 3: 1, 106, 212; Gemma 4: 1, 50, 106), and `effectiveSettings.init`
+  has `state_cache_budget_mb` 0. With the cache off, llama.cpp counts 519 prompt tokens for the Gemma models too.
+  The Galaxy S23 `cpu-reference-v4-qwen3` session ran first, as the check, before the others started.
+- **No rerun was needed:** every first session had 3 of 3 repetitions, condition verdict `pass` and gate `pass`.
+- **Galaxy S23 LiteRT-LM Qwen3 1.7B: charging violated.** In the third repetition the battery went from 96 % to 95 %,
+  and the phone reported `CHARGING` in 5 of 27 samples: on USB power it starts charging again at 95 %. The
+  single-rerun rule does not cover charging, so the session was not rerun; publication policy v1 rates it `failed`
+  (charging). The next session's first readiness wait took 542 s (107 of 108 polls not ready: `charging`).
+- The Pixel 9 LiteRT-LM Gemma 3 1B session's first repetition was 4.5 % slower than the other two (prefill 196.4
+  against 205.2 and 205.7), and the ExecuTorch Qwen3 1.7B session's first repetition decoded 8.8 % slower (16.8
+  against 18.3 and 18.4). In every other session the three repetitions stay within 4.6 % of each other on both
+  rates.
+- Gemma 4 E2B memory, app PSS after the repetition (max RSS during it): llama.cpp on the Pixel 9 3863 MiB (3916);
+  LiteRT-LM 1456–1480 (1516) on the Galaxy S23 and 1598–1619 (1671) on the Pixel 9; ExecuTorch 2169–2172 (2901) on
+  the Galaxy S23 and 2251–2259 (2306) on the Pixel 9. No session was killed.
+
+### POCO X8 Pro: first time on the board
+
+No session ran on the POCO X8 Pro: the app could not be installed. On HyperOS, `adb install` of the experimental APK
+fails with `INSTALL_FAILED_USER_RESTRICTED` ("Install canceled by user"). The phone's log shows HyperOS's own USB
+install confirmation (`com.miui.securitycenter/com.miui.permcenter.install.AdbInstallActivity`), so each install over
+USB waits for someone to confirm it on the phone, or for "Install via USB" to be enabled in the developer options.
+The phone runs a swipe keyguard (not secure), which the capture's own dismissal handles. Before the first X8 Pro
+session, someone has to approve the install on the phone. After that the phone needs no file rotation (195 GB free),
+and the risk to watch is llama.cpp Gemma 4 E2B on its 7.5 GB of RAM: on the Galaxy S23 (7.2 GB) lmkd ended the app
+while it loaded the same file.
+
+## Board sessions: POCO F8 Ultra (2026-11-01)
+
+The board configurations of [REFERENCE-RUNS.md](../REFERENCE-RUNS.md#model-refresh-board-configurations) for the
+POCO F8 Ultra: all thirteen, CPU, OpenCL and NPU, under the single-rerun rule. These are board sessions (3
+repetitions, 120 s cooldown), staged into the history only (`aggregate.mjs --stage --allow-unlisted-configuration`);
+`configs/board.json` does not change.
+
+| Item | Value |
+| --- | --- |
+| APKs | `xebench-experimental-release-3dff57e.apk`, SHA-256 `885ef843…c358`, and `xebench-geniex-release-3dff57e.apk`, SHA-256 `ff3ee310…8cbd` (main at `3dff57e`, clean); each checked against its `SHA256SUMS` before the install and on the phone after it (`base.apk`) |
+| APK order | experimental at 10:25 UTC (twelve configurations); GENIE-X at 12:35 (`geniex-qwen3-sm8850-npu-v1`); experimental again at 12:49, left installed |
+| POCO F8 Ultra | `25102PCBEG` (SM8850), `MemTotal` 11,286,132 kB; AC power, battery `FULL` throughout |
+| Files | The files of the October spike, each pinned file re-hashed on the phone before the first session; the GENIE-X bundle verified in place by `stage_geniex_bundle.py --push` (mode 2775, nothing pushed) |
+
+`cpu-reference-v4-qwen3` ran first, as the check of the llama.cpp fixed decode, before the others started.
+
+| Configuration | Run | Session | Reps | Conditions | Gate | Prompt / decode tok | Prefill tok/s, median (range) | Decode tok/s, median (range) | Policy |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `cpu-reference-v4-qwen3` | llama.cpp CPU | `1793528833103-0-lbkaqccwro` | 3/3 | pass, satisfied | pass | 519 / 128 | 203.4 (201.9–203.7) | 35.6 (35.6–35.7) | verified |
+| `cpu-reference-v4-gemma4` | llama.cpp CPU | `1793529262255-0-5q39sg7gtsf` | 3/3 | pass, satisfied | pass | 519 / 128 | 129.8 (117.6–142.7) | 26.7 (26.6–26.7) | verified |
+| `cpu-reference-v4-gemma3` | llama.cpp CPU | `1793529671406-0-kejv04w7u1` | 3/3 | pass, satisfied | pass | 519 / 128 | 404.7 (401.4–405.8) | 50.3 (50.2–50.5) | verified |
+| `llamacpp-gemma4-opencl-hexagon-v1` | llama.cpp CPU (gate reference) | `1793530881477-2-3h0q1d0taof` | 3/3 | pass, satisfied | pass | 519 / 128 | 141.2 (126.6–142.9) | 26.8 (26.8–26.8) | verified |
+| `llamacpp-gemma4-opencl-hexagon-v1` | llama.cpp OpenCL | `1793530464960-1-w452032gqz` | 3/3 | pass, satisfied | pass | 519 / 128 | 400.4 (397.3–401.7) | 29.4 (29.2–29.8) | verified |
+| `llamacpp-gemma4-opencl-hexagon-v1` | llama.cpp Hexagon | `1793530071131-0-m7ydqxrk9wh` | 3/3 | pass, satisfied | pass | 519 / 128 | 1688.3 (1681.1–1733.3) | 31.2 (30.1–31.3) | verified |
+| `llamacpp-qwen3-opencl-hexagon-v1` | llama.cpp CPU (gate reference) | `1793531694897-1-m1hckbaqmzq` | 3/3 | pass, satisfied | pass | 519 / 128 | 203.5 (202.9–203.6) | 35.5 (35.5–35.7) | verified |
+| `llamacpp-qwen3-opencl-hexagon-v1` | llama.cpp OpenCL | `1793531294541-0-qo9a0qiaoli` | 3/3 | pass, satisfied | pass | 519 / 128 | 415.9 (414.7–416.0) | 27.1 (26.9–29.8) | verified |
+| `llamacpp-qwen3-opencl-hexagon-v1` | llama.cpp Hexagon | `1793532077408-2-ki7wxv0zx7` | 3/3 | pass, satisfied | pass | 519 / 128 | 2514.1 (2499.6–2542.1) | 45.1 (43.7–45.4) | verified |
+| `llamacpp-gemma3-opencl-hexagon-v1` | llama.cpp CPU (gate reference) | `1793533222721-2-9h9ffjxra69` | 3/3 | pass, satisfied | pass | 519 / 128 | 405.5 (404.4–406.0) | 50.6 (50.6–50.8) | verified |
+| `llamacpp-gemma3-opencl-hexagon-v1` | llama.cpp OpenCL | `1793532838998-1-8njmz5i94c6` | 3/3 | pass, satisfied | pass | 519 / 128 | 966.2 (946.2–971.2) | 42.1 (41.6–42.1) | verified |
+| `llamacpp-gemma3-opencl-hexagon-v1` | llama.cpp Hexagon | `1793532463356-0-k0dqkk33548` | 3/3 | pass, satisfied | pass | 519 / 128 | 3634.7 (3634.4–3716.0) | 46.6 (45.8–47.2) | verified |
+| `litertlm-gemma4-cpu-v2` | LiteRT-LM CPU | `1793533611266-0-joii7rfsgih` | 3/3 | pass, satisfied | pass | 519 / 128 | 259.3 (259.0–260.0) | 29.7 (29.4–29.7) | verified |
+| `litertlm-qwen3-int4-cpu-v2` | LiteRT-LM CPU | `1793534024008-0-vrm9j74lr98` | 3/3 | pass, satisfied | pass | 519 / 128 | 91.7 (91.5–91.9) | 10.6 (10.6–10.7) | verified |
+| `litertlm-gemma3-int4-cpu-v2` | LiteRT-LM CPU | `1793534450540-0-6rbrh8x22cs` | 3/3 | pass, satisfied | pass | 519 / 128 | 661.7 (650.7–661.7) | 42.2 (42.0–42.2) | verified |
+| `litertlm-gemma3-sm8850-npu-v2` | LiteRT-LM CPU (gate reference) | `1793535204332-1-fyi6dc2vmz` | 3/3 | pass, satisfied | pass | 519 / 128 | 661.6 (655.5–668.5) | 42.1 (42.1–42.5) | verified |
+| `litertlm-gemma3-sm8850-npu-v2` | LiteRT-LM NPU | `1793534832599-0-agxjwf3zgng` | 3/3 | pass, satisfied | pass | 519 / 128 | 5010.7 (4859.7–5081.4) | 68.8 (67.9–69.2) | verified |
+| `executorch-gemma4-cpu-v1` | ExecuTorch CPU | `1793535622764-0-ktcp60m895r` | 3/3 | pass, satisfied | pass | 519 / 128 | 66.6 (66.3–66.6) | 6.9 (6.8–7.0) | verified |
+| `executorch-qwen3-cpu-v1` | ExecuTorch CPU | `1793536089765-0-scjybiccsg` | 3/3 | pass, satisfied | pass | 519 / 128 | 323.0 (319.6–323.8) | 31.3 (30.9–31.7) | verified |
+| `geniex-qwen3-sm8850-npu-v1` | GENIE-X CPU (gate reference) | `1793536545040-0-xf8twobz2gk` | 3/3 | pass, satisfied | pass | 519 / 128 | 155.7 (155.4–155.8) | 34.3 (33.5–34.3) | verified |
+| `geniex-qwen3-sm8850-npu-v1` | GENIE-X NPU | `1793536930813-1-p8yctwh7tum` | 3/3 | pass, satisfied | pass | 520 / 128 | 2297.1 (2246.9–2680.9) | 27.9 (27.4–29.3) | verified |
+
+- **No rerun was needed:** every first session had 3 of 3 repetitions, condition verdict `pass` (charging satisfied)
+  and gate `pass`, and publication policy v1 rates all 21 `verified`. Backends: OpenCL and Hexagon `confirmed` from
+  llama.rn's device report, the LiteRT-LM NPU from the app's log (litert-npu-log-v1), the GENIE-X NPU from the app's
+  log (geniex-npu-log-v1), ExecuTorch from the program's delegates; the CPU runs are `consistent`.
+- **Decode length:** 128 tokens in every repetition. llama.cpp (fixed decode: `predicted_n` 127, the end-of-generation
+  `logit_bias` and `state_cache_budget_mb` 0 recorded, as on the Galaxy S23 and Pixel 9), LiteRT-LM and ExecuTorch
+  decode a fixed 128; GENIE-X, which stops at the end of turn, reached the 128-token budget on every repetition.
+- **Prompt tokens:** 519 everywhere, the Gemma models on llama.cpp included; 520 on the GENIE-X NPU, whose QAIRT
+  pipeline prepends a BOS (`<|endoftext|>`) for Qwen3.
+- **LiteRT-LM 0.18.1 decodes Gemma 3 1B more slowly on the CPU than 0.18.0 did.** Three 0.18.1 sessions decode at
+  42.0 (the spike's NPU-configuration CPU reference, 2026-10-22), 42.2 (`litertlm-gemma3-int4-cpu-v2`) and 42.1 tok/s
+  (the CPU reference of `litertlm-gemma3-sm8850-npu-v2`), against 47.4 and 48.1 in the two 0.18.0 sessions behind
+  the current board (bundle [`019da4ad8c6d…`](../../evidence/019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6/)):
+  about 12 % slower. Prefill is 661.6–661.7 against 691.2 and 693.8 (about 4.5 % slower).
+- **The LiteRT-LM NPU is faster than its 0.18.0 session:** 5010.7 / 68.8 tok/s against 4578.9 / 56.9 (the spike's
+  0.18.1 check gave 4725.5 / 57.6).
+- **Spread.** The slowest repetition is 9 % or more below the fastest in four places:
+  - prefill of the GENIE-X NPU, 16.2 % (the first repetition 2680.9, the other two 2297.1 and 2246.9);
+  - prefill of `cpu-reference-v4-gemma4`, 17.6 % (142.7, 117.6, 129.8), and of the Gemma 4 E2B CPU gate reference in
+    `llamacpp-gemma4-opencl-hexagon-v1`, 11.4 % (142.9, 141.2, 126.6);
+  - decode of Qwen3 1.7B on OpenCL, 9.7 % (27.1, 26.9, 29.8: the third repetition is the fast one).
+
+  The LiteRT-LM NPU prefill varies by 4.4 % (4859.7–5081.4) and the GENIE-X NPU decode by 6.4 % (27.4–29.3). Every
+  other rate stays within 4.1 % across its three repetitions.
+
 ## Evidence
 
 | Bundle | Sessions | What |
@@ -381,5 +517,33 @@ Changes made after the spike, in the harness (`harness/validation-followups`):
 | [`49a216f37945…`](../../evidence/49a216f37945edcc80b5d31a981206c1984e3293f16e4e47abd78adad2fe69e8/) | 2 | Section 1: `litertlm-gemma3-sm8850-npu-v2` on LiteRT-LM 0.18.1 (NPU and its CPU reference) |
 | [`c12fb048be9b…`](../../evidence/c12fb048be9bfbf75361b33b57c3fd158510a84c45c369d4c35b07410c7b3880/) | 13 | Sections 2–4: the three llama.cpp configurations, LiteRT-LM Qwen3 (`-v1`), LiteRT-LM Gemma 4 and both ExecuTorch (`-v2`) |
 | [`8c41c4e258ff…`](../../evidence/8c41c4e258ff4dd1fc149f165b8c45c7fe2cc3bb91f1db13b2db2acf078befb5/) | 4 | Section 5: both GENIE-X captures (the refused first attempt and the rerun) |
+| [`56707acb5d2e…`](../../evidence/56707acb5d2eafacda4262e3c0d504d08e0e517fec177acecfabf9bd86bf5ac7/) | 1 | Board sessions: Galaxy S23 `cpu-reference-v4-qwen3` |
+| [`d9d6990851d5…`](../../evidence/d9d6990851d52602fd1fe8ad46ef624fb319e9ce38204ea9437ea6a105a3d73e/) | 1 | Board sessions: Galaxy S23 `cpu-reference-v4-gemma3` |
+| [`cddf53ba3a5b…`](../../evidence/cddf53ba3a5b455090c6b7219874451f65b1bf656f1d542d582e17a89b315915/) | 1 | Board sessions: Galaxy S23 `litertlm-gemma4-cpu-v2` |
+| [`2fbe08f18d55…`](../../evidence/2fbe08f18d553e0097a46cbfa3ee969f0f76af6dae04fd65d5b16bfa5b3a8403/) | 1 | Board sessions: Galaxy S23 `litertlm-qwen3-int4-cpu-v2` |
+| [`2b94453b4d1d…`](../../evidence/2b94453b4d1d0b0bf22c74a0046db64978008d96e51f86bed1218b22a8fcc522/) | 1 | Board sessions: Galaxy S23 `litertlm-gemma3-int4-cpu-v2` |
+| [`2859a75aa721…`](../../evidence/2859a75aa721d35c567ddddc02931eaa0fbdf9bdeb0afbf404538a0b8114654e/) | 1 | Board sessions: Galaxy S23 `executorch-gemma4-cpu-v1` |
+| [`dd9d2a9837cd…`](../../evidence/dd9d2a9837cd622e6077345d9553d78952b372278ad8c756bb6d8945d9e0eff4/) | 1 | Board sessions: Galaxy S23 `executorch-qwen3-cpu-v1` |
+| [`dc2c59056874…`](../../evidence/dc2c590568743747c936b436cba0debae0c8a602074a909705bf72ae0f93f9a2/) | 1 | Board sessions: Pixel 9 `cpu-reference-v4-qwen3` |
+| [`4e6178a5e21b…`](../../evidence/4e6178a5e21b5689298fc830a1d91a7f48afa7c578010acbecbf428e979e982b/) | 1 | Board sessions: Pixel 9 `cpu-reference-v4-gemma3` |
+| [`3f8f3138ef5f…`](../../evidence/3f8f3138ef5f063e4d53d307c0de54613e0c68ea38b00104f8640ee89f44f1d4/) | 1 | Board sessions: Pixel 9 `cpu-reference-v4-gemma4` |
+| [`5df4b166f5ff…`](../../evidence/5df4b166f5ffa11f0846ddb6b3073a93eed0b9c7ef6b5655fee9015b1d460d60/) | 1 | Board sessions: Pixel 9 `litertlm-gemma4-cpu-v2` |
+| [`6b9e6a3bec98…`](../../evidence/6b9e6a3bec98b1f015f291daac5b832a375cf8c05a0a3a8d097f8c43147cc47d/) | 1 | Board sessions: Pixel 9 `litertlm-qwen3-int4-cpu-v2` |
+| [`5ffecc68b9a4…`](../../evidence/5ffecc68b9a4a0a5eeca8bd8fe86c2d18272f93132636aa8205ddc4934fc37ac/) | 1 | Board sessions: Pixel 9 `litertlm-gemma3-int4-cpu-v2` |
+| [`8041a2063637…`](../../evidence/8041a206363725e7fe077fb570469f132eeabe9ddb6554266cb5a0e7fd83ffe9/) | 1 | Board sessions: Pixel 9 `executorch-gemma4-cpu-v1` |
+| [`87faa66cd405…`](../../evidence/87faa66cd4055d832c69853bddd823ca1236221d8e84508ccbec377f343f2b15/) | 1 | Board sessions: Pixel 9 `executorch-qwen3-cpu-v1` |
+| [`4962248f3874…`](../../evidence/4962248f3874aa41ef01e2f4efed34f0f02c691bc72db295f594711299678a7d/) | 1 | Board sessions: POCO F8 Ultra `cpu-reference-v4-qwen3` |
+| [`d4868653a047…`](../../evidence/d4868653a0473672942213ae4212aba783457b77676198235eaa8f81d639ac56/) | 1 | Board sessions: POCO F8 Ultra `cpu-reference-v4-gemma4` |
+| [`b8d1aaa9922e…`](../../evidence/b8d1aaa9922e05870eebe9ec0e8acb66e7440d0333d233f26dcb15f653d63dfe/) | 1 | Board sessions: POCO F8 Ultra `cpu-reference-v4-gemma3` |
+| [`658799957eef…`](../../evidence/658799957eefe03b73e298dc8cc43ef25d28cee8ae6d48747d3d87b46c527359/) | 3 | Board sessions: POCO F8 Ultra `llamacpp-gemma4-opencl-hexagon-v1` |
+| [`57c07c4b15a3…`](../../evidence/57c07c4b15a376c8002c9ec22a7052c1701a513b1fb3dde7fbcc024261e353d4/) | 3 | Board sessions: POCO F8 Ultra `llamacpp-qwen3-opencl-hexagon-v1` |
+| [`54b1832f9dde…`](../../evidence/54b1832f9dde54066fcd60ebd99d1bda43793b8b1e24bf2743d780f197522f90/) | 3 | Board sessions: POCO F8 Ultra `llamacpp-gemma3-opencl-hexagon-v1` |
+| [`cc5962fa2ca2…`](../../evidence/cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708/) | 1 | Board sessions: POCO F8 Ultra `litertlm-gemma4-cpu-v2` |
+| [`73ec19b319eb…`](../../evidence/73ec19b319eb0e8b354ce213c556d148a8cd4d5c238b3c6368d0257e076d99f5/) | 1 | Board sessions: POCO F8 Ultra `litertlm-qwen3-int4-cpu-v2` |
+| [`4ce716f908ac…`](../../evidence/4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417/) | 1 | Board sessions: POCO F8 Ultra `litertlm-gemma3-int4-cpu-v2` |
+| [`9f004158ed59…`](../../evidence/9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0/) | 2 | Board sessions: POCO F8 Ultra `litertlm-gemma3-sm8850-npu-v2` |
+| [`27286631777c…`](../../evidence/27286631777c4bd7b970f2aaa6de8ca1ceb9d1d2bd62169a78b1337f668516d2/) | 1 | Board sessions: POCO F8 Ultra `executorch-gemma4-cpu-v1` |
+| [`01a7fe322fe4…`](../../evidence/01a7fe322fe4532da207c191cc46b755bc9fc8bc9df022402201777dafa143e6/) | 1 | Board sessions: POCO F8 Ultra `executorch-qwen3-cpu-v1` |
+| [`304967e2f895…`](../../evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/) | 2 | Board sessions: POCO F8 Ultra `geniex-qwen3-sm8850-npu-v1` |
 
 The three `-v1` captures with unexportable labels (LiteRT-LM Gemma 4, ExecuTorch Gemma 4 and Qwen3) stay local.
