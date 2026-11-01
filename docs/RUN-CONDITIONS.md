@@ -419,11 +419,11 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
      exactly `engineVersion` and `bindingVersion` (none when not declared), measured on or after
      `measuredFrom` (UTC). The backends keep a configuration's other runs off the board: an
      accelerator configuration's CPU reference run has the same row key as a CPU board row, so
-     `llamacpp-llama32-q4km-hexagon-v1` displays `npu` only, `llamacpp-qwen25-opencl-v1` `gpu`
-     only and `cpu-reference-v3*` `cpu` only.
+     `llamacpp-*-opencl-hexagon-v1` display `gpu` and `npu` only, `litertlm-gemma3-sm8850-npu-v2`
+     and `geniex-qwen3-sm8850-npu-v1` `npu` only, and `cpu-reference-v4-*` `cpu` only.
    - `"set": "pre-version-recording"`: the engine's rows from before the app recorded engine
      versions, all measured in the month `measured`. They show no version, and none is
-     backfilled. Today ExecuTorch and GENIE-X display their July 2026 rows.
+     backfilled. No engine declares one.
 2. **Latest set only.** Within a set, a key displays its newest verified session, else its
    newest unverified one. A failed session or row is never displayed. `data/benchmarks.json`
    holds only displayed rows; everything else (staged and superseded sessions, replaced and
@@ -458,37 +458,50 @@ declared in [`configs/board.json`](../configs/board.json) and applied by
 3. `validate_data.mjs` (CI) checks that applying `configs/board.json` to the committed files
    changes nothing.
 
-### The llama.cpp set (llama.rn 0.13.0-rc.7)
+### The model-refresh sets (November 2026)
 
-`engines["llama.cpp"]` declares the rc.7 set: `llama.cpp b11385 (bf9a0cc)` + `llama.rn
-0.13.0-rc.7`, measured from 2026-10-18, with five configurations, each on its backends:
-`cpu-reference-v3` (Llama 3.2 1B Q4_0, Q4_K_M and Q8_0), `cpu-reference-v3-qwen25` and
-`cpu-reference-v3-gemma3` on `cpu`; `llamacpp-qwen25-opencl-v1` on `gpu`;
-`llamacpp-llama32-q4km-hexagon-v1` on `npu`. Every llama.cpp board row is a session of this set;
-the board shows no July 2026 llama.cpp row. The July rows the set replaces stay in
-`data/sessions/index.json` with their month and its basis, and so do the sessions of retired
-setups.
+Every engine declares a set of the model-refresh configurations
+([REFERENCE-RUNS.md](REFERENCE-RUNS.md#model-refresh-board-configurations); [#43](https://github.com/a-ghorbani/xebench/issues/43)),
+measured from 2026-11-01, for Gemma 4 E2B, Qwen3 1.7B and Gemma 3 1B:
 
-Five llama.cpp setups are retired (`retiredKeys`, each with its reason):
+| Engine | Versions | Configurations (backends displayed) |
+| --- | --- | --- |
+| `llama.cpp` | `llama.cpp b11804 (c7fc509)` + `llama.rn 0.13.0-rc.8` | `cpu-reference-v4-gemma4`, `cpu-reference-v4-qwen3`, `cpu-reference-v4-gemma3` (`cpu`); `llamacpp-gemma4-opencl-hexagon-v1`, `llamacpp-qwen3-opencl-hexagon-v1`, `llamacpp-gemma3-opencl-hexagon-v1` (`gpu`, `npu`) |
+| `litert-lm` | `LiteRT-LM 0.18.1`, no binding | `litertlm-gemma4-cpu-v2`, `litertlm-qwen3-int4-cpu-v2`, `litertlm-gemma3-int4-cpu-v2` (`cpu`); `litertlm-gemma3-sm8850-npu-v2` (`npu`) |
+| `executorch` | `ExecuTorch 1.4.1` + `react-native-executorch 0.10.7` | `executorch-gemma4-cpu-v1`, `executorch-qwen3-cpu-v1` (`cpu`) |
+| `genie-x` | `geniex-android 0.8.0`, no binding | `geniex-qwen3-sm8850-npu-v1` (`npu`) |
+
+Every lab row on the board is a session of these sets: 31 rows, all verified (llama.cpp 14,
+LiteRT-LM 10, ExecuTorch 6, GENIE-X 1). The board shows no July 2026 row. The CPU runs of the
+accelerator configurations (gate references) are in the history only. Every setup of the sets
+has a row; the one phone setup without a configuration is llama.cpp Gemma 4 E2B on the Galaxy S23.
+
+The Galaxy S23 LiteRT-LM Qwen3 1.7B row (`litertlm-qwen3-int4-cpu-v2`) is the setup's second
+session (`1793562078967-0-hjdzmf7lkhm`), its one rerun under the single-rerun rule
+([REFERENCE-RUNS.md](REFERENCE-RUNS.md#model-refresh-board-configurations)). The first
+(`1793530513103-0-0corrg3f8ple`) ran while the phone charged in its third repetition; publication
+policy v1 rates it `failed` (charging), and it stays in the history.
+
+Setups that are retired (`retiredKeys`, each with its reason; the rows and sessions stay in
+`data/sessions/index.json`):
 
 | Setup | Reason |
 | --- | --- |
-| OnePlus 6, Llama 3.2 1B Q4_K_M, CPU | the device cannot complete the measurement conditions (sustained thermal throttling) |
-| OnePlus 6, Qwen2.5 1.5B Q8_0, CPU | the device cannot complete the measurement conditions (sustained thermal throttling) |
-| Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, CPU | the measurement is unstable within a session (prefill falls across repetitions); to be re-measured once the run conditions include a stability check ([#40](https://github.com/a-ghorbani/xebench/issues/40)) |
-| Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, GPU | the device cannot complete the measurement conditions (the app is killed for low memory) |
-| POCO F8 Ultra, Llama 3.2 1B Q4_0, NPU | replaced by the Q4_K_M NPU setup; the Q4_0 CPU reference misses a correctness probe |
+| llama.cpp CPU, Llama 3.2 1B Q4_0, Q4_K_M and Q8_0, on the POCO F8 Ultra, Galaxy S23 and Pixel 9 (9 setups) | model no longer on the board (owner decision 2026-10-22) |
+| llama.cpp NPU, POCO F8 Ultra, Llama 3.2 1B Q4_K_M | model no longer on the board (owner decision 2026-10-22) |
+| llama.cpp CPU, Qwen2.5 1.5B Q8_0, POCO F8 Ultra and Pixel 9; llama.cpp GPU, POCO F8 Ultra, Qwen2.5 1.5B Q8_0 | model no longer on the board (owner decision 2026-10-22) |
+| LiteRT-LM CPU, Qwen2.5 1.5B Q8, POCO F8 Ultra, Galaxy S23 and Pixel 9 | model no longer on the board (owner decision 2026-10-22) |
+| ExecuTorch CPU, Llama 3.2 1B SpinQuant 4-bit, POCO F8 Ultra, Galaxy S23, Pixel 9 and OnePlus 6 (July 2026 rows) | model no longer on the board (owner decision 2026-10-22) |
+| GENIE-X NPU, POCO F8 Ultra, Llama 3.2 1B W4A16; GENIE-X CPU, Galaxy S23, Qwen2.5 1.5B Q8_0 (July 2026 rows) | model no longer on the board (owner decision 2026-10-22) |
+| OnePlus 6, Llama 3.2 1B Q4_K_M, llama.cpp CPU | the device cannot complete the measurement conditions (sustained thermal throttling) |
+| OnePlus 6, Qwen2.5 1.5B Q8_0, llama.cpp CPU | the device cannot complete the measurement conditions (sustained thermal throttling) |
+| Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, llama.cpp CPU | the measurement is unstable within a session (prefill falls across repetitions); to be re-measured once the run conditions include a stability check ([#40](https://github.com/a-ghorbani/xebench/issues/40)) |
+| Samsung Galaxy S23, Qwen2.5 1.5B Q8_0, llama.cpp GPU | the device cannot complete the measurement conditions (the app is killed for low memory) |
+| POCO F8 Ultra, Llama 3.2 1B Q4_0, llama.cpp NPU | replaced by the Q4_K_M NPU setup; the Q4_0 CPU reference misses a correctness probe |
 
-### The LiteRT-LM set (LiteRT-LM 0.18.0)
-
-`engines["litert-lm"]` declares the LiteRT-LM 0.18.0 set, measured from 2026-10-20, with three
-configurations: `litertlm-gemma3-int4-cpu-v2` and `litertlm-qwen25-q8-cpu-v2` on `cpu`, and
-`litertlm-gemma3-sm8850-npu-v2` on `npu` ([REFERENCE-RUNS.md](REFERENCE-RUNS.md#litert-lm-board-configurations)).
-It has no binding version. Every LiteRT-LM lab row is a session of this set: Gemma 3 1B and
-Qwen2.5 1.5B on CPU on the POCO F8 Ultra and Galaxy S23, Qwen2.5 1.5B on CPU on the Pixel 9, and
-Gemma 3 1B on the POCO F8 Ultra's NPU. The July rows the set replaces stay in
-`data/sessions/index.json` with their month and its basis, and so do the sessions of the `-v1`
-configurations and the NPU configuration's CPU reference run. No LiteRT-LM setup is retired.
+The earlier sets (llama.rn 0.13.0-rc.7 from 2026-10-18; LiteRT-LM 0.18.0 from 2026-10-20) and
+the July 2026 ExecuTorch and GENIE-X rows are in the history; [CORRECTIONS.md](CORRECTIONS.md)
+records each set change.
 
 A set may declare a `carryover` ([`scripts/lib/board.mjs`](../scripts/lib/board.mjs)): frozen
 July rows of [`scripts/lib/legacy-dates.mjs`](../scripts/lib/legacy-dates.mjs) that stay

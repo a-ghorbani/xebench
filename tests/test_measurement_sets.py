@@ -14,9 +14,27 @@ import subprocess
 import unittest
 
 import bundle_fixtures as fx
-from test_bundle_publication import LEGACY_KEY, Workspace, key_of, load
+from test_bundle_publication import LEGACY_KEY, MODEL_REFRESH_RETIRED, Workspace, key_of, load
 
 ROOT = Path(__file__).resolve().parents[1]
+F8, S23, P9 = "POCO F8 Ultra", "Samsung Galaxy S23", "Google Pixel 9"
+GEMMA4, QWEN3, GEMMA3 = "Gemma 4 E2B", "Qwen3 1.7B", "Gemma 3 1B"
+# The board's lab rows: the model-refresh sets of configs/board.json (docs/REFERENCE-RUNS.md).
+MODEL_REFRESH_ROWS = {
+    *(f"llama.cpp|cpu|android|{device}|{model}|{quant}|measured"
+      for device in (F8, S23, P9) for model, quant in ((GEMMA4, "Q4_0 (QAT)"), (QWEN3, "Q4_0"), (GEMMA3, "Q4_0 (QAT)"))
+      if (device, model) != (S23, GEMMA4)),
+    *(f"llama.cpp|{backend}|android|{F8}|{model}|{quant}|measured" for backend in ("gpu", "npu")
+      for model, quant in ((GEMMA4, "Q4_0 (QAT)"), (QWEN3, "Q4_0"), (GEMMA3, "Q4_0 (QAT)"))),
+    *(f"litert-lm|cpu|android|{device}|{model}|{quant}|measured"
+      for device in (F8, S23, P9) for model, quant in ((GEMMA4, "mixed 2/4/8-bit"), (QWEN3, "int4"), (GEMMA3, "int4"))),
+    f"litert-lm|npu|android|{F8}|{GEMMA3}|int4|measured",
+    *(f"executorch|cpu|android|{device}|{model}|{quant}|measured"
+      for device in (F8, S23, P9) for model, quant in ((GEMMA4, "mixed 4/16-bit"), (QWEN3, "4-bit weights, 8-bit activations"))),
+    f"genie-x|npu|android|{F8}|{QWEN3}|W4A16|measured",
+}
+# Its first session failed the charging check; its one rerun under the single-rerun rule is the board row.
+S23_LITERT_QWEN3 =f"litert-lm|cpu|android|{S23}|{QWEN3}|int4|measured"
 PHONE = "llama.cpp|cpu|android|Google Fixture Phone|Llama 3.2 1B|Q4_K_M|measured"
 TABLET = "llama.cpp|cpu|android|Google Fixture Tablet|Llama 3.2 1B|Q4_K_M|measured"
 
@@ -62,19 +80,17 @@ class CheckedInSetTests(unittest.TestCase):
         self.board = load(ROOT / "configs/board.json")
 
     def test_july_rows_carry_their_month_and_its_basis(self):
-        """Displayed July rows (engines not re-measured) and the July llama.cpp and LiteRT-LM rows their
-        sets replaced or retired (history only) keep their month and its basis."""
-        displayed = {key_of(row): row for row in self.data["rows"] if row.get("validation") == "legacy"}
-        self.assertEqual(set(displayed), {key for key in JULY_ROWS if not key.startswith(("llama.cpp|", "litert-lm|"))})
-        kept = {entry["key"]: replaced["row"] for entry in self.index["keys"] for replaced in entry["replacedRows"]
+        """No July row is displayed: every engine shows a set of sessions. The July rows the sets
+        replaced or retired (history only) keep their month and its basis."""
+        self.assertEqual([key_of(row) for row in self.data["rows"] if row.get("validation") == "legacy"], [])
+        july = {entry["key"]: replaced["row"] for entry in self.index["keys"] for replaced in entry["replacedRows"]
                 if replaced["row"].get("validation") == "legacy" and replaced["row"].get("sourceDate") == "2026-07"}
-        july = {**kept, **displayed}
         self.assertEqual(set(july), set(JULY_ROWS))
         for key, basis in JULY_ROWS.items():
             with self.subTest(key):
                 self.assertEqual((july[key]["sourceDate"], july[key]["dateBasis"]), ("2026-07", basis))
                 self.assertNotIn("build", july[key], "no version is backfilled")
-        self.assertEqual(self.data["schemaVersion"], "1.3")
+        self.assertEqual(self.data["schemaVersion"], "1.4")
         result = subprocess.run(["node", str(ROOT / "scripts/date_legacy_rows.mjs"), "--check"], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
@@ -100,49 +116,61 @@ class CheckedInSetTests(unittest.TestCase):
                 else:
                     self.assertEqual(row["sourceDate"], engine_set["measured"])
 
-    def test_the_llama_cpp_campaign_state(self):
-        """Fifteen rc.7 rows (13 CPU, 1 GPU, 1 NPU) and no July row; every July llama.cpp setup is
-        re-measured or retired."""
-        self.assertNotIn("carryover", self.board["engines"]["llama.cpp"])
-        llama = {key_of(row): row for row in self.data["rows"] if row["engine"] == "llama.cpp"}
-        self.assertEqual({(row.get("build") or {}).get("bindingVersion") for row in llama.values()},
-                         {"llama.rn 0.13.0-rc.7"})
-        self.assertTrue(all("evidence" in row and row["sourceDate"] == "2026-10" and row["validation"] == "verified"
-                            for row in llama.values()))
-        self.assertEqual(sorted(row["backend"] for row in llama.values()), ["cpu"] * 13 + ["gpu", "npu"])
-        # Every llama.cpp session ran to the 128-token budget (127 decoded after the prefill token).
-        self.assertTrue(all("; decode 128 tok; " in row["asStated"] for row in llama.values()))
-        retired = {item["key"] for item in self.board["retiredKeys"]}
-        for key in (key for key in JULY_ROWS if key.startswith("llama.cpp|")):
+    def test_the_model_refresh_board(self):
+        """Exactly the 31 lab rows of the model-refresh sets, every one verified and measured in
+        November 2026 with its engine's versions; every engine but GENIE-X decodes 128 tokens past the
+        end of turn, and GENIE-X states that it decoded 128."""
+        lab = {key_of(row): row for row in self.data["rows"] if row["provenance"] == "measured"}
+        self.assertEqual(set(lab), MODEL_REFRESH_ROWS)
+        versions = {"llama.cpp": ("llama.cpp b11804 (c7fc509)", "llama.rn 0.13.0-rc.8"),
+                    "litert-lm": ("LiteRT-LM 0.18.1", None),
+                    "executorch": ("ExecuTorch 1.4.1", "react-native-executorch 0.10.7"),
+                    "genie-x": ("geniex-android 0.8.0", None)}
+        for key, row in lab.items():
             with self.subTest(key):
-                self.assertTrue((key in llama) != (key in retired), "re-measured or retired, not both")
+                self.assertEqual((row["validation"], row["guardsPassed"], row["sourceDate"]), ("verified", True, "2026-11"))
+                self.assertEqual((row["build"]["engineVersion"], row["build"].get("bindingVersion")), versions[row["engine"]])
+                if row["engine"] == "genie-x":
+                    self.assertIn("; decode 128 tok; ", row["asStated"])
+                else:
+                    self.assertIn("; decode 128 tok, end of turn ignored; ", row["asStated"])
+        self.assertEqual({row["quant"]: row.get("quantBits") for row in lab.values()}, {
+            "Q4_0": 4, "Q4_0 (QAT)": 4, "int4": 4, "W4A16": 4, "4-bit weights, 8-bit activations": 4,
+            "mixed 2/4/8-bit": None, "mixed 4/16-bit": None})
+        self.assertNotIn("carryover", json.dumps(self.board["engines"]))
+
+    def test_the_model_refresh_retires_every_other_setup(self):
+        """Every July setup and every Llama 3.2 1B and Qwen2.5 1.5B setup is off the board, retired
+        with its reason; the history keeps the rows and sessions."""
+        retired = {item["key"] for item in self.board["retiredKeys"]}
         self.assertEqual(retired, {
             fx.NPU_KEY,
             "llama.cpp|cpu|android|OnePlus 6|Llama 3.2 1B|Q4_K_M|measured",
             "llama.cpp|cpu|android|OnePlus 6|Qwen2.5 1.5B|Q8_0|measured",
             "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
             "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
+            *MODEL_REFRESH_RETIRED,
         })
-
-    def test_the_litert_lm_set(self):
-        """Six LiteRT-LM 0.18.0 rows (5 CPU, 1 NPU), every one verified, decoding 128 tokens past the end
-        of turn; no July LiteRT-LM row; the NPU row's backend is confirmed from the app's log."""
-        litert = {key_of(row): row for row in self.data["rows"]
-                  if row["engine"] == "litert-lm" and row["provenance"] == "measured"}
-        self.assertEqual(sorted(row["backend"] for row in litert.values()), ["cpu"] * 5 + ["npu"])
-        self.assertEqual(set(litert), {key for key in JULY_ROWS if key.startswith("litert-lm|")} |
-                         {"litert-lm|npu|android|POCO F8 Ultra|Gemma 3 1B|int4|measured"})
-        for key, row in litert.items():
+        self.assertTrue(retired.isdisjoint(MODEL_REFRESH_ROWS))
+        for key in JULY_ROWS:
             with self.subTest(key):
-                self.assertEqual((row["validation"], row["sourceDate"], row["build"]["engineVersion"]),
-                                 ("verified", "2026-10", "LiteRT-LM 0.18.0"))
-                self.assertNotIn("bindingVersion", row["build"])
-                self.assertIn("decode 128 tok, end of turn ignored;", row["asStated"])
-                self.assertTrue(row["configurationId"].endswith("-v2"))
-        self.assertEqual(self.board["engines"]["litert-lm"]["configurations"], [
-            {"id": "litertlm-gemma3-int4-cpu-v2", "backends": ["cpu"]},
-            {"id": "litertlm-qwen25-q8-cpu-v2", "backends": ["cpu"]},
-            {"id": "litertlm-gemma3-sm8850-npu-v2", "backends": ["npu"]}])
+                self.assertTrue((key in MODEL_REFRESH_ROWS) != (key in retired), "measured in the set or retired, not both")
+        entries = {entry["key"]: entry for entry in self.index["keys"]}
+        for key in retired:
+            with self.subTest(key):
+                self.assertEqual((entries[key]["displayed"], entries[key]["rule"]), (None, "retired"))
+
+    def test_the_galaxy_s23_litert_lm_qwen3_setup_shows_its_rerun(self):
+        """The setup's first session failed the charging check and stays in the history; its one rerun
+        under the single-rerun rule is verified and is the board row."""
+        entry = next(entry for entry in self.index["keys"] if entry["key"] == S23_LITERT_QWEN3)
+        self.assertEqual((entry["displayed"], entry["rule"]), ("1793562078967-0-hjdzmf7lkhm", "newest-verified"))
+        self.assertEqual([(session["sessionId"], session["validation"]) for session in entry["sessions"]],
+                         [("1793530513103-0-0corrg3f8ple", "failed"), ("1793562078967-0-hjdzmf7lkhm", "verified")])
+        self.assertTrue(all(session["row"]["configurationId"] == "litertlm-qwen3-int4-cpu-v2" for session in entry["sessions"]))
+        row = next(row for row in self.data["rows"] if key_of(row) == S23_LITERT_QWEN3)
+        self.assertEqual(row["evidence"]["sessionIds"], ["1793562078967-0-hjdzmf7lkhm"])
+        self.assertNotIn(S23_LITERT_QWEN3, {item["key"] for item in self.board["retiredKeys"]})
 
     def test_board_labels(self):
         """Lab rows say "xebench" and name their chip from configs/devices.json; vendor rows name a

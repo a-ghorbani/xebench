@@ -30,6 +30,21 @@ LEGACY_KEY = "llama.cpp|cpu|android|Google Pixel 9|Llama 3.2 1B|Q4_K_M|measured"
 JULY_KEY = "executorch|cpu|android|Google Pixel 9|Llama 3.2 1B|SpinQuant 4-bit|measured"
 ISO = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 T = {name: f"2026-03-0{day}T00:00:00.000Z" for day, name in enumerate(("t0", "t1", "t2", "t3"), start=1)}
+# The 22 setups of Llama 3.2 1B and Qwen2.5 1.5B the model refresh takes off the board (configs/board.json).
+MODEL_REFRESH_RETIRED = (
+    *(f"llama.cpp|cpu|android|{device}|Llama 3.2 1B|{quant}|measured"
+      for device in ("Google Pixel 9", "POCO F8 Ultra", "Samsung Galaxy S23") for quant in ("Q4_0", "Q4_K_M", "Q8_0")),
+    "llama.cpp|npu|android|POCO F8 Ultra|Llama 3.2 1B|Q4_K_M|measured",
+    "llama.cpp|cpu|android|Google Pixel 9|Qwen2.5 1.5B|Q8_0|measured",
+    "llama.cpp|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured",
+    "llama.cpp|gpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8_0|measured",
+    *(f"litert-lm|cpu|android|{device}|Qwen2.5 1.5B|Q8|measured"
+      for device in ("Google Pixel 9", "POCO F8 Ultra", "Samsung Galaxy S23")),
+    *(f"executorch|cpu|android|{device}|Llama 3.2 1B|SpinQuant 4-bit|measured"
+      for device in ("Google Pixel 9", "OnePlus 6", "POCO F8 Ultra", "Samsung Galaxy S23")),
+    "genie-x|npu|android|POCO F8 Ultra|Llama 3.2 1B|W4A16|measured",
+    "genie-x|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
+)
 
 
 def load(path):
@@ -779,20 +794,37 @@ class BoardConfigurationTests(Workspace):
     def test_the_committed_board_declares_one_set_per_engine(self):
         board = json.loads((ROOT / "configs/board.json").read_text())
         self.assertEqual(board["schemaVersion"], 2)
-        llama = board["engines"]["llama.cpp"]
-        self.assertEqual((llama["set"], llama["configurations"], llama["engineVersion"], llama["bindingVersion"]),
-                         ("sessions", [{"id": "cpu-reference-v3", "backends": ["cpu"]},
-                                       {"id": "cpu-reference-v3-qwen25", "backends": ["cpu"]},
-                                       {"id": "cpu-reference-v3-gemma3", "backends": ["cpu"]},
-                                       {"id": "llamacpp-qwen25-opencl-v1", "backends": ["gpu"]},
-                                       {"id": "llamacpp-llama32-q4km-hexagon-v1", "backends": ["npu"]}],
-                          "llama.cpp b11385 (bf9a0cc)", "llama.rn 0.13.0-rc.7"))
-        self.assertNotIn("carryover", llama)
-        for engine in ("executorch", "genie-x"):
-            self.assertEqual(board["engines"][engine], {"set": "pre-version-recording", "measured": "2026-07"})
-        litert = board["engines"]["litert-lm"]
-        self.assertEqual((litert["set"], litert["engineVersion"], litert["measuredFrom"], "bindingVersion" in litert),
-                         ("sessions", "LiteRT-LM 0.18.0", "2026-10-20", False))
+        # The model-refresh sets (docs/REFERENCE-RUNS.md, Model-refresh board configurations).
+        def configurations(*pairs):
+            return [{"id": id_, "backends": backends} for id_, backends in pairs]
+
+        self.assertEqual(board["engines"], {
+            "executorch": {
+                "set": "sessions",
+                "configurations": configurations(("executorch-gemma4-cpu-v1", ["cpu"]), ("executorch-qwen3-cpu-v1", ["cpu"])),
+                "engineVersion": "ExecuTorch 1.4.1", "bindingVersion": "react-native-executorch 0.10.7",
+                "measuredFrom": "2026-11-01"},
+            "genie-x": {
+                "set": "sessions", "configurations": configurations(("geniex-qwen3-sm8850-npu-v1", ["npu"])),
+                "engineVersion": "geniex-android 0.8.0", "measuredFrom": "2026-11-01"},
+            "litert-lm": {
+                "set": "sessions",
+                "configurations": configurations(("litertlm-gemma4-cpu-v2", ["cpu"]), ("litertlm-qwen3-int4-cpu-v2", ["cpu"]),
+                                                 ("litertlm-gemma3-int4-cpu-v2", ["cpu"]),
+                                                 ("litertlm-gemma3-sm8850-npu-v2", ["npu"])),
+                "engineVersion": "LiteRT-LM 0.18.1", "measuredFrom": "2026-11-01"},
+            "llama.cpp": {
+                "set": "sessions",
+                "configurations": configurations(("cpu-reference-v4-gemma4", ["cpu"]), ("cpu-reference-v4-qwen3", ["cpu"]),
+                                                 ("cpu-reference-v4-gemma3", ["cpu"]),
+                                                 ("llamacpp-gemma4-opencl-hexagon-v1", ["gpu", "npu"]),
+                                                 ("llamacpp-qwen3-opencl-hexagon-v1", ["gpu", "npu"]),
+                                                 ("llamacpp-gemma3-opencl-hexagon-v1", ["gpu", "npu"])),
+                "engineVersion": "llama.cpp b11804 (c7fc509)", "bindingVersion": "llama.rn 0.13.0-rc.8",
+                "measuredFrom": "2026-11-01"},
+        })
+        self.assertEqual({item["reason"] for item in board["retiredKeys"] if item["key"] in MODEL_REFRESH_RETIRED},
+                         {"model no longer on the board (owner decision 2026-10-22)"})
         result = subprocess.run(["node", "--input-type=module", "-e",
                                  "import {loadBoard} from './scripts/lib/board.mjs';"
                                  "const b = loadBoard(process.cwd());"
@@ -806,6 +838,7 @@ class BoardConfigurationTests(Workspace):
                                                          "llama.cpp|cpu|android|OnePlus 6|Qwen2.5 1.5B|Q8_0|measured",
                                                          "llama.cpp|cpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
                                                          "llama.cpp|gpu|android|Samsung Galaxy S23|Qwen2.5 1.5B|Q8_0|measured",
+                                                         *MODEL_REFRESH_RETIRED,
                                                      ])})
 
     def test_an_unlisted_configuration_is_refused_without_the_flag(self):

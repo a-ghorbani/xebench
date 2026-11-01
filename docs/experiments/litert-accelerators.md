@@ -27,8 +27,16 @@ Finding `litert-lm-npu-integration` in [`data/findings.json`](../../data/finding
 Corrected 2026-10-17; see [CORRECTIONS.md](../CORRECTIONS.md).
 
 - **Scope:** Gemma 3 1B on the POCO F8 Ultra (Snapdragon SM8850, Hexagon v81) and the Galaxy S23
-  (Snapdragon SM8550, Hexagon v73). `litertlm-android` 0.18.0,
-  `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` 2.3.0, QAIRT 2.50.0.260828.
+  (Snapdragon SM8550, Hexagon v73). `litertlm-android` 0.18.0 for the experiment below and 0.18.1
+  for the board row, `com.google.ai.edge.litert:litert-npu-runtime-qualcomm` 2.3.0, QAIRT
+  2.50.0.260828.
+- **The board's other models:** Google publishes no LiteRT-LM file compiled for these phones'
+  NPUs for Gemma 4 E2B or Qwen3 1.7B. At the pinned revision `41c5569`,
+  [`litert-community/gemma-4-E2B-it-litert-lm`](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm)
+  has NPU files for the Google Tensor G5 and G6 and Intel Lunar Lake and Panther Lake only (its
+  `main` on 2026-11-01 adds a Qualcomm QCS8275 file and an uncompiled NPU file);
+  [`litert-community/Qwen3-1.7B`](https://huggingface.co/litert-community/Qwen3-1.7B) at `79bf066`
+  has two CPU files and no NPU file.
 - **What it needs:** the `litertlm-android` AAR; Google's NPU runtime
   `litert-npu-runtime-qualcomm`, which provides `libLiteRtDispatch_Qualcomm.so` (per-architecture
   copies are also attached to [LiteRT releases](https://github.com/google-ai-edge/LiteRT/releases));
@@ -46,16 +54,19 @@ Corrected 2026-10-17; see [CORRECTIONS.md](../CORRECTIONS.md).
 | S23, [SM8550 bundle](https://huggingface.co/litert-community/Gemma3-1B-IT): wrong answers when the fact is past the first 128-token prefill chunk ([LiteRT-LM#3508](https://github.com/google-ai-edge/LiteRT-LM/issues/3508)) | fail |
 | F8 Ultra NPU row on the board (backend confirmed from the app's log) | ok |
 | S23 NPU row on the board | missing |
+| Gemma 4 E2B, Qwen3 1.7B: a file compiled for these phones' NPUs | missing |
 
-LiteRT-LM CPU and GPU output also passes the correctness gate on both phones. The board's F8 Ultra
-NPU row (Gemma 3 1B, SM8850 bundle, LiteRT-LM 0.18.0) prefills at 4578.9 and decodes at 56.9 tok/s
-over 128 tokens; its backend is confirmed from the app's own log of each measured load
+LiteRT-LM CPU and GPU output also passes the correctness gate on both phones (LiteRT-LM 0.18.0).
+The board's F8 Ultra NPU row (Gemma 3 1B, SM8850 bundle, LiteRT-LM 0.18.1) prefills at 5010.7 and
+decodes at 68.8 tok/s over 128 tokens; its output check passes against the CPU run of the int4
+file, and its backend is confirmed from the app's own log of each measured load
 ([RUN-CONDITIONS.md](../RUN-CONDITIONS.md#litert-lm-npu-backend-confirmed-by-the-apps-log-litert-npu-log-v1)).
-The S23 has no NPU row until a fixed SM8550 bundle is published.
+The S23 has no NPU row: its SM8550 bundle gives wrong answers.
 
 Evidence: [F8 Ultra Gemma 3 runs](../../evidence/c5116d95007ba6e68748d46e313728d978a891f72c12652f541c12679361a972/),
 [S23 Gemma 3 runs](../../evidence/1890e4b41626dbad97995990e8e1eadb838baa1a278989be7a4bbb354b18f403/),
-[F8 Ultra board set](../../evidence/019da4ad8c6dc3cb843f07d5b5898ea78a603ad156ab95bc7c545e83770860d6/).
+[F8 Ultra board session](../../evidence/9f004158ed598ba26cc1f190ab12e048e92cf321404ed3e96d6673a91c6037b0/)
+(LiteRT-LM 0.18.1; [model-refresh notes](model-refresh.md#board-sessions-poco-f8-ultra-2026-11-01)).
 Results: [POCO F8 Ultra](#poco-f8-ultra-sm8850-measured-2026-10-17),
 [Galaxy S23](#galaxy-s23-sm8550-measured-2026-10-18).
 

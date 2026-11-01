@@ -55,9 +55,10 @@ envelope. The producer (`scripts/aggregate.mjs`) labels rows from legacy records
 hosted evidence bundles, under publication policy v1 (see
 [Published sessions and row selection](#published-sessions-and-row-selection)).
 Since measurement sets ([below](#measurement-sets-what-the-board-renders)),
-`data/benchmarks.json` holds only rows the board displays: vendor rows, July 2026 rows without
-versions (`validation: "legacy"`) and rows published from evidence bundles. It never holds a
-`failed` row; failed and replaced rows are in `data/sessions/index.json`.
+`data/benchmarks.json` holds only rows the board displays: vendor rows and rows published from
+evidence bundles. A July 2026 row without versions (`validation: "legacy"`) is displayed only
+for an engine whose set is its rows of that month; no engine's set is, so the file holds none. It
+never holds a `failed` row; failed, replaced and retired rows are in `data/sessions/index.json`.
 
 Migration: `node scripts/migrate_contract_1_1.mjs` set `schemaVersion` "1.1",
 re-stamped `generatedAt`, and appended `validation: "legacy"` to each of the 26
@@ -223,18 +224,33 @@ an engine once it is re-measured, live only in `data/sessions/index.json`. The s
 selection logic and no new field: it renders every row in `rows` and nothing else. This keeps the
 contract unchanged (removing rows is always valid: the site falls back to its bundled data only for
 an unknown major, malformed JSON or no valid rows), and the producer refuses to write a partial
-set. Each engine's rows come from one set: every llama.cpp row carries llama.cpp b11385 (bf9a0cc),
-llama.rn 0.13.0-rc.7 and its month; every LiteRT-LM lab row carries LiteRT-LM 0.18.0 (and, on the
-NPU row, litert-npu-runtime-qualcomm 2.3.0 and QAIRT 2.50.0.260828221209) and its month, with no
-binding; and the measured ExecuTorch and GENIE-X rows are July 2026 rows (month only). A board that declares a `carryover` would show an engine's July rows next to
-its new set; the row text tells them apart, and the page should then not present the two as one
-comparable series. No engine declares one.
+set. Each engine's rows come from one set, measured in November 2026 (`sourceDate` "2026-11"),
+for three models (Gemma 4 E2B, Qwen3 1.7B, Gemma 3 1B):
+
+| Engine | `build.engineVersion` · `build.bindingVersion` | Rows |
+| --- | --- | --- |
+| `llama.cpp` | llama.cpp b11804 (c7fc509) · llama.rn 0.13.0-rc.8 | 14: CPU on the POCO F8 Ultra and Pixel 9 (three models each) and the Galaxy S23 (Qwen3 1.7B, Gemma 3 1B); `gpu` and `npu` on the POCO F8 Ultra (three models each) |
+| `litert-lm` | LiteRT-LM 0.18.1 (no binding; the NPU row's `runtimes` add litert-npu-runtime-qualcomm 2.3.0 and QAIRT 2.50.0.260828221209) | 10: CPU on all three phones (three models each); `npu` on the POCO F8 Ultra (Gemma 3 1B) |
+| `executorch` | ExecuTorch 1.4.1 · react-native-executorch 0.10.7 | 6: CPU on all three phones (Gemma 4 E2B, Qwen3 1.7B) |
+| `genie-x` | geniex-android 0.8.0 (no binding; `runtimes` add QAIRT 2.50.0.260828221209) | 1: `npu` on the POCO F8 Ultra (Qwen3 1.7B) |
+
+Every one of the 31 lab rows is `verified`. Two quant labels state no single bit width and carry
+no `quantBits`: `mixed 2/4/8-bit` (LiteRT-LM Gemma 4 E2B) and `mixed 4/16-bit` (ExecuTorch Gemma 4
+E2B); ExecuTorch's Qwen3 1.7B rows are `4-bit weights, 8-bit activations` (`quantBits` 4). The
+GENIE-X row's prefill is `ttft-derived`: GENIE-X reports no separate prefill time. A model, engine
+and phone without a row has no row in `rows`, for one of two reasons the page does not need to
+tell apart: the board has no setup for it (no file for that engine, or the phone cannot run it),
+or the setup is in its engine's set but has no displayable session (no setup is in that case
+now; a later passing session appears as an ordinary row with no other change). Either way the page shows
+nothing for it, never a placeholder that suggests a failed or missing run. A board that declares a `carryover` would show
+an engine's July rows next to its new set; the row text tells them apart, and the page should
+then not present the two as one comparable series. No engine declares one.
 
 What the site renders:
 
 | Data | Website requirement |
 | --- | --- |
-| Versions | On every row that has them, as text: `build.engineVersion` and `build.bindingVersion` (e.g. "llama.cpp b11385 (bf9a0cc) · llama.rn 0.13.0-rc.7"). Not in a tooltip or details panel only. |
+| Versions | On every row that has them, as text: `build.engineVersion` and `build.bindingVersion` (e.g. "llama.cpp b11804 (c7fc509) · llama.rn 0.13.0-rc.8"). Not in a tooltip or details panel only. |
 | Rows without versions | Show the measurement month and no version. Never explain why, and never print `validation` ("legacy") or any placeholder such as "unknown version". |
 | Measurement month | On every row: `sourceDate` (`YYYY-MM`) as a month, e.g. "Jul 2026", "Oct 2026". `dateBasis` (contract 1.3) is data for readers of the file; do not render it. |
 | Status words | No "legacy", "failed", "retired", "superseded", "pending" or other lab-book label anywhere. `validation` is not rendered as a word; a verified row may show its evidence link. An `unverified` row needs a plain, self-explanatory label if it is marked at all. |
@@ -244,7 +260,7 @@ What the site renders:
 | Quant | Render `quantBits` as "4-bit" / "8-bit" / "16-bit", with the exact `quant` scheme (Q4_K_M, Q4_0, W4A16, 4-bit QAT, ...) as secondary text and a glossary tooltip: Q4_K_M and Q4_0 are different setups, so the scheme stays visible. A row without `quantBits` shows its scheme alone. |
 | Labels | `quant` may be absent when the source states none: the site words that itself. Labels follow one vocabulary (quant, upper-case SoC, "Brand model" devices, android/ios only), enforced by the lab-book gate. Speeds are "tok/s" in the data text. |
 | Lab row notes | Do not render `asStated` on measured rows: it is lab-book provenance (policy names, prompt ids). |
-| Findings | Render only `headline`, `deck` and the `detailsUrl` link, verbatim. Do not render `context` (for example `correctedAt`). The finding `llama-cpp-hexagon-output` is removed; the board does not explain the retired Hexagon row. |
+| Findings | Render only `headline`, `deck` and the `detailsUrl` link, verbatim. Do not render `context` (for example `correctedAt`). `data/findings.json` holds three: `litert-lm-npu-integration` and `genie-x-npu-files` (gaps; their `blocks` name the NPU cells they explain) and `executorch-gemma4-export` (a caveat on the ExecuTorch Gemma 4 E2B rows). |
 
 Every string in this table is checked in CI by `scripts/check_public_text.mjs` (the lab-book gate,
 [STYLE.md](STYLE.md#board-text-the-lab-book-gate)), and every public-facing pull request completes
@@ -291,7 +307,7 @@ merges.
 
 Consumer fixtures are in [`tests/fixtures/contract-1.3/`](../tests/fixtures/contract-1.3/),
 listed in `index.json` with `producerMustNotEmit` and `consumerExpectation` as for 1.2. The
-current data dates all 20 July rows (11 on the board, the 9 llama.cpp rows in the history) to
+current data dates all 20 July rows (all in the history, `data/sessions/index.json`) to
 2026-07: 18 `measured`, 2 `first-published` (Galaxy S23,
 Gemma 3 1B, LiteRT-LM int4 and llama.cpp Q4_0 QAT).
 
@@ -328,6 +344,7 @@ versions like the llama.cpp ones: engine version "ExecuTorch 1.4.1", binding
 
 Nothing else changes: no new row field, no change in meaning for any 1.3 field, and rows
 without ExecuTorch versions are unchanged. Every 1.0 to 1.3 file still validates.
+`data/benchmarks.json` declares "1.4": its six ExecuTorch rows carry both runtimes.
 
 Consumer fixtures are in [`tests/fixtures/contract-1.4/`](../tests/fixtures/contract-1.4/),
 listed in `index.json` with `producerMustNotEmit` and `consumerExpectation` as for 1.2:
