@@ -402,6 +402,78 @@
       ]
     },
     {
+      "key": "litert-lm|cpu|android|POCO F8 Ultra|Gemma 4 E2B|mixed 2/4/8-bit|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793533611266-0-joii7rfsgih",
+          "timestampIso": "2026-11-01T11:46:51.266Z",
+          "bundleSha256": "cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 4 E2B",
+            "quant": "mixed 2/4/8-bit",
+            "ppTps": 259.3,
+            "tgTps": 29.7,
+            "ttftMs": 2116.7,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-gemma4-cpu-v2",
+            "configurationSha256": "7681ebf86007662cefb70ac74f603fb686896048091bf727429069ade37384f9",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 0.5,
+                "min": 259,
+                "max": 260
+              },
+              "tgTps": {
+                "iqr": 0.2,
+                "min": 29.4,
+                "max": 29.7
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793533611266-0-joii7rfsgih"
+              ],
+              "bundleSha256": "cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/cc5962fa2ca2d6d56a58f7deccd6836f1c204e504e805582f34e5111a9d7a708/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "litert-lm|cpu|android|POCO F8 Ultra|Qwen2.5 1.5B|Q8|measured",
       "displayed": "1792477982490-0-ega6r3qa36f",
       "rule": "newest-verified",
