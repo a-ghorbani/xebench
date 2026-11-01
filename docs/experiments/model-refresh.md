@@ -373,6 +373,66 @@ Changes made after the spike, in the harness (`harness/validation-followups`):
   sets the bundle directory to mode 2775 and checks it, and geniex-inapp.md states that the QAIRT
   pipeline prepends BOS 151643 for Qwen3 (520 prompt tokens on the NPU against 519).
 
+## Board sessions: Galaxy S23, Pixel 9, POCO X8 Pro (2026-11-01)
+
+The board configurations of [REFERENCE-RUNS.md](../REFERENCE-RUNS.md#model-refresh-board-configurations) that run on
+these phones, CPU only, each once under the single-rerun rule. These are board sessions (3 repetitions, 120 s
+cooldown), staged into the history only (`aggregate.mjs --stage --allow-unlisted-configuration`); `configs/board.json`
+does not change.
+
+| Item | Value |
+| --- | --- |
+| APK | `xebench-experimental-release-3dff57e.apk` (main at `3dff57e`), SHA-256 `885ef843…c358`, checked against its `SHA256SUMS` before the install and on each phone after it (`base.apk`) |
+| Galaxy S23 | `SM-S911B`, `BP4A.251205.006.S911BXXSAFZI1`, `MemTotal` 7,242,456 kB; USB power, battery protection on |
+| Pixel 9 | `CP1A.260505.005`, `MemTotal` 11,848,700 kB; AC power |
+| POCO X8 Pro | `2511FPC34G` (MT6899), HyperOS `OS3.0.304.0.WPJEUXM` (`BP2A.250605.031.A3`), `MemTotal` 7,497,792 kB; USB power |
+| Files | Every file at its pin; SHA-256 checked on the host and on the phone after each push (`.partial` name, renamed only on a match). The Galaxy S23 kept the files of its October probe, each re-hashed on the phone |
+
+**Pixel 9 storage rotation.** The Pixel 9 had 2.0 GB free. The app's files directory held 8.2 GB of files of
+retired setups (Llama 3.2 1B Q4_0, Q4_K_M and Q8_0 GGUF; Qwen2.5 1.5B Q8_0 GGUF; both Qwen2.5 `.litertlm` files; the
+Llama 3.2 SpinQuant `.pte` and its `tokenizer.json` and `tokenizer_config.json`); they were deleted, leaving 10 GB
+free. The new set (about 14 GB) still did not fit, so the files went on per engine: the three GGUF files (5.4 GB),
+then the three `.litertlm` files (4.2 GB) after deleting the GGUF files, then the two `.pte` files and their
+tokenizers (4.6 GB) after deleting the `.litertlm` files. Each engine's sessions ran with only its own files on the
+phone. The ExecuTorch files stay on the phone.
+
+| Phone | Configuration | Session | Reps | Conditions | Gate | Prompt / decode tok | Prefill tok/s, median (range) | Decode tok/s, median (range) | Policy |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Galaxy S23 | `cpu-reference-v4-qwen3` | `1793529132591-0-lgs4x3ev4f` | 3/3 | pass, charging satisfied | pass | 519 / 128 | 136.6 (135.7–136.7) | 20.2 (20.0–20.2) | verified |
+| Galaxy S23 | `cpu-reference-v4-gemma3` | `1793529645716-0-n3uxkkjqcee` | 3/3 | pass, satisfied | pass | 519 / 128 | 271.7 (271.0–273.0) | 22.6 (22.5–22.7) | verified |
+| Galaxy S23 | `litertlm-gemma4-cpu-v2` | `1793530063260-0-cazlp1ncq1k` | 3/3 | pass, satisfied | pass | 519 / 128 | 185.9 (185.6–185.9) | 22.6 (22.5–22.6) | verified |
+| Galaxy S23 | `litertlm-qwen3-int4-cpu-v2` | `1793530513103-0-0corrg3f8ple` | 3/3 | pass, charging **violated** | pass | 519 / 128 | 49.6 (49.5–49.7) | 8.6 (8.5–8.6) | failed (charging) |
+| Galaxy S23 | `litertlm-gemma3-int4-cpu-v2` | `1793530981456-0-3bor5ypjkk5` | 3/3 | pass, satisfied | pass | 519 / 128 | 221.6 (221.0–221.7) | 38.0 (38.0–38.0) | verified |
+| Galaxy S23 | `executorch-gemma4-cpu-v1` | `1793531968376-0-nm8f4rb5qbg` | 3/3 | pass, satisfied | pass | 519 / 128 | 53.4 (51.9–54.4) | 6.7 (6.6–6.7) | verified |
+| Galaxy S23 | `executorch-qwen3-cpu-v1` | `1793532460521-0-chuv3do03n` | 3/3 | pass, satisfied | pass | 519 / 128 | 159.8 (158.4–161.7) | 23.3 (23.2–23.6) | verified |
+| Pixel 9 | `cpu-reference-v4-qwen3` | `1793529641396-0-bn5bbeig96w` | 3/3 | pass, satisfied | pass | 519 / 128 | 150.8 (150.4–151.7) | 17.7 (17.5–17.7) | verified |
+| Pixel 9 | `cpu-reference-v4-gemma3` | `1793530066282-0-pegxdqk8lqm` | 3/3 | pass, satisfied | pass | 519 / 128 | 302.1 (301.5–302.9) | 19.3 (19.2–19.3) | verified |
+| Pixel 9 | `cpu-reference-v4-gemma4` | `1793530497451-0-7eepgm52wev` | 3/3 | pass, satisfied | pass | 519 / 128 | 93.5 (93.2–94.3) | 11.9 (11.9–12.0) | verified |
+| Pixel 9 | `litertlm-gemma4-cpu-v2` | `1793531082994-0-uq07mqfaa3` | 3/3 | pass, satisfied | pass | 519 / 128 | 176.9 (176.8–178.1) | 19.3 (19.2–19.3) | verified |
+| Pixel 9 | `litertlm-qwen3-int4-cpu-v2` | `1793531535530-0-8f2vg3uxj1m` | 3/3 | pass, satisfied | pass | 519 / 128 | 51.6 (50.9–51.9) | 6.7 (6.6–6.7) | verified |
+| Pixel 9 | `litertlm-gemma3-int4-cpu-v2` | `1793532024743-0-q5iwrhjqcuo` | 3/3 | pass, satisfied | pass | 519 / 128 | 205.2 (196.4–205.7) | 26.1 (25.1–26.3) | verified |
+| Pixel 9 | `executorch-gemma4-cpu-v1` | `1793532613003-0-zz0b0x2uzag` | 3/3 | pass, satisfied | pass | 519 / 128 | 45.0 (44.5–45.1) | 4.9 (4.9–5.0) | verified |
+| Pixel 9 | `executorch-qwen3-cpu-v1` | `1793533133727-0-fowesvfu7hd` | 3/3 | pass, satisfied | pass | 519 / 128 | 159.6 (155.0–161.2) | 18.3 (16.8–18.4) | verified |
+
+- **The llama.cpp fixed decode works on the phones.** Every llama.cpp repetition decoded 128 tokens past the end of
+  turn: `decodeTokens` 128, and decode tok/s is 127 tokens over `predicted_ms` (llama.cpp's `predicted_n` 127).
+  `effectiveSettings.completion.logit_bias` lists each model's end-of-generation ids with `false` (Qwen3: 128247,
+  151643, 151645, 151662, 151663, 151664; Gemma 3: 1, 106, 212; Gemma 4: 1, 50, 106), and `effectiveSettings.init`
+  has `state_cache_budget_mb` 0. With the cache off, llama.cpp counts 519 prompt tokens for the Gemma models too.
+  The Galaxy S23 `cpu-reference-v4-qwen3` session ran first, as the check, before the others started.
+- **No rerun was needed:** every first session had 3 of 3 repetitions, condition verdict `pass` and gate `pass`.
+- **Galaxy S23 LiteRT-LM Qwen3 1.7B: charging violated.** In the third repetition the battery went from 96 % to 95 %,
+  and the phone reported `CHARGING` in 5 of 27 samples: on USB power it starts charging again at 95 %. The
+  single-rerun rule does not cover charging, so the session was not rerun; publication policy v1 rates it `failed`
+  (charging). The next session's first readiness wait took 542 s (107 of 108 polls not ready: `charging`).
+- The Pixel 9 LiteRT-LM Gemma 3 1B session's first repetition was 4.5 % slower than the other two (prefill 196.4
+  against 205.2 and 205.7), and the ExecuTorch Qwen3 1.7B session's first repetition decoded 8.8 % slower (16.8
+  against 18.3 and 18.4). In every other session the three repetitions stay within 4.6 % of each other on both
+  rates.
+- Gemma 4 E2B memory, app PSS after the repetition (max RSS during it): llama.cpp on the Pixel 9 3863 MiB (3916);
+  LiteRT-LM 1456–1480 (1516) on the Galaxy S23 and 1598–1619 (1671) on the Pixel 9; ExecuTorch 2169–2172 (2901) on
+  the Galaxy S23 and 2251–2259 (2306) on the Pixel 9. No session was killed.
+
 ## Evidence
 
 | Bundle | Sessions | What |
@@ -381,5 +441,20 @@ Changes made after the spike, in the harness (`harness/validation-followups`):
 | [`49a216f37945…`](../../evidence/49a216f37945edcc80b5d31a981206c1984e3293f16e4e47abd78adad2fe69e8/) | 2 | Section 1: `litertlm-gemma3-sm8850-npu-v2` on LiteRT-LM 0.18.1 (NPU and its CPU reference) |
 | [`c12fb048be9b…`](../../evidence/c12fb048be9bfbf75361b33b57c3fd158510a84c45c369d4c35b07410c7b3880/) | 13 | Sections 2–4: the three llama.cpp configurations, LiteRT-LM Qwen3 (`-v1`), LiteRT-LM Gemma 4 and both ExecuTorch (`-v2`) |
 | [`8c41c4e258ff…`](../../evidence/8c41c4e258ff4dd1fc149f165b8c45c7fe2cc3bb91f1db13b2db2acf078befb5/) | 4 | Section 5: both GENIE-X captures (the refused first attempt and the rerun) |
+| [`56707acb5d2e…`](../../evidence/56707acb5d2eafacda4262e3c0d504d08e0e517fec177acecfabf9bd86bf5ac7/) | 1 | Board sessions: Galaxy S23 `cpu-reference-v4-qwen3` |
+| [`d9d6990851d5…`](../../evidence/d9d6990851d52602fd1fe8ad46ef624fb319e9ce38204ea9437ea6a105a3d73e/) | 1 | Board sessions: Galaxy S23 `cpu-reference-v4-gemma3` |
+| [`cddf53ba3a5b…`](../../evidence/cddf53ba3a5b455090c6b7219874451f65b1bf656f1d542d582e17a89b315915/) | 1 | Board sessions: Galaxy S23 `litertlm-gemma4-cpu-v2` |
+| [`2fbe08f18d55…`](../../evidence/2fbe08f18d553e0097a46cbfa3ee969f0f76af6dae04fd65d5b16bfa5b3a8403/) | 1 | Board sessions: Galaxy S23 `litertlm-qwen3-int4-cpu-v2` |
+| [`2b94453b4d1d…`](../../evidence/2b94453b4d1d0b0bf22c74a0046db64978008d96e51f86bed1218b22a8fcc522/) | 1 | Board sessions: Galaxy S23 `litertlm-gemma3-int4-cpu-v2` |
+| [`2859a75aa721…`](../../evidence/2859a75aa721d35c567ddddc02931eaa0fbdf9bdeb0afbf404538a0b8114654e/) | 1 | Board sessions: Galaxy S23 `executorch-gemma4-cpu-v1` |
+| [`dd9d2a9837cd…`](../../evidence/dd9d2a9837cd622e6077345d9553d78952b372278ad8c756bb6d8945d9e0eff4/) | 1 | Board sessions: Galaxy S23 `executorch-qwen3-cpu-v1` |
+| [`dc2c59056874…`](../../evidence/dc2c590568743747c936b436cba0debae0c8a602074a909705bf72ae0f93f9a2/) | 1 | Board sessions: Pixel 9 `cpu-reference-v4-qwen3` |
+| [`4e6178a5e21b…`](../../evidence/4e6178a5e21b5689298fc830a1d91a7f48afa7c578010acbecbf428e979e982b/) | 1 | Board sessions: Pixel 9 `cpu-reference-v4-gemma3` |
+| [`3f8f3138ef5f…`](../../evidence/3f8f3138ef5f063e4d53d307c0de54613e0c68ea38b00104f8640ee89f44f1d4/) | 1 | Board sessions: Pixel 9 `cpu-reference-v4-gemma4` |
+| [`5df4b166f5ff…`](../../evidence/5df4b166f5ffa11f0846ddb6b3073a93eed0b9c7ef6b5655fee9015b1d460d60/) | 1 | Board sessions: Pixel 9 `litertlm-gemma4-cpu-v2` |
+| [`6b9e6a3bec98…`](../../evidence/6b9e6a3bec98b1f015f291daac5b832a375cf8c05a0a3a8d097f8c43147cc47d/) | 1 | Board sessions: Pixel 9 `litertlm-qwen3-int4-cpu-v2` |
+| [`5ffecc68b9a4…`](../../evidence/5ffecc68b9a4a0a5eeca8bd8fe86c2d18272f93132636aa8205ddc4934fc37ac/) | 1 | Board sessions: Pixel 9 `litertlm-gemma3-int4-cpu-v2` |
+| [`8041a2063637…`](../../evidence/8041a206363725e7fe077fb570469f132eeabe9ddb6554266cb5a0e7fd83ffe9/) | 1 | Board sessions: Pixel 9 `executorch-gemma4-cpu-v1` |
+| [`87faa66cd405…`](../../evidence/87faa66cd4055d832c69853bddd823ca1236221d8e84508ccbec377f343f2b15/) | 1 | Board sessions: Pixel 9 `executorch-qwen3-cpu-v1` |
 
 The three `-v1` captures with unexportable labels (LiteRT-LM Gemma 4, ExecuTorch Gemma 4 and Qwen3) stay local.
