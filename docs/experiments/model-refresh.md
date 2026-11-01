@@ -375,10 +375,10 @@ Changes made after the spike, in the harness (`harness/validation-followups`):
 
 ## Board sessions: Galaxy S23, Pixel 9, POCO X8 Pro (2026-11-01)
 
-The board configurations of [REFERENCE-RUNS.md](../REFERENCE-RUNS.md#model-refresh-board-configurations) that run on
-these phones, CPU only, each once under the single-rerun rule. These are board sessions (3 repetitions, 120 s
-cooldown), staged into the history only (`aggregate.mjs --stage --allow-unlisted-configuration`); `configs/board.json`
-does not change.
+The board configurations of [REFERENCE-RUNS.md](../REFERENCE-RUNS.md#model-refresh-board-configurations) for the
+Galaxy S23 (seven; no llama.cpp Gemma 4 E2B) and the Pixel 9 (eight), CPU only, under the single-rerun rule. These are
+board sessions (3 repetitions, 120 s cooldown), staged into the history only (`aggregate.mjs --stage
+--allow-unlisted-configuration`); `configs/board.json` does not change. The POCO X8 Pro ran nothing (below).
 
 | Item | Value |
 | --- | --- |
@@ -432,6 +432,17 @@ phone. The ExecuTorch files stay on the phone.
 - Gemma 4 E2B memory, app PSS after the repetition (max RSS during it): llama.cpp on the Pixel 9 3863 MiB (3916);
   LiteRT-LM 1456–1480 (1516) on the Galaxy S23 and 1598–1619 (1671) on the Pixel 9; ExecuTorch 2169–2172 (2901) on
   the Galaxy S23 and 2251–2259 (2306) on the Pixel 9. No session was killed.
+
+### POCO X8 Pro: first time on the board
+
+No session ran on the POCO X8 Pro: the app could not be installed. On HyperOS, `adb install` of the experimental APK
+fails with `INSTALL_FAILED_USER_RESTRICTED` ("Install canceled by user"). The phone's log shows HyperOS's own USB
+install confirmation (`com.miui.securitycenter/com.miui.permcenter.install.AdbInstallActivity`), so each install over
+USB waits for someone to confirm it on the phone, or for "Install via USB" to be enabled in the developer options.
+The phone runs a swipe keyguard (not secure), which the capture's own dismissal handles. Before the first X8 Pro
+session, someone has to approve the install on the phone. After that the phone needs no file rotation (195 GB free),
+and the risk to watch is llama.cpp Gemma 4 E2B on its 7.5 GB of RAM: on the Galaxy S23 (7.2 GB) lmkd ended the app
+while it loaded the same file.
 
 ## Evidence
 
