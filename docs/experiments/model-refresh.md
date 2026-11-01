@@ -427,6 +427,9 @@ phone. The ExecuTorch files stay on the phone.
   policy v1 rates it `failed` (charging). The rule now also reruns a session whose charging check is not
   `satisfied` (owner decision 2026-11-01, [REFERENCE-RUNS](../REFERENCE-RUNS.md#model-refresh-board-configurations)),
   so this setup gets one unchanged rerun on the same phone and APK. The next session's first readiness wait took 542 s (107 of 108 polls not ready: `charging`).
+  **The rerun** (session `1793562078967-0-hjdzmf7lkhm`, 2026-11-01 19:40 UTC, battery `FULL` at 100 %): 3/3,
+  condition verdict `pass`, charging `satisfied`, gate `pass`, 519 / 128 tokens, prefill 49.8 (49.8–50.1) and
+  decode 8.7 (8.6–8.7) tok/s, 0.5 % and 0.8 % above the first session; publication policy v1 rates it `verified`.
 - The Pixel 9 LiteRT-LM Gemma 3 1B session's first repetition was 4.5 % slower than the other two (prefill 196.4
   against 205.2 and 205.7), and the ExecuTorch Qwen3 1.7B session's first repetition decoded 8.7 % slower (16.8
   against 18.3 and 18.4). In every other session the three repetitions stay within 4.6 % of each other on both
@@ -523,6 +526,7 @@ repetitions, 120 s cooldown), staged into the history only (`aggregate.mjs --sta
 | [`d9d6990851d5…`](../../evidence/d9d6990851d52602fd1fe8ad46ef624fb319e9ce38204ea9437ea6a105a3d73e/) | 1 | Board sessions: Galaxy S23 `cpu-reference-v4-gemma3` |
 | [`cddf53ba3a5b…`](../../evidence/cddf53ba3a5b455090c6b7219874451f65b1bf656f1d542d582e17a89b315915/) | 1 | Board sessions: Galaxy S23 `litertlm-gemma4-cpu-v2` |
 | [`2fbe08f18d55…`](../../evidence/2fbe08f18d553e0097a46cbfa3ee969f0f76af6dae04fd65d5b16bfa5b3a8403/) | 1 | Board sessions: Galaxy S23 `litertlm-qwen3-int4-cpu-v2` |
+| [`07f6f1ca5dea…`](../../evidence/07f6f1ca5dea3ef3c1a337d179426e95ced8eca0f888151a034035073665da5b/) | 1 | Board sessions: Galaxy S23 `litertlm-qwen3-int4-cpu-v2`, rerun under the charging rule |
 | [`2b94453b4d1d…`](../../evidence/2b94453b4d1d0b0bf22c74a0046db64978008d96e51f86bed1218b22a8fcc522/) | 1 | Board sessions: Galaxy S23 `litertlm-gemma3-int4-cpu-v2` |
 | [`2859a75aa721…`](../../evidence/2859a75aa721d35c567ddddc02931eaa0fbdf9bdeb0afbf404538a0b8114654e/) | 1 | Board sessions: Galaxy S23 `executorch-gemma4-cpu-v1` |
 | [`dd9d2a9837cd…`](../../evidence/dd9d2a9837cd622e6077345d9553d78952b372278ad8c756bb6d8945d9e0eff4/) | 1 | Board sessions: Galaxy S23 `executorch-qwen3-cpu-v1` |
