@@ -9,6 +9,39 @@ Central), its sources at the `v0.8.0` tag of [qualcomm/GenieX](https://github.co
 on the POCO F8 Ultra on 2026-10-22 ([device run](#device-run-poco-f8-ultra-model-refresh-spike);
 [model-refresh.md, section 5](model-refresh.md#5-genie-x-080-qwen3-17b-npu)).
 
+## Board finding: GENIE-X on NPU
+
+Finding `genie-x-npu-files` in [`data/findings.json`](../../data/findings.json). The leaderboard
+shows it as a title, at most two sentences and a link here.
+
+- **Scope:** geniex-android 0.8.0 in the benchmark app (geniex flavor, QAIRT 2.50.0.260828221209
+  packaged in place of the AAR's 2.45), on the POCO F8 Ultra (Snapdragon 8 Elite Gen 5, SM8850,
+  Hexagon v81), with Qualcomm's W4A16 Qwen3 1.7B bundle for the "Snapdragon 8 Elite Gen 5 for
+  Galaxy" ([The bundle](#the-bundle)).
+- **The board row:** 2297.1 / 27.9 tok/s prefill / decode (median of 3), 520 prompt tokens, 128
+  tokens decoded in every repetition (GENIE-X stops at the end of turn; this prompt does not
+  reach it). Prefill is `ttft-derived` ([Timings](#timings-what-each-number-is-and-where-it-comes-from)).
+  Output check: pass against GENIE-X's own llama_cpp CPU run of the Qwen3 Q4_0 GGUF. Backend:
+  confirmed by [geniex-npu-log-v1](#backend-evidence-geniex-npu-log-v1) in every repetition.
+- **The board's other models and phones:** in Qualcomm AI Hub Models v0.65.0
+  ([`qualcomm/Qwen3-1.7B`](https://huggingface.co/qualcomm/Qwen3-1.7B) `release_assets.json`), the
+  `geniex_qairt` W4A16 Qwen3 1.7B bundles for phone chips are the Snapdragon 8 Elite for Galaxy and
+  8 Elite Gen 5 for Galaxy ones; there is none for the Galaxy S23's SM8550.
+  [`qualcomm/Gemma-4-E2B-it`](https://huggingface.co/qualcomm/Gemma-4-E2B-it) lists only the
+  Q4_0 GGUF for GENIE-X's llama_cpp plugin, and the `qualcomm` Hugging Face organization lists no
+  Gemma 3 model (its Gemma models are Gemma 4 E2B and E4B; checked 2026-11-01).
+
+| Step | Status |
+|---|---|
+| Qualcomm's W4A16 Qwen3 1.7B bundle loads on the POCO F8 Ultra (a non-Galaxy SM8850) | ok |
+| Output matches GENIE-X's own CPU run | ok |
+| POCO F8 Ultra NPU row on the board (backend confirmed from the app's log) | ok |
+| Galaxy S23 (SM8550): a Qwen3 1.7B bundle | missing |
+| Gemma 4 E2B, Gemma 3 1B: a GENIE-X NPU bundle | missing |
+
+Evidence: [POCO F8 Ultra board sessions](../../evidence/304967e2f895d90edc289151f4934bfc721bcd4f6eac7c14685c5e6b269009a2/)
+(NPU and its CPU reference; [model-refresh notes](model-refresh.md#board-sessions-poco-f8-ultra-2026-11-01)).
+
 ## What runs
 
 | Backend | GENIE-X plugin | Model | Role |

@@ -31,7 +31,10 @@ longer for readiness; the 2 °C rise bound (`maxBatteryTempRiseC`) is the same i
 | `cooldownSec` | 30 | 30 | 120 |
 | `readinessTimeoutSec` | 180 | 180 | 900 |
 
-The board's other llama.cpp setups use the same settings and timing in their own files.
+The board's llama.cpp rows come from the
+[model-refresh configurations](#model-refresh-board-configurations), which take these settings
+and timing. The cpu-reference-v3 family below has the same settings; its sessions are in the
+history.
 [`cpu-reference-v3-qwen25.json`](../xebenchapp/configs/cpu-reference-v3-qwen25.json) runs
 Qwen2.5 1.5B Instruct Q8_0 and
 [`cpu-reference-v3-gemma3.json`](../xebenchapp/configs/cpu-reference-v3-gemma3.json) runs
@@ -45,8 +48,8 @@ the same file ([litert-accelerators](experiments/litert-accelerators.md)):
 reference runs; these set cpu-reference-v3's values on every run, the gate's CPU references
 included.
 
-Every llama.cpp and LiteRT-LM board row measures the same prompt text with a 128-token decode
-budget (LiteRT-LM rows decode exactly 128 tokens; see below). An accelerator configuration's
+Every board row measures the same prompt text with a 128-token decode budget (every engine
+except GENIE-X decodes exactly 128 tokens; see below). An accelerator configuration's
 `measuredPrompt` selects what its repetitions measure: `std-chat-v1` (the default) is the
 accelerator body as one user turn in the configuration's chat template; `std-pp512-v1` is the
 CPU reference prompt, pre-templated (`promptFormat: raw-pretemplated`). These two
@@ -102,12 +105,15 @@ default is 4 threads, which is what the configurations state.
 
 | Configuration | Runs | Board backend | Phones |
 | --- | --- | --- | --- |
-| [`litertlm-gemma3-int4-cpu-v2`](../xebenchapp/configs/litertlm-gemma3-int4-cpu-v2.json) | Gemma 3 1B `int4`, CPU | `cpu` | POCO F8 Ultra, Galaxy S23 |
-| [`litertlm-qwen25-q8-cpu-v2`](../xebenchapp/configs/litertlm-qwen25-q8-cpu-v2.json) | Qwen2.5 1.5B `Q8`, CPU | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9 |
+| [`litertlm-gemma3-int4-cpu-v2`](../xebenchapp/configs/litertlm-gemma3-int4-cpu-v2.json) | Gemma 3 1B `int4`, CPU | `cpu` | POCO F8 Ultra, Galaxy S23, Pixel 9 |
+| [`litertlm-qwen25-q8-cpu-v2`](../xebenchapp/configs/litertlm-qwen25-q8-cpu-v2.json) | Qwen2.5 1.5B `Q8`, CPU | history only (not a board model) | POCO F8 Ultra, Galaxy S23, Pixel 9 |
 | [`litertlm-gemma3-sm8850-npu-v2`](../xebenchapp/configs/litertlm-gemma3-sm8850-npu-v2.json) | Gemma 3 1B `int4` on CPU (gate reference), the SM8850 NPU bundle on NPU | `npu` | POCO F8 Ultra |
 
 The `-v1` configurations are the same runs without `decodeMode`; their sessions are in the
-history, and the board lists the `-v2` configurations only.
+history, and the board lists the `-v2` configurations only. The board's LiteRT-LM set also lists
+the Gemma 4 E2B and Qwen3 1.7B configurations
+([Model-refresh board configurations](#model-refresh-board-configurations)), and every LiteRT-LM
+board session runs on LiteRT-LM 0.18.1.
 
 The NPU run is gated against the CPU run of the int4 file (`sameArtifact: false`). The Galaxy
 S23 has no LiteRT-LM NPU configuration: its SM8550 bundle answers the gate's long probes wrong
@@ -141,7 +147,8 @@ python3 scripts/export_evidence.py export --out <dir> <capture dir>
 python3 scripts/export_evidence.py verify <bundle dir>
 ```
 
-The board shows these sessions once `configs/board.json` declares the LiteRT-LM set
+The board shows a session of these configurations when `configs/board.json` lists it in the
+LiteRT-LM set with its LiteRT-LM version
 ([RUN-CONDITIONS.md](RUN-CONDITIONS.md#publishing-a-new-set)). The CPU run of
 `litertlm-gemma3-sm8850-npu-v2` goes into the history only, with
 `--allow-unlisted-configuration`.
@@ -375,7 +382,10 @@ Sessions per setup (one configuration on one phone), fixed before any measuremen
 
 The CPU runs of the accelerator configurations (`llamacpp-*-opencl-hexagon-v1`,
 `litertlm-gemma3-sm8850-npu-v2`, `geniex-qwen3-sm8850-npu-v1`) are gate references and go into the
-history only, with `--allow-unlisted-configuration`.
+history only, with `--allow-unlisted-configuration`. `configs/board.json` lists these
+configurations as each engine's set
+([RUN-CONDITIONS.md](RUN-CONDITIONS.md#the-model-refresh-sets-november-2026)), so a session of
+one of them on its board backend, with the set's versions, is published without `--stage`.
 
 ## Build identity and reproducibility
 

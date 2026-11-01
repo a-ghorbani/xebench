@@ -59,14 +59,16 @@ python3 scripts/stage_model.py --model-id llama32-1b-instruct-q8_0 --print-downl
 `stage_model.py` selects the manifest entry the local file names (or `--model-id`). Without
 either, it stages the Q4_K_M file.
 
-### Qwen2.5 1.5B and Gemma 3 1B (board configurations)
+### Qwen2.5 1.5B and Gemma 3 1B (cpu-reference-v3 configurations)
 
 [`cpu-reference-v3-qwen25.json`](xebenchapp/configs/cpu-reference-v3-qwen25.json),
 [`cpu-reference-v3-gemma3.json`](xebenchapp/configs/cpu-reference-v3-gemma3.json) and the
 llama.cpp accelerator configuration
 [`llamacpp-qwen25-opencl-v1.json`](xebenchapp/configs/llamacpp-qwen25-opencl-v1.json) run these
-files with cpu-reference-v3's settings. They are board models, not the second reference model of
-issue #7:
+files with cpu-reference-v3's settings; their sessions are in the history. The Gemma 3 1B GGUF is
+also the board's llama.cpp Gemma 3 1B file (`cpu-reference-v4-gemma3` and
+`llamacpp-gemma3-opencl-hexagon-v1`); Qwen2.5 1.5B is not a board model. Neither is the second
+reference model of issue #7:
 
 | File | Quant label | Source | Size | SHA-256 | License |
 |---|---|---|---|---|---|
@@ -263,11 +265,13 @@ LiteRT-LM with llama.cpp on Gemma 3 1B. These are not reference models either.
 
 ### LiteRT-LM files
 
-The LiteRT-LM board configurations
+The LiteRT-LM Gemma 3 1B board configurations
 ([`litertlm-gemma3-int4-cpu-v2.json`](xebenchapp/configs/litertlm-gemma3-int4-cpu-v2.json),
-[`litertlm-qwen25-q8-cpu-v2.json`](xebenchapp/configs/litertlm-qwen25-q8-cpu-v2.json),
 [`litertlm-gemma3-sm8850-npu-v2.json`](xebenchapp/configs/litertlm-gemma3-sm8850-npu-v2.json)),
-their `-v1` versions and the accelerator experiment run these `.litertlm` files. Each configuration pins the file's
+[`litertlm-qwen25-q8-cpu-v2.json`](xebenchapp/configs/litertlm-qwen25-q8-cpu-v2.json) (its
+sessions are in the history; Qwen2.5 1.5B is not a board model), their `-v1` versions and the
+accelerator experiment run these `.litertlm` files; the Gemma 4 E2B and Qwen3 1.7B files are in
+[the table above](#gemma-4-e2b-and-qwen3-17b-board-models). Each configuration pins the file's
 SHA-256 as `modelSha256`; a different file is recorded unmeasured with
 `stopReason: model-hash-mismatch`. `configs/models/experimental-models.json` lists them under
 `pinnedArtifacts` with their source. Each SHA-256 is the Hugging Face LFS oid of the file at the
@@ -279,7 +283,7 @@ client. The Qwen2.5 SHA-256 also equals `sha256sum` of a copy downloaded from th
 | `gemma3-1b-it-int4.litertlm` | [`litert-community/Gemma3-1B-IT`](https://huggingface.co/litert-community/Gemma3-1B-IT) (gated) at `d448835d84411a08f577e25f3afebe528402d73b` | 584417280 bytes | `1325ae366d31950f137c9c357b9fa89448b176d76998180c08ceaca78bba98be` | CPU (board), CPU/GPU (experiment) |
 | `Gemma3-1B-IT_q4_ekv1280_sm8850.litertlm` | same repository and revision | 693747712 bytes | `fda5dca0e8c1c6f65ca5625c326ff79920c7eb82625a0c6515ae4f5711957b1f` | NPU on the POCO F8 Ultra (SM8850) |
 | `Gemma3-1B-IT_sm8550.litertlm` | `Gemma3-1B-IT_q4_ekv1280_sm8550.litertlm`, same repository and revision, staged under the shorter name | 690143232 bytes | `29426fd343eaeac9d54d67ca2bf72fce8c1f0cce947757e5e9c8009bcf5e72af` | NPU bug reproduction on the Galaxy S23 |
-| `Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm` | [`litert-community/Qwen2.5-1.5B-Instruct`](https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct) at `5068b3fd9788a4ed5633dc868687f778143b73f3` | 1597922856 bytes | `c4a9b7289365ab80fe599b844b77ad253eb3c53fb0e5d963d699146a6f01255e` | CPU (board) |
+| `Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm` | [`litert-community/Qwen2.5-1.5B-Instruct`](https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct) at `5068b3fd9788a4ed5633dc868687f778143b73f3` | 1597922856 bytes | `c4a9b7289365ab80fe599b844b77ad253eb3c53fb0e5d963d699146a6f01255e` | CPU (`litertlm-qwen25-q8-*`) |
 
 Each pinned revision is the repository's `main` when it was pinned; if `main` changes later, the
 pin still names these bytes. The Qwen2.5 file at its pinned revision carries LiteRT-LM 0.18.0

@@ -20,8 +20,9 @@ shines most, and (critically) whether we currently measure it there. A fairness
 rule this doc omits but ENGINES.md enforces: *run each engine on its intended
 path.* Benchmarking an accelerator-first engine (LiteRT, GENIE-X) only on CPU and
 publishing the number is the same unfairness as one engine's Q4_K_M vs another's
-Q4_0 — moved to the backend axis. Today only llama.cpp is measured at its best;
-LiteRT/GENIE-X are shown on their CPU fallback, which the board must disclose.
+Q4_0 — moved to the backend axis. llama.cpp and GENIE-X are measured on their best
+paths; LiteRT-LM's NPU is measured for one model (Gemma 3 1B) on one phone (POCO F8 Ultra),
+and ExecuTorch on its XNNPACK CPU path only, which the board must disclose.
 
 ## Rule 0 — measure in a FOREGROUND APP, never an adb-shell binary
 
@@ -86,8 +87,9 @@ token count is recorded; a mismatch is flagged, not silently averaged.
 
 ### 2. "Engine + its own best mobile quant" — never claim bit-equivalence
 There is no bit-identical INT4 across these engines. We compare each engine
-running the quantization its own toolchain produces for mobile
-(llama.cpp `Q4_K_M`, ExecuTorch `SpinQuant 4-bit`), and we treat the
+running the quantization its own toolchain produces for mobile (on the board:
+llama.cpp's `Q4_0` GGUF files, LiteRT-LM's `.litertlm` files, ExecuTorch's `8da4w`
+exports and GENIE-X's `W4A16` bundle; [MODELS.md](./MODELS.md)), and we treat the
 **quantization scheme as a first-class, always-visible column** — never a
 footnote. A row that hides its quant is not publishable.
 → `quant` is required on every `EngineBenchmarkRow`; surfaced in every UI cell.
@@ -194,17 +196,26 @@ them ([rule](docs/RUN-CONDITIONS.md#genie-x-npu-backend-confirmed-by-the-apps-lo
 
 ### 7. A fixed decode length where the engine allows it
 Every row decodes at most 128 tokens per repetition; this document calls that limit the budget.
-LiteRT-LM board rows decode exactly the budget, past the model's end of turn, so decode speed is
-always measured over the same number of tokens; the row states "end of turn ignored". The output
-check runs the same file on the same backend through LiteRT-LM's public engine API; the measured
-repetitions use engines created with LiteRT-LM's benchmark parameters.
-→ `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
-llama.cpp rows decode up to the budget and stop at the end of turn; in every published llama.cpp
-session the model ran to the budget. GENIE-X measured in the app (geniex-android 0.8.0) has no
-option to decode past the end of turn: it decodes up to the budget and stops there, so its decode
-length varies from run to run with where the model ends its turn, and the record keeps the number
-of tokens it produced
+llama.cpp, LiteRT-LM and ExecuTorch board rows decode exactly the budget, past the model's end of
+turn, so decode speed is always measured over the same number of tokens; the row states "end of
+turn ignored". Each engine does it its own way
+([REFERENCE-RUNS.md](docs/REFERENCE-RUNS.md#model-refresh-board-configurations)):
+
+- **llama.cpp** (llama.rn 0.13.0-rc.8) biases every end-of-generation token of the model to −∞
+  (`logit_bias`) and stops on the 128-token limit; its decode speed is llama.cpp's own rate over
+  the 127 tokens decoded after the one the prefill samples.
+- **LiteRT-LM** creates the measured engines with its benchmark parameters (decode count 128) →
+  `xebenchapp/android/app/src/experimental/java/com/xebenchapp/LiteRtFixedDecode.kt`.
+- **ExecuTorch** passes `ignoreEos` with a 128-token limit; its decode speed is the runner's rate
+  over the 127 tokens of the decode loop.
+
+The output check runs the same file on the same backend with the engine's own stopping rule.
+GENIE-X measured in the app (geniex-android 0.8.0) has no option to decode past the end of turn:
+it decodes up to the budget and stops there, so its decode length depends on where the model ends
+its turn, and the record keeps the number of tokens it produced
 ([notes](docs/experiments/geniex-inapp.md#decode-length-genie-x-080-cannot-decode-past-the-end-of-turn)).
+On the board's prompt, the GENIE-X Qwen3 1.7B row decoded the full 128 tokens in every repetition,
+and its note says "decode 128 tok".
 GENIE-X's NPU prefill speed is TTFT-derived (`ttft-derived`): prompt tokens over GENIE-X's own time
 to the first token, which includes sampling that token, because its QAIRT plugin reports no
 separate prefill time

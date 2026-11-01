@@ -300,6 +300,10 @@ Qwen3 1.7B on the same runtime (sections 4 and Galaxy S23). This analysis was do
 react-native-executorch 0.10.7 package, the ExecuTorch v1.4.1 sources and the two pinned `.pte` files, which were
 parsed as flatbuffers. It finds no harness setting behind the gap; the gap is in the export.
 
+The board sessions of 2026-11-01 show the same gap on all three phones (decode tok/s, Gemma 4 E2B against Qwen3
+1.7B): POCO F8 Ultra 6.9 against 31.3, Galaxy S23 6.7 against 23.3, Pixel 9 4.9 against 18.3. Finding
+`executorch-gemma4-export` in [`data/findings.json`](../../data/findings.json) links here.
+
 - **Threads.** react-native-executorch 0.10.7 does not resize ExecuTorch's threadpool and exposes no setting for it.
   Its only `_unsafe_reset_threadpool` call is in its `legacy/` code, which the harness does not import. ExecuTorch
   1.4.1 sizes the pool from `get_num_performant_cores()` (`extension/threadpool/threadpool.cpp`). Its cpuinfo
