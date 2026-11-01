@@ -41,8 +41,8 @@ load and inference (MiB).
 | Gemma 3 1B Q4_0 (QAT) | llama.cpp rc.8 Hexagon | yes | pass | 518 | 127 | 3600.0 | 46.7 | confirmed (`HTP0`) | 820 / 897 | none |
 | Gemma 4 E2B (mixed 2/4/8-bit) | LiteRT-LM 0.18.1 CPU | yes | pass | 519 | 128 (fixed) | 255.6 | 29.2 | consistent | 1615 / 1702 | none; render check passed |
 | Qwen3 1.7B int4 | LiteRT-LM 0.18.1 CPU | yes | **fail** | 519 | 128 (fixed) | 91.7 | 10.6 | consistent | 2360 / 2446 | every gate answer is empty text (thinking); slow |
-| Gemma 4 E2B 8da4w (mixed 4/16-bit) | ExecuTorch 0.10.7 XNNPACK | yes | pass | 519 | 128 (fixed) | 66.7 | 6.8 | confirmed (program delegates) | 2298 / 2364 | slow; 2 prefill forwards of 512 |
-| Qwen3 1.7B 8da4w | ExecuTorch 0.10.7 XNNPACK | yes | pass | 519 | 128 (fixed) | 321.6 | 31.2 | confirmed (program delegates) | 2097 / 2345 | none |
+| Gemma 4 E2B 8da4w (mixed 4/16-bit) | ExecuTorch (react-native-executorch 0.10.7) XNNPACK | yes | pass | 519 | 128 (fixed) | 66.7 | 6.8 | confirmed (program delegates) | 2298 / 2364 | slow; 2 prefill forwards of 512 |
+| Qwen3 1.7B 8da4w | ExecuTorch (react-native-executorch 0.10.7) XNNPACK | yes | pass | 519 | 128 (fixed) | 321.6 | 31.2 | confirmed (program delegates) | 2097 / 2345 | none |
 | Qwen3 1.7B W4A16 ("for Galaxy" SM8850 bundle) | GENIE-X 0.8.0 NPU | yes (after a staging fix) | pass | **520** | 128 (budget) | 2388.0 | 28.8 | log events all present; rule pending | 239 / 1272 | first attempt: bundle directory unreadable |
 | Qwen3 1.7B Q4_0 | GENIE-X 0.8.0 CPU (llama_cpp, gate reference) | yes | pass | 519 | 128 (budget) | 155.8 | 34.2 | consistent | 1927 / 1995 | none |
 
@@ -131,7 +131,7 @@ tokens after the first, which the prompt evaluation samples). On std-pp512-v1:
   empty. The record cannot tell the two apart. It is also slow: 91.7 / 10.6 tok/s, with PSS 2360 MiB (the file keeps
   32-bit activations).
 
-## 4. ExecuTorch 0.10.7 (XNNPACK)
+## 4. ExecuTorch 1.4.1 through react-native-executorch 0.10.7 (XNNPACK)
 
 - **Both `.pte` files load** with their pinned tokenizers (`tokenizerSha256` checked by the app).
 - **Program metadata of the 3.2 GB Gemma 4 E2B `.pte` reads:** `forward` delegates to `XnnpackBackend`, the other
@@ -295,7 +295,7 @@ For the configurations pull request (S23):
 
 ## ExecuTorch Gemma 4 E2B: why it decodes slowly (host analysis, 2026-10-23)
 
-ExecuTorch 0.10.7 decodes Gemma 4 E2B at 6.8 tok/s on the POCO F8 Ultra and 6.7 on the Galaxy S23, against 31.2 for
+ExecuTorch 1.4.1 (react-native-executorch 0.10.7) decodes Gemma 4 E2B at 6.8 tok/s on the POCO F8 Ultra and 6.7 on the Galaxy S23, against 31.2 for
 Qwen3 1.7B on the same runtime (sections 4 and Galaxy S23). This analysis was done on the host from the
 react-native-executorch 0.10.7 package, the ExecuTorch v1.4.1 sources and the two pinned `.pte` files, which were
 parsed as flatbuffers. It finds no harness setting behind the gap; the gap is in the export.
@@ -382,7 +382,7 @@ Changes made after the spike, in the harness (`harness/validation-followups`):
 The board configurations of [REFERENCE-RUNS.md](../REFERENCE-RUNS.md#model-refresh-board-configurations) for the
 Galaxy S23 (seven; no llama.cpp Gemma 4 E2B) and the Pixel 9 (eight), CPU only, under the single-rerun rule. These are
 board sessions (3 repetitions, 120 s cooldown), staged into the history only (`aggregate.mjs --stage
---allow-unlisted-configuration`); `configs/board.json` does not change. The POCO X8 Pro ran nothing (below).
+--allow-unlisted-configuration`); `configs/board.json` did not change in that pull request; the publication pull request ([#55](https://github.com/a-ghorbani/xebench/pull/55)) declares the sets that display them. The POCO X8 Pro ran nothing (below).
 
 | Item | Value |
 | --- | --- |
@@ -439,7 +439,7 @@ phone. The ExecuTorch files stay on the phone.
   LiteRT-LM 1456–1480 (1516) on the Galaxy S23 and 1598–1619 (1671) on the Pixel 9; ExecuTorch 2169–2172 (2901) on
   the Galaxy S23 and 2251–2259 (2306) on the Pixel 9. No session was killed.
 
-### POCO X8 Pro: first time on the board
+### POCO X8 Pro: not yet measured
 
 No session ran on the POCO X8 Pro: the app could not be installed. On HyperOS, `adb install` of the experimental APK
 fails with `INSTALL_FAILED_USER_RESTRICTED` ("Install canceled by user"). The phone's log shows HyperOS's own USB
@@ -455,7 +455,7 @@ while it loaded the same file.
 The board configurations of [REFERENCE-RUNS.md](../REFERENCE-RUNS.md#model-refresh-board-configurations) for the
 POCO F8 Ultra: all thirteen, CPU, OpenCL and NPU, under the single-rerun rule. These are board sessions (3
 repetitions, 120 s cooldown), staged into the history only (`aggregate.mjs --stage --allow-unlisted-configuration`);
-`configs/board.json` does not change.
+`configs/board.json` did not change in that pull request; the publication pull request ([#55](https://github.com/a-ghorbani/xebench/pull/55)) declares the sets that display them.
 
 | Item | Value |
 | --- | --- |

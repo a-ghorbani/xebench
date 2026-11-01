@@ -128,10 +128,24 @@ Where each SHA-256 comes from:
 The ExecuTorch tokenizer files have the same names in both repositories, so the manifest stages
 them under the model-specific names in the File column; the repository path is in parentheses
 (`sourceFile` in the manifest). The `.pte` files are exported for the ExecuTorch 1.4.1 runtime.
-The Gemma 4 E2B export prefills at most 512 tokens per forward pass; its MLP and output layers
-use 4-bit weights with 8-bit activations, its attention and per-layer-embedding projections stay
-16-bit and its token embeddings are 4-bit (the repository's README). LiteRT-LM's Gemma 4 E2B file
-mixes 2-, 4- and 8-bit weights (Google's mobile QAT). The Qwen3 1.7B `.litertlm` file stores
+Quant labels of the two mixed files, part by part:
+
+- **`mixed 4/16-bit`, ExecuTorch Gemma 4 E2B** (the repository's README and the program itself,
+  parsed on the host; [notes](docs/experiments/model-refresh.md#executorch-gemma-4-e2b-why-it-decodes-slowly-host-analysis-2026-10-23)):
+  the MLP and output layers have 4-bit weights and compute with 8-bit activations; the attention
+  projections and the per-layer-embedding projections have 16-bit weights and compute in 16-bit
+  (205 linear layers, 639 MB); the token embeddings are 4-bit; the KV cache is 8-bit.
+- **`mixed 2/4/8-bit`, LiteRT-LM Gemma 4 E2B** (Google's mobile quantization-aware training,
+  described in the [model card](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm)
+  and [Google's announcement](https://blog.google/innovation-and-ai/technology/developers-tools/quantization-aware-training-gemma-4/)):
+  the weights mix 2-, 4- and 8-bit, with static activation scales and channel-wise quantization.
+  Google states that "the specific parts of the model that generate tokens" are 2-bit and that the
+  core layers keep higher precision, with the embeddings and KV cache compressed; it publishes no
+  per-layer list of which weights are 4-bit and which 8-bit.
+
+The Gemma 4 E2B export prefills at most 512 tokens per forward pass. ExecuTorch names its scheme
+of 4-bit weights with 8-bit dynamic activations `8da4w` (the file names above); the board labels
+it `4-bit weights, 8-bit activations`. The Qwen3 1.7B `.litertlm` file stores
 4-bit weights in blocks of 32 with 32-bit activations, needs LiteRT-LM 0.18.0 or later, and
 thinks unless `enable_thinking` is false.
 

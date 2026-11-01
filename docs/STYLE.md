@@ -40,8 +40,10 @@ device names as "Brand model" (Samsung Galaxy S23, Google Pixel 9, POCO F8 Ultra
 plain words. ExecuTorch's `8da4w` files store 4-bit weights and compute with 8-bit activations:
 `4-bit weights, 8-bit activations`. A file whose weights mix bit widths names the widths it mixes:
 `mixed 2/4/8-bit` (LiteRT-LM's Gemma 4 E2B file) and `mixed 4/16-bit` (ExecuTorch's Gemma 4 E2B
-file, 4-bit layers with 16-bit attention). A mixed label states no single bit width, and the row's
-notes say which parts use which width. Speeds are written "tok/s". A justified exception
+file, 4-bit layers with 16-bit attention). A mixed label states no single bit width (no
+`quantBits`). Which parts of the file use which width is stated in
+[MODELS.md](../MODELS.md#gemma-4-e2b-and-qwen3-17b-board-models) and explained by the site's quant
+glossary, not in row notes. Speeds are written "tok/s". A justified exception
 goes in [`configs/public-text-allowlist.json`](../configs/public-text-allowlist.json) with a
 reason; rewriting is almost always better. CI runs the check on every pull request.
 

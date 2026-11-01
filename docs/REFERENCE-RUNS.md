@@ -48,7 +48,7 @@ the same file ([litert-accelerators](experiments/litert-accelerators.md)):
 reference runs; these set cpu-reference-v3's values on every run, the gate's CPU references
 included.
 
-Every board row measures the same prompt text with a 128-token decode budget (every engine
+Every lab row on the board measures the same prompt text with a 128-token decode budget (every engine
 except GENIE-X decodes exactly 128 tokens; see below). An accelerator configuration's
 `measuredPrompt` selects what its repetitions measure: `std-chat-v1` (the default) is the
 accelerator body as one user turn in the configuration's chat template; `std-pp512-v1` is the

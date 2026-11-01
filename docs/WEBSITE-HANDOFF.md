@@ -238,8 +238,12 @@ Every one of the 30 lab rows is `verified`. Two quant labels state no single bit
 no `quantBits`: `mixed 2/4/8-bit` (LiteRT-LM Gemma 4 E2B) and `mixed 4/16-bit` (ExecuTorch Gemma 4
 E2B); ExecuTorch's Qwen3 1.7B rows are `4-bit weights, 8-bit activations` (`quantBits` 4). The
 GENIE-X row's prefill is `ttft-derived`: GENIE-X reports no separate prefill time. A model, engine
-and phone without a row has no setup on the board; the page shows nothing for it, never a
-placeholder that suggests a failed or missing run. A board that declares a `carryover` would show
+and phone without a row has no row in `rows`, for one of two reasons the page does not need to
+tell apart: the board has no setup for it (no file for that engine, or the phone cannot run it),
+or the setup is in its engine's set but has no displayable session. One setup is in the second
+case: Galaxy S23, LiteRT-LM, Qwen3 1.7B, whose only session ran while the phone charged; its
+rerun, once it passes, appears as an ordinary row with no other change. Either way the page shows
+nothing for it, never a placeholder that suggests a failed or missing run. A board that declares a `carryover` would show
 an engine's July rows next to its new set; the row text tells them apart, and the page should
 then not present the two as one comparable series. No engine declares one.
 

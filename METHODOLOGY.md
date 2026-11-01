@@ -88,8 +88,8 @@ token count is recorded; a mismatch is flagged, not silently averaged.
 ### 2. "Engine + its own best mobile quant" — never claim bit-equivalence
 There is no bit-identical INT4 across these engines. We compare each engine
 running the quantization its own toolchain produces for mobile (on the board:
-llama.cpp's `Q4_0` GGUF files, LiteRT-LM's `.litertlm` files, ExecuTorch's `8da4w`
-exports and GENIE-X's `W4A16` bundle; [MODELS.md](./MODELS.md)), and we treat the
+llama.cpp's `Q4_0` GGUF files, LiteRT-LM's `.litertlm` files, ExecuTorch's `4-bit weights, 8-bit
+activations` and `mixed 4/16-bit` exports and GENIE-X's `W4A16` bundle; [MODELS.md](./MODELS.md)), and we treat the
 **quantization scheme as a first-class, always-visible column** — never a
 footnote. A row that hides its quant is not publishable.
 → `quant` is required on every `EngineBenchmarkRow`; surfaced in every UI cell.
@@ -214,8 +214,8 @@ GENIE-X measured in the app (geniex-android 0.8.0) has no option to decode past 
 it decodes up to the budget and stops there, so its decode length depends on where the model ends
 its turn, and the record keeps the number of tokens it produced
 ([notes](docs/experiments/geniex-inapp.md#decode-length-genie-x-080-cannot-decode-past-the-end-of-turn)).
-On the board's prompt, the GENIE-X Qwen3 1.7B row decoded the full 128 tokens in every repetition,
-and its note says "decode 128 tok".
+On the board's prompt, Qwen3 1.7B on GENIE-X does not reach its end of turn: the row decodes the
+full 128 tokens in every repetition, and its note says "decode 128 tok".
 GENIE-X's NPU prefill speed is TTFT-derived (`ttft-derived`): prompt tokens over GENIE-X's own time
 to the first token, which includes sampling that token, because its QAIRT plugin reports no
 separate prefill time
