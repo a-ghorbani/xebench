@@ -369,6 +369,71 @@
               ]
             }
           }
+        },
+        {
+          "sessionId": "1793534450540-0-6rbrh8x22cs",
+          "timestampIso": "2026-11-01T12:00:50.540Z",
+          "bundleSha256": "4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "POCO F8 Ultra",
+            "soc": "SM8850",
+            "chipName": "Snapdragon 8 Elite Gen 5",
+            "model": "Gemma 3 1B",
+            "quant": "int4",
+            "quantBits": 4,
+            "ppTps": 661.7,
+            "tgTps": 42.2,
+            "ttftMs": 855.9,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-gemma3-int4-cpu-v2",
+            "configurationSha256": "3392626264601b55a254cafddc7d96f446f8ed99eae1be0bfca95db72f3dccd4",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 5.5,
+                "min": 650.7,
+                "max": 661.7
+              },
+              "tgTps": {
+                "iqr": 0.1,
+                "min": 42,
+                "max": 42.2
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793534450540-0-6rbrh8x22cs"
+              ],
+              "bundleSha256": "4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/4ce716f908ac44d3aac27b4f9d219abd749f107dc27cc35014547d77e0f84417/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
+                }
+              ]
+            }
+          }
         }
       ],
       "replacedRows": [
