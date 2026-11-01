@@ -423,10 +423,12 @@ phone. The ExecuTorch files stay on the phone.
 - **No rerun was needed:** every first session had 3 of 3 repetitions, condition verdict `pass` and gate `pass`.
 - **Galaxy S23 LiteRT-LM Qwen3 1.7B: charging violated.** In the third repetition the battery went from 96 % to 95 %,
   and the phone reported `CHARGING` in 5 of 27 samples: on USB power it starts charging again at 95 %. The
-  single-rerun rule does not cover charging, so the session was not rerun; publication policy v1 rates it `failed`
-  (charging). The next session's first readiness wait took 542 s (107 of 108 polls not ready: `charging`).
+  single-rerun rule as it stood when the session ran did not cover charging, so it got no rerun; publication
+  policy v1 rates it `failed` (charging). The rule now also reruns a session whose charging check is not
+  `satisfied` (owner decision 2026-11-01, [REFERENCE-RUNS](../REFERENCE-RUNS.md#model-refresh-board-configurations)),
+  so this setup gets one unchanged rerun on the same phone and APK. The next session's first readiness wait took 542 s (107 of 108 polls not ready: `charging`).
 - The Pixel 9 LiteRT-LM Gemma 3 1B session's first repetition was 4.5 % slower than the other two (prefill 196.4
-  against 205.2 and 205.7), and the ExecuTorch Qwen3 1.7B session's first repetition decoded 8.8 % slower (16.8
+  against 205.2 and 205.7), and the ExecuTorch Qwen3 1.7B session's first repetition decoded 8.7 % slower (16.8
   against 18.3 and 18.4). In every other session the three repetitions stay within 4.6 % of each other on both
   rates.
 - Gemma 4 E2B memory, app PSS after the repetition (max RSS during it): llama.cpp on the Pixel 9 3863 MiB (3916);
