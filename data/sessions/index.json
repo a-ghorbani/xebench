@@ -5,6 +5,79 @@
   "selectionRule": "engine-set-newest-verified-else-newest-unverified",
   "keys": [
     {
+      "key": "litert-lm|cpu|android|Google Pixel 9|Gemma 3 1B|int4|measured",
+      "displayed": null,
+      "rule": "no-session-in-set",
+      "sessions": [
+        {
+          "sessionId": "1793532024743-0-q5iwrhjqcuo",
+          "timestampIso": "2026-11-01T11:20:24.743Z",
+          "bundleSha256": "5ffecc68b9a4a0a5eeca8bd8fe86c2d18272f93132636aa8205ddc4934fc37ac",
+          "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/5ffecc68b9a4a0a5eeca8bd8fe86c2d18272f93132636aa8205ddc4934fc37ac/manifest.json",
+          "validation": "verified",
+          "guardsPassed": true,
+          "row": {
+            "engine": "litert-lm",
+            "backend": "cpu",
+            "platform": "android",
+            "device": "Google Pixel 9",
+            "soc": "Tensor G4",
+            "chipName": "Google Tensor G4",
+            "model": "Gemma 3 1B",
+            "quant": "int4",
+            "quantBits": 4,
+            "ppTps": 205.2,
+            "tgTps": 26.1,
+            "ttftMs": 2640.7,
+            "provenance": "measured",
+            "sourceName": "xebench",
+            "sourceUrl": "https://github.com/a-ghorbani/xebench/blob/main/METHODOLOGY.md",
+            "sourceDate": "2026-11",
+            "sampleCount": 3,
+            "asStated": "n=3 cold-run median; prompt std-pp512-v1; decode 128 tok, end of turn ignored; publication-policy-v1 verified",
+            "validation": "verified",
+            "guardsPassed": true,
+            "conditionPolicy": "run-conditions-v2",
+            "protocolVersion": "accelerator-v2",
+            "configurationId": "litertlm-gemma3-int4-cpu-v2",
+            "configurationSha256": "3392626264601b55a254cafddc7d96f446f8ed99eae1be0bfca95db72f3dccd4",
+            "timingMethod": "engine-timings",
+            "dispersion": {
+              "ppTps": {
+                "iqr": 4.7,
+                "min": 196.4,
+                "max": 205.7
+              },
+              "tgTps": {
+                "iqr": 0.6,
+                "min": 25.1,
+                "max": 26.3
+              }
+            },
+            "evidence": {
+              "sessionIds": [
+                "1793532024743-0-q5iwrhjqcuo"
+              ],
+              "bundleSha256": "5ffecc68b9a4a0a5eeca8bd8fe86c2d18272f93132636aa8205ddc4934fc37ac",
+              "url": "https://raw.githubusercontent.com/a-ghorbani/xebench/main/evidence/5ffecc68b9a4a0a5eeca8bd8fe86c2d18272f93132636aa8205ddc4934fc37ac/manifest.json"
+            },
+            "build": {
+              "engineVersion": "LiteRT-LM 0.18.1",
+              "apkSha256": "885ef843572a41cb6e407a61893b1231ce1f59a26eab2b81f8130282f3bac358",
+              "harnessCommit": "3dff57e48647e78653a92553e655bd843d0a0b9e",
+              "runtimes": [
+                {
+                  "name": "LiteRT-LM",
+                  "version": "0.18.1"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "replacedRows": []
+    },
+    {
       "key": "litert-lm|cpu|android|Google Pixel 9|Gemma 4 E2B|mixed 2/4/8-bit|measured",
       "displayed": null,
       "rule": "no-session-in-set",
